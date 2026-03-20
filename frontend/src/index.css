@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --system-blue: #034EA2;
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-[#020617] text-slate-100 font-sans antialiased;
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(3, 78, 162, 0.15), transparent),
+      radial-gradient(circle at 0% 100%, rgba(3, 78, 162, 0.05), transparent);
+  }
+}
+
+.glass-panel {
+  @apply bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl;
+}
+
+.system-gradient {
+  background: linear-gradient(135deg, #034EA2 0%, #012b5a 100%);
+}
