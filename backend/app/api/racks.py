@@ -7,10 +7,15 @@ from typing import List, Optional
 router = APIRouter(prefix="/racks", tags=["Racks"])
 
 @router.get("/")
-def get_racks(site_id: Optional[int] = None, db: Session = Depends(get_db)):
+def get_racks(site_id: Optional[str] = None, db: Session = Depends(get_db)):
     query = db.query(models.Rack)
-    if site_id:
-        query = query.join(models.Room).filter(models.Room.site_id == site_id)
+    # Handle empty string or null site_id from frontend
+    if site_id and site_id != "" and site_id != "null":
+        try:
+            s_id = int(site_id)
+            query = query.join(models.Room).filter(models.Room.site_id == s_id)
+        except ValueError:
+            pass
     
     racks = query.all()
     result = []
@@ -39,12 +44,10 @@ def get_racks(site_id: Optional[int] = None, db: Session = Depends(get_db)):
 
 @router.post("/")
 def create_rack(data: dict, db: Session = Depends(get_db)):
-    # Find or create a default room if not provided
     room_id = data.get('room_id')
     if not room_id:
         room = db.query(models.Room).first()
         if not room:
-            # Create a default site/room if none exist to avoid failure
             site = models.Site(name="Default Site", address="Default Address")
             db.add(site)
             db.commit()
@@ -69,21 +72,17 @@ def create_rack(data: dict, db: Session = Depends(get_db)):
 @router.put("/{rack_id}")
 def update_rack(rack_id: int, data: dict, db: Session = Depends(get_db)):
     rack = db.query(models.Rack).filter(models.Rack.id == rack_id).first()
-    if not rack:
-        raise HTTPException(404)
-    
+    if not rack: raise HTTPException(404)
     if 'name' in data: rack.name = data['name']
     if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
-    if 'room_id' in data: rack.room_id = data['room_id'] # This enables Site Transfer
-    
+    if 'room_id' in data: rack.room_id = data['room_id']
     db.commit()
     return rack
 
 @router.delete("/{rack_id}")
 def delete_rack(rack_id: int, db: Session = Depends(get_db)):
     rack = db.query(models.Rack).filter(models.Rack.id == rack_id).first()
-    if not rack:
-        raise HTTPException(404)
+    if not rack: raise HTTPException(404)
     db.delete(rack)
     db.commit()
     return {"status": "success"}

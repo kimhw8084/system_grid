@@ -9,7 +9,6 @@ router = APIRouter(prefix="/devices", tags=["Devices"])
 
 @router.get("/")
 def get_devices(db: Session = Depends(get_db)):
-    # Join with system if possible, but keep it simple for MVP
     return db.query(models.Device).all()
 
 @router.post("/")
@@ -25,7 +24,8 @@ def update_device(device_id: int, data: dict, db: Session = Depends(get_db)):
     db_device = db.query(models.Device).filter(models.Device.id == device_id).first()
     if not db_device: raise HTTPException(404)
     for k, v in data.items():
-        setattr(db_device, k, v)
+        if hasattr(db_device, k):
+            setattr(db_device, k, v)
     db.commit()
     return db_device
 
@@ -37,8 +37,7 @@ def delete_device(device_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
-# --- EXPANSIONS ---
-
+# --- HARDWARE EXPANSION ---
 @router.get("/{device_id}/hardware")
 def get_hardware(device_id: int, db: Session = Depends(get_db)):
     return db.query(models.HardwareComponent).filter(models.HardwareComponent.device_id == device_id).all()
@@ -59,6 +58,28 @@ def delete_hardware(comp_id: int, db: Session = Depends(get_db)):
         db.commit()
     return {"status": "success"}
 
+# --- SOFTWARE EXPANSION ---
+@router.get("/{device_id}/software")
+def get_software(device_id: int, db: Session = Depends(get_db)):
+    return db.query(models.DeviceSoftware).filter(models.DeviceSoftware.device_id == device_id).all()
+
+@router.post("/{device_id}/software")
+def add_software(device_id: int, data: dict, db: Session = Depends(get_db)):
+    sw = models.DeviceSoftware(device_id=device_id, **data)
+    db.add(sw)
+    db.commit()
+    db.refresh(sw)
+    return sw
+
+@router.delete("/software/{sw_id}")
+def delete_software(sw_id: int, db: Session = Depends(get_db)):
+    sw = db.query(models.DeviceSoftware).filter(models.DeviceSoftware.id == sw_id).first()
+    if sw: 
+        db.delete(sw)
+        db.commit()
+    return {"status": "success"}
+
+# --- CREDENTIALS EXPANSION ---
 @router.get("/{device_id}/secrets")
 def get_secrets(device_id: int, db: Session = Depends(get_db)):
     return db.query(models.SecretVault).filter(models.SecretVault.device_id == device_id).all()
@@ -70,3 +91,11 @@ def add_secret(device_id: int, data: dict, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(secret)
     return secret
+
+@router.delete("/secrets/{secret_id}")
+def delete_secret(secret_id: int, db: Session = Depends(get_db)):
+    secret = db.query(models.SecretVault).filter(models.SecretVault.id == secret_id).first()
+    if secret:
+        db.delete(secret)
+        db.commit()
+    return {"status": "success"}
