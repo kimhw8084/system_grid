@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LayoutDashboard, Server, Network, Database, Shield, Activity, Settings, Search, Upload, CheckCircle2 } from 'lucide-react'
 
 // Presidential Components
-import Nexus3D from './components/Nexus3D'
+import Nexus2D from './components/Nexus2D'
 import AssetGrid from './components/AssetGrid'
 
 const queryClient = new QueryClient()
@@ -143,7 +143,7 @@ function MainContent() {
               <div className="h-full flex flex-col space-y-6">
                 <h1 className="text-3xl font-bold tracking-tight">System Nexus</h1>
                 <div className="flex-1 min-h-0">
-                  <Nexus3D />
+                  <Nexus2D />
                 </div>
               </div>
             ) : activeTab === 'assets' ? (
