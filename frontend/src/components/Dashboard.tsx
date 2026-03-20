@@ -1,6 +1,6 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, ServerCrash, Server, Database, Share2, Layers } from 'lucide-react'
+import { MapPin, ServerCrash, Server, Database, Share2, Layers, LayoutDashboard } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function Dashboard() {
@@ -8,6 +8,7 @@ export default function Dashboard() {
     queryKey: ['dashboard-metrics'],
     queryFn: async () => {
       const res = await fetch('/api/v1/dashboard/metrics')
+      if (!res.ok) throw new Error('Network response was not ok')
       return res.json()
     }
   })
