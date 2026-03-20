@@ -1,52 +1,57 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Info, Plus, Activity, Zap, Trash2, Edit2 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Info, Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
-const RackUnit = ({ uNumber, device, isBase }: { uNumber: number, device?: any, isBase?: boolean }) => {
+const RackUnit = ({ uNumber, device, isBase, highlight }: { uNumber: number, device?: any, isBase?: boolean, highlight?: boolean }) => {
   return (
     <div 
       className={`relative border-b border-white/5 flex items-center px-2 transition-all duration-300 ${
-        device ? 'bg-[#034EA2]/20 border-l-2 border-l-[#034EA2] group' : 'hover:bg-white/5'
+        device ? (highlight ? 'bg-amber-500/40 border-l-4 border-l-amber-400 z-10' : 'bg-[#034EA2]/30 border-l-2 border-l-[#034EA2]') : 'hover:bg-white/5'
       }`}
       style={{ height: '24px' }}
     >
       <span className="text-[9px] font-mono text-slate-600 w-4 select-none">{uNumber}</span>
       {isBase && device && (
         <div className="flex-1 flex items-center justify-between overflow-hidden">
-          <span className="text-[10px] font-bold truncate ml-1 text-blue-100 uppercase tracking-tight">{device.name}</span>
+          <span className={`text-[10px] font-bold truncate ml-1 uppercase tracking-tight ${highlight ? 'text-amber-100' : 'text-blue-100'}`}>{device.name}</span>
         </div>
       )}
     </div>
   )
 }
 
-const RackElevation = ({ rack, onDelete, onEdit }: { rack: any, onDelete: any, onEdit: any }) => {
+const RackElevation = ({ rack, onDelete, onEdit, searchTerm }: { rack: any, onDelete: any, onEdit: any, searchTerm: string }) => {
   const units = Array.from({ length: rack.total_u || 42 }, (_, i) => (rack.total_u || 42) - i)
   
+  const isHighlighted = (device: any) => {
+    if (!searchTerm) return false
+    return device.name.toLowerCase().includes(searchTerm.toLowerCase())
+  }
+
   return (
-    <div className="glass-panel w-56 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/5 hover:border-[#034EA2]/20 transition-colors group">
+    <div className="glass-panel w-60 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/5 hover:border-[#034EA2]/20 transition-all group">
       <div className="bg-slate-900/80 p-3 border-b border-white/10">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 truncate">{rack.name}</h4>
           <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-             <button onClick={() => onEdit(rack)}><Edit2 size={12} className="text-slate-400 hover:text-blue-400"/></button>
-             <button onClick={() => onDelete(rack.id)}><Trash2 size={12} className="text-slate-400 hover:text-rose-400"/></button>
+             <button onClick={() => onEdit(rack)} className="p-1 hover:bg-blue-500/20 rounded"><Edit2 size={12} className="text-slate-400"/></button>
+             <button onClick={() => onDelete(rack.id)} className="p-1 hover:bg-rose-500/20 rounded"><Trash2 size={12} className="text-slate-400"/></button>
           </div>
         </div>
         <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
           <div className="flex items-center space-x-1">
             <Zap size={10} className="text-amber-500" />
-            <span>4.2 kW</span>
+            <span>{rack.max_power_kw} kW</span>
           </div>
-          <span>{rack.total_u}U</span>
+          <span className="bg-slate-800 px-1.5 rounded">{rack.total_u}U</span>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto bg-slate-950/30 custom-scrollbar">
         {units.map((u) => {
           const device = (rack.devices || []).find((d: any) => u >= d.start_u && u < d.start_u + d.size_u)
           const isBase = device?.start_u === u
-          return <RackUnit key={u} uNumber={u} device={device} isBase={isBase} />
+          return <RackUnit key={u} uNumber={u} device={device} isBase={isBase} highlight={device ? isHighlighted(device) : false} />
         })}
       </div>
     </div>
@@ -56,9 +61,13 @@ const RackElevation = ({ rack, onDelete, onEdit }: { rack: any, onDelete: any, o
 export default function RackElevations() {
   const queryClient = useQueryClient()
   const [activeSite, setActiveSite] = useState<number | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [editingRack, setEditingRack] = useState<any>(null)
+  const [showNewSiteModal, setShowNewSiteModal] = useState(false)
+  const [newSiteName, setNewSiteName] = useState('')
 
   const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await fetch('/api/v1/sites/')).json() })
-  const { data: racks } = useQuery({ queryKey: ['racks'], queryFn: async () => (await fetch('/api/v1/racks/')).json() })
+  const { data: racks } = useQuery({ queryKey: ['racks', activeSite], queryFn: async () => (await fetch(`/api/v1/racks/?site_id=${activeSite || ''}`)).json() })
 
   const deleteRack = useMutation({
     mutationFn: async (id: number) => fetch(`/api/v1/racks/${id}`, { method: 'DELETE' }),
@@ -69,40 +78,90 @@ export default function RackElevations() {
     mutationFn: async () => fetch('/api/v1/racks/', { 
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ name: `RACK-${Math.floor(Math.random()*1000)}`, total_u: 42 }) 
+      body: JSON.stringify({ name: `RACK-${Math.floor(Math.random()*1000)}`, total_u: 42, max_power_kw: 8.0 }) 
     }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks'] })
   })
 
+  const updateRack = useMutation({
+    mutationFn: async (data: any) => fetch(`/api/v1/racks/${editingRack.id}`, { 
+      method: 'PUT', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks'] })
+      setEditingRack(null)
+    }
+  })
+
+  const createSite = useMutation({
+    mutationFn: async () => fetch('/api/v1/sites/', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ name: newSiteName, address: '' }) 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
+      setShowNewSiteModal(false)
+      setNewSiteName('')
+    }
+  })
+
   return (
-    <div className="h-full flex flex-col space-y-6">
+    <div className="h-full flex flex-col space-y-6 relative">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 bg-slate-900/50 p-1 rounded-xl border border-white/5">
-          <button
-            onClick={() => setActiveSite(null)}
-            className={`px-6 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all duration-300 ${!activeSite ? 'bg-[#034EA2] text-white' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            ALL SITES
-          </button>
-          {sites?.map((site: any) => (
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 bg-slate-900/50 p-1 rounded-xl border border-white/5">
             <button
-              key={site.id}
-              onClick={() => setActiveSite(site.id)}
-              className={`px-6 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all duration-300 ${activeSite === site.id ? 'bg-[#034EA2] text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              onClick={() => setActiveSite(null)}
+              className={`px-6 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all duration-300 ${!activeSite ? 'bg-[#034EA2] text-white shadow-lg shadow-[#034EA2]/30' : 'text-slate-500 hover:text-slate-300'}`}
             >
-              {site.name}
+              ALL SITES
             </button>
-          ))}
+            {sites?.map((site: any) => (
+              <button
+                key={site.id}
+                onClick={() => setActiveSite(site.id)}
+                className={`px-6 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all duration-300 ${activeSite === site.id ? 'bg-[#034EA2] text-white shadow-lg shadow-[#034EA2]/30' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {site.name}
+              </button>
+            ))}
+            <button 
+              onClick={() => setShowNewSiteModal(true)}
+              className="px-3 py-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+            >
+              <Plus size={14}/>
+            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+            <input 
+              type="text" 
+              placeholder="Filter by Hostname..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-slate-900/50 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-xs w-64 focus:ring-1 focus:ring-amber-500/30 transition-all outline-none"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-4">
+      <div className="flex-1 overflow-x-auto custom-scrollbar pb-4">
         <div className="flex space-x-6 h-full min-w-max pr-12">
           {racks?.map((rack: any) => (
-            <RackElevation key={rack.id} rack={rack} onDelete={(id: number) => deleteRack.mutate(id)} onEdit={() => {}} />
+            <RackElevation 
+              key={rack.id} 
+              rack={rack} 
+              searchTerm={searchTerm}
+              onDelete={(id: number) => deleteRack.mutate(id)} 
+              onEdit={(r: any) => setEditingRack(r)} 
+            />
           ))}
           
-          <button onClick={() => addRack.mutate()} className="w-56 flex-shrink-0 border-2 border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center space-y-3 hover:border-[#034EA2]/30 transition-all group bg-slate-900/10">
+          <button onClick={() => addRack.mutate()} className="w-60 flex-shrink-0 border-2 border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center space-y-3 hover:border-[#034EA2]/30 transition-all group bg-slate-900/10">
             <div className="p-3 rounded-full bg-slate-900/50 border border-white/5 group-hover:scale-110 transition-transform">
               <Plus size={20} className="text-slate-500 group-hover:text-blue-400" />
             </div>
@@ -110,6 +169,63 @@ export default function RackElevations() {
           </button>
         </div>
       </div>
+
+      {/* --- MODALS --- */}
+      <AnimatePresence>
+        {editingRack && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-8 rounded-3xl space-y-6">
+              <h2 className="text-xl font-bold flex items-center space-x-3">
+                <Edit2 size={20} className="text-blue-400" />
+                <span>Configure Rack</span>
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Rack Name</label>
+                  <input defaultValue={editingRack.name} id="edit-name" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none focus:border-blue-500/50" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Max Power (kW)</label>
+                  <input defaultValue={editingRack.max_power_kw} id="edit-power" type="number" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none focus:border-blue-500/50" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Site Transfer</label>
+                  <select id="edit-site" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none">
+                    {sites?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button onClick={() => setEditingRack(null)} className="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={() => updateRack.mutate({
+                  name: (document.getElementById('edit-name') as HTMLInputElement).value,
+                  max_power_kw: parseFloat((document.getElementById('edit-power') as HTMLInputElement).value),
+                  room_id: parseInt((document.getElementById('edit-site') as HTMLSelectElement).value)
+                })} className="flex-1 py-3 bg-[#034EA2] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-[#034EA2]/30">Apply Changes</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showNewSiteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-8 rounded-3xl space-y-6">
+              <h2 className="text-xl font-bold flex items-center space-x-3">
+                <MapPin size={20} className="text-emerald-400" />
+                <span>Establish New Site</span>
+              </h2>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Site Name</label>
+                <input value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none focus:border-emerald-500/50" placeholder="e.g. DC-OAKLAND" />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button onClick={() => setShowNewSiteModal(false)} className="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-slate-400">Cancel</button>
+                <button onClick={() => createSite.mutate()} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg">Create Site</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

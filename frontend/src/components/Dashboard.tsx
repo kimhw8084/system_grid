@@ -8,7 +8,7 @@ export default function Dashboard() {
     queryKey: ['dashboard-metrics'],
     queryFn: async () => {
       const res = await fetch('/api/v1/dashboard/metrics')
-      if (!res.ok) throw new Error('Network response was not ok')
+      if (!res.ok) return {}
       return res.json()
     }
   })
@@ -24,10 +24,10 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="h-full flex flex-col space-y-8 overflow-y-auto custom-scrollbar">
+    <div className="h-full flex flex-col space-y-8 overflow-y-auto custom-scrollbar pr-4">
       <div>
         <h1 className="text-3xl font-black tracking-tighter">Ownership & Global Status</h1>
-        <p className="text-slate-400 text-sm mt-2">Centralized metrics across all SYSGRID logical and physical entities.</p>
+        <p className="text-slate-400 text-sm mt-2 uppercase tracking-[0.1em] font-bold">Consolidated operational metrics</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
