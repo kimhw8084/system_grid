@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .models import models
-from .api import devices, import_engine
+from .api import devices, import_engine, networks, security
 
 app = FastAPI(title="System System Grid API")
 app.add_middleware(
@@ -21,6 +21,8 @@ def startup():
 # Include Presidential Routers
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(import_engine.router, prefix="/api/v1")
+app.include_router(networks.router, prefix="/api/v1")
+app.include_router(security.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
