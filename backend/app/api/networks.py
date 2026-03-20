@@ -21,7 +21,6 @@ def create_interface(data: dict, db: Session = Depends(get_db)):
 
 @router.get("/connections")
 def get_connections(db: Session = Depends(get_db)):
-    # Join with device names for better visualization
     conns = db.query(models.PortConnection).all()
     result = []
     for c in conns:
@@ -33,18 +32,24 @@ def get_connections(db: Session = Depends(get_db)):
             "port_a": c.port_a,
             "server_b": dev_b.name if dev_b else "Unknown",
             "port_b": c.port_b,
-            "speed": "10G", # Default for now
+            "speed": f"{c.speed} {c.unit}" if c.speed else "10 Gbps",
             "purpose": c.purpose
         })
     return result
 
 @router.post("/connections")
 def create_connection(data: dict, db: Session = Depends(get_db)):
-    # data: { device_a_id, port_a, device_b_id, port_b, purpose }
+    # data: { device_a_id, port_a, device_b_id, port_b, purpose, speed, unit }
     conn = models.PortConnection(**data)
     db.add(conn)
     db.commit()
     db.refresh(conn)
+    
+    # Audit
+    log = models.AuditLog(user_id="admin", action="LINK", table_name="port_connections", record_id=conn.id, intent_note=f"Established network link between device {conn.device_a_id} and {conn.device_b_id}")
+    db.add(log)
+    db.commit()
+    
     return conn
 
 @router.delete("/connections/{conn_id}")
