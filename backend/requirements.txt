@@ -7,3 +7,9 @@ websockets
 python-multipart
 pandas
 openpyxl
+aiosqlite
+greenlet
+pytest
+pytest-asyncio
+httpx
+anyio

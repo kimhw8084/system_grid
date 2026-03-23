@@ -1,15 +1,22 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from ..database import get_db
 from ..models import models
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/metrics")
-def get_metrics(db: Session = Depends(get_db)):
-    sites = db.query(models.Site).count()
-    racks = db.query(models.Rack).count()
-    devices = db.query(models.Device).all()
+async def get_metrics(db: AsyncSession = Depends(get_db)):
+    # Run counts asynchronously
+    sites_res = await db.execute(select(func.count(models.Site.id)))
+    sites = sites_res.scalar()
+    
+    racks_res = await db.execute(select(func.count(models.Rack.id)))
+    racks = racks_res.scalar()
+    
+    devices_res = await db.execute(select(models.Device))
+    devices = devices_res.scalars().all()
     
     physical = 0
     virtual = 0
@@ -18,16 +25,14 @@ def get_metrics(db: Session = Depends(get_db)):
     systems_set = set()
 
     for d in devices:
-        meta = d.metadata_json or {}
-        dtype = meta.get('type', 'physical')
+        dtype = d.type
         if dtype == 'physical': physical += 1
         elif dtype == 'virtual': virtual += 1
         elif dtype == 'storage': storage += 1
         elif dtype == 'switch': switches += 1
         
-        sys = meta.get('system')
-        if sys:
-            systems_set.add(sys)
+        if d.system:
+            systems_set.add(d.system)
             
     return {
         "sites": sites,

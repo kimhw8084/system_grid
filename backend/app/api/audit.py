@@ -1,23 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from ..database import get_db
 from ..models import models
-from ..schemas import schemas
 from typing import List, Optional
 from datetime import datetime
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
 @router.get("/")
-def get_audit_logs(
+async def get_audit_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    query = db.query(models.AuditLog)
-    if start_date:
-        query = query.filter(models.AuditLog.timestamp >= datetime.fromisoformat(start_date))
-    if end_date:
-        query = query.filter(models.AuditLog.timestamp <= datetime.fromisoformat(end_date))
+    query = select(models.AuditLog)
     
-    return query.order_by(models.AuditLog.timestamp.desc()).limit(200).all()
+    # Apply filtering asynchronously
+    if start_date:
+        try:
+            query = query.filter(models.AuditLog.timestamp >= datetime.fromisoformat(start_date))
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            query = query.filter(models.AuditLog.timestamp <= datetime.fromisoformat(end_date))
+        except ValueError:
+            pass
+    
+    result = await db.execute(query.order_by(models.AuditLog.timestamp.desc()).limit(200))
+    return result.scalars().all()
