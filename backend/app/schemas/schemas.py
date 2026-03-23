@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 
@@ -10,9 +10,6 @@ class BaseSchema(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-# -----------------
-# INFRASTRUCTURE
-# -----------------
 class SiteBase(BaseModel):
     name: str
     address: Optional[str] = ""
@@ -23,16 +20,6 @@ class SiteBase(BaseModel):
 
 class SiteCreate(SiteBase): pass
 class SiteResponse(SiteBase, BaseSchema): pass
-
-class RoomBase(BaseModel):
-    site_id: int
-    name: str
-    floor_level: Optional[str] = None
-    hvac_zone: Optional[str] = None
-    fire_suppression_type: Optional[str] = None
-
-class RoomCreate(RoomBase): pass
-class RoomResponse(RoomBase, BaseSchema): pass
 
 class RackBase(BaseModel):
     room_id: Optional[int] = None
@@ -51,11 +38,8 @@ class RackResponse(RackBase, BaseSchema):
     site_name: Optional[str] = None
     devices: List[Any] = []
 
-# -----------------
-# ASSETS / DEVICES
-# -----------------
 class DeviceBase(BaseModel):
-    name: str # Hostname
+    name: str
     system: Optional[str] = None
     environment: Optional[str] = "Production"
     status: Optional[str] = "Active"
@@ -78,7 +62,6 @@ class DeviceBase(BaseModel):
     purchase_order: Optional[str] = None
     cost_center: Optional[str] = None
     
-    # Let frontend pass ISO strings or None, backend handles conversion
     purchase_date: Optional[str] = None
     install_date: Optional[str] = None
     warranty_end: Optional[str] = None
@@ -104,59 +87,13 @@ class DeviceResponse(DeviceBase, BaseSchema):
     u_size: Optional[int] = None
     u_start: Optional[int] = None
 
-# -----------------
-# EXPANSIONS
-# -----------------
-class HardwareComponentBase(BaseModel):
-    category: str
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
-    capacity: Optional[str] = None
-    quantity: int = 1
-    serial_number: Optional[str] = None
-    firmware_version: Optional[str] = None
+class MaintenanceWindowBase(BaseModel):
+    title: str
+    start_time: str
+    end_time: str
+    ticket_number: Optional[str] = None
+    coordinator: Optional[str] = None
+    status: str = "Scheduled"
 
-class HardwareComponentCreate(HardwareComponentBase): pass
-class HardwareComponentResponse(HardwareComponentBase, BaseSchema): pass
-
-class DeviceSoftwareBase(BaseModel):
-    category: str
-    name: str
-    version: Optional[str] = None
-    license_key: Optional[str] = None
-    install_path: Optional[str] = None
-    service_status: Optional[str] = "Running"
-    purpose: Optional[str] = None
-
-class DeviceSoftwareCreate(DeviceSoftwareBase): pass
-class DeviceSoftwareResponse(DeviceSoftwareBase, BaseSchema): pass
-
-class SecretVaultBase(BaseModel):
-    credential_type: str
-    username: str
-    encrypted_payload: str
-    key_file_path: Optional[str] = None
-    notes: Optional[str] = None
-
-class SecretVaultCreate(SecretVaultBase): pass
-class SecretVaultResponse(SecretVaultBase, BaseSchema): pass
-
-class DeviceRelationshipBase(BaseModel):
-    target_device_id: int
-    relationship_type: str
-    source_role: Optional[str] = None
-    target_role: Optional[str] = None
-    notes: Optional[str] = None
-
-# -----------------
-# NETWORK FABRIC
-# -----------------
-class ConnectionCreate(BaseModel):
-    device_a_id: int
-    port_a: str
-    device_b_id: int
-    port_b: str
-    purpose: str
-    speed_gbps: float
-    cable_type: Optional[str] = None
-    direction: str = "Bidirectional"
+class MaintenanceWindowCreate(MaintenanceWindowBase): pass
+class MaintenanceWindowResponse(MaintenanceWindowBase, BaseSchema): pass

@@ -113,7 +113,7 @@ const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onCl
         {/* Table View */}
         <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-xl bg-[#020617]">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900 sticky top-0 border-b border-white/10 text-[9px] uppercase text-slate-500">
+            <thead className="bg-slate-900 sticky top-0 border-b border-white/10 text-[9px] uppercase text-slate-500 z-10">
               <tr>
                 {resourceType === 'hardware' && <><th className="p-2">Type</th><th className="p-2">Name</th><th className="p-2">Spec</th><th className="p-2">Count</th></>}
                 {resourceType === 'software' && <><th className="p-2">Category</th><th className="p-2">Name</th><th className="p-2">Version</th><th className="p-2">Purpose</th></>}
@@ -129,14 +129,14 @@ const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onCl
                   {resourceType === 'software' && <><td className="p-2 font-bold">{item.category}</td><td className="p-2">{item.name}</td><td className="p-2 font-mono text-slate-400">v{item.version}</td><td className="p-2">{item.purpose}</td></>}
                   {resourceType === 'secrets' && (
                     <><td className="p-2 font-bold">{item.credential_type}</td><td className="p-2 font-mono">{item.username}</td>
-                      <td className="p-2 group/secret">
+                      <td className="p-2 group/secret cursor-pointer">
                         <span className="font-mono text-slate-500 group-hover/secret:hidden">••••••••</span>
                         <span className="font-mono text-amber-400 hidden group-hover/secret:inline">{item.encrypted_payload}</span>
                       </td>
                       <td className="p-2 text-slate-500 italic">{item.notes}</td>
                     </>
                   )}
-                  {resourceType === 'relationships' && <><td className="p-2 font-bold text-indigo-400">{item.relationship_type || item.type}</td><td className="p-2">{item.target_name}</td><td className="p-2 text-slate-400">{item.source_role}</td><td className="p-2 text-slate-400">{item.target_role}</td></>}
+                  {resourceType === 'relationships' && <><td className="p-2 font-bold text-indigo-400">{item.relationship_type || item.type}</td><td className="p-2 font-bold text-blue-100">{item.target_name}</td><td className="p-2 text-slate-400">{item.source_role}</td><td className="p-2 text-slate-400">{item.target_role}</td></>}
                   <td className="p-2 text-right">
                     <button onClick={() => deleteMutation.mutate(item.id)} className="text-slate-500 hover:text-rose-400"><Trash2 size={14}/></button>
                   </td>
@@ -144,7 +144,7 @@ const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onCl
               ))}
             </tbody>
           </table>
-          {(!isLoading && (!data || data.length === 0)) && <p className="text-center py-8 text-[10px] text-slate-600 uppercase font-black">No Records Registered</p>}
+          {(!isLoading && (!data || data.length === 0)) && <p className="text-center py-8 text-[10px] text-slate-600 uppercase font-black tracking-widest">No Records Registered</p>}
         </div>
       </motion.div>
     </div>
@@ -159,13 +159,16 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
   const [formData, setFormData] = useState(asset || { 
     name: '', system: '', model: '', manufacturer: '', os_name: '', os_version: '', type: 'Physical', status: 'Active', environment: 'Production',
     serial_number: '', asset_tag: '', power_max_w: 0, power_typical_w: 0, 
-    owner: '', vendor: '', purchase_order: '', business_unit: '', management_ip: ''
+    owner: '', vendor: '', purchase_order: '', business_unit: '', management_ip: '', metadata_json: '{}'
   })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      // Validate metadata JSON
+      try { JSON.parse(data.metadata_json || '{}') } catch { throw new Error('Metadata must be valid JSON') }
+
       const url = asset ? `/api/v1/devices/${asset.id}` : '/api/v1/devices/'
-      const res = await fetch(url, { method: asset ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await fetch(url, { method: asset ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...data, metadata_json: JSON.parse(data.metadata_json || '{}')}) })
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Operation failed') }
       return res.json()
     },
@@ -255,6 +258,11 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
                <input value={formData.purchase_order} onChange={e => setFormData({...formData, purchase_order: e.target.value})} placeholder="PO-99" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
              </div>
            </div>
+           
+           <div className="col-span-3">
+             <label className="text-[9px] font-black text-slate-400 uppercase">Metadata (JSON Custom Fields)</label>
+             <textarea value={typeof formData.metadata_json === 'string' ? formData.metadata_json : JSON.stringify(formData.metadata_json || {})} onChange={e => setFormData({...formData, metadata_json: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none font-mono min-h-[60px]" placeholder="{}" />
+           </div>
         </div>
 
         <button onClick={() => { if(!formData.name || !formData.serial_number || !formData.asset_tag) alert('Hostname, SN, and Asset Tag required'); else mutation.mutate(formData) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
@@ -305,8 +313,8 @@ export default function AssetGrid() {
       headerName: 'Status', 
       width: 110, 
       cellRenderer: (params: any) => {
-        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10', Maintenance: 'text-amber-400 border-amber-500/30 bg-amber-500/10', Offline: 'text-rose-400 border-rose-500/30 bg-rose-500/10', Planned: 'text-blue-400 border-blue-500/30 bg-blue-500/10', Decommissioned: 'text-slate-400 border-slate-500/30 bg-slate-500/10' }
-        return <div className={`px-1.5 py-0.5 mt-1 rounded border text-[8px] font-black uppercase tracking-widest ${colors[params.value] || 'text-slate-400 border-slate-500/30 bg-slate-500/10'}`}>{params.value}</div>
+        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Maintenance: 'text-amber-400 border-amber-500/30', Offline: 'text-rose-400 border-rose-500/30', Planned: 'text-blue-400 border-blue-500/30', Decommissioned: 'text-slate-400 border-slate-500/30' }
+        return <div className="flex items-center h-full"><div className={`px-1.5 rounded border text-[8px] font-black uppercase tracking-widest leading-tight ${colors[params.value] || 'text-slate-400 border-slate-500/30'}`}>{params.value}</div></div>
       }
     },
     { field: 'type', headerName: 'Type', width: 100, filter: true },
@@ -324,7 +332,7 @@ export default function AssetGrid() {
       suppressMovable: true,
       pinned: 'right',
       cellRenderer: (params: any) => (
-        <div className="flex items-center space-x-1.5 h-full">
+        <div className="flex items-center space-x-1 h-full">
           <button onClick={() => setActiveExpansion({ type: 'hardware', deviceId: params.data.id })} title="Hardware" className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-colors"><Cpu size={14}/></button>
           <button onClick={() => setActiveExpansion({ type: 'software', deviceId: params.data.id })} title="Software" className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors"><Package size={14}/></button>
           <button onClick={() => setActiveExpansion({ type: 'secrets', deviceId: params.data.id })} title="Credentials" className="p-1 text-amber-400 hover:bg-amber-500/20 rounded transition-colors"><Key size={14}/></button>
@@ -376,9 +384,9 @@ export default function AssetGrid() {
           columnDefs={columnDefs}
           defaultColDef={{ resizable: true, sortable: true, filter: true }}
           rowSelection="multiple"
-          animateRows={true}
-          headerHeight={32}
-          rowHeight={32}
+          animateRows={false} // Disable animation for maximum density performance
+          headerHeight={28}
+          rowHeight={28}
           onSelectionChanged={(e) => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
         />
       </div>
@@ -386,7 +394,7 @@ export default function AssetGrid() {
       <AnimatePresence>
         {activeExpansion && (
           <ExtensionModal 
-            title={activeExpansion.type}
+            title={activeExpansion.type === 'hardware' ? 'Hardware Inventory' : activeExpansion.type === 'software' ? 'Software Stack' : activeExpansion.type === 'relationships' ? 'Server Relations' : 'Credential Vault'}
             icon={activeExpansion.type === 'hardware' ? Cpu : activeExpansion.type === 'software' ? Package : activeExpansion.type === 'relationships' ? Link : Key}
             color={activeExpansion.type === 'hardware' ? 'blue' : activeExpansion.type === 'software' ? 'emerald' : activeExpansion.type === 'relationships' ? 'indigo' : 'amber'}
             deviceId={activeExpansion.deviceId}
@@ -409,7 +417,7 @@ export default function AssetGrid() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; padding-right: 8px !important; }
+        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
       `}</style>
     </div>
   )

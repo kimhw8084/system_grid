@@ -23,8 +23,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   return (
     <div className="h-full flex flex-col justify-center items-center space-y-12 pr-4">
       <div className="text-center space-y-2">
-        <h1 className="text-5xl font-black tracking-tighter uppercase italic">SYSGRID COMMAND</h1>
-        <p className="text-slate-500 text-xs font-black uppercase tracking-[0.4em]">Real-time Infrastructure Intelligence</p>
+        <h1 className="text-5xl font-black tracking-tighter uppercase italic text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">SYSGRID COMMAND</h1>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Real-time Infrastructure Intelligence</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 w-full max-w-4xl">
@@ -35,14 +35,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.1 }}
             onClick={() => onNavigate(stat.target)}
-            className="glass-panel p-10 rounded-[40px] flex flex-col items-center justify-center border-white/5 hover:border-white/20 transition-all cursor-pointer group active:scale-95"
+            className="glass-panel p-10 rounded-[40px] flex flex-col items-center justify-center border-white/5 hover:border-[#034EA2]/30 transition-all cursor-pointer group active:scale-95 shadow-lg hover:shadow-[#034EA2]/10"
           >
             <div className={`p-5 rounded-3xl mb-6 transition-transform group-hover:scale-110 ${stat.bg}`}>
               <stat.icon size={40} className={stat.color} />
             </div>
             <div className="text-center space-y-1">
               <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">{stat.label}</p>
-              <h2 className="text-5xl font-black text-white">{stat.value}</h2>
+              <h2 className="text-6xl font-black text-white">{stat.value}</h2>
             </div>
           </motion.div>
         ))}

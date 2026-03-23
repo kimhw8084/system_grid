@@ -80,7 +80,12 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
             raise HTTPException(status_code=400, detail=f"Field '{field}' is mandatory")
 
     clean_data = parse_dates(data)
-    db_device = models.Device(**clean_data)
+    
+    # Strip any unrecognized fields to prevent "invalid keyword argument" crashes
+    valid_keys = {c.name for c in models.Device.__table__.columns}
+    filtered_data = {k: v for k, v in clean_data.items() if k in valid_keys}
+
+    db_device = models.Device(**filtered_data)
     db.add(db_device)
     try:
         await db.commit()
@@ -185,6 +190,7 @@ async def add_hardware(device_id: int, data: dict, db: AsyncSession = Depends(ge
     log = models.AuditLog(user_id="admin", action="UPDATE", target_table="hardware_components", target_id=str(device_id), description="Added hardware")
     db.add(log)
     await db.commit()
+    await db.refresh(comp)
     return comp
 
 @router.delete("/hardware/{comp_id}")

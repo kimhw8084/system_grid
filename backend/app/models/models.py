@@ -95,6 +95,7 @@ class Device(Base, BaseMixin):
     software = relationship("DeviceSoftware", back_populates="device", cascade="all, delete-orphan")
     secrets = relationship("SecretVault", back_populates="device", cascade="all, delete-orphan")
     interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
+    maintenance_windows = relationship("MaintenanceWindow", back_populates="device", cascade="all, delete-orphan")
 
 class DeviceRelationship(Base, BaseMixin):
     __tablename__ = "device_relationships"
@@ -138,6 +139,8 @@ class DeviceSoftware(Base, BaseMixin):
     license_key = Column(String)
     install_path = Column(String)
     service_status = Column(String) # Running, Stopped, Disabled
+    purpose = Column(String)
+    notes = Column(Text)
     
     device = relationship("Device", back_populates="software")
 
@@ -168,6 +171,7 @@ class PortConnection(Base, BaseMixin):
     speed_gbps = Column(Float)
     purpose = Column(String) # Data, Mgmt, Storage, vMotion, Heartbeat
     status = Column(String, default="Connected")
+    direction = Column(String, default="Bidirectional")
 
 class SecretVault(Base, BaseMixin):
     __tablename__ = "secret_vault"
@@ -199,6 +203,8 @@ class MaintenanceWindow(Base, BaseMixin):
     ticket_number = Column(String)
     coordinator = Column(String)
     status = Column(String) # Scheduled, In Progress, Completed, Cancelled
+    
+    device = relationship("Device", back_populates="maintenance_windows")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
@@ -208,5 +214,5 @@ class AuditLog(Base):
     action = Column(String)
     target_table = Column(String)
     target_id = Column(String)
-    changes = Column(JSON) # Store dict of what changed
+    changes = Column(JSON)
     description = Column(Text)
