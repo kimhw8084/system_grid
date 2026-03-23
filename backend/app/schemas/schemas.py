@@ -10,10 +10,10 @@ class BaseSchema(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-# 1. Sites
+# Sites
 class SiteBase(BaseModel):
     name: str
-    address: str
+    address: Optional[str] = ""
 
 class SiteCreate(SiteBase):
     pass
@@ -21,7 +21,7 @@ class SiteCreate(SiteBase):
 class SiteResponse(SiteBase, BaseSchema):
     pass
 
-# 2. Rooms
+# Rooms
 class RoomBase(BaseModel):
     site_id: int
     name: str
@@ -32,20 +32,20 @@ class RoomCreate(RoomBase):
 class RoomResponse(RoomBase, BaseSchema):
     pass
 
-# 3. Racks
+# Racks
 class RackBase(BaseModel):
-    room_id: int
+    room_id: Optional[int] = None
     name: str
     total_u_height: int = 42
     max_power_kw: float = 8.0
 
 class RackCreate(RackBase):
-    pass
+    site_id: Optional[int] = None
 
 class RackResponse(RackBase, BaseSchema):
-    pass
+    site_name: Optional[str] = None
 
-# 4. Devices
+# Devices
 class DeviceBase(BaseModel):
     name: str # Hostname
     system: Optional[str] = None
@@ -59,10 +59,41 @@ class DeviceBase(BaseModel):
     power_max_w: Optional[float] = 0
     power_idle_w: Optional[float] = 0
     maintenance_mode: bool = False
+    
+    owner: Optional[str] = None
+    vendor: Optional[str] = None
+    install_date: Optional[datetime] = None
+    support_expiry: Optional[datetime] = None
+    purchase_order: Optional[str] = None
+    sustainability_notes: Optional[str] = None
+    
     metadata_json: Optional[Dict[str, Any]] = None
 
 class DeviceCreate(DeviceBase):
     pass
 
 class DeviceResponse(DeviceBase, BaseSchema):
-    pass
+    relationships: List[Any] = []
+
+# Network Connections
+class ConnectionCreate(BaseModel):
+    device_a_id: int
+    port_a: str
+    device_b_id: int
+    port_b: str
+    purpose: str
+    speed: float
+    unit: str = "Gbps"
+    direction: str = "Bidirectional"
+
+# Audit Logs
+class AuditLogResponse(BaseModel):
+    id: int
+    timestamp: datetime
+    user_id: str
+    action: str
+    table_name: str
+    record_id: int
+    intent_note: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
