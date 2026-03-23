@@ -33,7 +33,13 @@ export default function Intelligence() {
   })
 
   const handleDownloadTemplate = () => {
-    window.location.href = '/api/v1/import/template'
+    // Force direct download from API
+    const link = document.createElement('a')
+    link.href = '/api/v1/import/template'
+    link.setAttribute('download', 'SYSGRID_Blueprint.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handlePasteImport = () => {
@@ -46,8 +52,8 @@ export default function Intelligence() {
   return (
     <div className="h-full flex flex-col space-y-8 max-w-5xl mx-auto overflow-y-auto custom-scrollbar pr-4">
       <div className="text-center space-y-2 mt-8">
-        <h1 className="text-3xl font-black tracking-tighter uppercase">Intelligent Registry Provisioning</h1>
-        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Automated multi-relational infrastructure ingestion</p>
+        <h1 className="text-3xl font-black tracking-tighter uppercase italic text-blue-400">Intelligent Registry Provisioning</h1>
+        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Automated multi-relational infrastructure ingestion engine</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -117,16 +123,16 @@ export default function Intelligence() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-blue-500 bg-slate-900/40">
            <div className="flex items-center justify-between mb-4">
-              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">1. Template Blueprint</h4>
+              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">1. Blueprint Download</h4>
               <button onClick={handleDownloadTemplate} className="p-2 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 text-blue-400 transition-all"><Download size={16}/></button>
            </div>
-           <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Innovative unified CSV schema supporting recursive HW/SW sub-relations.</p>
+           <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Standardized CSV blueprint supporting recursive HW/SW sub-relations.</p>
         </div>
 
         <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500 bg-slate-900/40">
            <div className="flex items-center space-x-3 mb-4">
               <CheckCircle2 size={18} className="text-emerald-400" />
-              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">2. Relational Mapping</h4>
+              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">2. Relational Logic</h4>
            </div>
            <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Automatically establishes 1:N (HW/SW) and N:1 (Logical System) entity groupings.</p>
         </div>
@@ -134,9 +140,9 @@ export default function Intelligence() {
         <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-amber-500 bg-slate-900/40">
            <div className="flex items-center space-x-3 mb-4">
               <AlertCircle size={18} className="text-amber-400" />
-              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">3. Deduplication</h4>
+              <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">3. Registry Deduplication</h4>
            </div>
-           <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Atomic ingestion prevents registry corruption. SN and Asset Tags are strictly validated.</p>
+           <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Atomic ingestion prevents corruption. Serial Numbers and Asset Tags are strictly validated.</p>
         </div>
       </div>
     </div>

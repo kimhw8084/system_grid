@@ -54,9 +54,9 @@ class Device(Base, BaseMixin):
     vendor = Column(String)
     purchase_order = Column(String)
     
-    # Power (Display only in Registry, set in Rack Elevation)
-    max_power_w = Column(Float, default=0)
-    typical_power_w = Column(Float, default=0)
+    # Power (Standardized keywords)
+    power_max_w = Column(Float, default=0)
+    power_typical_w = Column(Float, default=0)
     
     # Flexible Custom Fields
     metadata_json = Column(JSON, default=dict)
@@ -141,7 +141,7 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, server_default=func.now())
     user_id = Column(String)
-    action = Column(String) # CREATE, UPDATE, DELETE, MOUNT, UNMOUNT, LINK, BULK_EDIT
+    action = Column(String)
     table_name = Column(String)
     record_id = Column(Integer)
     old_values = Column(JSON)

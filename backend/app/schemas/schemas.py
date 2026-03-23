@@ -55,8 +55,8 @@ class DeviceBase(BaseModel):
     vendor: Optional[str] = None
     purchase_order: Optional[str] = None
     
-    max_power_w: Optional[float] = 0
-    typical_power_w: Optional[float] = 0
+    power_max_w: Optional[float] = 0
+    power_typical_w: Optional[float] = 0
     
     metadata_json: Optional[Dict[str, Any]] = None
 
