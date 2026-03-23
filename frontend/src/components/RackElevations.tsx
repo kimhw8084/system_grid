@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Info, Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server, Monitor } from 'lucide-react'
+import { Info, Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server, Monitor, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const RackUnit = ({ uNumber, device, isBase, highlight, onSelect }: { uNumber: number, device?: any, isBase?: boolean, highlight?: boolean, onSelect: () => void }) => {
@@ -24,11 +24,7 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect }: { uNumber: n
 
 const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount }: { rack: any, onDelete: any, onEdit: any, searchTerm: string, onMount: (rackId: number, u: number) => void }) => {
   const units = Array.from({ length: rack.total_u || 42 }, (_, i) => (rack.total_u || 42) - i)
-  
-  const isHighlighted = (device: any) => {
-    if (!searchTerm) return false
-    return device.name.toLowerCase().includes(searchTerm.toLowerCase())
-  }
+  const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
   return (
     <div className="glass-panel w-60 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/5 hover:border-[#034EA2]/20 transition-all group">
@@ -73,38 +69,16 @@ export default function RackElevations() {
   const { data: racks } = useQuery({ queryKey: ['racks', activeSite], queryFn: async () => (await fetch(`/api/v1/racks/?site_id=${activeSite || ''}`)).json() })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
 
-  const deleteRack = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/racks/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks'] })
-  })
-
-  const addRack = useMutation({
-    mutationFn: async () => fetch('/api/v1/racks/', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ name: `RACK-${Math.floor(Math.random()*1000)}`, total_u: 42, max_power_kw: 8.0, site_id: activeSite }) 
-    }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks'] })
-  })
-
-  const updateRack = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/racks/${editingRack.id}`, { 
-      method: 'PUT', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['racks'] })
-      setEditingRack(null)
-    }
-  })
-
   const createSite = useMutation({
-    mutationFn: async () => fetch('/api/v1/sites/', { 
-      method: 'POST', 
-      headers: { 'Content-Type': 'application/json' }, 
-      body: JSON.stringify({ name: newSiteName, address: '' }) 
-    }),
+    mutationFn: async () => {
+      const res = await fetch('/api/v1/sites/', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ name: newSiteName, address: '' }) 
+      })
+      if (!res.ok) throw new Error('Failed to create site')
+      return res.json()
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sites'] })
       setShowNewSiteModal(false)
@@ -112,17 +86,49 @@ export default function RackElevations() {
     }
   })
 
-  const mountMutation = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/racks/${mountingSlot?.rackId}/mount`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['racks'] })
-      setMountingSlot(null)
+  const addRack = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/v1/racks/', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ name: `RACK-${Math.floor(Math.random()*1000)}`, total_u: 42, max_power_kw: 8.0, site_id: activeSite }) 
+      })
+      if (!res.ok) throw new Error('Failed to provision rack')
+      return res.json()
     },
-    onError: (err: any) => alert('Mounting failed: Collision or Invalid Slot')
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks', activeSite] })
+  })
+
+  const updateRack = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/api/v1/racks/${editingRack.id}`, { 
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(data) 
+      })
+      if (!res.ok) throw new Error('Update failed')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks', activeSite] })
+      setEditingRack(null)
+    }
+  })
+
+  const mountMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await fetch(`/api/v1/racks/${mountingSlot?.rackId}/mount`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error('Mounting collision')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks', activeSite] })
+      setMountingSlot(null)
+    }
   })
 
   return (
@@ -152,7 +158,7 @@ export default function RackElevations() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
             <input 
               type="text" 
-              placeholder="Filter by Hostname..." 
+              placeholder="Highlight Hostname..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-slate-900/50 border border-white/5 rounded-xl py-2 pl-9 pr-4 text-xs w-64 focus:ring-1 focus:ring-amber-500/30 transition-all outline-none"
@@ -168,19 +174,24 @@ export default function RackElevations() {
               key={rack.id} 
               rack={rack} 
               searchTerm={searchTerm}
-              onDelete={(id: number) => deleteRack.mutate(id)} 
+              onDelete={(id: number) => { if(confirm('Decommission this rack?')) deleteRack.mutate(id) }} 
               onEdit={(r: any) => setEditingRack(r)} 
               onMount={(rId, u) => setMountingSlot({ rackId: rId, u })}
             />
           ))}
           
-          {activeSite && (
+          {activeSite ? (
             <button onClick={() => addRack.mutate()} className="w-60 flex-shrink-0 border-2 border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center space-y-3 hover:border-[#034EA2]/30 transition-all group bg-slate-900/10">
               <div className="p-3 rounded-full bg-slate-900/50 border border-white/5 group-hover:scale-110 transition-transform">
                 <Plus size={20} className="text-slate-500 group-hover:text-blue-400" />
               </div>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-300">Provision Rack</span>
             </button>
+          ) : (
+            <div className="w-60 flex-shrink-0 border-2 border-dashed border-white/5 rounded-xl flex flex-col items-center justify-center text-center p-6 opacity-50">
+               <AlertTriangle size={24} className="text-amber-500 mb-2" />
+               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Select a site to provision racks</p>
+            </div>
           )}
         </div>
       </div>
@@ -190,26 +201,26 @@ export default function RackElevations() {
         {mountingSlot && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-8 rounded-3xl space-y-6">
-              <h2 className="text-xl font-bold flex items-center space-x-3 text-blue-400">
+              <h2 className="text-xl font-bold flex items-center space-x-3 text-blue-400 uppercase tracking-tighter">
                 <Monitor size={20} />
                 <span>Mount Device [U{mountingSlot.u}]</span>
               </h2>
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Select Asset</label>
-                  <select onChange={e => setMountingData({...mountingData, device_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1">
+                  <select onChange={e => setMountingData({...mountingData, device_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none focus:border-blue-500/50">
                     <option value="">Choose Hostname...</option>
                     {devices?.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Unit Size (U)</label>
-                  <input type="number" value={mountingData.size_u} onChange={e => setMountingData({...mountingData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1" />
+                  <input type="number" value={mountingData.size_u} onChange={e => setMountingData({...mountingData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none" />
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
-                <button onClick={() => setMountingSlot(null)} className="flex-1 py-3 text-xs font-bold uppercase text-slate-400">Cancel</button>
-                <button onClick={() => mountMutation.mutate({ device_id: mountingData.device_id, start_u: mountingSlot.u, size_u: mountingData.size_u })} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase shadow-lg">Mount Entity</button>
+                <button onClick={() => setMountingSlot(null)} className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Cancel</button>
+                <button onClick={() => mountMutation.mutate({ device_id: mountingData.device_id, start_u: mountingSlot.u, size_u: mountingData.size_u })} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg">Mount Entity</button>
               </div>
             </motion.div>
           </div>
@@ -218,33 +229,33 @@ export default function RackElevations() {
         {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-8 rounded-3xl space-y-6">
-              <h2 className="text-xl font-bold flex items-center space-x-3 text-amber-400">
+              <h2 className="text-xl font-bold flex items-center space-x-3 text-amber-400 uppercase tracking-tighter">
                 <Edit2 size={20} />
                 <span>Configure Rack</span>
               </h2>
               <div className="space-y-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Rack Name</label>
-                  <input defaultValue={editingRack.name} id="edit-name" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1" />
+                  <input defaultValue={editingRack.name} id="edit-name" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Max Power (kW)</label>
-                  <input defaultValue={editingRack.max_power_kw} id="edit-power" type="number" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1" />
+                  <input defaultValue={editingRack.max_power_kw} id="edit-power" type="number" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Site Transfer</label>
-                  <select id="edit-site" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1">
-                    {sites?.map((s: any) => <option key={s.id} value={s.id} selected={s.id === activeSite}>{s.name}</option>)}
+                  <select id="edit-site" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none">
+                    {sites?.map((s: any) => <option key={s.id} value={s.id} selected={s.id === editingRack.room_id || s.id === activeSite}>{s.name}</option>)}
                   </select>
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
-                <button onClick={() => setEditingRack(null)} className="flex-1 py-3 text-xs font-bold uppercase text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button onClick={() => setEditingRack(null)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
                 <button onClick={() => updateRack.mutate({
                   name: (document.getElementById('edit-name') as HTMLInputElement).value,
                   max_power_kw: parseFloat((document.getElementById('edit-power') as HTMLInputElement).value),
                   new_site_id: (document.getElementById('edit-site') as HTMLSelectElement).value
-                })} className="flex-1 py-3 bg-[#034EA2] text-white rounded-xl text-xs font-bold uppercase shadow-lg shadow-[#034EA2]/30">Apply Changes</button>
+                })} className="flex-1 py-3 bg-[#034EA2] text-white rounded-xl text-[10px] font-black uppercase shadow-lg">Apply Changes</button>
               </div>
             </motion.div>
           </div>
@@ -253,17 +264,17 @@ export default function RackElevations() {
         {showNewSiteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-8 rounded-3xl space-y-6">
-              <h2 className="text-xl font-bold flex items-center space-x-3 text-emerald-400">
+              <h2 className="text-xl font-bold flex items-center space-x-3 text-emerald-400 uppercase tracking-tighter">
                 <MapPin size={20} />
                 <span>Establish New Site</span>
               </h2>
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Site Name</label>
-                <input value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none" placeholder="e.g. DC-OAKLAND" />
+                <input value={newSiteName} onChange={(e) => setNewSiteName(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 mt-1 outline-none focus:border-emerald-500/50" placeholder="e.g. DC-OAKLAND" />
               </div>
               <div className="flex space-x-3 pt-4">
-                <button onClick={() => setShowNewSiteModal(false)} className="flex-1 py-3 text-xs font-bold uppercase text-slate-400">Cancel</button>
-                <button onClick={() => createSite.mutate()} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase shadow-lg">Create Site</button>
+                <button onClick={() => setShowNewSiteModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                <button onClick={() => createSite.mutate()} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg">Create Site</button>
               </div>
             </motion.div>
           </div>

@@ -66,7 +66,7 @@ class Device(Base, BaseMixin):
     software = relationship("DeviceSoftware", back_populates="device", cascade="all, delete-orphan")
     secrets = relationship("SecretVault", back_populates="device", cascade="all, delete-orphan")
 
-class DeviceLocations(Base, BaseMixin):
+class DeviceLocation(Base, BaseMixin):
     __tablename__ = "device_locations"
     device_id = Column(Integer, ForeignKey("devices.id"))
     rack_id = Column(Integer, ForeignKey("racks.id"))

@@ -1,28 +1,41 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Share2, Plus, Zap, ShieldCheck, X, ArrowRightLeft, Link } from 'lucide-react'
+import { Network, Share2, Plus, Zap, ShieldCheck, X, ArrowRightLeft, Link, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const [selectedServers, setSelectedServers] = useState<string[]>([])
   const [showConnectModal, setShowConnectModal] = useState(false)
-  const [connData, setConnData] = useState({ device_a_id: '', port_a: '', device_b_id: '', port_b: '', purpose: 'Data' })
+  const [connData, setConnData] = useState({ 
+    device_a_id: '', port_a: '', device_b_id: '', port_b: '', 
+    purpose: 'Data', speed: 10, unit: 'Gbps' 
+  })
 
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
   const { data: connections } = useQuery({ queryKey: ['connections'], queryFn: async () => (await fetch('/api/v1/networks/connections')).json() })
 
   const addConnection = useMutation({
-    mutationFn: async (data: any) => fetch('/api/v1/networks/connections', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }),
+    mutationFn: async (data: any) => {
+      const res = await fetch('/api/v1/networks/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error('Link establishment failed')
+      return res.json()
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections'] })
       setShowConnectModal(false)
     }
   })
+
+  const purposes = [
+    'Data Plane', 'Management', 'Storage (ISCSI/NFS)', 'vMotion / Live Migration', 
+    'Heartbeat / Keepalive', 'Backup / Replication', 'OOB (Out of Band)', 
+    'Cluster Interconnect', 'Public Facing', 'DMZ Ingress'
+  ]
 
   const filteredConnections = connections?.filter((c: any) => 
     selectedServers.length === 0 || selectedServers.includes(c.server_a) || selectedServers.includes(c.server_b)
@@ -45,10 +58,12 @@ export default function NetworkFabric() {
         </div>
       </div>
 
-      {/* Wire Visualization Area */}
       <div className="h-1/3 glass-panel rounded-3xl relative overflow-hidden bg-slate-900/20 border border-white/5 flex items-center justify-center">
         {(!filteredConnections || filteredConnections.length === 0) ? (
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">No links discovered for selection</p>
+          <div className="text-center space-y-2 opacity-30">
+             <Activity size={32} className="mx-auto text-slate-500" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">No links discovered for selection</p>
+          </div>
         ) : (
           <svg className="w-full h-full px-20">
             {filteredConnections.map((c: any, i: number) => (
@@ -56,7 +71,7 @@ export default function NetworkFabric() {
                 <line x1="10%" y1={50 + i*40} x2="90%" y2={150} stroke="#034EA2" strokeWidth="2" strokeDasharray="4 2" className="animate-[dash_2s_linear_infinite]" />
                 <text x="5%" y={55 + i*40} fill="white" fontSize="10" fontWeight="bold">{c.server_a} [{c.port_a}]</text>
                 <text x="92%" y={155} fill="#60a5fa" fontSize="10" fontWeight="bold">{c.server_b} [{c.port_b}]</text>
-                <text x="50%" y={45 + i*40} fill="#94a3b8" fontSize="8" textAnchor="middle uppercase">{c.speed} - {c.purpose}</text>
+                <text x="50%" y={45 + i*40} fill="#94a3b8" fontSize="8" textAnchor="middle uppercase" fontWeight="bold">{c.speed} - {c.purpose}</text>
               </g>
             ))}
           </svg>
@@ -88,7 +103,10 @@ export default function NetworkFabric() {
                   <td className="px-6 py-4 font-bold text-blue-400">{c.server_b}</td>
                   <td className="px-6 py-4 text-slate-400 font-mono uppercase">{c.port_b}</td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[9px] font-black uppercase">{c.purpose}</span>
+                    <div className="flex flex-col">
+                       <span className="text-blue-400 text-[9px] font-black uppercase">{c.purpose}</span>
+                       <span className="text-[8px] text-slate-500 font-mono">{c.speed}</span>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -100,8 +118,11 @@ export default function NetworkFabric() {
       <AnimatePresence>
         {showConnectModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[450px] p-8 rounded-3xl space-y-6">
-              <h2 className="text-xl font-bold uppercase tracking-tight">Establish Connectivity</h2>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-8 rounded-3xl space-y-6">
+              <h2 className="text-xl font-bold uppercase tracking-tight flex items-center space-x-3">
+                 <Link size={20} className="text-blue-400" />
+                 <span>Establish Connectivity</span>
+              </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Server A (Source)</label>
@@ -126,17 +147,25 @@ export default function NetworkFabric() {
                   <input onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 mt-1" placeholder="Te1/1/1" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Purpose</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Link Speed</label>
+                  <div className="flex space-x-2">
+                    <input type="number" value={connData.speed} onChange={e => setConnData({...connData, speed: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 mt-1" />
+                    <select value={connData.unit} onChange={e => setConnData({...connData, unit: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-2 mt-1">
+                      <option>Gbps</option>
+                      <option>Mbps</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Link Purpose</label>
                   <select onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 mt-1">
-                    <option value="Data">Data Plane</option>
-                    <option value="Management">Management</option>
-                    <option value="Storage">Storage</option>
+                    {purposes.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
-                <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-xs font-bold uppercase text-slate-400">Cancel</button>
-                <button onClick={() => addConnection.mutate(connData)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg">Link Entities</button>
+                <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-400">Cancel</button>
+                <button onClick={() => addConnection.mutate(connData)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg">Link Entities</button>
               </div>
             </motion.div>
           </div>
