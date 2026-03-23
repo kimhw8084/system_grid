@@ -33,6 +33,7 @@ async def get_racks(site_id: Optional[str] = None, db: AsyncSession = Depends(ge
                     "id": d.id,
                     "name": d.name,
                     "status": d.status,
+                    "type": d.type,
                     "size_u": loc.size_u,
                     "start_u": loc.start_unit
                 })
@@ -79,7 +80,13 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(rack)
     
-    log = models.AuditLog(user_id="admin", action="CREATE", table_name="racks", record_id=rack.id, intent_note=f"Provisioned rack {rack.name} at site ID {site_id}")
+    log = models.AuditLog(
+        user_id="admin", 
+        action="CREATE", 
+        target_table="racks", 
+        target_id=str(rack.id), 
+        description=f"Provisioned rack {rack.name} at site ID {site_id}"
+    )
     db.add(log)
     await db.commit()
     return rack
@@ -96,12 +103,21 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
     if 'total_u' in data: rack.total_u_height = data['total_u']
     
     if 'new_site_id' in data:
-        room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(data['new_site_id'])))
-        new_room = room_res.scalar_one_or_none()
-        if new_room:
-            rack.room_id = new_room.id
+        if data['new_site_id'] is None:
+            rack.room_id = None
+        else:
+            room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(data['new_site_id'])))
+            new_room = room_res.scalar_one_or_none()
+            if new_room:
+                rack.room_id = new_room.id
     
-    log = models.AuditLog(user_id="admin", action="UPDATE", table_name="racks", record_id=rack.id, intent_note=f"Updated rack {rack.name} configuration")
+    log = models.AuditLog(
+        user_id="admin", 
+        action="UPDATE", 
+        target_table="racks", 
+        target_id=str(rack.id), 
+        description=f"Updated rack {rack.name} configuration"
+    )
     db.add(log)
     await db.commit()
     return rack
@@ -115,27 +131,29 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
     
     name = rack.name
     await db.delete(rack)
-    log = models.AuditLog(user_id="admin", action="DELETE", table_name="racks", record_id=rack_id, intent_note=f"Decommissioned rack {name}")
+    log = models.AuditLog(
+        user_id="admin", 
+        action="DELETE", 
+        target_table="racks", 
+        target_id=str(rack_id), 
+        description=f"Decommissioned rack {name}"
+    )
     db.add(log)
     await db.commit()
     return {"status": "success"}
 
 @router.post("/{rack_id}/mount")
 async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    # data: { device_id, start_u, size_u, relocate: bool }
     device_id = int(data['device_id'])
     
-    # Check if device is already mounted
     loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
     existing_loc = loc_res.scalar_one_or_none()
     
     if existing_loc and not data.get('relocate'):
-        # Get rack name for informative error
         rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == existing_loc.rack_id))
         r = rack_res.scalar_one_or_none()
         raise HTTPException(status_code=409, detail=f"Device already mounted in {r.name if r else 'another rack'} at U{existing_loc.start_unit}")
 
-    # Collision Check
     rack_locs_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.rack_id == rack_id))
     rack_locs = rack_locs_res.scalars().all()
     
@@ -143,7 +161,7 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     new_end = new_start + int(data['size_u'])
     
     for loc in rack_locs:
-        if loc.device_id == device_id: continue # Skip itself if relocating in same rack
+        if loc.device_id == device_id: continue
         loc_end = loc.start_unit + loc.size_u
         if not (new_end <= loc.start_unit or new_start >= loc_end):
             dev_res = await db.execute(select(models.Device).filter(models.Device.id == loc.device_id))
@@ -161,7 +179,13 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     )
     db.add(loc)
     
-    log = models.AuditLog(user_id="admin", action="MOUNT", table_name="devices", record_id=device_id, intent_note=f"Mounted/Relocated device in rack ID {rack_id}")
+    log = models.AuditLog(
+        user_id="admin", 
+        action="MOUNT", 
+        target_table="devices", 
+        target_id=str(device_id), 
+        description=f"Mounted/Relocated device in rack ID {rack_id}"
+    )
     db.add(log)
     await db.commit()
     return {"status": "success"}
@@ -172,7 +196,13 @@ async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
     loc = result.scalar_one_or_none()
     if loc:
         await db.delete(loc)
-        log = models.AuditLog(user_id="admin", action="UNMOUNT", table_name="devices", record_id=device_id, intent_note="Removed device from rack")
+        log = models.AuditLog(
+            user_id="admin", 
+            action="UNMOUNT", 
+            target_table="devices", 
+            target_id=str(device_id), 
+            description="Removed device from rack"
+        )
         db.add(log)
         await db.commit()
     return {"status": "success"}
