@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, Server, Network, Database, Shield, Settings, Search, ServerCrash, Terminal } from 'lucide-react'
+import { LayoutDashboard, Server, Network, Database, Shield, Settings, Search, ServerCrash, Terminal, Layers } from 'lucide-react'
 
 // Functional Components
 import Dashboard from './components/Dashboard'
@@ -10,6 +10,7 @@ import AssetGrid from './components/AssetGrid'
 import NetworkFabric from './components/NetworkFabric'
 import Intelligence from './components/Intelligence'
 import AuditLogs from './components/AuditLogs'
+import ServiceRegistry from './components/ServiceRegistry'
 
 const queryClient = new QueryClient()
 
@@ -47,6 +48,7 @@ function MainContent() {
           <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
           <SidebarItem icon={ServerCrash} label="Rack Elevations" active={activeTab === 'racks'} onClick={() => setActiveTab('racks')} />
           <SidebarItem icon={Server} label="Asset Registry" active={activeTab === 'assets'} onClick={() => setActiveTab('assets')} />
+          <SidebarItem icon={Layers} label="Service Layer" active={activeTab === 'services'} onClick={() => setActiveTab('services')} />
           <SidebarItem icon={Network} label="Network Fabric" active={activeTab === 'network'} onClick={() => setActiveTab('network')} />
           <SidebarItem icon={Database} label="Intelligence" active={activeTab === 'intel'} onClick={() => setActiveTab('intel')} />
           <SidebarItem icon={Shield} label="Forensic Audit" active={activeTab === 'audit'} onClick={() => setActiveTab('audit')} />
@@ -86,6 +88,7 @@ function MainContent() {
               {activeTab === 'dashboard' ? <Dashboard onNavigate={(t) => setActiveTab(t)} /> : 
                activeTab === 'racks' ? <RackElevations /> : 
                activeTab === 'assets' ? <AssetGrid /> : 
+               activeTab === 'services' ? <ServiceRegistry /> : 
                activeTab === 'network' ? <NetworkFabric /> : 
                activeTab === 'intel' ? <Intelligence /> : 
                <AuditLogs />}
