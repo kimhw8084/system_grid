@@ -1,4 +1,4 @@
-# 🌌 SYSTEM SYSGRID: THE COMMAND CENTER
+# 🌌 SYSGRID: THE COMMAND CENTER
 **The Definitive Infrastructure Operating System (Single Source of Truth)**
 
 ## 🚀 Presidential Setup Guide
@@ -8,34 +8,38 @@
 - **Python:** 3.12+
 - **Database:** SQLite (Included)
 
-### 2. Frontend Setup (NVM Standard)
-```bash
-cd frontend
-nvm install
-nvm use
-npm install
-npm run dev
-```
-**Troubleshooting NVM Prefix Error:**
-If you see `incompatible with nvm`, run:
-`nvm use --delete-prefix`
-Or permanently remove the `prefix` line from your `~/.npmrc`.
-
-### 3. Backend Setup (FastAPI)
+### 2. Backend Setup (FastAPI)
 ```bash
 cd backend
+# 1. CRITICAL: If you are upgrading from an older version, wipe the old DB
+rm -f system_grid.db 
+
+# 2. Setup Venv
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+# 3. Run Production API
 export PYTHONPATH=.
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-## 🛠 Project Modules
-- **Nexus 3D Viewer:** Immersive Three.js Digital Twin.
-- **Command Vault:** High-performance AG Grid Asset Management.
-- **Intelligence Engine:** Zero-Manual-Entry Bulk Import (CSV/Excel).
-- **16-Table Schema:** Full Relational Infrastructure Traceability.
+### 3. Frontend Setup (NVM Standard)
+```bash
+cd frontend
+nvm use --delete-prefix
+npm install
+npm run dev
+```
+
+## 🛠 Testing Protocol
+The application includes a rigorous backend test suite to verify schema integrity and API reliability.
+```bash
+cd backend
+source venv/bin/activate
+export PYTHONPATH=.
+pytest test_main.py -v -s
+```
 
 ---
-**System Electronics - Site-Wide President Level Award Project**
+**Site-Wide President Level Award Project**
