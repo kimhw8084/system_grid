@@ -14,8 +14,6 @@ class BaseSchema(BaseModel):
 class SiteBase(BaseModel):
     name: str
     address: str
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
 
 class SiteCreate(SiteBase):
     pass
@@ -27,7 +25,6 @@ class SiteResponse(SiteBase, BaseSchema):
 class RoomBase(BaseModel):
     site_id: int
     name: str
-    floor_plan_data: Optional[Dict[str, Any]] = None
 
 class RoomCreate(RoomBase):
     pass
@@ -40,9 +37,7 @@ class RackBase(BaseModel):
     room_id: int
     name: str
     total_u_height: int = 42
-    max_power_kw: float
-    weight_limit_kg: float
-    u_pitch_mm: float = 44.45
+    max_power_kw: float = 8.0
 
 class RackCreate(RackBase):
     pass
@@ -52,14 +47,17 @@ class RackResponse(RackBase, BaseSchema):
 
 # 4. Devices
 class DeviceBase(BaseModel):
-    name: str
+    name: str # Hostname
+    system: Optional[str] = None
     status: str = "active"
-    model: str
-    manufacturer: str
+    model: Optional[str] = None
+    manufacturer: Optional[str] = None
+    os: Optional[str] = None
+    type: str = "physical"
     serial_number: str
     asset_tag: str
-    power_max_w: float
-    power_idle_w: float
+    power_max_w: Optional[float] = 0
+    power_idle_w: Optional[float] = 0
     maintenance_mode: bool = False
     metadata_json: Optional[Dict[str, Any]] = None
 

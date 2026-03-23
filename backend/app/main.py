@@ -4,7 +4,8 @@ from .database import engine, Base
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites
 
-app = FastAPI(title="SYSGRID Command Center API")
+app = FastAPI(title="SYSGRID Production API")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,6 +16,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
+    # This will create tables if they don't exist. 
+    # User must delete the .db file to apply new columns.
     Base.metadata.create_all(bind=engine)
 
 app.include_router(devices.router, prefix="/api/v1")
@@ -31,5 +34,5 @@ def read_root():
     return {
         "status": "online",
         "system": "SYSGRID",
-        "engine": "Production Ready"
+        "engine": "Presidential Production"
     }
