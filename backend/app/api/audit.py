@@ -1,32 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from ..database import get_db
 from ..models import models
-from typing import List, Optional
-from datetime import datetime
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
 @router.get("/")
-async def get_audit_logs(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    db: AsyncSession = Depends(get_db)
-):
-    query = select(models.AuditLog)
+async def get_audit_logs(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.AuditLog).order_by(models.AuditLog.timestamp.desc()).limit(200))
+    logs = result.scalars().all()
     
-    # Apply filtering asynchronously
-    if start_date:
-        try:
-            query = query.filter(models.AuditLog.timestamp >= datetime.fromisoformat(start_date))
-        except ValueError:
-            pass
-    if end_date:
-        try:
-            query = query.filter(models.AuditLog.timestamp <= datetime.fromisoformat(end_date))
-        except ValueError:
-            pass
-    
-    result = await db.execute(query.order_by(models.AuditLog.timestamp.desc()).limit(200))
-    return result.scalars().all()
+    final_logs = []
+    for l in logs:
+        final_logs.append({
+            "id": l.id,
+            "timestamp": l.timestamp,
+            "user_id": l.user_id,
+            "action": l.action,
+            "target_table": l.target_table,
+            "target_id": l.target_id,
+            "description": l.description,
+            "changes": l.changes
+        })
+    return final_logs

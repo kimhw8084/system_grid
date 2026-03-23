@@ -45,15 +45,15 @@ async def test_provision_asset_full_flow():
     payload = {
         "name": "SRV-ASYNC-01",
         "system": "GRID-ASYNC",
-        "status": "active",
+        "status": "Active",
         "model": "R740",
-        "type": "physical",
+        "type": "Physical",
         "serial_number": "SN-ASYNC-01",
         "asset_tag": "AT-ASYNC-01"
     }
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.post("/api/v1/devices/", json=payload)
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     assert response.json()["system"] == "GRID-ASYNC"
 
 @pytest.mark.anyio
@@ -62,4 +62,4 @@ async def test_create_site_and_audit():
         await ac.post("/api/v1/sites/", json={"name": "ASYNC-SITE", "address": "Cloud"})
         logs_res = await ac.get("/api/v1/audit/")
     logs = logs_res.json()
-    assert any(l["table_name"] == "sites" for l in logs)
+    assert any(l["target_table"] == "sites" for l in logs)
