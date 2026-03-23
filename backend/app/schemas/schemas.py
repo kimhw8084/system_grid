@@ -21,23 +21,13 @@ class SiteCreate(SiteBase):
 class SiteResponse(SiteBase, BaseSchema):
     pass
 
-# Rooms
-class RoomBase(BaseModel):
-    site_id: int
-    name: str
-
-class RoomCreate(RoomBase):
-    pass
-
-class RoomResponse(RoomBase, BaseSchema):
-    pass
-
 # Racks
 class RackBase(BaseModel):
     room_id: Optional[int] = None
     name: str
     total_u_height: int = 42
     max_power_kw: float = 8.0
+    typical_power_kw: float = 4.0
 
 class RackCreate(RackBase):
     site_id: Optional[int] = None
@@ -56,16 +46,17 @@ class DeviceBase(BaseModel):
     type: str = "physical"
     serial_number: str
     asset_tag: str
-    power_max_w: Optional[float] = 0
-    power_idle_w: Optional[float] = 0
-    maintenance_mode: bool = False
+    
+    purchase_date: Optional[datetime] = None
+    warranty_end: Optional[datetime] = None
+    install_date: Optional[datetime] = None
     
     owner: Optional[str] = None
     vendor: Optional[str] = None
-    install_date: Optional[datetime] = None
-    support_expiry: Optional[datetime] = None
     purchase_order: Optional[str] = None
-    sustainability_notes: Optional[str] = None
+    
+    max_power_w: Optional[float] = 0
+    typical_power_w: Optional[float] = 0
     
     metadata_json: Optional[Dict[str, Any]] = None
 
@@ -74,6 +65,10 @@ class DeviceCreate(DeviceBase):
 
 class DeviceResponse(DeviceBase, BaseSchema):
     relationships: List[Any] = []
+    rack_name: Optional[str] = None
+    site_name: Optional[str] = None
+    u_size: Optional[int] = None
+    u_start: Optional[int] = None
 
 # Network Connections
 class ConnectionCreate(BaseModel):
@@ -95,5 +90,7 @@ class AuditLogResponse(BaseModel):
     table_name: str
     record_id: int
     intent_note: Optional[str] = None
+    old_values: Optional[Any] = None
+    new_values: Optional[Any] = None
     
     model_config = ConfigDict(from_attributes=True)

@@ -83,7 +83,7 @@ function MainContent() {
               transition={{ duration: 0.15 }}
               className="h-full"
             >
-              {activeTab === 'dashboard' ? <Dashboard /> : 
+              {activeTab === 'dashboard' ? <Dashboard onNavigate={(t) => setActiveTab(t)} /> : 
                activeTab === 'racks' ? <RackElevations /> : 
                activeTab === 'assets' ? <AssetGrid /> : 
                activeTab === 'network' ? <NetworkFabric /> : 
