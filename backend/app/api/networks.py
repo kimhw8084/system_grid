@@ -9,7 +9,8 @@ router = APIRouter(prefix="/networks", tags=["Network Fabric"])
 
 @router.get("/interfaces")
 def get_interfaces(db: Session = Depends(get_db)):
-    return db.query(models.NetworkInterface).all()
+    interfaces = db.query(models.NetworkInterface).all()
+    return [{"id": i.id, "name": i.name, "mac_address": i.mac_address, "ip_address": i.ip_address, "link_speed_gbps": i.link_speed_gbps} for i in interfaces]
 
 @router.post("/interfaces")
 def create_interface(data: dict, db: Session = Depends(get_db)):
@@ -17,7 +18,7 @@ def create_interface(data: dict, db: Session = Depends(get_db)):
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
-    return db_obj
+    return {"status": "success", "id": db_obj.id}
 
 @router.get("/connections")
 def get_connections(db: Session = Depends(get_db)):
@@ -39,7 +40,6 @@ def get_connections(db: Session = Depends(get_db)):
 
 @router.post("/connections")
 def create_connection(data: dict, db: Session = Depends(get_db)):
-    # data: { device_a_id, port_a, device_b_id, port_b, purpose, speed, unit }
     conn = models.PortConnection(**data)
     db.add(conn)
     db.commit()
@@ -50,7 +50,16 @@ def create_connection(data: dict, db: Session = Depends(get_db)):
     db.add(log)
     db.commit()
     
-    return conn
+    return {
+        "id": conn.id,
+        "device_a_id": conn.device_a_id,
+        "port_a": conn.port_a,
+        "device_b_id": conn.device_b_id,
+        "port_b": conn.port_b,
+        "purpose": conn.purpose,
+        "speed": conn.speed,
+        "unit": conn.unit
+    }
 
 @router.delete("/connections/{conn_id}")
 def delete_connection(conn_id: int, db: Session = Depends(get_db)):

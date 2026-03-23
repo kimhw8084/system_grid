@@ -7,7 +7,8 @@ router = APIRouter(prefix="/sites", tags=["Sites"])
 
 @router.get("/")
 def get_sites(db: Session = Depends(get_db)):
-    return db.query(models.Site).all()
+    sites = db.query(models.Site).all()
+    return [{"id": s.id, "name": s.name, "address": s.address} for s in sites]
 
 @router.post("/")
 def create_site(data: dict, db: Session = Depends(get_db)):
@@ -26,7 +27,7 @@ def create_site(data: dict, db: Session = Depends(get_db)):
     db.add(room)
     db.commit()
     
-    return site
+    return {"id": site.id, "name": site.name, "address": site.address}
 
 @router.put("/{site_id}")
 def update_site(site_id: int, data: dict, db: Session = Depends(get_db)):
@@ -34,7 +35,7 @@ def update_site(site_id: int, data: dict, db: Session = Depends(get_db)):
     if not site: raise HTTPException(404)
     if 'name' in data: site.name = data['name']
     db.commit()
-    return site
+    return {"id": site.id, "name": site.name}
 
 @router.delete("/{site_id}")
 def delete_site(site_id: int, db: Session = Depends(get_db)):

@@ -1,21 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Enum as SQLEnum, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .database import Base
-import enum
-
-class DeviceStatus(enum.Enum):
-    ACTIVE = "active"
-    MAINTENANCE = "maintenance"
-    EOL = "eol"
-    PROVISIONING = "provisioning"
-
-class ComponentType(enum.Enum):
-    CPU = "cpu"
-    RAM = "ram"
-    DISK = "disk"
-    NIC = "nic"
-    GPU = "gpu"
+from ..database import Base
 
 class BaseMixin:
     id = Column(Integer, primary_key=True, index=True)
@@ -49,7 +35,7 @@ class Device(Base, BaseMixin):
     __tablename__ = "devices"
     name = Column(String, index=True) # Hostname
     system = Column(String, index=True) # Logical System name
-    status = Column(SQLEnum(DeviceStatus), default=DeviceStatus.ACTIVE)
+    status = Column(String, default="active") # active, maintenance, eol, provisioning
     model = Column(String)
     manufacturer = Column(String)
     os = Column(String)
