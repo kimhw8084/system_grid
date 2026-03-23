@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar } from 'lucide-react'
+import { Calendar, RefreshCcw } from 'lucide-react'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 export default function AuditLogs() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
 
-  const { data: logs } = useQuery({
+  const { data: logs, isLoading } = useQuery({
     queryKey: ['audit', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams()
@@ -20,28 +20,29 @@ export default function AuditLogs() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: 'Log ID', width: 90, sortable: true },
+    { field: 'id', headerName: 'ID', width: 70, sortable: true },
     { field: 'timestamp', headerName: 'Timestamp', width: 180, sortable: true, filter: 'agDateColumnFilter' },
-    { field: 'user_id', headerName: 'Admin', width: 120, filter: true },
+    { field: 'user_id', headerName: 'Admin', width: 100, filter: true },
     { 
       field: 'action', 
       headerName: 'Action', 
-      width: 120,
+      width: 100,
       cellRenderer: (params: any) => {
-        const colors: Record<string, string> = { CREATE: 'text-emerald-400', UPDATE: 'text-blue-400', DELETE: 'text-rose-400' }
+        const colors: Record<string, string> = { CREATE: 'text-emerald-400', UPDATE: 'text-blue-400', DELETE: 'text-rose-400', MOUNT: 'text-indigo-400', LINK: 'text-amber-400' }
         return <span className={`font-black tracking-widest text-[10px] uppercase ${colors[params.value] || 'text-slate-400'}`}>{params.value}</span>
       }
     },
-    { field: 'table_name', headerName: 'Target Table', width: 140, filter: true, cellClass: 'font-mono text-slate-400' },
-    { field: 'intent_note', headerName: 'Audit Intent Note', flex: 1, filter: true }
+    { field: 'target_table', headerName: 'Registry Table', width: 140, filter: true, cellClass: 'font-mono text-slate-400' },
+    { field: 'target_id', headerName: 'Target ID', width: 100, filter: true },
+    { field: 'description', headerName: 'Audit Intent Note', flex: 1, filter: true }
   ], [])
 
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight uppercase">Security & Forensic Audit</h1>
-          <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable record of all SYSGRID administrative transactions</p>
+          <h1 className="text-2xl font-black tracking-tight uppercase italic text-blue-400">Security & Forensic Audit</h1>
+          <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
         </div>
         
         <div className="flex items-center space-x-3 bg-slate-900/50 p-2 rounded-xl border border-white/5">
@@ -52,16 +53,37 @@ export default function AuditLogs() {
         </div>
       </div>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark">
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Reading Ledger...</p>
+          </div>
+        )}
         <AgGridReact
-          rowData={logs}
+          rowData={logs || []}
           columnDefs={columnDefs}
           defaultColDef={{ resizable: true, filter: true }}
-          animateRows={true}
-          headerHeight={40}
-          rowHeight={48}
+          animateRows={false}
+          headerHeight={32}
+          rowHeight={32}
         />
       </div>
+
+      <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: transparent;
+          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-foreground-color: #f8fafc;
+          --ag-header-foreground-color: #94a3b8;
+          --ag-font-family: 'Inter', sans-serif;
+          --ag-font-size: 10px;
+        }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
+        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; }
+      `}</style>
     </div>
   )
 }

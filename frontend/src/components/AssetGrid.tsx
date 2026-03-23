@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, Key, X, Save, Monitor, RefreshCcw, Edit2, Archive, ArrowLeftRight, Server, Link } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, Key, X, Save, Monitor, RefreshCcw, Edit2, Archive, ArrowLeftRight, Server, Link, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -64,46 +64,46 @@ const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onCl
            <div className="flex flex-wrap gap-2">
               {resourceType === 'hardware' && (
                 <>
-                  <select onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-blue-500/50">
+                  <select value={formData.category || ''} onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-blue-500/50">
                     <option value="">Type...</option><option>CPU</option><option>Memory</option><option>Card</option><option>SSD</option><option>HDD</option><option>NIC</option>
                   </select>
-                  <input placeholder="Name" onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Manufacturer" onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Spec (e.g. 64GB)" onChange={e => setFormData({...formData, capacity: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input type="number" placeholder="Count" onChange={e => setFormData({...formData, quantity: parseInt(e.target.value)})} className="w-16 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Manufacturer" value={formData.manufacturer || ''} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Spec (e.g. 64GB)" value={formData.capacity || ''} onChange={e => setFormData({...formData, capacity: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input type="number" placeholder="Count" value={formData.quantity || ''} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value)})} className="w-16 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
                 </>
               )}
               {resourceType === 'software' && (
                 <>
-                  <select onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-emerald-500/50">
+                  <select value={formData.category || ''} onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-emerald-500/50">
                     <option value="">Category...</option><option>OS</option><option>Database</option><option>Agent</option><option>Web Server</option><option>Utility</option><option>Driver</option><option>Metrology Tool</option>
                   </select>
-                  <input placeholder="Name" onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Version" onChange={e => setFormData({...formData, version: e.target.value})} className="w-24 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Purpose" onChange={e => setFormData({...formData, purpose: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input type="date" onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-32 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Version" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} className="w-24 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Purpose" value={formData.purpose || ''} onChange={e => setFormData({...formData, purpose: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input type="date" value={formData.install_date || ''} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-32 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
                 </>
               )}
               {resourceType === 'secrets' && (
                 <>
-                  <select onChange={e => setFormData({...formData, credential_type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-amber-500/50">
+                  <select value={formData.credential_type || ''} onChange={e => setFormData({...formData, credential_type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-amber-500/50">
                     <option value="">Type...</option><option>SSH</option><option>IPMI</option><option>Root</option><option>Database</option><option>API Key</option><option>LDAP Bind</option>
                   </select>
-                  <input placeholder="Username" onChange={e => setFormData({...formData, username: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Password / Key" type="password" onChange={e => setFormData({...formData, encrypted_payload: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Notes" onChange={e => setFormData({...formData, notes: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Username" value={formData.username || ''} onChange={e => setFormData({...formData, username: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Password / Key" value={formData.encrypted_payload || ''} type="password" onChange={e => setFormData({...formData, encrypted_payload: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Notes" value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
                 </>
               )}
               {resourceType === 'relationships' && (
                 <>
-                  <select onChange={e => setFormData({...formData, target_id: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
+                  <select value={formData.target_id || ''} onChange={e => setFormData({...formData, target_id: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
                     <option value="">Target Device...</option>{allDevices?.map((d:any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
-                  <select onChange={e => setFormData({...formData, type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
+                  <select value={formData.type || ''} onChange={e => setFormData({...formData, type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
                     <option value="">Relation Type...</option><option>VM Host</option><option>HA Pair</option><option>Replication</option><option>Load Balancer</option><option>Database Cluster</option>
                   </select>
-                  <input placeholder="Source Role" onChange={e => setFormData({...formData, source_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Target Role" onChange={e => setFormData({...formData, target_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Source Role" value={formData.source_role || ''} onChange={e => setFormData({...formData, source_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
+                  <input placeholder="Target Role" value={formData.target_role || ''} onChange={e => setFormData({...formData, target_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
                 </>
               )}
            </div>
@@ -125,18 +125,31 @@ const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onCl
             <tbody className="divide-y divide-white/5">
               {data?.map((item: any) => (
                 <tr key={item.id} className="hover:bg-white/5">
-                  {resourceType === 'hardware' && <><td className="p-2 font-bold">{item.category}</td><td className="p-2">{item.name || item.model}</td><td className="p-2 font-mono text-slate-400">{item.capacity || item.specs}</td><td className="p-2">{item.quantity}</td></>}
-                  {resourceType === 'software' && <><td className="p-2 font-bold">{item.category}</td><td className="p-2">{item.name}</td><td className="p-2 font-mono text-slate-400">v{item.version}</td><td className="p-2">{item.purpose}</td></>}
+                  {resourceType === 'hardware' && <td className="p-2 font-bold">{item.category}</td>}
+                  {resourceType === 'hardware' && <td className="p-2">{item.name || item.model}</td>}
+                  {resourceType === 'hardware' && <td className="p-2 font-mono text-slate-400">{item.capacity || item.specs}</td>}
+                  {resourceType === 'hardware' && <td className="p-2">{item.quantity}</td>}
+                  
+                  {resourceType === 'software' && <td className="p-2 font-bold">{item.category}</td>}
+                  {resourceType === 'software' && <td className="p-2">{item.name}</td>}
+                  {resourceType === 'software' && <td className="p-2 font-mono text-slate-400">v{item.version}</td>}
+                  {resourceType === 'software' && <td className="p-2">{item.purpose}</td>}
+                  
+                  {resourceType === 'secrets' && <td className="p-2 font-bold">{item.credential_type}</td>}
+                  {resourceType === 'secrets' && <td className="p-2 font-mono">{item.username}</td>}
                   {resourceType === 'secrets' && (
-                    <><td className="p-2 font-bold">{item.credential_type}</td><td className="p-2 font-mono">{item.username}</td>
-                      <td className="p-2 group/secret cursor-pointer">
-                        <span className="font-mono text-slate-500 group-hover/secret:hidden">••••••••</span>
-                        <span className="font-mono text-amber-400 hidden group-hover/secret:inline">{item.encrypted_payload}</span>
-                      </td>
-                      <td className="p-2 text-slate-500 italic">{item.notes}</td>
-                    </>
+                    <td className="p-2 group/secret cursor-pointer">
+                      <span className="font-mono text-slate-500 group-hover/secret:hidden">••••••••</span>
+                      <span className="font-mono text-amber-400 hidden group-hover/secret:inline">{item.encrypted_payload}</span>
+                    </td>
                   )}
-                  {resourceType === 'relationships' && <><td className="p-2 font-bold text-indigo-400">{item.relationship_type || item.type}</td><td className="p-2 font-bold text-blue-100">{item.target_name}</td><td className="p-2 text-slate-400">{item.source_role}</td><td className="p-2 text-slate-400">{item.target_role}</td></>}
+                  {resourceType === 'secrets' && <td className="p-2 text-slate-500 italic">{item.notes}</td>}
+                  
+                  {resourceType === 'relationships' && <td className="p-2 font-bold text-indigo-400">{item.relationship_type || item.type}</td>}
+                  {resourceType === 'relationships' && <td className="p-2 font-bold text-blue-100">{item.target_name}</td>}
+                  {resourceType === 'relationships' && <td className="p-2 text-slate-400">{item.source_role}</td>}
+                  {resourceType === 'relationships' && <td className="p-2 text-slate-400">{item.target_role}</td>}
+                  
                   <td className="p-2 text-right">
                     <button onClick={() => deleteMutation.mutate(item.id)} className="text-slate-500 hover:text-rose-400"><Trash2 size={14}/></button>
                   </td>
@@ -161,19 +174,40 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
     serial_number: '', asset_tag: '', power_max_w: 0, power_typical_w: 0, 
     owner: '', vendor: '', purchase_order: '', business_unit: '', management_ip: '', metadata_json: '{}'
   })
+  const [warnDecom, setWarnDecom] = useState(false)
 
   const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      // Validate metadata JSON
-      try { JSON.parse(data.metadata_json || '{}') } catch { throw new Error('Metadata must be valid JSON') }
+    mutationFn: async ({ data, force = false }: { data: any, force?: boolean }) => {
+      let metadata = {};
+      try {
+        if (typeof data.metadata_json === 'string') {
+          metadata = JSON.parse(data.metadata_json.trim() || '{}')
+        } else {
+          metadata = data.metadata_json || {}
+        }
+      } catch { throw new Error('Metadata must be valid JSON') }
 
-      const url = asset ? `/api/v1/devices/${asset.id}` : '/api/v1/devices/'
-      const res = await fetch(url, { method: asset ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({...data, metadata_json: JSON.parse(data.metadata_json || '{}')}) })
+      const url = asset ? `/api/v1/devices/${asset.id}` : `/api/v1/devices/?force=${force}`
+      const method = asset ? 'PUT' : 'POST'
+      const res = await fetch(url, { 
+        method, 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({...data, metadata_json: metadata}) 
+      })
+      
+      if (res.status === 409 && !asset) {
+        const err = await res.json()
+        if (err.detail.includes('WARN_DECOMMISSIONED')) {
+          setWarnDecom(true)
+          throw new Error('DECOM_WARNING')
+        }
+      }
+      
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Operation failed') }
       return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); onClose() },
-    onError: (err: any) => alert(err.message)
+    onError: (err: any) => { if (err.message !== 'DECOM_WARNING') alert(err.message) }
   })
 
   return (
@@ -185,6 +219,17 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
            </h2>
            <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
         </div>
+
+        {warnDecom && (
+          <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-start space-x-4">
+             <AlertTriangle className="text-amber-500 flex-shrink-0" />
+             <div className="space-y-2">
+                <p className="text-xs text-amber-200 font-bold uppercase tracking-tight">Decommissioned Asset Detected</p>
+                <p className="text-[10px] text-amber-400/80">An asset with this Hostname or Serial Number exists in the Decommissioned History. Confirming will create a new instance.</p>
+                <button onClick={() => mutation.mutate({ data: formData, force: true })} className="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg">Confirm & Provision</button>
+             </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-x-6 gap-y-4">
            <div className="col-span-3"><h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] bg-white/5 py-1 px-2 rounded">Core Identity</h3></div>
@@ -265,7 +310,7 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
            </div>
         </div>
 
-        <button onClick={() => { if(!formData.name || !formData.serial_number || !formData.asset_tag) alert('Hostname, SN, and Asset Tag required'); else mutation.mutate(formData) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
+        <button onClick={() => { if(!formData.name || !formData.serial_number || !formData.asset_tag) alert('Hostname, SN, and Asset Tag required'); else mutation.mutate({ data: formData }) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
       </motion.div>
     </div>
   )
@@ -286,8 +331,7 @@ export default function AssetGrid() {
     queryFn: async () => (await fetch(`/api/v1/devices/?include_decommissioned=${viewState === 'Decommissioned'}`)).json()
   })
 
-  // Filter client-side if needed, but backend handles it
-  const displayData = devices?.filter((d:any) => viewState === 'Decommissioned' ? d.status === 'Decommissioned' : d.status !== 'Decommissioned')
+  const displayData = useMemo(() => devices || [], [devices])
 
   const deleteDevice = useMutation({
     mutationFn: async (id: number) => fetch(`/api/v1/devices/${id}`, { method: 'DELETE' }),
@@ -332,7 +376,7 @@ export default function AssetGrid() {
       suppressMovable: true,
       pinned: 'right',
       cellRenderer: (params: any) => (
-        <div className="flex items-center space-x-1 h-full">
+        <div className="flex items-center space-x-1.5 h-full">
           <button onClick={() => setActiveExpansion({ type: 'hardware', deviceId: params.data.id })} title="Hardware" className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-colors"><Cpu size={14}/></button>
           <button onClick={() => setActiveExpansion({ type: 'software', deviceId: params.data.id })} title="Software" className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors"><Package size={14}/></button>
           <button onClick={() => setActiveExpansion({ type: 'secrets', deviceId: params.data.id })} title="Credentials" className="p-1 text-amber-400 hover:bg-amber-500/20 rounded transition-colors"><Key size={14}/></button>
@@ -380,11 +424,11 @@ export default function AssetGrid() {
           </div>
         )}
         <AgGridReact
-          rowData={displayData || []}
+          rowData={displayData}
           columnDefs={columnDefs}
           defaultColDef={{ resizable: true, sortable: true, filter: true }}
           rowSelection="multiple"
-          animateRows={false} // Disable animation for maximum density performance
+          animateRows={false}
           headerHeight={28}
           rowHeight={28}
           onSelectionChanged={(e) => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
