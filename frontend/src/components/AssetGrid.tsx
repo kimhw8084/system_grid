@@ -207,7 +207,7 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
       return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); onClose() },
-    onError: (err: any) => { if (err.message !== 'DECOM_WARNING') alert(err.message) }
+    onError: (err: any) => { if (err.message !== 'DECOM_WARNING') toast.error(`CRITICAL FAILURE: ${err.message}`, { duration: 10000, position: "top-center" }) }
   })
 
   return (
@@ -266,7 +266,7 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
              </select>
            </div>
            <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Logical System</label>
+             <label className="text-[9px] font-black text-slate-400 uppercase">Logical System *</label>
              <input value={formData.system} onChange={e => setFormData({...formData, system: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
            </div>
            <div>
@@ -290,7 +290,7 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
              </div>
            </div>
            <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Owner / Business Unit</label>
+             <label className="text-[9px] font-black text-slate-400 uppercase">Owner / Business Unit *</label>
              <div className="flex space-x-1 mt-1">
                <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="IT-Ops" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
                <input value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} placeholder="Metrology" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
@@ -351,7 +351,7 @@ export default function AssetGrid() {
   const columnDefs = useMemo(() => [
     { field: 'id', headerName: '', width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', suppressMenu: true },
     { field: 'name', headerName: 'Hostname', width: 140, filter: true, pinned: 'left', cellClass: 'font-bold text-blue-100' },
-    { field: 'system', headerName: 'Logical System', width: 130, filter: true },
+    { field: 'system', headerName: 'Logical System *', width: 130, filter: true },
     { 
       field: 'status', 
       headerName: 'Status', 
