@@ -378,7 +378,7 @@ export default function AssetGrid() {
       cellRenderer: (params: any) => (
         <div className="flex items-center space-x-1.5 h-full">
           <button onClick={() => setActiveExpansion({ type: 'hardware', deviceId: params.data.id })} title="Hardware" className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-colors"><Cpu size={14}/></button>
-          <button onClick={() => setActiveExpansion({ type: 'software', deviceId: params.data.id })} title="Software" className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors"><Package size={14}/></button>
+          
           <button onClick={() => setActiveExpansion({ type: 'secrets', deviceId: params.data.id })} title="Credentials" className="p-1 text-amber-400 hover:bg-amber-500/20 rounded transition-colors"><Key size={14}/></button>
           <button onClick={() => setActiveExpansion({ type: 'relationships', deviceId: params.data.id })} title="Relations" className="p-1 text-indigo-400 hover:bg-indigo-500/20 rounded transition-colors"><Link size={14}/></button>
           <div className="w-px h-3 bg-white/10 mx-1" />

@@ -45,6 +45,10 @@ const PatchNotesModal = ({ onClose }: any) => (
              <li>• [NEW] Dynamic Key-Value Metadata Grid (No JSON required)</li>
              <li>• [FIXED] Hardware/Software keyword crashes in DB</li>
              <li>• [FIXED] Audit Log State Diffs comparison tool</li>
+             <li>• [FIXED] Removed hard UNIQUE database constraints to allow decommissioned asset reprovisioning</li>
+             <li>• [REMOVED] Non-functional search bar to declutter UI</li>
+             <li>• [REMOVED] Software extension on assets (deferring to Logical Service matrix)</li>
+             <li>• [FIXED] Rack duplicate name collision validation added</li>
           </ul>
        </div>
        <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase">Verified</button>

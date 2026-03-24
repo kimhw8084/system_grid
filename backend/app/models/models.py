@@ -11,7 +11,7 @@ class BaseMixin:
 
 class Site(Base, BaseMixin):
     __tablename__ = "sites"
-    name = Column(String, unique=True, index=True)
+    name = Column(String, index=True)
     address = Column(String)
     facility_manager = Column(String)
     contact_phone = Column(String)
@@ -54,7 +54,7 @@ class Device(Base, BaseMixin):
     manufacturer = Column(String)
     model = Column(String)
     serial_number = Column(String, unique=True, index=True)
-    asset_tag = Column(String, unique=True, index=True)
+    asset_tag = Column(String, index=True)
     part_number = Column(String)
     
     os_name = Column(String)
