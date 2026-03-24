@@ -100,7 +100,7 @@ function MainLayout() {
         </div>
         <footer className="h-8 border-t border-white/5 px-8 flex items-center justify-between text-[8px] font-black text-slate-600 uppercase tracking-widest">
            <span>SYSGRID INFRASTRUCTURE</span>
-           <span className="text-blue-500">VERSION {APP_VERSION} [HARD-SYNCED]</span>
+           <span className="text-blue-500">VERSION {APP_VERSION} [FINAL-POLISH]</span>
         </footer>
       </main>
       <AnimatePresence>{showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}</AnimatePresence>
