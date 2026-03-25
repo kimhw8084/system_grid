@@ -96,14 +96,16 @@ export default function ServiceRegistry() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left' },
+    { field: "id", headerName: "", width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "name", 
       headerName: "Instance Name", 
       flex: 1, 
       pinned: 'left',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center space-x-2 h-full">
+        <div className="flex items-center justify-center space-x-2 h-full">
            {p.data.service_type === 'Database' && <Database size={12} className="text-amber-400" />}
            {p.data.service_type === 'Web Server' && <Globe size={12} className="text-blue-400" />}
            {p.data.service_type === 'Container' && <Box size={12} className="text-emerald-400" />}
@@ -111,34 +113,43 @@ export default function ServiceRegistry() {
         </div>
       )
     },
-    { field: "service_type", headerName: "Type", width: 120 },
+    { field: "service_type", headerName: "Type", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "status", 
       headerName: "Status", 
       width: 110, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = { Running: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
-        return <div className="flex items-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
+        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
       }
     },
-    { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold" },
-    { field: "environment", headerName: "Env", width: 100 },
-    { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500" },
+    { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
     {
       headerName: "Ops",
       width: 100,
       pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (params: any) => (
-        <div className="flex items-center space-x-2 h-full">
+        <div className="flex items-center justify-center space-x-2 h-full">
            <button onClick={() => setActiveModal(params.data)} className="p-1 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
            <button onClick={() => { if(confirm('Purge this service instance?')) bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }) }} className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
         </div>
       )
     }
-  ], [selectedIds])
+  ], [selectedIds]) as any
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -10 }}
+      className="h-full flex flex-col space-y-4"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -218,10 +229,10 @@ export default function ServiceRegistry() {
           --ag-font-size: 10px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
       `}</style>
-    </div>
+    </motion.div>
   )
 }
 

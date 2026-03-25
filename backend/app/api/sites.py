@@ -14,7 +14,13 @@ async def get_sites(db: AsyncSession = Depends(get_db)):
 
 @router.post("/")
 async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
-    site = models.Site(name=data.get('name', 'New Site'), address=data.get('address', ''))
+    name = data.get('name', 'New Site')
+    # Check for duplicate name
+    existing_result = await db.execute(select(models.Site).filter(models.Site.name == name))
+    if existing_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SITE_NAME_DUPLICATE")
+
+    site = models.Site(name=name, address=data.get('address', ''))
     db.add(site)
     try:
         await db.commit()

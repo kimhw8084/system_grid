@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, RefreshCcw } from 'lucide-react'
+import { motion } from 'framer-motion'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -20,25 +21,32 @@ export default function AuditLogs() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: 'ID', width: 70, sortable: true },
-    { field: 'timestamp', headerName: 'Timestamp', width: 180, sortable: true, filter: 'agDateColumnFilter' },
-    { field: 'user_id', headerName: 'Admin', width: 100, filter: true },
+    { field: 'id', headerName: 'ID', width: 70, sortable: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
+    { field: 'timestamp', headerName: 'Timestamp', width: 180, sortable: true, filter: 'agDateColumnFilter', cellClass: 'text-center', headerClass: 'text-center' },
+    { field: 'user_id', headerName: 'Admin', width: 100, filter: true, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: 'action', 
       headerName: 'Action', 
       width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (params: any) => {
         const colors: Record<string, string> = { CREATE: 'text-emerald-400', UPDATE: 'text-blue-400', DELETE: 'text-rose-400', MOUNT: 'text-indigo-400', LINK: 'text-amber-400' }
         return <span className={`font-black tracking-widest text-[10px] uppercase ${colors[params.value] || 'text-slate-400'}`}>{params.value}</span>
       }
     },
-    { field: 'target_table', headerName: 'Registry Table', width: 140, filter: true, cellClass: 'font-mono text-slate-400' },
-    { field: 'target_id', headerName: 'Target ID', width: 100, filter: true },
-    { field: 'description', headerName: 'Audit Intent Note', flex: 1, filter: true }
+    { field: 'target_table', headerName: 'Registry Table', width: 140, filter: true, cellClass: 'text-center font-mono text-slate-400', headerClass: 'text-center' },
+    { field: 'target_id', headerName: 'Target ID', width: 100, filter: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
+    { field: 'description', headerName: 'Audit Intent Note', flex: 1, filter: true, cellClass: 'text-center', headerClass: 'text-center' }
   ], [])
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -10 }}
+      className="h-full flex flex-col space-y-4"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight uppercase italic text-blue-400">Security & Forensic Audit</h1>
@@ -81,9 +89,9 @@ export default function AuditLogs() {
           --ag-font-size: 10px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
       `}</style>
-    </div>
+    </motion.div>
   )
 }

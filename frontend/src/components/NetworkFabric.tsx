@@ -43,40 +43,52 @@ export default function NetworkFabric() {
       headerName: "Source Entity", 
       field: "server_a", 
       flex: 1,
-      cellRenderer: (p: any) => <div className="flex items-center space-x-2"><span className="font-bold text-blue-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.source_port || p.data.port_a}</span></div>
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <div className="flex items-center justify-center space-x-2"><span className="font-bold text-blue-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.source_port || p.data.port_a}</span></div>
     },
     { 
       headerName: "Link Vector", 
       width: 100, 
-      cellClass: "justify-center",
+      cellClass: "justify-center text-center",
+      headerClass: 'text-center',
       cellRenderer: (p: any) => <div className="flex items-center justify-center text-slate-600"><ArrowRightLeft size={14}/></div> 
     },
     { 
       headerName: "Peer Entity", 
       field: "server_b", 
       flex: 1,
-      cellRenderer: (p: any) => <div className="flex items-center space-x-2"><span className="font-bold text-emerald-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.target_port || p.data.port_b}</span></div>
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <div className="flex items-center justify-center space-x-2"><span className="font-bold text-emerald-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.target_port || p.data.port_b}</span></div>
     },
-    { field: "purpose", headerName: "Purpose", width: 120 },
-    { field: "speed", headerName: "Throughput", width: 100, cellClass: "font-mono text-blue-300" },
-    { field: "direction", headerName: "Mode", width: 120 },
+    { field: "purpose", headerName: "Purpose", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "speed", headerName: "Throughput", width: 100, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
+    { field: "direction", headerName: "Mode", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
     {
       headerName: "Ops",
       width: 100,
       pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center space-x-1 h-full">
+        <div className="flex items-center justify-center space-x-1 h-full">
            <button onClick={() => { setEditingLink(p.data); setConnData(p.data); setShowConnectModal(true) }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
            <button onClick={() => { if(confirm('Sever this connection?')) deleteMutation.mutate(p.data.id) }} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
         </div>
       )
     }
-  ], [])
+  ], []) as any
 
   const purposes = ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"]
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -10 }}
+      className="h-full flex flex-col space-y-4"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight italic text-blue-400">Network Fabric</h1>
@@ -181,9 +193,9 @@ export default function NetworkFabric() {
           --ag-font-size: 10px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
       `}</style>
-    </div>
+    </motion.div>
   )
 }

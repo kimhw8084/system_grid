@@ -164,6 +164,7 @@ function MainLayout() {
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
         <div className="p-4 border-t border-white/5 text-center opacity-30">
            {isSidebarOpen ? <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_VERSION}</p> : <div className="w-2 h-2 rounded-full bg-blue-500 mx-auto"/>}
@@ -184,6 +185,7 @@ function MainLayout() {
                 <Route path="/services" element={<ServiceRegistry />} />
                 <Route path="/network" element={<NetworkFabric />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/logs" element={<AuditLogs />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AnimatePresence>

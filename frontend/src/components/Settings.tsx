@@ -99,7 +99,12 @@ export default function SettingsPage() {
   const statusOptions = Array.isArray(options) ? options.filter((o:any) => o.category === 'Status') : []
 
   return (
-    <div className="h-full flex flex-col space-y-8 max-w-7xl mx-auto">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -10 }}
+      className="h-full flex flex-col space-y-8 max-w-7xl mx-auto"
+    >
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight uppercase italic text-blue-400">Control Plane</h1>
@@ -183,6 +188,6 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

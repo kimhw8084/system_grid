@@ -161,24 +161,28 @@ export default function AssetGrid() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 40, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left' },
+    { field: "id", headerName: "", width: 40, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "name", 
       headerName: "Hostname", 
       flex: 1.2, 
       pinned: 'left',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center space-x-2 h-full font-bold text-blue-400">
+        <div className="flex items-center justify-center space-x-2 h-full font-bold text-blue-400">
            <LayoutGrid size={12} className="opacity-50" />
            <span>{p.value}</span>
         </div>
       )
     },
-    { field: "system", headerName: "System", width: 120 },
+    { field: "system", headerName: "System", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "type", 
       headerName: "Type", 
       width: 90,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = { Physical: 'text-emerald-400', Virtual: 'text-blue-400', Storage: 'text-amber-400', Switch: 'text-rose-400' }
         return <span className={`font-black uppercase text-[9px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
@@ -188,6 +192,8 @@ export default function AssetGrid() {
       field: "status", 
       headerName: "Status", 
       width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const isBadged = uiSettings?.status_badged ?? true
         if (!isBadged) return <span className="text-slate-400">{p.value}</span>
@@ -195,19 +201,21 @@ export default function AssetGrid() {
         return <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase border" style={{ color: color, borderColor: `${color}40`, backgroundColor: `${color}10` }}>{p.value}</span>
       }
     },
-    { field: "environment", headerName: "Env", width: 90 },
-    { field: "owner", headerName: "Owner", width: 110 },
-    { field: "manufacturer", headerName: "MFG", width: 90 },
-    { field: "model", headerName: "Model", width: 100 },
-    { field: "os_name", headerName: "OS", width: 100 },
-    { field: "os_version", headerName: "Ver", width: 70 },
-    { field: "site_name", headerName: "Site", width: 110 },
-    { field: "rack_name", headerName: "Rack", width: 90 },
-    { field: "u_start", headerName: "U", width: 50, cellClass: "font-mono" },
+    { field: "environment", headerName: "Env", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "owner", headerName: "Owner", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "manufacturer", headerName: "MFG", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "model", headerName: "Model", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "os_name", headerName: "OS", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "os_version", headerName: "Ver", width: 70, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "site_name", headerName: "Site", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "rack_name", headerName: "Rack", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "u_start", headerName: "U", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
     {
       headerName: "Detail",
       width: 60,
       pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <button onClick={() => setActiveDetails(p.data)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all"><Cpu size={14}/></button>
       )
@@ -216,8 +224,10 @@ export default function AssetGrid() {
       headerName: "Ops",
       width: 80,
       pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center space-x-1 h-full">
+        <div className="flex items-center justify-center space-x-1 h-full">
            <button onClick={() => setActiveModal(p.data)} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={14}/></button>
            {activeTab !== 'deleted' ? (
              <button onClick={() => { if(confirm('Soft-delete this asset?')) bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) }} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
@@ -227,10 +237,15 @@ export default function AssetGrid() {
         </div>
       )
     }
-  ], [selectedIds, uiSettings, activeTab])
+  ], [selectedIds, uiSettings, activeTab]) as any
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -10 }}
+      className="h-full flex flex-col space-y-4"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -343,10 +358,10 @@ export default function AssetGrid() {
           --ag-font-size: 10px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
       `}</style>
-    </div>
+    </motion.div>
   )
 }
 

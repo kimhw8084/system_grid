@@ -21,6 +21,20 @@
   @apply bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl;
 }
 
+/* Center align all grid content globally */
+.ag-cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ag-header-cell-label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+
 .system-gradient {
   background: linear-gradient(135deg, #034EA2 0%, #012b5a 100%);
 }
