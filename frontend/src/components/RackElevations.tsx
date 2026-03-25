@@ -15,7 +15,6 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage, isEv
     }
   }
 
-  // Visual differentiation logic
   const baseBg = isEvenServer ? 'bg-blue-600/40' : 'bg-[#034EA2]/60'
   const activeBg = highlight ? 'bg-amber-500/70 border-l-4 border-l-amber-400' : `${baseBg} border-l-2 border-l-blue-400`
 
@@ -43,7 +42,6 @@ const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDe
   const units = Array.from({ length: rack.total_u_height || 42 }, (_, i) => (rack.total_u_height || 42) - i)
   const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
-  // Track server "parity" for visual distinction
   const serverParityMap = useMemo(() => {
     const map: any = {}
     let count = 0
@@ -194,7 +192,6 @@ export default function RackElevations() {
     if (!allRacks) return []
     let filtered = allRacks
     if (showCompareOnly) filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
-    // Site filter logic refinement
     if (activeSite && sites) {
         const sName = sites.find((s:any) => s.id === activeSite)?.name
         filtered = allRacks.filter((r: any) => r.site_name === sName)
@@ -203,7 +200,7 @@ export default function RackElevations() {
   }, [allRacks, activeSite, showCompareOnly, selectedRacks, sites])
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col space-y-6">
+    <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight italic">Elevation Control</h1>
@@ -338,7 +335,7 @@ export default function RackElevations() {
                 )}
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Rack Identifier</label>
-                  <input value={isEditingRack ? isEditingRack.name : newRack.name} onChange={e => isEditingRack ? setIsEditingRack({...isEditingRack, name: e.target.value}) : setNewRack({...newRack, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" placeholder="e.g. RACK-A01" />
+                  <input value={isEditingRack ? isEditingRack.name : newRack.name} onChange={e => isEditingRack ? setIsEditingRack({...isEditingRack, name: e.target.value}) : setNewRack({...newRack, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. RACK-A01" />
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Total Height (U)</label>
@@ -356,6 +353,6 @@ export default function RackElevations() {
           </div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 }

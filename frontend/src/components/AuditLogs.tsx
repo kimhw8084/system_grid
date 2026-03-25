@@ -41,12 +41,7 @@ export default function AuditLogs() {
   ], [])
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      exit={{ opacity: 0, y: -10 }}
-      className="h-full flex flex-col space-y-4"
-    >
+    <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight uppercase italic text-blue-400">Security & Forensic Audit</h1>
@@ -92,6 +87,6 @@ export default function AuditLogs() {
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
         .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
       `}</style>
-    </motion.div>
+    </div>
   )
 }
