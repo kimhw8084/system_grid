@@ -12,21 +12,53 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
     return Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
   })
   const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (mode === 'table') {
-      const obj: any = {}
-      tableRows.forEach(r => { if (r.key) obj[r.key] = r.value })
-      onChange(obj)
+  const validateAndNotify = (rows: {key: string, value: string}[]) => {
+    const obj: any = {}
+    const keys = new Set()
+    let hasDuplicate = false
+    
+    rows.forEach(r => {
+      if (r.key) {
+        if (keys.has(r.key)) hasDuplicate = true
+        keys.add(r.key)
+        obj[r.key] = r.value
+      }
+    })
+
+    if (hasDuplicate) {
+        setError("Duplicate keys detected")
+        return false
     } else {
-      try { onChange(JSON.parse(jsonValue)) } catch (e) {}
+        setError(null)
+        setJsonValue(JSON.stringify(obj, null, 2))
+        onChange(obj)
+        return true
     }
-  }, [tableRows, jsonValue, mode])
+  }
+
+  const syncFromJSON = (json: string) => {
+    try {
+        const obj = JSON.parse(json)
+        const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
+        setTableRows(rows)
+        setError(null)
+        onChange(obj)
+        return true
+    } catch (e) {
+        setError("Invalid JSON format")
+        return false
+    }
+  }
 
   return (
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-         <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Configuration Payload</span>
+         <div className="flex items-center space-x-3">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Configuration Payload</span>
+            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
+         </div>
          <div className="flex bg-black/40 rounded-lg p-1">
             <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
             <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
@@ -38,18 +70,29 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
             {tableRows.map((row, i) => (
               <div key={i} className="flex items-center space-x-2">
                 <input value={row.key} onChange={e => {
-                  const n = [...tableRows]; n[i].key = e.target.value; setTableRows(n)
-                }} placeholder="Key" className="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500" />
+                  const n = [...tableRows]; n[i].key = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
                 <input value={row.value} onChange={e => {
-                  const n = [...tableRows]; n[i].value = e.target.value; setTableRows(n)
+                  const n = [...tableRows]; n[i].value = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
                 }} placeholder="Values" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
-                <button onClick={() => setTableRows(tableRows.filter((_, idx) => idx !== i))} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
+                <button onClick={() => {
+                    const n = tableRows.filter((_, idx) => idx !== i);
+                    setTableRows(n); validateAndNotify(n);
+                }} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
               </div>
             ))}
-            <button onClick={() => setTableRows([...tableRows, { key: '', value: '' }])} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute</button>
+            <button onClick={() => {
+                const n = [...tableRows, { key: '', value: '' }];
+                setTableRows(n);
+            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute</button>
           </div>
         ) : (
-          <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} className="w-full h-32 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none" />
+          <textarea value={jsonValue} onChange={e => {
+            setJsonValue(e.target.value);
+            syncFromJSON(e.target.value);
+          }} className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`} />
         )}
       </div>
     </div>
@@ -59,6 +102,7 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
 export default function ServiceRegistry() {
   const queryClient = useQueryClient()
   const [activeModal, setActiveModal] = useState<any>(null)
+  const [activeDetails, setActiveDetails] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,7 +128,7 @@ export default function ServiceRegistry() {
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {} }: any) => {
       const res = await fetch('/api/v1/logical-services/bulk-action', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds, action, payload }) 
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds.length ? selectedIds : [], action, payload }) 
       })
       return res.json()
     },
@@ -130,14 +174,17 @@ export default function ServiceRegistry() {
     { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
     {
       headerName: "Ops",
-      width: 100,
+      width: 120,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (params: any) => (
-        <div className="flex items-center justify-center space-x-2 h-full">
-           <button onClick={() => setActiveModal(params.data)} className="p-1 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
-           <button onClick={() => { if(confirm('Purge this service instance?')) bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }) }} className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+               <button onClick={() => setActiveDetails(params.data)} title="Service Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Search size={14}/></button>
+               <button onClick={() => setActiveModal(params.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+               <button onClick={() => { if(confirm('Purge this service instance?')) bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }) }} title="Terminate" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+           </div>
         </div>
       )
     }
@@ -218,6 +265,26 @@ export default function ServiceRegistry() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {activeDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border-blue-500/30 flex flex-col">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <div>
+                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
+                  </div>
+                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               
+               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
+                  <ServiceDetailsView service={activeDetails} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         .ag-theme-alpine-dark {
           --ag-background-color: transparent;
@@ -234,6 +301,59 @@ export default function ServiceRegistry() {
       `}</style>
     </motion.div>
   )
+}
+
+const ServiceDetailsView = ({ service }: { service: any }) => {
+    const queryClient = useQueryClient()
+    const [config, setConfig] = useState(service.config_json || {})
+
+    const configMutation = useMutation({
+        mutationFn: async (data: any) => fetch(`/api/v1/logical-services/${service.id}`, { 
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ config_json: data }) 
+        }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Config Synchronized') }
+    })
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Service Configuration & Metadata</h3>
+                <button onClick={() => configMutation.mutate(config)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Configuration</button>
+            </div>
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+                <MetadataEditor value={config} onChange={setConfig} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+                <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Host Information</h4>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
+                            <span className="text-slate-500 font-bold uppercase">Node ID</span>
+                            <span className="text-blue-400 font-mono">{service.device_id || 'Floating'}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
+                            <span className="text-slate-500 font-bold uppercase">Node Name</span>
+                            <span className="text-slate-300 font-bold">{service.device_name || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Operational Context</h4>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
+                            <span className="text-slate-500 font-bold uppercase">Status</span>
+                            <span className="text-emerald-400 font-black uppercase">{service.status}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
+                            <span className="text-slate-500 font-bold uppercase">Version</span>
+                            <span className="text-slate-400 font-mono">{service.version || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
 }
 
 const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
@@ -255,14 +375,14 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            </div>
            <div>
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Target Host Node</label>
-              <select value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value || null})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+              <select value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value || null})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50">
                  <option value="">Unassigned (Floating)</option>
                  {devices?.map((d:any)=><option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
               </select>
            </div>
            <div>
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Service Payload Type</label>
-              <select value={formData.service_type} onChange={e => setFormData({...formData, service_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+              <select value={formData.service_type} onChange={e => setFormData({...formData, service_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50">
                  <option>Database</option><option>Web Server</option><option>Middleware</option><option>Container</option><option>Microservice</option>
               </select>
            </div>
@@ -272,21 +392,21 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Operational Status</h3>
            <div>
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Runtime Status</label>
-              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+              <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50">
                  {getOptions('Status').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
                  {getOptions('Status').length === 0 && <><option>Running</option><option>Stopped</option><option>Maintenance</option></>}
               </select>
            </div>
            <div>
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Environment</label>
-              <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+              <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50">
                  {getOptions('Environment').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
                  {getOptions('Environment').length === 0 && <><option>Production</option><option>QA</option><option>Dev</option></>}
               </select>
            </div>
            <div>
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Software Version</label>
-              <input value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none" placeholder="v2.1.0" />
+              <input value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
            </div>
         </div>
 

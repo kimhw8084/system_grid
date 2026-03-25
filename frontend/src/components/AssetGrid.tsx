@@ -7,26 +7,60 @@ import toast from 'react-hot-toast'
 
 const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
-  const [tableRows, setTableRows] = useState(() => {
+  const [tableRows, setTableRows] = useState<{key: string, value: string}[]>(() => {
     const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
     return Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
   })
   const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (mode === 'table') {
-      const obj: any = {}
-      tableRows.forEach(r => { if (r.key) obj[r.key] = r.value })
-      onChange(obj)
+  // Internal helper to validate and notify parent
+  const validateAndNotify = (rows: {key: string, value: string}[]) => {
+    const obj: any = {}
+    const keys = new Set()
+    let hasDuplicate = false
+    
+    rows.forEach(r => {
+      if (r.key) {
+        if (keys.has(r.key)) hasDuplicate = true
+        keys.add(r.key)
+        obj[r.key] = r.value
+      }
+    })
+
+    if (hasDuplicate) {
+        setError("Duplicate keys detected")
+        return false
     } else {
-      try { onChange(JSON.parse(jsonValue)) } catch (e) {}
+        setError(null)
+        setJsonValue(JSON.stringify(obj, null, 2))
+        onChange(obj)
+        return true
     }
-  }, [tableRows, jsonValue, mode])
+  }
+
+  // Sync from JSON to Table
+  const syncFromJSON = (json: string) => {
+    try {
+        const obj = JSON.parse(json)
+        const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
+        setTableRows(rows)
+        setError(null)
+        onChange(obj)
+        return true
+    } catch (e) {
+        setError("Invalid JSON format")
+        return false
+    }
+  }
 
   return (
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-         <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Payload</span>
+         <div className="flex items-center space-x-3">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Payload</span>
+            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
+         </div>
          <div className="flex bg-black/40 rounded-lg p-1">
             <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
             <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
@@ -38,18 +72,33 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
             {tableRows.map((row, i) => (
               <div key={i} className="flex items-center space-x-2">
                 <input value={row.key} onChange={e => {
-                  const n = [...tableRows]; n[i].key = e.target.value; setTableRows(n)
-                }} placeholder="Key" className="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500" />
+                  const n = [...tableRows]; n[i].key = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
                 <input value={row.value} onChange={e => {
-                  const n = [...tableRows]; n[i].value = e.target.value; setTableRows(n)
-                }} placeholder="Values (comma-sep)" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
-                <button onClick={() => setTableRows(tableRows.filter((_, idx) => idx !== i))} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
+                  const n = [...tableRows]; n[i].value = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
+                }} placeholder="Value" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
+                <button onClick={() => {
+                    const n = tableRows.filter((_, idx) => idx !== i);
+                    setTableRows(n); validateAndNotify(n);
+                }} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
               </div>
             ))}
-            <button onClick={() => setTableRows([...tableRows, { key: '', value: '' }])} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
+            <button onClick={() => {
+                const n = [...tableRows, { key: '', value: '' }];
+                setTableRows(n);
+            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
           </div>
         ) : (
-          <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} className="w-full h-32 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none" />
+          <textarea 
+            value={jsonValue} 
+            onChange={e => {
+                setJsonValue(e.target.value);
+                syncFromJSON(e.target.value);
+            }} 
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
+          />
         )}
       </div>
     </div>
@@ -211,29 +260,22 @@ export default function AssetGrid() {
     { field: "rack_name", headerName: "Rack", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "u_start", headerName: "U", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
     {
-      headerName: "Detail",
-      width: 60,
-      pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <button onClick={() => setActiveDetails(p.data)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all"><Cpu size={14}/></button>
-      )
-    },
-    {
       headerName: "Ops",
-      width: 80,
+      width: 120,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => setActiveModal(p.data)} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={14}/></button>
-           {activeTab !== 'deleted' ? (
-             <button onClick={() => { if(confirm('Soft-delete this asset?')) bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) }} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
-           ) : (
-             <button onClick={() => { if(confirm('PURGE PERMANENTLY?')) bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }) }} className="p-1.5 hover:bg-rose-500/20 text-rose-500 transition-all"><Trash2 size={14}/></button>
-           )}
+           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+               <button onClick={() => setActiveDetails(p.data)} title="System Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Search size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+               {activeTab !== 'deleted' ? (
+                 <button onClick={() => { if(confirm('Soft-delete this asset?')) bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) }} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               ) : (
+                 <button onClick={() => { if(confirm('PURGE PERMANENTLY?')) bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }) }} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               )}
+           </div>
         </div>
       )
     }
@@ -365,50 +407,121 @@ export default function AssetGrid() {
   )
 }
 
-const AssetDetailsView = ({ device }: { device: any }) => {
+const AssetDetailsView = ({ device, options }: { device: any, options: any }) => {
     const [tab, setTab] = useState('metadata')
+    const queryClient = useQueryClient()
+    const [metadata, setMetadata] = useState(device.metadata_json || {})
+
+    const metaMutation = useMutation({
+        mutationFn: async (data: any) => fetch(`/api/v1/devices/${device.id}`, { 
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ metadata_json: data }) 
+        }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assets'] }); toast.success('Metadata Synchronized') }
+    })
+
     return (
         <div className="space-y-6">
-            <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                {['metadata', 'hardware', 'secrets', 'relations'].map(t => (
-                    <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                        {t}
-                    </button>
-                ))}
+            <div className="flex items-center justify-between">
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+                    {['metadata', 'hardware', 'secrets', 'relations'].map(t => (
+                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                            {t}
+                        </button>
+                    ))}
+                </div>
+                {tab === 'metadata' && (
+                    <button onClick={() => metaMutation.mutate(metadata)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Metadata</button>
+                )}
             </div>
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden">
-                {tab === 'metadata' && <MetadataViewer data={device.metadata_json} />}
-                {tab === 'hardware' && <HWTable deviceId={device.id} />}
-                {tab === 'secrets' && <SecretsTable deviceId={device.id} />}
-                {tab === 'relations' && <RelationsTable deviceId={device.id} />}
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+                {tab === 'metadata' && <MetadataEditor value={metadata} onChange={setMetadata} />}
+                {tab === 'hardware' && <HWTab deviceId={device.id} />}
+                {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
+                {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
             </div>
         </div>
     )
 }
 
 const HWTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
   const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/hardware`)).json() })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+  
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw'] }); toast.success('Component Purged') }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => fetch(`/api/v1/devices/hardware/${data.id}`, { 
+        method: 'POST', // Backend might need a specific PUT for hardware, but usually POST with ID works if handled
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    }),
+    onSuccess: () => { 
+        queryClient.invalidateQueries({ queryKey: ['device-hw'] })
+        setEditingId(null)
+        toast.success('Component Updated')
+    }
+  })
+
   return (
-    <div className="p-6">
+    <div className="p-0">
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Category</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Component</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Specs</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500 text-center">Qty</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Category</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Component</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Specs</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Qty</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {hardware?.map((h: any) => (
             <tr key={h.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-2"><span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span></td>
-              <td className="px-4 py-2 font-bold text-slate-200">{h.name}</td>
-              <td className="px-4 py-2 text-slate-500">{h.specs}</td>
-              <td className="px-4 py-2 font-mono text-center text-slate-400">x{h.count}</td>
+              <td className="px-4 py-2 text-center">
+                {editingId === h.id ? (
+                    <select value={editData.category} onChange={e => setEditData({...editData, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
+                    </select>
+                ) : (
+                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
+                )}
+              </td>
+              <td className="px-4 py-2 font-bold text-slate-200 text-center">
+                {editingId === h.id ? (
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                ) : h.name}
+              </td>
+              <td className="px-4 py-2 text-slate-500 text-center">
+                {editingId === h.id ? (
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                ) : h.specs}
+              </td>
+              <td className="px-4 py-2 font-mono text-center text-slate-400">
+                {editingId === h.id ? (
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[10px] w-12" />
+                ) : `x${h.count}`}
+              </td>
+              <td className="px-4 py-2 text-center">
+                {editingId === h.id ? (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => { setEditingId(h.id); setEditData({...h}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
+                        <button onClick={() => confirm('Purge component?') && delMutation.mutate(h.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                    </div>
+                )}
+              </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
         </tbody>
       </table>
     </div>
@@ -416,7 +529,23 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
 }
 
 const SecretsTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
   const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/secrets`)).json() })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); toast.success('Credential Purged') }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => fetch(`/api/v1/devices/secrets/${data.id}`, { 
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); setEditingId(null); toast.success('Credential Updated') }
+  })
+
   return (
     <div className="p-6">
       <table className="w-full text-[10px]">
@@ -425,17 +554,45 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Identity</th>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Payload</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {secrets?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-2 font-black uppercase text-amber-500/80">{s.secret_type}</td>
-              <td className="px-4 py-2 font-bold text-slate-200">{s.username}</td>
-              <td className="px-4 py-2 font-mono text-slate-600 italic">****************</td>
+              <td className="px-4 py-2 font-black uppercase text-amber-500/80">
+                {editingId === s.id ? (
+                    <select value={editData.secret_type} onChange={e => setEditData({...editData, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
+                    </select>
+                ) : s.secret_type}
+              </td>
+              <td className="px-4 py-2 font-bold text-slate-200">
+                {editingId === s.id ? (
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                ) : s.username}
+              </td>
+              <td className="px-4 py-2 font-mono text-slate-600 italic">
+                {editingId === s.id ? (
+                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" placeholder="Update secret..." />
+                ) : '****************'}
+              </td>
+              <td className="px-4 py-2 text-center">
+                {editingId === s.id ? (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => { setEditingId(s.id); setEditData({...s, encrypted_payload: ''}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
+                        <button onClick={() => confirm('Purge credential?') && delMutation.mutate(s.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                    </div>
+                )}
+              </td>
             </tr>
           ))}
-          {!secrets?.length && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No vault entries found</td></tr>}
+          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No vault entries found</td></tr>}
         </tbody>
       </table>
     </div>
@@ -443,8 +600,32 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
 }
 
 const RelationsTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
   const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/relationships`)).json() })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); toast.success('Vector Purged') }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => fetch(`/api/v1/devices/relationships/${data.id}`, { 
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); setEditingId(null); toast.success('Vector Updated') }
+  })
+
+  const types = [
+    { label: 'Depends On', s: 'Consumer', t: 'Provider' },
+    { label: 'Hosts', s: 'Hypervisor', t: 'Guest' },
+    { label: 'Backs Up', s: 'Source', t: 'Target' },
+    { label: 'Replicates to', s: 'Primary', t: 'Replica' },
+    { label: 'Cluster Member', s: 'Node', t: 'Peer' }
+  ]
+
   return (
     <div className="p-6">
       <table className="w-full text-[10px]">
@@ -453,6 +634,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Vector</th>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Role</th>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Target Entity</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -460,13 +642,43 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
             const peer = devices?.find((d:any) => d.id === r.target_device_id)
             return (
               <tr key={r.id} className="hover:bg-white/5 transition-colors">
-                <td className="px-4 py-2 font-black uppercase text-indigo-400">{r.relationship_type}</td>
-                <td className="px-4 py-2 font-bold text-slate-400">{r.source_role} → {r.target_role}</td>
-                <td className="px-4 py-2 font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</td>
+                <td className="px-4 py-2 font-black uppercase text-indigo-400">
+                  {editingId === r.id ? (
+                      <select value={editData.relationship_type} onChange={e => {
+                        const found = types.find(t => t.label === e.target.value)
+                        setEditData({...editData, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
+                      }} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        {types.map(t => <option key={t.label}>{t.label}</option>)}
+                      </select>
+                  ) : r.relationship_type}
+                </td>
+                <td className="px-4 py-2 font-bold text-slate-400">
+                    {r.source_role} → {r.target_role}
+                </td>
+                <td className="px-4 py-2 font-black text-blue-400 uppercase tracking-tight">
+                  {editingId === r.id ? (
+                      <select value={editData.target_device_id} onChange={e => setEditData({...editData, target_device_id: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                  ) : (peer?.name || 'Unknown Entity')}
+                </td>
+                <td className="px-4 py-2 text-center">
+                  {editingId === r.id ? (
+                      <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
+                          <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                      </div>
+                  ) : (
+                      <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => { setEditingId(r.id); setEditData({...r}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
+                          <button onClick={() => confirm('Purge relationship?') && delMutation.mutate(r.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                      </div>
+                  )}
+                </td>
               </tr>
             )
           })}
-          {!relationships?.length && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relational vectors mapped</td></tr>}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relational vectors mapped</td></tr>}
         </tbody>
       </table>
     </div>
@@ -614,11 +826,17 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
                    {getOptions('LogicalSystem').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
                 </select>
              </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner / BU *</label>
-                <div className="flex space-x-2">
-                   <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   <input value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} placeholder="BU" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner (Optional)</label>
+                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Business Unit (Optional)</label>
+                    <select value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50">
+                        <option value="">Select BU...</option>
+                        {getOptions('BusinessUnit').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                    </select>
                 </div>
              </div>
           </div>
@@ -690,7 +908,7 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
       {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Registry entity required before relational mapping</div>)}
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button onClick={() => { if(!formData.name || !formData.system || !formData.owner) return toast.error("Identity marked with * is mandatory"); onSave({ data: formData }) }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all">
+        <button onClick={() => { if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory"); onSave({ data: formData }) }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all">
            Commit Matrix Configuration
         </button>
       </div>

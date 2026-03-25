@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .database import engine, Base
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings, ipam
 
-app = FastAPI(title="SYSGRID Production API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+app = FastAPI(title="SYSGRID Production API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,11 +20,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 app.include_router(devices.router, prefix="/api/v1")
 app.include_router(import_engine.router, prefix="/api/v1")
@@ -30,6 +32,7 @@ app.include_router(sites.router, prefix="/api/v1")
 app.include_router(maintenance.router, prefix="/api/v1")
 app.include_router(logical_services.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
+app.include_router(ipam.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():

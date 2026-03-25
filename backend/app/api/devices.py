@@ -57,7 +57,7 @@ async def get_devices(include_decommissioned: bool = False, include_deleted: boo
 
 @router.post("/")
 async def create_device(data: dict, force: bool = False, db: AsyncSession = Depends(get_db)):
-    required = ["name", "system", "owner", "business_unit"]
+    required = ["name", "system"]
     for f in required:
         if not data.get(f): raise HTTPException(400, f"Field {f} is mandatory")
     
@@ -83,12 +83,24 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
     if not db_device: raise HTTPException(404)
     
     clean_data = filter_valid_columns(models.Device, data)
+    # Exclude read-only fields
+    for ro_field in ["id", "created_at", "updated_at", "created_by_user_id"]:
+        if ro_field in clean_data:
+            del clean_data[ro_field]
+
     for k, v in clean_data.items():
         if k in ["purchase_date", "install_date", "warranty_end", "eol_date"]:
+            # Ensure we only pass datetime objects or None to SQLAlchemy for DateTime columns
             setattr(db_device, k, parse_iso_date(v))
+        elif k == "metadata_json" and isinstance(v, str):
+            try:
+                import json
+                setattr(db_device, k, json.loads(v))
+            except:
+                setattr(db_device, k, v)
         else:
             setattr(db_device, k, v)
-    await db.commit(); return db_device
+    await db.commit(); await db.refresh(db_device); return db_device
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
@@ -171,3 +183,18 @@ async def delete_resource(resource: str, id: int, db: AsyncSession = Depends(get
     if resource not in model_map: raise HTTPException(400)
     await db.execute(delete(model_map[resource]).where(model_map[resource].id == id))
     await db.commit(); return {"status": "success"}
+
+@router.post("/{resource}/{id}")
+async def update_resource(resource: str, id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    model_map = {"hardware": models.HardwareComponent, "software": models.DeviceSoftware, "secrets": models.SecretVault, "relationships": models.DeviceRelationship}
+    if resource not in model_map: raise HTTPException(400)
+    
+    res = await db.execute(select(model_map[resource]).filter(model_map[resource].id == id))
+    item = res.scalar_one_or_none()
+    if not item: raise HTTPException(404)
+    
+    clean = filter_valid_columns(model_map[resource], data)
+    for k, v in clean.items():
+        if k != "id": setattr(item, k, v)
+    
+    await db.commit(); return item
