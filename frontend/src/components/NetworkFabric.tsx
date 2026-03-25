@@ -1,21 +1,24 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check, MoreVertical } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check, MoreVertical, Settings } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
+import { ConfigRegistryModal } from "./ConfigRegistry"
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [editingLink, setEditingLink] = useState<any>(null)
+  const [showConfig, setShowConfig] = useState(false)
   const [connData, setConnData] = useState<any>({
     device_a_id: '', source_port: '', device_b_id: '', target_port: '',
     purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
   })
 
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
   const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await fetch('/api/v1/networks/connections')).json() })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
 
@@ -43,9 +46,16 @@ export default function NetworkFabric() {
       headerName: "Source Entity", 
       field: "server_a", 
       flex: 1,
+      cellClass: 'text-center font-bold text-blue-400',
+      headerClass: 'text-center'
+    },
+    { 
+      headerName: "Source Port", 
+      field: "source_port", 
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <div className="flex items-center justify-center space-x-2"><span className="font-bold text-blue-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.source_port || p.data.port_a}</span></div>
+      cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
     { 
       headerName: "Link Vector", 
@@ -58,9 +68,16 @@ export default function NetworkFabric() {
       headerName: "Peer Entity", 
       field: "server_b", 
       flex: 1,
+      cellClass: 'text-center font-bold text-emerald-400',
+      headerClass: 'text-center'
+    },
+    { 
+      headerName: "Peer Port", 
+      field: "target_port", 
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <div className="flex items-center justify-center space-x-2"><span className="font-bold text-emerald-400">{p.value}</span><span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded">{p.data.target_port || p.data.port_b}</span></div>
+      cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
     { field: "purpose", headerName: "Purpose", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "speed", headerName: "Throughput", width: 100, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
@@ -73,7 +90,17 @@ export default function NetworkFabric() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => { setEditingLink(p.data); setConnData(p.data); setShowConnectModal(true) }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
+           <button onClick={() => { 
+             setEditingLink(p.data); 
+             setConnData({
+               ...p.data,
+               device_a_id: p.data.source_device_id,
+               device_b_id: p.data.target_device_id,
+               port_a: p.data.source_port,
+               port_b: p.data.target_port
+             }); 
+             setShowConnectModal(true) 
+           }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
            <button onClick={() => { if(confirm('Sever this connection?')) deleteMutation.mutate(p.data.id) }} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
         </div>
       )
@@ -81,6 +108,14 @@ export default function NetworkFabric() {
   ], []) as any
 
   const purposes = ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"]
+
+  const resetForm = () => {
+    setConnData({
+      device_a_id: '', source_port: '', device_b_id: '', target_port: '',
+      purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
+    })
+    setEditingLink(null)
+  }
 
   return (
     <motion.div 
@@ -94,9 +129,14 @@ export default function NetworkFabric() {
           <h1 className="text-2xl font-black uppercase tracking-tight italic text-blue-400">Network Fabric</h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Interconnect & Logical Topology</p>
         </div>
-        <button onClick={() => { setEditingLink(null); setShowConnectModal(true) }} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-          + Establish Link
-        </button>
+        <div className="flex items-center space-x-3">
+            <button onClick={() => setShowConfig(true)} className="p-2 bg-white/5 border border-white/5 rounded-xl text-slate-500 hover:text-blue-400 transition-all" title="Fabric Config">
+                <Settings size={18} />
+            </button>
+            <button onClick={() => { resetForm(); setShowConnectModal(true) }} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+            + Establish Link
+            </button>
+        </div>
       </div>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
@@ -153,8 +193,9 @@ export default function NetworkFabric() {
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Link Purpose *</label>
-                  <select value={connData.purpose} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs">
-                    {purposes.map(p => <option key={p}>{p}</option>)}
+                  <select value={connData.purpose} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
+                    {Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => <option key={p.id} value={p.value}>{p.label}</option>)}
+                    {(!Array.isArray(options) || options.filter((o:any) => o.category === 'LinkPurpose').length === 0) && ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => <option key={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
@@ -181,6 +222,15 @@ export default function NetworkFabric() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Network Fabric Config"
+        sections={[
+            { title: "Link Purposes", category: "LinkPurpose", icon: Network }
+        ]}
+      />
 
       <style>{`
         .ag-theme-alpine-dark {

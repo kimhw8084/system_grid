@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List } from "lucide-react"
+import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
+import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
 
 const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
@@ -106,6 +107,8 @@ export default function ServiceRegistry() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showConfig, setShowConfig] = useState(false)
+  const [showUI, setShowUI] = useState(false)
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
   const { data: services, isLoading } = useQuery({ queryKey: ["logical-services"], queryFn: async () => (await fetch("/api/v1/logical-services/")).json() })
@@ -181,7 +184,7 @@ export default function ServiceRegistry() {
       cellRenderer: (params: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               <button onClick={() => setActiveDetails(params.data)} title="Service Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Search size={14}/></button>
+               <button onClick={() => setActiveDetails(params.data)} title="Service Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><List size={14}/></button>
                <button onClick={() => setActiveModal(params.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
                <button onClick={() => { if(confirm('Purge this service instance?')) bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }) }} title="Terminate" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
            </div>
@@ -208,6 +211,15 @@ export default function ServiceRegistry() {
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH PAYLOADS..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+          </div>
+
+          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+             <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                <Settings size={16} />
+             </button>
+             <button onClick={() => setShowUI(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="View Customization">
+                <Sliders size={16} />
+             </button>
           </div>
 
           <div className="relative">
@@ -278,12 +290,24 @@ export default function ServiceRegistry() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ServiceDetailsView service={activeDetails} />
+                  <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
                </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Service Registry Enumerations"
+        sections={[
+            { title: "Status Options", category: "Status", icon: RefreshCcw },
+            { title: "Environments", category: "Environment", icon: Globe }
+        ]}
+      />
+
+      <UISettingsModal isOpen={showUI} onClose={() => setShowUI(false)} />
 
       <style>{`
         .ag-theme-alpine-dark {
@@ -303,25 +327,57 @@ export default function ServiceRegistry() {
   )
 }
 
-const ServiceDetailsView = ({ service }: { service: any }) => {
+const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
     const queryClient = useQueryClient()
-    const [config, setConfig] = useState(service.config_json || {})
+    const [formData, setFormData] = useState({ ...service })
 
-    const configMutation = useMutation({
+    const updateMutation = useMutation({
         mutationFn: async (data: any) => fetch(`/api/v1/logical-services/${service.id}`, { 
-            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ config_json: data }) 
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) 
         }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Config Synchronized') }
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Configuration Updated') }
     })
+
+    const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Service Configuration & Metadata</h3>
-                <button onClick={() => configMutation.mutate(config)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Configuration</button>
+                <button onClick={() => updateMutation.mutate(formData)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Changes</button>
             </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Instance Name</label>
+                        <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Status</label>
+                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500">
+                             {getOptions('Status').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                             {getOptions('Status').length === 0 && <><option>Running</option><option>Stopped</option><option>Maintenance</option></>}
+                        </select>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Environment</label>
+                        <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500">
+                             {getOptions('Environment').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                             {getOptions('Environment').length === 0 && <><option>Production</option><option>QA</option><option>Dev</option></>}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Version</label>
+                        <input value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+                    </div>
+                </div>
+            </div>
+
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                <MetadataEditor value={config} onChange={setConfig} />
+                <MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} />
             </div>
             
             <div className="grid grid-cols-2 gap-6">
@@ -339,17 +395,8 @@ const ServiceDetailsView = ({ service }: { service: any }) => {
                     </div>
                 </div>
                 <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Operational Context</h4>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
-                            <span className="text-slate-500 font-bold uppercase">Status</span>
-                            <span className="text-emerald-400 font-black uppercase">{service.status}</span>
-                        </div>
-                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
-                            <span className="text-slate-500 font-bold uppercase">Version</span>
-                            <span className="text-slate-400 font-mono">{service.version || 'N/A'}</span>
-                        </div>
-                    </div>
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Metadata Context</h4>
+                    <p className="text-[10px] text-slate-500 italic">Advanced operational metadata and configuration payloads for automated provisioning.</p>
                 </div>
             </div>
         </div>

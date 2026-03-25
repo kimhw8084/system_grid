@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
 
 const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
@@ -144,6 +145,8 @@ export default function AssetGrid() {
   const [viewMetadata, setViewMetadata] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [showUI, setShowUI] = useState(false)
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
   const { data: uiSettings } = useQuery({ queryKey: ['ui-settings'], queryFn: async () => (await fetch('/api/v1/settings/ui')).json() })
@@ -308,6 +311,15 @@ export default function AssetGrid() {
              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH MATRIX..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
           
+          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+             <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                <Settings size={16} />
+             </button>
+             <button onClick={() => setShowUI(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="View Customization">
+                <Sliders size={16} />
+             </button>
+          </div>
+
           <div className="relative">
             <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-2 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
             <AnimatePresence>
@@ -388,6 +400,20 @@ export default function AssetGrid() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Asset Registry Enumerations"
+        sections={[
+            { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
+            { title: "Asset Types", category: "DeviceType", icon: Cpu },
+            { title: "Operational Status", category: "Status", icon: RefreshCcw },
+            { title: "Environments", category: "Environment", icon: Globe },
+        ]}
+      />
+
+      <UISettingsModal isOpen={showUI} onClose={() => setShowUI(false)} />
 
       <style>{`
         .ag-theme-alpine-dark {
