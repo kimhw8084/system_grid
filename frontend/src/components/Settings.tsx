@@ -71,13 +71,20 @@ const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
 }
 
 export default function SettingsPage() {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('global')
   const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await fetch("/api/v1/settings/options")).json() })
+  const { data: uiSettings } = useQuery({ queryKey: ["ui-settings"], queryFn: async () => (await fetch("/api/v1/settings/ui")).json() })
+
+  const uiMutation = useMutation({
+    mutationFn: async (data: any) => fetch('/api/v1/settings/ui', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ui-settings"] }); toast.success("UI Preferences Synchronized") }
+  })
 
   const tabs = [
     { id: 'global', label: 'Global Registry', icon: Layout },
+    { id: 'ui', label: 'UI Customization', icon: Database },
     { id: 'security', label: 'Security & Access', icon: Shield },
-    { id: 'storage', label: 'Storage Engine', icon: Database },
     { id: 'compute', label: 'Compute Clusters', icon: Cpu },
   ]
 
@@ -87,6 +94,9 @@ export default function SettingsPage() {
     { title: "Operational Status", category: "Status", icon: RefreshCcw },
     { title: "Environments", category: "Environment", icon: Settings },
   ]
+
+  const statusColors = uiSettings?.status_colors || {}
+  const statusOptions = Array.isArray(options) ? options.filter((o:any) => o.category === 'Status') : []
 
   return (
     <div className="h-full flex flex-col space-y-8 max-w-7xl mx-auto">
@@ -112,11 +122,61 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {activeTab === 'global' ? (
+        {activeTab === 'global' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 pb-10">
             {sections.map(s => <ConfigSection key={s.category} title={s.title} category={s.category} icon={s.icon} options={Array.isArray(options) ? options.filter((o:any) => o.category === s.category) : []} />)}
           </div>
-        ) : (
+        )}
+        
+        {activeTab === 'ui' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-10">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-panel p-8 rounded-[32px] border-white/5 space-y-8">
+               <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400"><Layout size={20} /></div>
+                    <div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-white">Grid Visuals</h3>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Status Column Rendering</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => uiMutation.mutate({ ...uiSettings, status_badged: !uiSettings?.status_badged })}
+                    className={`w-12 h-6 rounded-full transition-all relative ${uiSettings?.status_badged ? 'bg-blue-600' : 'bg-slate-800'}`}
+                  >
+                    <motion.div animate={{ x: uiSettings?.status_badged ? 26 : 4 }} className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg" />
+                  </button>
+               </div>
+
+               <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Status Color Mapping</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    {statusOptions.map((opt:any) => (
+                      <div key={opt.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-[11px] font-bold text-slate-300">{opt.label}</span>
+                        <input 
+                            type="color" 
+                            value={statusColors[opt.label] || '#64748b'} 
+                            onChange={e => {
+                                const newColors = { ...statusColors, [opt.label]: e.target.value }
+                                uiMutation.mutate({ ...uiSettings, status_colors: newColors })
+                            }}
+                            className="w-8 h-8 bg-transparent border-none cursor-pointer"
+                        />
+                      </div>
+                    ))}
+                    {statusOptions.length === 0 && <p className="text-[10px] font-bold text-slate-600 uppercase italic">Configure Status options in Global Registry first</p>}
+                  </div>
+               </div>
+            </motion.div>
+
+            <div className="flex flex-col items-center justify-center opacity-20 space-y-4">
+                <Database size={64} />
+                <p className="text-[10px] font-black uppercase tracking-[0.4em]">Advanced Layouts Coming Soon</p>
+            </div>
+          </div>
+        )}
+
+        {(activeTab !== 'global' && activeTab !== 'ui') && (
           <div className="flex flex-col items-center justify-center py-20 opacity-20 space-y-4">
              <Shield size={64} />
              <p className="text-[10px] font-black uppercase tracking-[0.4em]">Sub-Registry Module Offline</p>

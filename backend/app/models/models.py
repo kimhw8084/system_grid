@@ -82,6 +82,7 @@ class Device(Base, BaseMixin):
     recipe_critical = Column(Boolean, default=False)
     
     metadata_json = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)
     
     locations = relationship("DeviceLocation", back_populates="device", cascade="all, delete-orphan")
     components = relationship("HardwareComponent", back_populates="device", cascade="all, delete-orphan")

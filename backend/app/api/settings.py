@@ -28,6 +28,46 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         await db.commit()
     return {"status": "success"}
 
+@router.get("/ui")
+async def get_ui_settings(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "UISettings"))
+    opts = res.scalars().all()
+    
+    settings = {
+        "status_badged": True,
+        "status_colors": {
+            "Active": "#10b981",
+            "Maintenance": "#f59e0b",
+            "Decommissioned": "#f43f5e",
+            "Planned": "#3b82f6"
+        }
+    }
+    
+    for o in opts:
+        if o.label == "status_badged":
+            settings["status_badged"] = (o.value == "true")
+        elif o.label.startswith("color_"):
+            status_name = o.label.replace("color_", "")
+            settings["status_colors"][status_name] = o.value
+            
+    return settings
+
+@router.post("/ui")
+async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
+    # Simple clear and set
+    from sqlalchemy import delete
+    await db.execute(delete(models.SettingOption).where(models.SettingOption.category == "UISettings"))
+    
+    if "status_badged" in data:
+        db.add(models.SettingOption(category="UISettings", label="status_badged", value="true" if data["status_badged"] else "false"))
+    
+    if "status_colors" in data:
+        for status_name, color in data["status_colors"].items():
+            db.add(models.SettingOption(category="UISettings", label=f"color_{status_name}", value=color))
+            
+    await db.commit()
+    return {"status": "success"}
+
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
     # Simple check if already initialized

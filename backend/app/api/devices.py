@@ -18,13 +18,16 @@ def filter_valid_columns(model, data):
     return {k: v for k, v in data.items() if k in valid_keys}
 
 @router.get("/")
-async def get_devices(include_decommissioned: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_devices(include_decommissioned: bool = False, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Device)
-    if not include_decommissioned:
-        query = query.filter(models.Device.status != "Decommissioned")
+    if include_deleted:
+        query = query.filter(models.Device.is_deleted == True)
     else:
-        # Show only decommissioned if this flag is true (used for Decom view)
-        query = query.filter(models.Device.status == "Decommissioned")
+        query = query.filter(models.Device.is_deleted == False)
+        if not include_decommissioned:
+            query = query.filter(models.Device.status != "Decommissioned")
+        else:
+            query = query.filter(models.Device.status == "Decommissioned")
     
     result = await db.execute(query)
     devices = result.scalars().all()
@@ -58,7 +61,7 @@ async def create_device(data: dict, force: bool = False, db: AsyncSession = Depe
     for f in required:
         if not data.get(f): raise HTTPException(400, f"Field {f} is mandatory")
     
-    dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"]))
+    dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False))
     existing = dup_res.scalars().all()
     if existing:
         active = [e for e in existing if e.status != "Decommissioned"]
@@ -95,7 +98,26 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     if not ids: return {"status": "no_op"}
     
     if action == "delete":
+        await db.execute(update(models.Device).where(models.Device.id.in_(ids)).values(is_deleted=True))
+    elif action == "purge":
         await db.execute(delete(models.Device).where(models.Device.id.in_(ids)))
+    elif action == "restore":
+        # Conflicts check before restore
+        res = await db.execute(select(models.Device).where(models.Device.id.in_(ids)))
+        to_restore = res.scalars().all()
+        
+        restored_ids, conflict_ids = [], []
+        for d in to_restore:
+            # Check if name conflict exists in active inventory
+            dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id))
+            if dup_res.scalars().first():
+                conflict_ids.append(d.id)
+            else:
+                d.is_deleted = False
+                restored_ids.append(d.id)
+        
+        await db.commit()
+        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
     elif action == "update":
         clean_update = filter_valid_columns(models.Device, payload)
         if clean_update:

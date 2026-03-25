@@ -137,15 +137,26 @@ function MainLayout() {
     <div className="flex h-screen overflow-hidden bg-[#020617] text-slate-100 font-sans">
       <Toaster position="top-right" />
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-white/5 flex flex-col z-20 shadow-2xl relative">
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+        <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+             <div className="w-8 h-8 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <Zap size={20} className="text-white fill-white" />
              </div>
              {isSidebarOpen && <span className="font-black text-lg text-white tracking-tighter uppercase">SYSGRID</span>}
-          </div>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500"><Menu size={18}/></button>
+          </Link>
+          {isSidebarOpen && (
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
+              <Menu size={18}/>
+            </button>
+          )}
         </div>
+        {!isSidebarOpen && (
+          <div className="flex justify-center pb-4">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
+              <Menu size={18}/>
+            </button>
+          </div>
+        )}
         <nav className="flex-1 px-4 space-y-1">
           <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
