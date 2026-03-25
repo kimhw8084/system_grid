@@ -45,7 +45,7 @@ class Rack(Base, BaseMixin):
 
 class Device(Base, BaseMixin):
     __tablename__ = "devices"
-    name = Column(String, index=True, unique=True) # Hostname
+    name = Column(String, index=True) # Hostname (Removed unique)
     system = Column(String, index=True) # Logical System name
     environment = Column(String, default="Production")
     status = Column(String, default="Active")
@@ -53,7 +53,7 @@ class Device(Base, BaseMixin):
     
     manufacturer = Column(String)
     model = Column(String)
-    serial_number = Column(String, unique=True, index=True)
+    serial_number = Column(String, index=True) # Removed unique
     asset_tag = Column(String, index=True)
     part_number = Column(String)
     

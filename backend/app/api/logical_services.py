@@ -91,6 +91,25 @@ async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
+@router.post("/bulk-action")
+async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    action = data.get("action")
+    payload = data.get("payload", {})
+    if not ids: return {"status": "no_op"}
+    
+    if action == "delete":
+        await db.execute(delete(models.LogicalService).where(models.LogicalService.id.in_(ids)))
+    elif action == "update":
+        # Filter valid columns for LogicalService
+        valid_keys = {c.name for c in models.LogicalService.__table__.columns}
+        clean_update = {k: v for k, v in payload.items() if k in valid_keys}
+        if clean_update:
+            await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(**clean_update))
+    
+    await db.commit()
+    return {"status": "success"}
+
 @router.post("/{service_id}/mount/{device_id}")
 async def mount_service(service_id: int, device_id: int, db: AsyncSession = Depends(get_db)):
     svc_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))

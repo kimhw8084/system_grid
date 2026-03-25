@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Database, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw } from "lucide-react"
 import { Toaster } from "react-hot-toast"
 
 import Dashboard from "./components/Dashboard"
@@ -13,32 +13,32 @@ import Intelligence from "./components/Intelligence"
 import AuditLogs from "./components/AuditLogs"
 import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
-import IPAM from "./components/IPAM"
 import Maintenance from "./components/Maintenance"
 
-const APP_VERSION = "v1.2.1-PRESIDENTIAL"
+const APP_VERSION = "1.2.2"
 const PATCH_HISTORY = [
   {
-    version: "v1.2.1-PRESIDENTIAL",
+    version: "1.2.2",
     date: "2026-03-25",
     changes: [
-      { type: "FIXED", text: "Rack View 'devices is not defined' reference error" },
-      { type: "FIXED", text: "Asset addition 400 Bad Request (os_name requirement removed)" },
-      { type: "FIXED", text: "IPAM View and Settings View backend integration" },
-      { type: "FIXED", text: "Navigation bar icons visibility and highlight when collapsed" },
-      { type: "NEW", text: "Traceback expansion in Global Error Boundary" },
-      { type: "IMPROVED", text: "Rack View visualization with brighter slot colors" },
-      { type: "IMPROVED", text: "Logical Service Matrix styled to match Asset Grid" }
+      { type: "IMPROVED", text: "Global UI optimization and performance pass" },
+      { type: "FIXED", text: "Removed restrictive unique constraints on assets" },
+      { type: "FIXED", text: "DateTime handling for asset edits (SQLite compatibility)" },
+      { type: "NEW", text: "Dual-mode metadata editor (Table & JSON modes)" },
+      { type: "NEW", text: "Comprehensive Bulk Actions for Assets and Services" },
+      { type: "FIXED", text: "Decommissioned view filtering logic" },
+      { type: "IMPROVED", text: "Tabbed Settings interface with dynamic configuration" },
+      { type: "FIXED", text: "Network Fabric port display and persistence" },
+      { type: "IMPROVED", text: "Visual identity: Added System Grid Icon" }
     ]
   },
   {
-    version: "v1.2.0-PRESIDENTIAL",
-    date: "2026-03-10",
+    version: "1.2.1",
+    date: "2026-03-25",
     changes: [
-      { type: "FIXED", text: "Sidebar navigation collapse logic (Labels removed on hide)" },
-      { type: "FIXED", text: "Rack Mounting Modal crash (Removed blank page redirect)" },
-      { type: "NEW", text: "Global Error Boundary (Uncrashable Kernel)" },
-      { type: "FIXED", text: "Backend keyword mapping for HW and Credentials" }
+      { type: "FIXED", text: "Rack View 'devices is not defined' reference error" },
+      { type: "FIXED", text: "Asset addition 400 Bad Request" },
+      { type: "FIXED", text: "Navigation bar icon visibility when collapsed" }
     ]
   }
 ]
@@ -138,7 +138,12 @@ function MainLayout() {
       <Toaster position="top-right" />
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-white/5 flex flex-col z-20 shadow-2xl relative">
         <div className="p-6 flex items-center justify-between">
-          {isSidebarOpen && <span className="font-black text-lg text-white tracking-tighter uppercase">SYSGRID</span>}
+          <div className="flex items-center space-x-3">
+             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Zap size={20} className="text-white fill-white" />
+             </div>
+             {isSidebarOpen && <span className="font-black text-lg text-white tracking-tighter uppercase">SYSGRID</span>}
+          </div>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500"><Menu size={18}/></button>
         </div>
         <nav className="flex-1 px-4 space-y-1">
@@ -147,7 +152,6 @@ function MainLayout() {
           <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Database} label="IPAM" path="/ipam" active={location.pathname === "/ipam"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
         </nav>
         <div className="p-4 border-t border-white/5 text-center opacity-30">
@@ -168,7 +172,6 @@ function MainLayout() {
                 <Route path="/assets" element={<AssetGrid />} />
                 <Route path="/services" element={<ServiceRegistry />} />
                 <Route path="/network" element={<NetworkFabric />} />
-                <Route path="/ipam" element={<IPAM />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
@@ -177,7 +180,7 @@ function MainLayout() {
         </div>
         <footer className="h-8 border-t border-white/5 px-8 flex items-center justify-between text-[8px] font-black text-slate-600 uppercase tracking-widest bg-slate-900/20">
            <span>SYSGRID INFRASTRUCTURE COMMAND</span>
-           <span className="text-blue-500">VERSION {APP_VERSION} [UNCRASHABLE-KERNEL]</span>
+           <span className="text-blue-500">VERSION {APP_VERSION}</span>
         </footer>
       </main>
       <AnimatePresence>{showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}</AnimatePresence>

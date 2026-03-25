@@ -9,6 +9,7 @@ router = APIRouter(prefix="/devices", tags=["Devices"])
 
 def parse_iso_date(val):
     if not val: return None
+    if isinstance(val, datetime): return val
     try: return datetime.fromisoformat(val.replace("Z", "+00:00"))
     except: return None
 
@@ -21,13 +22,17 @@ async def get_devices(include_decommissioned: bool = False, db: AsyncSession = D
     query = select(models.Device)
     if not include_decommissioned:
         query = query.filter(models.Device.status != "Decommissioned")
+    else:
+        # Show only decommissioned if this flag is true (used for Decom view)
+        query = query.filter(models.Device.status == "Decommissioned")
+    
     result = await db.execute(query)
     devices = result.scalars().all()
     
     final_devices = []
     for d in devices:
         loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == d.id))
-        loc = loc_res.scalar_one_or_none()
+        loc = loc_res.scalars().first()
         rack_name, site_name, u_start = None, "Unplaced", None
         if loc:
             rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == loc.rack_id))
@@ -57,8 +62,8 @@ async def create_device(data: dict, force: bool = False, db: AsyncSession = Depe
     existing = dup_res.scalars().all()
     if existing:
         active = [e for e in existing if e.status != "Decommissioned"]
-        if active: raise HTTPException(409, "ACTIVE_DUPLICATE")
-        if not force: raise HTTPException(409, "WARN_DECOMMISSIONED")
+        if active: raise HTTPException(409, "DUPLICATE_HOSTNAME_ACTIVE")
+        if not force: raise HTTPException(409, "WARN_EXISTING_DECOMMISSIONED")
 
     clean_data = filter_valid_columns(models.Device, data)
     for date_f in ["purchase_date", "install_date", "warranty_end", "eol_date"]:
@@ -82,6 +87,23 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
             setattr(db_device, k, v)
     await db.commit(); return db_device
 
+@router.post("/bulk-action")
+async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    action = data.get("action")
+    payload = data.get("payload", {})
+    if not ids: return {"status": "no_op"}
+    
+    if action == "delete":
+        await db.execute(delete(models.Device).where(models.Device.id.in_(ids)))
+    elif action == "update":
+        clean_update = filter_valid_columns(models.Device, payload)
+        if clean_update:
+            await db.execute(update(models.Device).where(models.Device.id.in_(ids)).values(**clean_update))
+    
+    await db.commit()
+    return {"status": "success"}
+
 @router.get("/{device_id}/hardware")
 async def get_hardware(device_id: int, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.HardwareComponent).filter(models.HardwareComponent.device_id == device_id))
@@ -89,6 +111,8 @@ async def get_hardware(device_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{device_id}/hardware")
 async def add_hardware(device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    # Audit: Ensure data is not empty
+    if not data or not any(data.values()): raise HTTPException(400, "Empty hardware data")
     clean = filter_valid_columns(models.HardwareComponent, data)
     comp = models.HardwareComponent(device_id=device_id, **clean)
     db.add(comp); await db.commit(); return comp
@@ -100,9 +124,24 @@ async def get_secrets(device_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{device_id}/secrets")
 async def add_secret(device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    if not data or not data.get("secret_type"): raise HTTPException(400, "Secret type required")
     clean = filter_valid_columns(models.SecretVault, data)
     sec = models.SecretVault(device_id=device_id, **clean)
     db.add(sec); await db.commit(); return sec
+
+@router.get("/{device_id}/relationships")
+async def get_relationships(device_id: int, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.DeviceRelationship).filter(models.DeviceRelationship.source_device_id == device_id))
+    return res.scalars().all()
+
+@router.post("/{device_id}/relationships")
+async def add_relationship(device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    target_id = data.get("target_device_id")
+    if not target_id: raise HTTPException(400, "Target device ID required")
+    if int(target_id) == device_id: raise HTTPException(400, "Cannot link server to itself")
+    clean = filter_valid_columns(models.DeviceRelationship, data)
+    rel = models.DeviceRelationship(source_device_id=device_id, **clean)
+    db.add(rel); await db.commit(); return rel
 
 @router.delete("/{resource}/{id}")
 async def delete_resource(resource: str, id: int, db: AsyncSession = Depends(get_db)):

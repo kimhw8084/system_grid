@@ -1,460 +1,281 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, Key, X, Save, Monitor, RefreshCcw, Edit2, Archive, ArrowLeftRight, Server, Link, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-alpine.css'
+import toast from 'react-hot-toast'
 
-// ----------------------
-// EXTENSION MODALS (HW/SW/CREDS/RELATIONS)
-// ----------------------
-const ExtensionModal = ({ title, icon: Icon, color, deviceId, resourceType, onClose }: any) => {
+const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
+  const [mode, setMode] = useState<'table' | 'json'>('table')
+  const [tableRows, setTableRows] = useState(() => {
+    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    return Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
+  })
+  const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
+
+  useEffect(() => {
+    if (mode === 'table') {
+      const obj: any = {}
+      tableRows.forEach(r => { if (r.key) obj[r.key] = r.value })
+      onChange(obj)
+    } else {
+      try { onChange(JSON.parse(jsonValue)) } catch (e) {}
+    }
+  }, [tableRows, jsonValue, mode])
+
+  return (
+    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+         <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Payload</span>
+         <div className="flex bg-black/40 rounded-lg p-1">
+            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
+            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+         </div>
+      </div>
+      <div className="p-4 min-h-[120px]">
+        {mode === 'table' ? (
+          <div className="space-y-2">
+            {tableRows.map((row, i) => (
+              <div key={i} className="flex items-center space-x-2">
+                <input value={row.key} onChange={e => {
+                  const n = [...tableRows]; n[i].key = e.target.value; setTableRows(n)
+                }} placeholder="Key" className="flex-1 bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500" />
+                <input value={row.value} onChange={e => {
+                  const n = [...tableRows]; n[i].value = e.target.value; setTableRows(n)
+                }} placeholder="Values (comma-sep)" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
+                <button onClick={() => setTableRows(tableRows.filter((_, idx) => idx !== i))} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
+              </div>
+            ))}
+            <button onClick={() => setTableRows([...tableRows, { key: '', value: '' }])} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
+          </div>
+        ) : (
+          <textarea value={jsonValue} onChange={e => setJsonValue(e.target.value)} className="w-full h-32 bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none" />
+        )}
+      </div>
+    </div>
+  )
+}
+
+const MetadataViewer = ({ data }: { data: any }) => {
+  const obj = typeof data === 'string' ? JSON.parse(data || '{}') : (data || {})
+  return (
+    <div className="p-6 space-y-4">
+      <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {Object.entries(obj).map(([k, v]) => (
+          <div key={k} className="bg-white/5 border border-white/5 p-3 rounded-xl">
+             <span className="text-[8px] font-black uppercase text-slate-500 block mb-1">{k}</span>
+             <span className="text-[10px] font-bold text-slate-200">{String(v)}</span>
+          </div>
+        ))}
+        {Object.keys(obj).length === 0 && <p className="col-span-2 text-[10px] font-bold text-slate-600 uppercase text-center py-4 italic">No additional payload data</p>}
+      </div>
+    </div>
+  )
+}
+
+export default function AssetGrid() {
   const queryClient = useQueryClient()
-  const [formData, setFormData] = useState<any>({})
-  
-  const { data, isLoading } = useQuery({
-    queryKey: ['expansion', resourceType, deviceId],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/devices/${deviceId}/${resourceType}`)
-      if (!res.ok) return []
+  const [activeTab, setActiveTab] = useState<'inventory' | 'decommissioned'>('inventory')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [activeModal, setActiveModal] = useState<any>(null)
+  const [viewMetadata, setViewMetadata] = useState<any>(null)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
+
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
+  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+
+  const { data: assets, isLoading } = useQuery({ 
+    queryKey: ['assets', activeTab], 
+    queryFn: async () => (await fetch(`/api/v1/devices/?include_decommissioned=${activeTab === 'decommissioned'}`)).json() 
+  })
+
+  const mutation = useMutation({
+    mutationFn: async ({ data, force = false }: any) => {
+      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/?force=${force}`
+      const method = data.id ? 'PUT' : 'POST'
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      if (res.status === 409) {
+        const err = await res.json()
+        if (err.detail === 'DUPLICATE_HOSTNAME_ACTIVE') throw new Error('DUPLICATE_ACTIVE')
+        if (err.detail === 'WARN_EXISTING_DECOMMISSIONED') throw new Error('WARN_DECOM')
+      }
+      if (!res.ok) throw new Error('Failed to commit asset')
       return res.json()
+    },
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      toast.success('System Registry Updated')
+      setActiveModal(null)
+    },
+    onError: (e: any) => {
+      if (e.message === 'DUPLICATE_ACTIVE') toast.error('ERROR: Hostname is currently ACTIVE in registry')
+      else if (e.message === 'WARN_DECOM') {
+        if (confirm('A decommissioned entry with this hostname exists. Reuse identity?')) {
+          mutation.mutate({ data: activeModal, force: true })
+        }
+      } else toast.error(e.message)
     }
   })
 
-  const { data: allDevices } = useQuery({
-    queryKey: ['devices'],
-    queryFn: async () => (await fetch('/api/v1/devices/')).json(),
-    enabled: resourceType === 'relationships'
-  })
-
-  const addMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const res = await fetch(`/api/v1/devices/${deviceId}/${resourceType}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, payload = {} }: any) => {
+      const res = await fetch('/api/v1/devices/bulk-action', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ ids: selectedIds, action, payload }) 
       })
-      if(!res.ok) throw new Error("Add failed")
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expansion', resourceType, deviceId] })
-      setFormData({})
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      setSelectedIds([])
+      setShowBulkMenu(false)
+      toast.success('Bulk Operation Complete')
     }
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/${resourceType}/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expansion', resourceType, deviceId] })
-  })
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] p-6 rounded-2xl space-y-4 flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between pb-2 border-b border-white/5">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 rounded-lg bg-${color}-500/10`}><Icon size={18} className={`text-${color}-400`} /></div>
-            <h2 className="text-lg font-black uppercase tracking-tighter">{title} Registry</h2>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
-        </div>
-
-        {/* Dynamic Form */}
-        <div className="bg-slate-900/40 p-3 rounded-xl border border-white/5 space-y-3">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Register New Component</h3>
-           <div className="flex flex-wrap gap-2">
-              {resourceType === 'hardware' && (
-                <>
-                  <select value={formData.category || ''} onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-blue-500/50">
-                    <option value="">Type...</option><option>CPU</option><option>Memory</option><option>Card</option><option>SSD</option><option>HDD</option><option>NIC</option>
-                  </select>
-                  <input placeholder="Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Manufacturer" value={formData.manufacturer || ''} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Spec (e.g. 64GB)" value={formData.capacity || ''} onChange={e => setFormData({...formData, capacity: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input type="number" placeholder="Count" value={formData.quantity || ''} onChange={e => setFormData({...formData, quantity: parseInt(e.target.value)})} className="w-16 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                </>
-              )}
-              {resourceType === 'software' && (
-                <>
-                  <select value={formData.category || ''} onChange={e => setFormData({...formData, category: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-emerald-500/50">
-                    <option value="">Category...</option><option>OS</option><option>Database</option><option>Agent</option><option>Web Server</option><option>Utility</option><option>Driver</option><option>Metrology Tool</option>
-                  </select>
-                  <input placeholder="Name" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Version" value={formData.version || ''} onChange={e => setFormData({...formData, version: e.target.value})} className="w-24 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Purpose" value={formData.purpose || ''} onChange={e => setFormData({...formData, purpose: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input type="date" value={formData.install_date || ''} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-32 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                </>
-              )}
-              {resourceType === 'secrets' && (
-                <>
-                  <select value={formData.credential_type || ''} onChange={e => setFormData({...formData, credential_type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-amber-500/50">
-                    <option value="">Type...</option><option>SSH</option><option>IPMI</option><option>Root</option><option>Database</option><option>API Key</option><option>LDAP Bind</option>
-                  </select>
-                  <input placeholder="Username" value={formData.username || ''} onChange={e => setFormData({...formData, username: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Password / Key" value={formData.encrypted_payload || ''} type="password" onChange={e => setFormData({...formData, encrypted_payload: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Notes" value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                </>
-              )}
-              {resourceType === 'relationships' && (
-                <>
-                  <select value={formData.target_id || ''} onChange={e => setFormData({...formData, target_id: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
-                    <option value="">Target Device...</option>{allDevices?.map((d:any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                  <select value={formData.type || ''} onChange={e => setFormData({...formData, type: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none">
-                    <option value="">Relation Type...</option><option>VM Host</option><option>HA Pair</option><option>Replication</option><option>Load Balancer</option><option>Database Cluster</option>
-                  </select>
-                  <input placeholder="Source Role" value={formData.source_role || ''} onChange={e => setFormData({...formData, source_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                  <input placeholder="Target Role" value={formData.target_role || ''} onChange={e => setFormData({...formData, target_role: e.target.value})} className="flex-1 bg-slate-950 border border-white/10 rounded px-2 py-1 text-xs outline-none" />
-                </>
-              )}
-           </div>
-           <button onClick={() => addMutation.mutate(formData)} className={`w-full py-1.5 bg-${color}-600/20 text-${color}-400 border border-${color}-500/30 rounded text-[10px] font-black uppercase tracking-widest hover:bg-${color}-500/30 transition-all`}>+ Register Entry</button>
-        </div>
-
-        {/* Table View */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-xl bg-[#020617]">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900 sticky top-0 border-b border-white/10 text-[9px] uppercase text-slate-500 z-10">
-              <tr>
-                {resourceType === 'hardware' && <><th className="p-2">Type</th><th className="p-2">Name</th><th className="p-2">Spec</th><th className="p-2">Count</th></>}
-                {resourceType === 'software' && <><th className="p-2">Category</th><th className="p-2">Name</th><th className="p-2">Version</th><th className="p-2">Purpose</th></>}
-                {resourceType === 'secrets' && <><th className="p-2">Type</th><th className="p-2">Username</th><th className="p-2">Secret</th><th className="p-2">Notes</th></>}
-                {resourceType === 'relationships' && <><th className="p-2">Type</th><th className="p-2">Target</th><th className="p-2">Source Role</th><th className="p-2">Target Role</th></>}
-                <th className="p-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {data?.map((item: any) => (
-                <tr key={item.id} className="hover:bg-white/5">
-                  {resourceType === 'hardware' && <td className="p-2 font-bold">{item.category}</td>}
-                  {resourceType === 'hardware' && <td className="p-2">{item.name || item.model}</td>}
-                  {resourceType === 'hardware' && <td className="p-2 font-mono text-slate-400">{item.capacity || item.specs}</td>}
-                  {resourceType === 'hardware' && <td className="p-2">{item.quantity}</td>}
-                  
-                  {resourceType === 'software' && <td className="p-2 font-bold">{item.category}</td>}
-                  {resourceType === 'software' && <td className="p-2">{item.name}</td>}
-                  {resourceType === 'software' && <td className="p-2 font-mono text-slate-400">v{item.version}</td>}
-                  {resourceType === 'software' && <td className="p-2">{item.purpose}</td>}
-                  
-                  {resourceType === 'secrets' && <td className="p-2 font-bold">{item.credential_type}</td>}
-                  {resourceType === 'secrets' && <td className="p-2 font-mono">{item.username}</td>}
-                  {resourceType === 'secrets' && (
-                    <td className="p-2 group/secret cursor-pointer">
-                      <span className="font-mono text-slate-500 group-hover/secret:hidden">••••••••</span>
-                      <span className="font-mono text-amber-400 hidden group-hover/secret:inline">{item.encrypted_payload}</span>
-                    </td>
-                  )}
-                  {resourceType === 'secrets' && <td className="p-2 text-slate-500 italic">{item.notes}</td>}
-                  
-                  {resourceType === 'relationships' && <td className="p-2 font-bold text-indigo-400">{item.relationship_type || item.type}</td>}
-                  {resourceType === 'relationships' && <td className="p-2 font-bold text-blue-100">{item.target_name}</td>}
-                  {resourceType === 'relationships' && <td className="p-2 text-slate-400">{item.source_role}</td>}
-                  {resourceType === 'relationships' && <td className="p-2 text-slate-400">{item.target_role}</td>}
-                  
-                  <td className="p-2 text-right">
-                    <button onClick={() => deleteMutation.mutate(item.id)} className="text-slate-500 hover:text-rose-400"><Trash2 size={14}/></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {(!isLoading && (!data || data.length === 0)) && <p className="text-center py-8 text-[10px] text-slate-600 uppercase font-black tracking-widest">No Records Registered</p>}
-        </div>
-      </motion.div>
-    </div>
-  )
-}
-
-// ----------------------
-// PROVISION / MODIFY MODAL
-// ----------------------
-const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }) => {
-  const queryClient = useQueryClient()
-  const [formData, setFormData] = useState(asset || { 
-    name: '', system: '', model: '', manufacturer: '', os_name: '', os_version: '', type: 'Physical', status: 'Active', environment: 'Production',
-    serial_number: '', asset_tag: '', power_max_w: 0, power_typical_w: 0, 
-    owner: '', vendor: '', purchase_order: '', business_unit: '', management_ip: '', metadata_json: '{}'
-  })
-  const [warnDecom, setWarnDecom] = useState(false)
-
-  const mutation = useMutation({
-    mutationFn: async ({ data, force = false }: { data: any, force?: boolean }) => {
-      let metadata = {};
-      try {
-        if (typeof data.metadata_json === 'string') {
-          metadata = JSON.parse(data.metadata_json.trim() || '{}')
-        } else {
-          metadata = data.metadata_json || {}
-        }
-      } catch { throw new Error('Metadata must be valid JSON') }
-
-      const url = asset ? `/api/v1/devices/${asset.id}` : `/api/v1/devices/?force=${force}`
-      const method = asset ? 'PUT' : 'POST'
-      const res = await fetch(url, { 
-        method, 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({...data, metadata_json: metadata}) 
-      })
-      
-      if (res.status === 409 && !asset) {
-        const err = await res.json()
-        if (err.detail.includes('WARN_DECOMMISSIONED')) {
-          setWarnDecom(true)
-          throw new Error('DECOM_WARNING')
-        }
-      }
-      
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Operation failed') }
-      return res.json()
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); onClose() },
-    onError: (err: any) => { if (err.message !== 'DECOM_WARNING') toast.error(`CRITICAL FAILURE: ${err.message}`, { duration: 10000, position: "top-center" }) }
-  })
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-8 rounded-[30px] space-y-6 custom-scrollbar">
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
-           <h2 className="text-xl font-black uppercase tracking-tighter flex items-center space-x-3 text-blue-400">
-              <Monitor size={24} /><span>{asset ? 'Modify Asset Registry' : 'Provision New Entity'}</span>
-           </h2>
-           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
-        </div>
-
-        {warnDecom && (
-          <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-start space-x-4">
-             <AlertTriangle className="text-amber-500 flex-shrink-0" />
-             <div className="space-y-2">
-                <p className="text-xs text-amber-200 font-bold uppercase tracking-tight">Decommissioned Asset Detected</p>
-                <p className="text-[10px] text-amber-400/80">An asset with this Hostname or Serial Number exists in the Decommissioned History. Confirming will create a new instance.</p>
-                <button onClick={() => mutation.mutate({ data: formData, force: true })} className="px-4 py-1.5 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg">Confirm & Provision</button>
-             </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
-           <div className="col-span-3"><h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] bg-white/5 py-1 px-2 rounded">Core Identity</h3></div>
-           <div className="col-span-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Hostname *</label>
-             <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none focus:border-blue-500" />
-           </div>
-           <div className="col-span-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Serial Number</label>
-             <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
-           </div>
-           <div className="col-span-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Asset Tag</label>
-             <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
-           </div>
-
-           <div className="col-span-3"><h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] bg-white/5 py-1 px-2 rounded mt-2">Classification & System</h3></div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Type</label>
-             <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none">
-               <option>Physical</option><option>Virtual</option><option>Storage</option><option>Switch</option><option>Router</option><option>Firewall</option><option>Appliance</option>
-             </select>
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Status</label>
-             <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none">
-               <option>Planned</option><option>Active</option><option>Maintenance</option><option>Decommissioned</option><option>Offline</option>
-             </select>
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Environment</label>
-             <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none">
-               <option>Production</option><option>QA</option><option>Dev</option><option>DR</option>
-             </select>
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Logical System *</label>
-             <input value={formData.system} onChange={e => setFormData({...formData, system: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Management IP (iLO)</label>
-             <input value={formData.management_ip} onChange={e => setFormData({...formData, management_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none font-mono" />
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">OS (Name / Version)</label>
-             <div className="flex space-x-1 mt-1">
-               <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-               <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="22.04" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-             </div>
-           </div>
-
-           <div className="col-span-3"><h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] bg-white/5 py-1 px-2 rounded mt-2">Hardware & Procurement</h3></div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Manufacturer / Model</label>
-             <div className="flex space-x-1 mt-1">
-               <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-               <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-             </div>
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Owner / Business Unit *</label>
-             <div className="flex space-x-1 mt-1">
-               <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="IT-Ops" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-               <input value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} placeholder="Metrology" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-             </div>
-           </div>
-           <div>
-             <label className="text-[9px] font-black text-slate-400 uppercase">Vendor / PO</label>
-             <div className="flex space-x-1 mt-1">
-               <input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} placeholder="CDW" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-               <input value={formData.purchase_order} onChange={e => setFormData({...formData, purchase_order: e.target.value})} placeholder="PO-99" className="w-1/2 bg-slate-900 border border-white/10 rounded px-2 py-2 text-xs outline-none" />
-             </div>
-           </div>
-           
-           <div className="col-span-3">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Metadata (JSON Custom Fields)</label>
-             <textarea value={typeof formData.metadata_json === 'string' ? formData.metadata_json : JSON.stringify(formData.metadata_json || {})} onChange={e => setFormData({...formData, metadata_json: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none font-mono min-h-[60px]" placeholder="{}" />
-           </div>
-        </div>
-
-        <button onClick={() => { if(!formData.name || !formData.system || !formData.owner || !formData.business_unit) alert('Hostname, Logical System, and Owner/BU are required'); else mutation.mutate({ data: formData }) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
-      </motion.div>
-    </div>
-  )
-}
-
-// ----------------------
-// MAIN ASSET GRID
-// ----------------------
-export default function AssetGrid() {
-  const queryClient = useQueryClient()
-  const [activeExpansion, setActiveExpansion] = useState<any>(null)
-  const [activeProvision, setActiveProvision] = useState<any>(null)
-  const [viewState, setViewState] = useState<'Active' | 'Decommissioned'>('Active')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-
-  const { data: devices, isLoading } = useQuery({ 
-    queryKey: ['devices', viewState], 
-    queryFn: async () => (await fetch(`/api/v1/devices/?include_decommissioned=${viewState === 'Decommissioned'}`)).json()
-  })
-
-  const displayData = useMemo(() => devices || [], [devices])
-
-  const deleteDevice = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); setSelectedIds([]) }
-  })
-
-  const bulkDelete = useMutation({
-    mutationFn: async () => fetch(`/api/v1/devices/bulk-delete`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids: selectedIds }) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); setSelectedIds([]) }
-  })
-
-  const bulkRestore = useMutation({
-    mutationFn: async () => fetch(`/api/v1/devices/bulk-restore`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids: selectedIds }) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); setSelectedIds([]) }
   })
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: '', width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', suppressMenu: true },
-    { field: 'name', headerName: 'Hostname', width: 140, filter: true, pinned: 'left', cellClass: 'font-bold text-blue-100' },
-    { field: 'system', headerName: 'Logical System *', width: 130, filter: true },
+    { field: "id", headerName: "", width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left' },
     { 
-      field: 'status', 
-      headerName: 'Status', 
-      width: 110, 
-      cellRenderer: (params: any) => {
-        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Maintenance: 'text-amber-400 border-amber-500/30', Offline: 'text-rose-400 border-rose-500/30', Planned: 'text-blue-400 border-blue-500/30', Decommissioned: 'text-slate-400 border-slate-500/30' }
-        return <div className="flex items-center h-full"><div className={`px-1.5 rounded border text-[8px] font-black uppercase tracking-widest leading-tight ${colors[params.value] || 'text-slate-400 border-slate-500/30'}`}>{params.value}</div></div>
+      field: "name", 
+      headerName: "Hostname", 
+      flex: 1, 
+      pinned: 'left',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center space-x-2 h-full font-bold text-blue-400">
+           <LayoutGrid size={12} className="opacity-50" />
+           <span>{p.value}</span>
+        </div>
+      )
+    },
+    { field: "system", headerName: "System", width: 150 },
+    { 
+      field: "type", 
+      headerName: "Type", 
+      width: 100,
+      cellRenderer: (p: any) => {
+        const colors: any = { Physical: 'text-emerald-400', Virtual: 'text-blue-400', Storage: 'text-amber-400', Switch: 'text-rose-400' }
+        return <span className={`font-black uppercase text-[9px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       }
     },
-    { field: 'type', headerName: 'Type', width: 100, filter: true },
-    { field: 'model', headerName: 'Model', width: 110, filter: true },
-    { field: 'os_name', headerName: 'OS', width: 110, filter: true },
-    { field: 'serial_number', headerName: 'SN', width: 120, filter: true, cellClass: 'font-mono text-slate-400' },
-    { field: 'asset_tag', headerName: 'Asset Tag', width: 100, filter: true, cellClass: 'font-mono text-slate-400' },
-    { field: 'management_ip', headerName: 'MGMT IP', width: 110, filter: true, cellClass: 'font-mono text-indigo-300' },
-    { field: 'site_name', headerName: 'Site', width: 110, filter: true },
-    { field: 'rack_name', headerName: 'Rack', width: 100, filter: true },
-    { field: 'u_start', headerName: 'U-Loc', width: 70, filter: true, valueFormatter: (p:any) => p.value ? `U${p.value}` : '-' },
+    { field: "status", headerName: "Status", width: 110 },
+    { field: "site_name", headerName: "Site", width: 120 },
+    { field: "rack_name", headerName: "Rack", width: 100 },
+    { field: "u_start", headerName: "U", width: 60, cellClass: "font-mono" },
+    { field: "owner", headerName: "Owner", width: 130 },
     {
-      headerName: 'Operations',
-      width: 220,
-      suppressMovable: true,
+      headerName: "Payload",
+      width: 80,
+      cellRenderer: (p: any) => (
+        <button onClick={() => setViewMetadata(p.data.metadata_json)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all"><FileJson size={14}/></button>
+      )
+    },
+    {
+      headerName: "Ops",
+      width: 100,
       pinned: 'right',
-      cellRenderer: (params: any) => (
-        <div className="flex items-center space-x-1.5 h-full">
-          <button onClick={() => setActiveExpansion({ type: 'hardware', deviceId: params.data.id })} title="Hardware" className="p-1 text-blue-400 hover:bg-blue-500/20 rounded transition-colors"><Cpu size={14}/></button>
-          
-          <button onClick={() => setActiveExpansion({ type: 'secrets', deviceId: params.data.id })} title="Credentials" className="p-1 text-amber-400 hover:bg-amber-500/20 rounded transition-colors"><Key size={14}/></button>
-          <button onClick={() => setActiveExpansion({ type: 'relationships', deviceId: params.data.id })} title="Relations" className="p-1 text-indigo-400 hover:bg-indigo-500/20 rounded transition-colors"><Link size={14}/></button>
-          <div className="w-px h-3 bg-white/10 mx-1" />
-          <button onClick={() => setActiveProvision(params.data)} title="Edit" className="p-1 text-slate-400 hover:bg-white/10 rounded transition-colors"><Edit2 size={14}/></button>
-          {viewState === 'Active' && <button onClick={() => { if(confirm('Soft-delete asset?')) deleteDevice.mutate(params.data.id) }} title="Decommission" className="p-1 text-rose-400 hover:bg-rose-500/20 rounded transition-colors"><Trash2 size={14}/></button>}
+      cellRenderer: (p: any) => (
+        <div className="flex items-center space-x-1 h-full">
+           <button onClick={() => setActiveModal(p.data)} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={14}/></button>
+           <button onClick={() => { if(confirm('Purge this asset from registry?')) bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) }} className="p-1.5 hover:bg-white/5 text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
         </div>
       )
     }
-  ], [deleteDevice, viewState])
+  ], [selectedIds])
 
   return (
-    <div className="h-full flex flex-col space-y-4 relative">
+    <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-black tracking-tight uppercase">Asset Registry</h1>
-          <div className="flex bg-slate-900/50 rounded-lg p-1 border border-white/5">
-            <button onClick={() => { setViewState('Active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest ${viewState === 'Active' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Active Grid</button>
-            <button onClick={() => { setViewState('Decommissioned'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 ${viewState === 'Decommissioned' ? 'bg-rose-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Archive size={12}/><span>Decommissioned History</span>
-            </button>
-          </div>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">System Registry</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical & Virtual Infrastructure Matrix</p>
+           </div>
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+              <button onClick={() => setActiveTab('inventory')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Inventory</button>
+              <button onClick={() => setActiveTab('decommissioned')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'decommissioned' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Decommissioned</button>
+           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {selectedIds.length > 0 && viewState === 'Active' && (
-            <button onClick={() => { if(confirm(`Decommission ${selectedIds.length} assets?`)) bulkDelete.mutate() }} className="px-4 py-2 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/20">Bulk Decommission</button>
-          )}
-          {selectedIds.length > 0 && viewState === 'Decommissioned' && (
-            <button onClick={() => { if(confirm(`Restore ${selectedIds.length} assets?`)) bulkRestore.mutate() }} className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20">Restore Assets</button>
-          )}
-          {viewState === 'Active' && (
-            <button onClick={() => setActiveProvision({})} className="px-6 py-2 bg-[#034EA2] text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-              + Provision Entity
-            </button>
-          )}
+          <div className="relative">
+             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH MATRIX..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+          </div>
+          
+          <div className="relative">
+            <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-2 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+            <AnimatePresence>
+              {showBulkMenu && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
+                   <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
+                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Active' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Active</button>
+                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Maintenance' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Maintenance</button>
+                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Decommissioned' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-rose-400 transition-all">Decommission</button>
+                   <div className="h-px bg-white/5 mx-2 my-1" />
+                   <button onClick={() => { if(confirm(`Purge ${selectedIds.length} assets permanently?`)) bulkMutation.mutate({ action: 'delete' }) }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Purge</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
         </div>
       </div>
 
-      <div className="flex-1 glass-panel rounded-xl overflow-hidden ag-theme-alpine-dark relative">
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
-             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Syncing Matrix...</p>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
+             <RefreshCcw size={32} className="animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Neural Matrix...</p>
           </div>
         )}
-        <AgGridReact
-          rowData={displayData}
-          columnDefs={columnDefs}
-          defaultColDef={{ resizable: true, sortable: true, filter: true }}
+        <AgGridReact 
+          rowData={assets || []} 
+          columnDefs={columnDefs} 
           rowSelection="multiple"
-          animateRows={false}
           headerHeight={28}
           rowHeight={28}
-          onSelectionChanged={(e) => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          quickFilterText={searchTerm}
         />
       </div>
 
       <AnimatePresence>
-        {activeExpansion && (
-          <ExtensionModal 
-            title={activeExpansion.type === 'hardware' ? 'Hardware Inventory' : activeExpansion.type === 'software' ? 'Software Stack' : activeExpansion.type === 'relationships' ? 'Server Relations' : 'Credential Vault'}
-            icon={activeExpansion.type === 'hardware' ? Cpu : activeExpansion.type === 'software' ? Package : activeExpansion.type === 'relationships' ? Link : Key}
-            color={activeExpansion.type === 'hardware' ? 'blue' : activeExpansion.type === 'software' ? 'emerald' : activeExpansion.type === 'relationships' ? 'indigo' : 'amber'}
-            deviceId={activeExpansion.deviceId}
-            resourceType={activeExpansion.type}
-            onClose={() => setActiveExpansion(null)}
-          />
+        {activeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border-blue-500/30 custom-scrollbar">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                     <Package size={28}/> <span>{activeModal.id ? 'Modify System configuration' : 'New Asset Registration'}</span>
+                  </h2>
+                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               
+               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} />
+            </motion.div>
+          </div>
         )}
-        {activeProvision && <ProvisionModal asset={Object.keys(activeProvision).length > 0 ? activeProvision : null} onClose={() => setActiveProvision(null)} />}
       </AnimatePresence>
-      
+
+      <AnimatePresence>
+        {viewMetadata && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-[400px] rounded-[30px] overflow-hidden border-blue-500/20">
+               <div className="flex justify-end p-4 absolute right-0"><button onClick={() => setViewMetadata(null)} className="text-slate-500 hover:text-white"><X size={20}/></button></div>
+               <MetadataViewer data={viewMetadata} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         .ag-theme-alpine-dark {
           --ag-background-color: transparent;
           --ag-header-background-color: rgba(15, 23, 42, 0.9);
           --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f8fafc;
+          --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #94a3b8;
           --ag-font-family: 'Inter', sans-serif;
           --ag-font-size: 10px;
@@ -463,6 +284,275 @@ export default function AssetGrid() {
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; }
         .ag-cell { display: flex; align-items: center; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
       `}</style>
+    </div>
+  )
+}
+
+const HWTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/hardware`)).json() })
+  const [newComp, setNewComp] = useState({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw'] }); setNewComp({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 }) }
+  })
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-hw'] })
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
+         </select>
+         <input value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} placeholder="Component Name" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input value={newComp.specs} onChange={e => setNewComp({...newComp, specs: e.target.value})} placeholder="Specifications" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input type="number" value={newComp.count} onChange={e => setNewComp({...newComp, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Add</button>
+      </div>
+      <div className="space-y-1">
+        {hardware?.map((h: any) => (
+          <div key={h.id} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl hover:bg-white/5 transition-all group">
+             <div className="flex items-center space-x-4">
+                <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md w-12 text-center">{h.category}</span>
+                <span className="text-[11px] font-bold text-slate-200">{h.name}</span>
+                <span className="text-[10px] text-slate-500">{h.specs}</span>
+                <span className="text-[10px] font-mono text-slate-600">x{h.count}</span>
+             </div>
+             <button onClick={() => delMutation.mutate(h.id)} className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1"><Trash2 size={14}/></button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const SecretsTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/secrets`)).json() })
+  const [newSec, setNewSec] = useState({ secret_type: 'Root Password', username: '', encrypted_payload: '' })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); setNewSec({ secret_type: 'Root Password', username: '', encrypted_payload: '' }); toast.success('Credential Secured') }
+  })
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-secrets'] })
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newSec.secret_type} onChange={e => setNewSec({...newSec, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
+         </select>
+         <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Sensitive Value" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Vault Entry</button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {secrets?.map((s: any) => (
+          <div key={s.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-blue-500/20 transition-all">
+             <div className="flex items-center space-x-4">
+                <Key size={16} className="text-amber-400" />
+                <div>
+                   <p className="text-[8px] font-black uppercase text-slate-500">{s.secret_type}</p>
+                   <p className="text-[11px] font-bold text-slate-200">{s.username}</p>
+                </div>
+             </div>
+             <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="p-1.5 hover:bg-white/5 rounded text-slate-500 hover:text-blue-400"><RefreshCcw size={14}/></button>
+                <button onClick={() => delMutation.mutate(s.id)} className="p-1.5 hover:bg-rose-500/10 rounded text-slate-500 hover:text-rose-400"><Trash2 size={14}/></button>
+             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/relationships`)).json() })
+  const [newRel, setNewRel] = useState({ target_device_id: '', relationship_type: 'Depends On', source_role: 'Consumer', target_role: 'Provider' })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/relationships`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); toast.success('Relational Vector Mapped') }
+  })
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-rel'] })
+  })
+
+  const types = [
+    { label: 'Depends On', s: 'Consumer', t: 'Provider' },
+    { label: 'Hosts', s: 'Hypervisor', t: 'Guest' },
+    { label: 'Backs Up', s: 'Source', t: 'Target' },
+    { label: 'Replicates to', s: 'Primary', t: 'Replica' },
+    { label: 'Cluster Member', s: 'Node', t: 'Peer' }
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newRel.target_device_id} onChange={e => setNewRel({...newRel, target_device_id: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option value="">Select Peer Entity...</option>
+            {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
+         </select>
+         <select value={newRel.relationship_type} onChange={e => {
+           const found = types.find(t => t.label === e.target.value)
+           setNewRel({...newRel, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
+         }} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            {types.map(t => <option key={t.label}>{t.label}</option>)}
+         </select>
+         <button onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer"); mutation.mutate(newRel) }} className="bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Establish Vector</button>
+      </div>
+      <div className="space-y-1">
+        {relationships?.map((r: any) => {
+          const peer = devices?.find((d:any) => d.id === r.target_device_id)
+          return (
+            <div key={r.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-indigo-500/20">
+               <div className="flex items-center space-x-6">
+                  <div className="text-center w-20">
+                     <p className="text-[7px] font-black uppercase text-slate-500 mb-0.5">Role</p>
+                     <p className="text-[10px] font-bold text-slate-200">{r.source_role}</p>
+                  </div>
+                  <div className="flex flex-col items-center">
+                     <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-3 py-0.5 rounded-full mb-1">{r.relationship_type}</span>
+                     <ArrowRightLeft size={12} className="text-slate-600" />
+                  </div>
+                  <div className="text-left">
+                     <p className="text-[7px] font-black uppercase text-slate-500 mb-0.5">{r.target_role}</p>
+                     <p className="text-[11px] font-bold text-blue-400">{peer?.name || 'Unknown Entity'}</p>
+                  </div>
+               </div>
+               <button onClick={() => delMutation.mutate(r.id)} className="opacity-0 group-hover:opacity-100 p-2 hover:bg-rose-500/10 rounded-lg text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+const AssetForm = ({ initialData, onSave, options }: any) => {
+  const [activeSubTab, setActiveSubTab] = useState('config')
+  const [formData, setFormData] = useState({ 
+    name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
+    owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
+    metadata_json: {}, ...initialData 
+  })
+
+  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+
+  return (
+    <div className="space-y-6 py-6">
+      <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit mb-4">
+         {['config', 'hardware', 'secrets', 'relations'].map(t => (
+           <button key={t} onClick={() => setActiveSubTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+             {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
+           </button>
+         ))}
+      </div>
+
+      {activeSubTab === 'config' && (
+        <div className="grid grid-cols-3 gap-6">
+          <div className="col-span-1 space-y-4">
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname *</label>
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="SRV-NAME-01" />
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Logical System *</label>
+                <select value={formData.system} onChange={e => setFormData({...formData, system: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+                   <option value="">Select System...</option>
+                   {getOptions('LogicalSystem').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                </select>
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner / BU *</label>
+                <div className="flex space-x-2">
+                   <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} placeholder="BU" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                </div>
+             </div>
+          </div>
+
+          <div className="col-span-1 space-y-4">
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Type</label>
+                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+                   {getOptions('DeviceType').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                   {getOptions('DeviceType').length === 0 && <>
+                      <option>Physical</option><option>Virtual</option><option>Storage</option><option>Switch</option>
+                   </>}
+                </select>
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operational Status</label>
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+                   {getOptions('Status').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                   {getOptions('Status').length === 0 && <>
+                      <option>Planned</option><option>Active</option><option>Maintenance</option><option>Decommissioned</option>
+                   </>}
+                </select>
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Environment</label>
+                <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+                   {getOptions('Environment').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                   {getOptions('Environment').length === 0 && <>
+                      <option>Production</option><option>QA</option><option>Dev</option><option>DR</option>
+                   </>}
+                </select>
+             </div>
+          </div>
+
+          <div className="col-span-1 space-y-4">
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-600 pl-3">Hardware Info</h3>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
+                <div className="flex space-x-2">
+                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                </div>
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Serial Number</label>
+                <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none" />
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Tag</label>
+                <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none" />
+             </div>
+          </div>
+
+          <div className="col-span-3">
+             <MetadataEditor value={formData.metadata_json} onChange={v => setFormData({...formData, metadata_json: v})} />
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Registry entity required before hardware mapping</div>)}
+      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Registry entity required before vault assignment</div>)}
+      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Registry entity required before relational mapping</div>)}
+
+      <div className="flex space-x-4 pt-4 border-t border-white/5">
+        <button onClick={() => { if(!formData.name || !formData.system || !formData.owner) return toast.error("Identity marked with * is mandatory"); onSave({ data: formData }) }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all">
+           Commit Matrix Configuration
+        </button>
+      </div>
     </div>
   )
 }

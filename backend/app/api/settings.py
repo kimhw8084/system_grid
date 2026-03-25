@@ -32,7 +32,7 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
     # Simple check if already initialized
     res = await db.execute(select(models.SettingOption))
-    if res.scalar_one_or_none():
+    if res.scalars().first():
         return {"status": "already_initialized"}
         
     defaults = [

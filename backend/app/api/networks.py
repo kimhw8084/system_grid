@@ -38,12 +38,15 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
             "id": c.id,
             "source_device_id": c.source_device_id,
             "server_a": dev_a.name if dev_a else "Unknown",
+            "source_port": c.source_port,
             "port_a": c.source_port,
             "target_device_id": c.target_device_id,
             "server_b": dev_b.name if dev_b else "Unknown",
+            "target_port": c.target_port,
             "port_b": c.target_port,
-            "speed": f"{c.speed_gbps} Gbps" if c.speed_gbps else "Unknown",
+            "speed": f"{c.speed_gbps} {c.unit}" if c.speed_gbps else "Unknown",
             "speed_gbps": c.speed_gbps,
+            "unit": c.unit,
             "purpose": c.purpose,
             "direction": c.direction,
             "cable_type": c.cable_type
@@ -54,11 +57,12 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
 async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
     conn = models.PortConnection(
         source_device_id=data.get('device_a_id'),
-        source_port=data.get('port_a'),
+        source_port=data.get('source_port') or data.get('port_a'),
         target_device_id=data.get('device_b_id'),
-        target_port=data.get('port_b'),
+        target_port=data.get('target_port') or data.get('port_b'),
         purpose=data.get('purpose'),
         speed_gbps=data.get('speed_gbps'),
+        unit=data.get('unit', 'Gbps'),
         direction=data.get('direction'),
         cable_type=data.get('cable_type')
     )
