@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
+import toast from 'react-hot-toast'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -128,14 +129,14 @@ export default function NetworkFabric() {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Entity</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Entity *</label>
                   <select value={connData.device_a_id} onChange={e => setConnData({...connData, device_a_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
                     <option value="">Select Registry Asset...</option>
                     {devices?.map((d: any) => <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Port</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Port *</label>
                   <input value={connData.source_port} onChange={e => setConnData({...connData, source_port: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" placeholder="eth0" />
                 </div>
                 <div>
@@ -145,26 +146,41 @@ export default function NetworkFabric() {
                   </select>
                 </div>
                 <div className="col-span-2 border-t border-white/5 pt-4">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Entity</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Entity *</label>
                   <select value={connData.device_b_id} onChange={e => setConnData({...connData, device_b_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
                     <option value="">Select Registry Asset...</option>
                     {devices?.map((d: any) => <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Port</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Port *</label>
                   <input value={connData.target_port} onChange={e => setConnData({...connData, target_port: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" placeholder="Te1/1/1" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Link Purpose</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Link Purpose *</label>
                   <select value={connData.purpose} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs">
                     {purposes.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Speed *</label>
+                  <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Unit</label>
+                  <select className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs">
+                    <option>Gbps</option><option>Mbps</option><option>Tbps</option>
                   </select>
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
                 <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-400">Abort</button>
-                <button onClick={() => mutation.mutate(connData)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Link</button>
+                <button onClick={() => {
+                  if(!connData.device_a_id || !connData.source_port || !connData.device_b_id || !connData.target_port || !connData.purpose || !connData.speed_gbps) {
+                    return toast.error("All marked fields are required")
+                  }
+                  mutation.mutate(connData)
+                }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Link</button>
               </div>
             </motion.div>
           </div>

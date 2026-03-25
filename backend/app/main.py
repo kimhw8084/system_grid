@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings, ipam
 
 app = FastAPI(title="SYSGRID Production API")
 
@@ -29,6 +29,8 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(sites.router, prefix="/api/v1")
 app.include_router(maintenance.router, prefix="/api/v1")
 app.include_router(logical_services.router, prefix="/api/v1")
+app.include_router(settings.router, prefix="/api/v1")
+app.include_router(ipam.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():

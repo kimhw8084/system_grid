@@ -49,7 +49,7 @@ async def get_devices(include_decommissioned: bool = False, db: AsyncSession = D
 
 @router.post("/")
 async def create_device(data: dict, force: bool = False, db: AsyncSession = Depends(get_db)):
-    required = ["name", "system", "os_name", "owner", "business_unit"]
+    required = ["name", "system", "owner", "business_unit"]
     for f in required:
         if not data.get(f): raise HTTPException(400, f"Field {f} is mandatory")
     

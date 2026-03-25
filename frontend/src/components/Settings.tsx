@@ -63,7 +63,7 @@ export default function SettingsPage() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
-         {sections.map(s => <ConfigSection key={s.category} title={s.title} category={s.category} options={options?.filter((o:any) => o.category === s.category)} />)}
+         {sections.map(s => <ConfigSection key={s.category} title={s.title} category={s.category} options={Array.isArray(options) ? options.filter((o:any) => o.category === s.category) : []} />)}
       </div>
     </div>
   )

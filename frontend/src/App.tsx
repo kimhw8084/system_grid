@@ -16,11 +16,36 @@ import SettingsPage from "./components/Settings"
 import IPAM from "./components/IPAM"
 import Maintenance from "./components/Maintenance"
 
-const APP_VERSION = "v1.2.0-PRESIDENTIAL"
+const APP_VERSION = "v1.2.1-PRESIDENTIAL"
+const PATCH_HISTORY = [
+  {
+    version: "v1.2.1-PRESIDENTIAL",
+    date: "2026-03-25",
+    changes: [
+      { type: "FIXED", text: "Rack View 'devices is not defined' reference error" },
+      { type: "FIXED", text: "Asset addition 400 Bad Request (os_name requirement removed)" },
+      { type: "FIXED", text: "IPAM View and Settings View backend integration" },
+      { type: "FIXED", text: "Navigation bar icons visibility and highlight when collapsed" },
+      { type: "NEW", text: "Traceback expansion in Global Error Boundary" },
+      { type: "IMPROVED", text: "Rack View visualization with brighter slot colors" },
+      { type: "IMPROVED", text: "Logical Service Matrix styled to match Asset Grid" }
+    ]
+  },
+  {
+    version: "v1.2.0-PRESIDENTIAL",
+    date: "2026-03-10",
+    changes: [
+      { type: "FIXED", text: "Sidebar navigation collapse logic (Labels removed on hide)" },
+      { type: "FIXED", text: "Rack Mounting Modal crash (Removed blank page redirect)" },
+      { type: "NEW", text: "Global Error Boundary (Uncrashable Kernel)" },
+      { type: "FIXED", text: "Backend keyword mapping for HW and Credentials" }
+    ]
+  }
+]
 const queryClient = new QueryClient()
 
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: bool, error: any}> {
-  constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
+class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
+  constructor(props: any) { super(props); this.state = { hasError: false, error: null, showDetails: false }; }
   static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
   componentDidCatch(error: any, info: ErrorInfo) { console.error("CRASH:", error, info); }
   render() {
@@ -29,11 +54,19 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: bool, er
         <div className="h-screen w-screen bg-[#020617] flex flex-col items-center justify-center p-10 text-center">
           <AlertOctagon size={64} className="text-rose-500 mb-6 animate-pulse" />
           <h1 className="text-3xl font-black uppercase text-white tracking-tighter">System Kernel Panic</h1>
-          <p className="text-slate-500 text-xs mt-2 uppercase font-bold max-w-md">An unhandled exception has occurred in the UI layer. Traceback emitted to console.</p>
-          <div className="mt-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl max-w-2xl overflow-auto">
-             <code className="text-[10px] text-rose-400 font-mono block whitespace-pre-wrap text-left">{String(this.state.error)}</code>
-          </div>
-          <button onClick={() => window.location.href = "/"} className="mt-8 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black uppercase flex items-center space-x-2">
+          <p className="text-slate-500 text-xs mt-2 uppercase font-bold max-w-md">An unhandled exception has occurred in the UI layer. Stack trace available for inspection.</p>
+          
+          <button onClick={() => this.setState({ showDetails: !this.state.showDetails })} className="mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-colors">
+             {this.state.showDetails ? "- Hide Traceback" : "+ Inspect Kernel Dump"}
+          </button>
+
+          {this.state.showDetails && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="mt-4 p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl max-w-2xl overflow-auto max-h-[40vh] text-left">
+               <code className="text-[10px] text-rose-400 font-mono block whitespace-pre-wrap">{String(this.state.error.stack || this.state.error)}</code>
+            </motion.div>
+          )}
+
+          <button onClick={() => window.location.href = "/"} className="mt-8 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black uppercase flex items-center space-x-2 shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all">
              <RefreshCcw size={16}/> <span>Reset System Matrix</span>
           </button>
         </div>
@@ -44,36 +77,58 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: bool, er
 }
 
 const SidebarItem = ({ icon: Icon, label, path, active, isOpen }: any) => (
-  <Link to={path} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 ${active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"}`}>
-    <Icon size={18} />
+  <Link to={path} className={`w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-300 relative ${active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
+    <Icon size={18} className={!isOpen && active ? "text-white" : ""} />
     {isOpen && <span className="font-bold text-[11px] uppercase tracking-wider">{label}</span>}
-    {active && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
+    {active && isOpen && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
+    {active && !isOpen && <motion.div layoutId="active-pill-dot" className="absolute right-2 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#3b82f6]" />}
   </Link>
 )
 
-const PatchNotesModal = ({ onClose }: any) => (
-  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
-    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-y-auto p-10 rounded-[40px] border-blue-500/30">
-       <div className="flex items-center justify-between border-b border-white/10 pb-6">
-          <div className="flex items-center space-x-4">
-             <Star size={24} className="text-blue-400 animate-pulse" />
-             <h2 className="text-2xl font-black uppercase text-white">Patch Notes {APP_VERSION}</h2>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-       </div>
-       <div className="space-y-6 pt-6 text-[11px] text-slate-300 font-bold uppercase tracking-tight">
-          <p className="text-blue-400">Restoring Core Stability</p>
-          <ul className="space-y-3">
-             <li className="flex space-x-2"><span className="text-blue-500">•</span><span><b>[FIXED]</b> Sidebar navigation collapse logic (Labels removed on hide)</span></li>
-             <li className="flex space-x-2"><span className="text-blue-500">•</span><span><b>[FIXED]</b> Rack Mounting Modal crash (Removed blank page redirect)</span></li>
-             <li className="flex space-x-2"><span className="text-blue-500">•</span><span><b>[NEW]</b> Global Error Boundary (Uncrashable Kernel)</span></li>
-             <li className="flex space-x-2"><span className="text-blue-500">•</span><span><b>[FIXED]</b> Backend keyword mapping for HW and Credentials</span></li>
-          </ul>
-       </div>
-       <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase">Close Inspection</button>
-    </motion.div>
-  </div>
-)
+const PatchNotesModal = ({ onClose }: any) => {
+  const [expandedIndex, setExpandedIndex] = useState(0)
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30">
+         <div className="flex items-center justify-between border-b border-white/10 pb-6">
+            <div className="flex items-center space-x-4">
+               <Star size={24} className="text-blue-400 animate-pulse" />
+               <h2 className="text-2xl font-black uppercase text-white">Registry Updates</h2>
+            </div>
+            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+         </div>
+         <div className="flex-1 overflow-y-auto custom-scrollbar mt-6 space-y-4">
+            {PATCH_HISTORY.map((patch, idx) => (
+              <div key={patch.version} className={`border border-white/5 rounded-2xl overflow-hidden ${expandedIndex === idx ? "bg-white/5 border-blue-500/20" : "hover:bg-white/5"}`}>
+                 <button onClick={() => setExpandedIndex(expandedIndex === idx ? -1 : idx)} className="w-full px-6 py-4 flex items-center justify-between text-left">
+                    <div>
+                       <span className={`text-[10px] font-black uppercase tracking-widest ${expandedIndex === idx ? "text-blue-400" : "text-slate-500"}`}>{patch.version}</span>
+                       <p className="text-[8px] font-bold text-slate-600 uppercase mt-0.5">{patch.date}</p>
+                    </div>
+                    <ChevronRight size={16} className={`text-slate-500 transition-transform ${expandedIndex === idx ? "rotate-90" : ""}`} />
+                 </button>
+                 <AnimatePresence>
+                    {expandedIndex === idx && (
+                      <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+                         <div className="px-6 pb-6 pt-2 space-y-3">
+                            {patch.changes.map((change, cIdx) => (
+                              <div key={cIdx} className="flex space-x-3 text-[11px] font-bold uppercase tracking-tight">
+                                 <span className={`text-[8px] px-1.5 py-0.5 rounded h-fit ${change.type === 'NEW' ? 'bg-emerald-500/20 text-emerald-400' : change.type === 'FIXED' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{change.type}</span>
+                                 <span className="text-slate-300 leading-tight">{change.text}</span>
+                              </div>
+                            ))}
+                         </div>
+                      </motion.div>
+                    )}
+                 </AnimatePresence>
+              </div>
+            ))}
+         </div>
+         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-blue-500/20">Close Inspection</button>
+      </motion.div>
+    </div>
+  )
+}
 
 function MainLayout() {
   const location = useLocation(); const navigate = useNavigate(); const [isSidebarOpen, setIsSidebarOpen] = useState(true); const [showPatchNotes, setShowPatchNotes] = useState(false)

@@ -17,15 +17,15 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage }: { 
   return (
     <div 
       onClick={() => device ? onManage(device) : onSelect()}
-      className={`relative border-b border-white/5 flex items-center px-2 transition-colors cursor-pointer ${
-        device ? (highlight ? 'bg-amber-500/40 border-l-4 border-l-amber-400 z-10' : 'bg-[#034EA2]/30 border-l-2 border-l-[#034EA2]') : 'hover:bg-white/5'
+      className={`relative border-b border-white/10 flex items-center px-2 transition-colors cursor-pointer ${
+        device ? (highlight ? 'bg-amber-500/60 border-l-4 border-l-amber-400 z-10' : 'bg-[#034EA2]/50 border-l-2 border-l-blue-400') : 'hover:bg-white/10 bg-white/[0.02]'
       }`}
       style={{ height: '24px' }}
     >
-      <span className="text-[9px] font-mono text-slate-600 w-4 select-none">{uNumber}</span>
+      <span className="text-[9px] font-mono text-slate-500 w-4 select-none">{uNumber}</span>
       {isBase && device && (
         <div className="flex-1 flex items-center justify-between overflow-hidden pr-1">
-          <span className={`text-[10px] font-bold truncate ml-1 uppercase tracking-tight ${highlight ? 'text-amber-100' : 'text-blue-100'}`}>{device.name}</span>
+          <span className={`text-[10px] font-black truncate ml-1 uppercase tracking-tight ${highlight ? 'text-white' : 'text-blue-50'}`}>{device.name}</span>
           <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded border ${getBadgeColor(device.type)}`}>{device.type?.slice(0,3) || 'UNK'}</span>
         </div>
       )}
@@ -38,7 +38,7 @@ const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDe
   const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
   return (
-    <div className={`glass-panel w-64 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/5 transition-colors group relative ${isSelected ? 'border-blue-500 shadow-blue-500/20 shadow-xl z-10 bg-blue-900/10' : 'hover:border-[#034EA2]/20'}`}>
+    <div className={`glass-panel w-64 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/10 transition-colors group relative ${isSelected ? 'border-blue-500 shadow-blue-500/20 shadow-xl z-10 bg-blue-900/10' : 'hover:border-[#034EA2]/40'}`}>
       <div className="absolute top-2.5 left-2 z-20">
          <div onClick={() => onToggleSelect(rack.id)} className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-colors ${isSelected ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/20 bg-slate-900 hover:border-blue-400'}`}>
             {isSelected && <Check size={12} strokeWidth={4} />}
@@ -89,6 +89,7 @@ export default function RackElevations() {
 
   const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await fetch('/api/v1/sites/')).json() })
   const { data: allRacks } = useQuery({ queryKey: ['racks-all'], queryFn: async () => (await fetch('/api/v1/racks/')).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
   
   // If showing compare, ignore activeSite and show globally selected
   const displayedRacks = useMemo(() => {

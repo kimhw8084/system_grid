@@ -174,6 +174,22 @@ class PortConnection(Base, BaseMixin):
     direction = Column(String)
     cable_type = Column(String)
 
+class Subnet(Base, BaseMixin):
+    __tablename__ = "subnets"
+    network_cidr = Column(String, index=True, unique=True)
+    name = Column(String)
+    vlan_id = Column(Integer, nullable=True)
+    gateway = Column(String, nullable=True)
+    dns_servers = Column(String, nullable=True) # Comma separated
+    description = Column(Text)
+
+class SettingOption(Base, BaseMixin):
+    __tablename__ = "settings_options"
+    category = Column(String, index=True) # LogicalSystem, DeviceType, etc.
+    label = Column(String)
+    value = Column(String)
+    is_default = Column(Boolean, default=False)
+
 class SecretVault(Base, BaseMixin):
     __tablename__ = "secret_vault"
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))

@@ -238,11 +238,11 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none focus:border-blue-500" />
            </div>
            <div className="col-span-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Serial Number *</label>
+             <label className="text-[9px] font-black text-slate-400 uppercase">Serial Number</label>
              <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
            </div>
            <div className="col-span-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase">Asset Tag *</label>
+             <label className="text-[9px] font-black text-slate-400 uppercase">Asset Tag</label>
              <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-2 mt-1 text-xs outline-none" />
            </div>
 
@@ -310,7 +310,7 @@ const ProvisionModal = ({ asset, onClose }: { asset?: any, onClose: () => void }
            </div>
         </div>
 
-        <button onClick={() => { if(!formData.name || !formData.serial_number || !formData.asset_tag) alert('Hostname, SN, and Asset Tag required'); else mutation.mutate({ data: formData }) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
+        <button onClick={() => { if(!formData.name || !formData.system || !formData.owner || !formData.business_unit) alert('Hostname, Logical System, and Owner/BU are required'); else mutation.mutate({ data: formData }) }} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Configuration</button>
       </motion.div>
     </div>
   )
