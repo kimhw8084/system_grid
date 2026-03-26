@@ -24,6 +24,6 @@ async def delete_subnet(id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Subnet).filter(models.Subnet.id == id))
     sb = result.scalar_one_or_none()
     if sb:
-        await db.delete(sb)
+        db.delete(sb)
         await db.commit()
     return {"status": "success"}

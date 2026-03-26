@@ -25,7 +25,7 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     systems_set = set()
 
     for d in devices:
-        dtype = d.type
+        dtype = d.type.lower() if d.type else ""
         if dtype == 'physical': physical += 1
         elif dtype == 'virtual': virtual += 1
         elif dtype == 'storage': storage += 1

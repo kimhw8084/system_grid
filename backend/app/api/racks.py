@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, and_
+from sqlalchemy import select, delete, and_, update, func
 from ..database import get_db
 from ..models import models
 from typing import List, Optional
@@ -8,13 +8,20 @@ from typing import List, Optional
 router = APIRouter(prefix="/racks", tags=["Racks"])
 
 @router.get("/")
-async def get_racks(site_id: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     if site_id == "missing":
         query = select(models.Rack).filter(models.Rack.room_id == None)
     elif site_id and site_id != "null" and site_id != "":
         query = select(models.Rack).join(models.Room).filter(models.Room.site_id == int(site_id))
     else:
         query = select(models.Rack)
+    
+    if include_deleted:
+        query = query.filter(models.Rack.is_deleted == True)
+    else:
+        query = query.filter(models.Rack.is_deleted == False)
+    
+    query = query.order_by(models.Rack.order_index.asc())
     
     result = await db.execute(query)
     racks = result.scalars().all()
@@ -24,18 +31,23 @@ async def get_racks(site_id: Optional[str] = None, db: AsyncSession = Depends(ge
         loc_result = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.rack_id == rack.id))
         locs = loc_result.scalars().all()
         
-        dev_list = []
+        device_locations_list = []
         for loc in locs:
             dev_res = await db.execute(select(models.Device).filter(models.Device.id == loc.device_id))
             d = dev_res.scalar_one_or_none()
             if d:
-                dev_list.append({
-                    "id": d.id,
-                    "name": d.name,
-                    "status": d.status,
-                    "type": d.type,
+                device_locations_list.append({
+                    "id": loc.id,
+                    "device_id": d.id,
+                    "rack_id": rack.id,
+                    "start_unit": loc.start_unit,
                     "size_u": loc.size_u,
-                    "start_u": loc.start_unit
+                    "device": {
+                        "id": d.id,
+                        "name": d.name,
+                        "status": d.status,
+                        "type": d.type
+                    }
                 })
         
         site_name = "Missing Site"
@@ -55,9 +67,23 @@ async def get_racks(site_id: Optional[str] = None, db: AsyncSession = Depends(ge
             "max_power_kw": rack.max_power_kw or 8.0,
             "room_id": rack.room_id,
             "site_name": site_name,
-            "devices": dev_list
+            "order_index": rack.order_index,
+            "device_locations": device_locations_list
         })
     return final_result
+
+@router.post("/reorder")
+async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
+    # Expected format: {"ids": [3, 1, 2]}
+    ids = data.get("ids", [])
+    for index, rack_id in enumerate(ids):
+        await db.execute(
+            update(models.Rack)
+            .where(models.Rack.id == rack_id)
+            .values(order_index=index)
+        )
+    await db.commit()
+    return {"status": "success"}
 
 @router.post("/")
 async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
@@ -66,21 +92,27 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Site selection mandatory")
     
     name = data.get('name', 'New Rack')
-    # Check for duplicate name
-    dup_result = await db.execute(select(models.Rack).filter(models.Rack.name == name))
-    if dup_result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE")
-
+    
     room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(site_id)))
     room = room_res.scalar_one_or_none()
     if not room:
         raise HTTPException(status_code=400, detail="Site has no rooms")
 
+    # Check for duplicate name within the same site (via room)
+    dup_result = await db.execute(select(models.Rack).filter(models.Rack.name == name, models.Rack.room_id == room.id))
+    if dup_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE")
+
+    # Get max order index for this room
+    max_res = await db.execute(select(func.max(models.Rack.order_index)).filter(models.Rack.room_id == room.id))
+    max_order = max_res.scalar() or 0
+
     rack = models.Rack(
         name=name, 
         total_u_height=data.get('total_u', 42),
         max_power_kw=data.get('max_power_kw', 8.0),
-        room_id=room.id
+        room_id=room.id,
+        order_index=max_order + 1
     )
     db.add(rack)
     await db.commit()
@@ -105,10 +137,15 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=404, detail="Rack not found")
     
     if 'name' in data and data['name'] != rack.name:
-        # Check for duplicate name in ANOTHER rack
-        dup_result = await db.execute(select(models.Rack).filter(models.Rack.name == data['name'], models.Rack.id != rack_id))
+        # Check for duplicate name in ANOTHER rack within the SAME site
+        current_room_id = rack.room_id
+        dup_result = await db.execute(select(models.Rack).filter(
+            models.Rack.name == data['name'], 
+            models.Rack.room_id == current_room_id,
+            models.Rack.id != rack_id
+        ))
         if dup_result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE_IN_SITE")
         rack.name = data['name']
         
     if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
@@ -120,8 +157,19 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         else:
             room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(data['new_site_id'])))
             new_room = room_res.scalar_one_or_none()
-            if new_room:
-                rack.room_id = new_room.id
+            if not new_room:
+                raise HTTPException(status_code=400, detail="Target site has no rooms for relocation")
+            
+            # Check for duplicate name in the TARGET site
+            dup_target_res = await db.execute(select(models.Rack).filter(
+                models.Rack.name == rack.name, # Use current rack name for checking
+                models.Rack.room_id == new_room.id,
+                models.Rack.id != rack_id
+            ))
+            if dup_target_res.scalar_one_or_none():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE_IN_TARGET_SITE")
+            
+            rack.room_id = new_room.id
     
     log = models.AuditLog(
         user_id="admin", 
@@ -142,13 +190,13 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Rack not found")
     
     name = rack.name
-    await db.delete(rack)
+    rack.is_deleted = True
     log = models.AuditLog(
         user_id="admin", 
-        action="DELETE", 
+        action="SOFT_DELETE", 
         target_table="racks", 
         target_id=str(rack_id), 
-        description=f"Decommissioned rack {name}"
+        description=f"Soft-deleted rack {name}"
     )
     db.add(log)
     await db.commit()
@@ -181,7 +229,7 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
             raise HTTPException(status_code=400, detail=f"Collision with {d.name if d else 'existing device'} at U{loc.start_unit}")
 
     if existing_loc:
-        await db.delete(existing_loc)
+        db.delete(existing_loc)
         
     loc = models.DeviceLocation(
         rack_id=rack_id,
@@ -202,12 +250,81 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     await db.commit()
     return {"status": "success"}
 
+@router.post("/bulk-action")
+async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    action = data.get("action")
+    payload = data.get("payload", {})
+    if not ids: return {"status": "no_op"}
+
+    if action == "delete": # Soft delete
+        await db.execute(update(models.Rack).where(models.Rack.id.in_(ids)).values(is_deleted=True))
+    elif action == "purge": # Hard delete
+        await db.execute(delete(models.Rack).where(models.Rack.id.in_(ids)))
+    elif action == "restore":
+        # Check for name conflicts in target site before restoring
+        res = await db.execute(select(models.Rack).where(models.Rack.id.in_(ids)))
+        racks_to_restore = res.scalars().all()
+        
+        restored_ids, conflict_ids = [], []
+        for r in racks_to_restore:
+            room_res = await db.execute(select(models.Room).filter(models.Room.id == r.room_id))
+            room = room_res.scalar_one_or_none()
+            if room:
+                dup_res = await db.execute(select(models.Rack).filter(
+                    models.Rack.name == r.name,
+                    models.Rack.room_id == room.id,
+                    models.Rack.is_deleted == False
+                ))
+                if dup_res.scalar_one_or_none():
+                    conflict_ids.append(r.id)
+                else:
+                    r.is_deleted = False
+                    restored_ids.append(r.id)
+            else: # If rack has no room, it can be restored directly
+                r.is_deleted = False
+                restored_ids.append(r.id)
+        await db.commit()
+        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
+
+    elif action == "relocate":
+        new_site_id = payload.get("new_site_id")
+        if not new_site_id: raise HTTPException(400, "Target site ID is mandatory for relocation")
+        
+        room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(new_site_id)))
+        new_room = room_res.scalar_one_or_none()
+        if not new_room: raise HTTPException(400, "Target site has no rooms for relocation")
+        
+        res = await db.execute(select(models.Rack).where(models.Rack.id.in_(ids)))
+        racks_to_relocate = res.scalars().all()
+        
+        relocated_ids, conflict_ids = [], []
+        for r in racks_to_relocate:
+            # Check for duplicate name in the TARGET site
+            dup_target_res = await db.execute(select(models.Rack).filter(
+                models.Rack.name == r.name,
+                models.Rack.room_id == new_room.id,
+                models.Rack.id != r.id,
+                models.Rack.is_deleted == False
+            ))
+            if dup_target_res.scalar_one_or_none():
+                conflict_ids.append(r.id)
+            else:
+                r.room_id = new_room.id
+                relocated_ids.append(r.id)
+        
+        await db.commit()
+        return {"status": "success", "relocated": relocated_ids, "conflicts": conflict_ids}
+    
+    await db.commit()
+    return {"status": "success"}
+
 @router.delete("/mount/{device_id}")
 async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
     loc = result.scalar_one_or_none()
     if loc:
-        await db.delete(loc)
+        db.delete(loc)
         log = models.AuditLog(
             user_id="admin", 
             action="UNMOUNT", 

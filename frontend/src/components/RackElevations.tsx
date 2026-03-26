@@ -38,7 +38,7 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage, isEv
   )
 }
 
-const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDevice, isSelected, onToggleSelect }: { rack: any, onDelete: any, onEdit: any, searchTerm: string, onMount: (rackId: number, u: number) => void, onManageDevice: (device: any) => void, isSelected: boolean, onToggleSelect: (id: number) => void }) => {
+const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, onManageDevice, isSelected, onToggleSelect }: { rack: any, onDelete: any, onEdit: any, onMove?: (direction: 'left' | 'right') => void, searchTerm: string, onMount: (rackId: number, u: number) => void, onManageDevice: (device: any) => void, isSelected: boolean, onToggleSelect: (id: number) => void }) => {
   const units = Array.from({ length: rack.total_u || 42 }, (_, i) => (rack.total_u || 42) - i)
   const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -65,6 +65,12 @@ const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDe
         <div className="flex items-center justify-between ml-6">
           <h3 className="font-black text-[11px] uppercase tracking-widest text-white truncate pr-2">{rack.name}</h3>
           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onMove && (
+              <>
+                <button onClick={() => onMove('left')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} className="scale-x-[-1]" /></button>
+                <button onClick={() => onMove('right')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} /></button>
+              </>
+            )}
             <button onClick={() => onEdit(rack)} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-blue-400"><Edit2 size={12}/></button>
             <button onClick={() => onDelete(rack.id)} className="p-1 hover:bg-rose-500/10 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12}/></button>
           </div>
@@ -100,22 +106,24 @@ const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDe
 
 export default function RackElevations() {
   const queryClient = useQueryClient()
-  const [activeSite, setActiveSite] = useState<number | null>(null)
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices')).json() })
+  const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await fetch('/api/v1/sites/')).json() })
+  
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedRacks, setSelectedRacks] = useState<number[]>([])
-  const [showCompareOnly, setShowCompareOnly] = useState(false)
-  const [isProvisioning, setIsProvisioning] = useState<any>(null)
-  const [managingDevice, setManagingDevice] = useState<any>(null)
+  const [activeSite, setActiveSite] = useState<number | null>(null)
   const [isAddingSite, setIsAddingSite] = useState(false)
+  const [newSite, setNewSite] = useState({ name: '', address: '' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
   const [isAddingRack, setIsAddingRack] = useState(false)
+  const [newRack, setNewRack] = useState({ name: '', total_u: 42, max_power_kw: 8.0, site_id: '' })
   const [isEditingRack, setIsEditingRack] = useState<any>(null)
-  const [newSite, setNewSite] = useState({ name: '', address: '' })
-  const [newRack, setNewRack] = useState({ name: '', total_u: 42, site_id: '' })
+  const [isProvisioning, setIsProvisioning] = useState<any>(null)
+  const [managingDevice, setManagingDevice] = useState<any>(null)
+  const [showCompareOnly, setShowCompareOnly] = useState(false)
+  const [activeTab, setActiveTab] = useState('active') // 'active' or 'deleted'
+  const [selectedRacks, setSelectedRacks] = useState<number[]>([])
 
-  const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await fetch('/api/v1/sites/')).json() })
-  const { data: allRacks } = useQuery({ queryKey: ['racks-all'], queryFn: async () => (await fetch('/api/v1/racks/')).json() })
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const { data: allRacks } = useQuery({ queryKey: ['racks-all', activeTab], queryFn: async () => (await fetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json() })
   
   const siteMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -195,11 +203,44 @@ export default function RackElevations() {
     }
   })
 
+  const siteReorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => fetch('/api/v1/sites/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ids}) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sites'] }); toast.success('Site Order Updated') }
+  })
+
+  const rackReorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => fetch('/api/v1/racks/reorder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ids}) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Rack Sequence Synchronized') }
+  })
+
+  const moveSite = (id: number, direction: 'left' | 'right') => {
+    if (!sites) return
+    const index = sites.findIndex((s: any) => s.id === id)
+    if (index === -1) return
+    const newSites = [...sites]
+    const newIndex = direction === 'left' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= sites.length) return
+    [newSites[index], newSites[newIndex]] = [newSites[newIndex], newSites[index]]
+    siteReorderMutation.mutate(newSites.map(s => s.id))
+  }
+
+  const moveRack = (id: number, direction: 'left' | 'right') => {
+    if (!displayedRacks) return
+    const index = displayedRacks.findIndex((r: any) => r.id === id)
+    if (index === -1) return
+    const newRacks = [...displayedRacks]
+    const newIndex = direction === 'left' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= displayedRacks.length) return
+    [newRacks[index], newRacks[newIndex]] = [newRacks[newIndex], newRacks[index]]
+    rackReorderMutation.mutate(newRacks.map(r => r.id))
+  }
+
   const displayedRacks = useMemo(() => {
     if (!allRacks) return []
     let filtered = allRacks
-    if (showCompareOnly) filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
-    if (activeSite && sites) {
+    if (showCompareOnly) {
+        filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
+    } else if (activeSite && sites) {
         const sName = sites.find((s:any) => s.id === activeSite)?.name
         filtered = allRacks.filter((r: any) => r.site_name === sName)
     }
@@ -241,6 +282,8 @@ export default function RackElevations() {
                   {s.name}
                </button>
                <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center space-x-1 ${activeSite === s.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                  <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'left') }} className="p-1 rounded hover:bg-white/10 text-slate-500"><ArrowRightLeft size={10} className="rotate-90 scale-x-[-1]" /></button>
+                  <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'right') }} className="p-1 rounded hover:bg-white/10 text-slate-500"><ArrowRightLeft size={10} className="rotate-90" /></button>
                   <button onClick={(e) => { e.stopPropagation(); setIsEditingSite(s) }} className={`p-1 rounded transition-colors ${activeSite === s.id ? 'hover:bg-white/20 text-white' : 'hover:bg-white/10 text-slate-500'}`}><Edit2 size={10}/></button>
                   <button onClick={(e) => { e.stopPropagation(); if(confirm(`Destroy site ${s.name}?`)) siteDeleteMutation.mutate(s.id) }} className={`p-1 rounded transition-colors ${activeSite === s.id ? 'hover:bg-rose-500/30 text-white' : 'hover:bg-rose-500/10 text-slate-500'}`}><Trash2 size={10}/></button>
                </div>
@@ -262,6 +305,7 @@ export default function RackElevations() {
             onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
             onDelete={(id) => confirm('Destroy this rack structure?') && deleteMutation.mutate(id)}
             onEdit={(rack: any) => setIsEditingRack({...rack, total_u: rack.total_u})}
+            onMove={(dir) => moveRack(r.id, dir)}
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
             onManageDevice={setManagingDevice}
           />
@@ -281,10 +325,14 @@ export default function RackElevations() {
               <h2 className="text-xl font-black uppercase tracking-tighter flex items-center space-x-3 text-blue-400"><Server size={24} /><span>Rack Mounting Matrix</span></h2>
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Target Asset</label>
-                <select value={isProvisioning.device_id || ''} onChange={e => setIsProvisioning({...isProvisioning, device_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none">
+                <select value={isProvisioning.device_id || ''} onChange={e => {
+                    const selectedDevice = devices?.find((d: any) => String(d.id) === e.target.value);
+                    const size_u = selectedDevice?.size_u || 1; // Default to 1U if not specified
+                    setIsProvisioning({...isProvisioning, device_id: e.target.value, size_u: size_u});
+                }} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none">
                   <option value="">Select Asset from Registry...</option>
                   {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).map((d: any) => (
-                    <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>
+                    <option key={d.id} value={d.id}>{d.name} [{d.type}] ({d.size_u || 1}U)</option>
                   ))}
                   {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).length === 0 && (
                     <option disabled>No unmounted assets available</option>
@@ -308,6 +356,7 @@ export default function RackElevations() {
             </motion.div>
           </div>
         )}
+
 
         {(isAddingSite || isEditingSite) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">

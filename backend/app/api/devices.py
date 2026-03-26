@@ -51,7 +51,7 @@ async def get_devices(include_decommissioned: bool = False, include_deleted: boo
                         if site: site_name = site.name
 
         device_dict = {c.name: getattr(d, c.name) for c in d.__table__.columns}
-        device_dict.update({"rack_name": rack_name, "site_name": site_name, "u_start": u_start})
+        device_dict.update({"rack_name": rack_name, "site_name": site_name, "u_start": u_start, "size_u": d.size_u})
         final_devices.append(device_dict)
     return final_devices
 

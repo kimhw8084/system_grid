@@ -58,7 +58,7 @@ async def delete_maintenance_window(mw_id: int, db: AsyncSession = Depends(get_d
     result = await db.execute(select(models.MaintenanceWindow).filter(models.MaintenanceWindow.id == mw_id))
     mw = result.scalar_one_or_none()
     if mw:
-        await db.delete(mw)
+        db.delete(mw)
         log = models.AuditLog(user_id="admin", action="DELETE", target_table="maintenance_windows", target_id=str(mw_id), description=f"Cancelled maintenance: {mw.title}")
         db.add(log)
         await db.commit()

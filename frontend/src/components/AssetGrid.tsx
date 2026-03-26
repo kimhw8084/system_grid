@@ -263,6 +263,7 @@ export default function AssetGrid() {
     { field: "site_name", headerName: "Site", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "rack_name", headerName: "Rack", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "u_start", headerName: "U", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
+    { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
     {
       headerName: "Ops",
       width: 120,
@@ -883,14 +884,20 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
 
           <div className="col-span-1 space-y-4">
              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Type</label>
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
-                   {getOptions('DeviceType').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                   {getOptions('DeviceType').length === 0 && <>
-                      <option>Physical</option><option>Virtual</option><option>Storage</option><option>Switch</option>
-                   </>}
-                </select>
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Type</label>
+                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
+                       {getOptions('DeviceType').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
+                       {getOptions('DeviceType').length === 0 && <>
+                          <option>Physical</option><option>Virtual</option><option>Storage</option><option>Switch</option>
+                       </>}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
+                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                </div>
              </div>
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operational Status</label>

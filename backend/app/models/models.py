@@ -11,27 +11,28 @@ class BaseMixin:
 
 class Site(Base, BaseMixin):
     __tablename__ = "sites"
-    name = Column(String, index=True)
+    name = Column(String, index=True, unique=True)
     address = Column(String)
     facility_manager = Column(String)
     contact_phone = Column(String)
     cooling_capacity_kw = Column(Float, default=0.0)
     power_capacity_kw = Column(Float, default=0.0)
+    order_index = Column(Integer, default=0)
     rooms = relationship("Room", back_populates="site", cascade="all, delete-orphan")
 
 class Room(Base, BaseMixin):
     __tablename__ = "rooms"
-    site_id = Column(Integer, ForeignKey("sites.id"))
+    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"))
     name = Column(String)
     floor_level = Column(String)
     hvac_zone = Column(String)
     fire_suppression_type = Column(String)
     site = relationship("Site", back_populates="rooms")
-    racks = relationship("Rack", back_populates="room", cascade="all, delete-orphan")
+    racks = relationship("Rack", back_populates="room")
 
 class Rack(Base, BaseMixin):
     __tablename__ = "racks"
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     name = Column(String, index=True)
     total_u_height = Column(Integer, default=42)
     max_power_kw = Column(Float, default=8.0)
@@ -40,6 +41,8 @@ class Rack(Base, BaseMixin):
     cooling_type = Column(String)
     pdu_a_id = Column(String)
     pdu_b_id = Column(String)
+    is_deleted = Column(Boolean, default=False)
+    order_index = Column(Integer, default=0)
     room = relationship("Room", back_populates="racks")
     device_locations = relationship("DeviceLocation", back_populates="rack", cascade="all, delete-orphan")
 
@@ -50,6 +53,7 @@ class Device(Base, BaseMixin):
     environment = Column(String, default="Production")
     status = Column(String, default="Active")
     type = Column(String) # Physical, Virtual, Storage, Switch
+    size_u = Column(Integer, default=1) # Default U-height for the device
     
     manufacturer = Column(String)
     model = Column(String)

@@ -112,7 +112,7 @@ async def delete_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
     conn = result.scalar_one_or_none()
     if conn:
-        await db.delete(conn)
+        db.delete(conn)
         log = models.AuditLog(user_id="admin", action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
         db.add(log)
         await db.commit()

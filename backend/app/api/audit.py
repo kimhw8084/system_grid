@@ -4,11 +4,29 @@ from sqlalchemy import select, delete
 from ..database import get_db
 from ..models import models
 
+from typing import Optional
+from datetime import datetime
+
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
 @router.get("/")
-async def get_audit_logs(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.AuditLog).order_by(models.AuditLog.timestamp.desc()).limit(200))
+async def get_audit_logs(start_date: Optional[str] = None, end_date: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    query = select(models.AuditLog)
+    
+    if start_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.filter(models.AuditLog.timestamp >= start_dt)
+        except: pass
+        
+    if end_date:
+        try:
+            # End date usually means end of that day
+            end_dt = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
+            query = query.filter(models.AuditLog.timestamp <= end_dt)
+        except: pass
+
+    result = await db.execute(query.order_by(models.AuditLog.timestamp.desc()).limit(200))
     logs = result.scalars().all()
     
     final_logs = []

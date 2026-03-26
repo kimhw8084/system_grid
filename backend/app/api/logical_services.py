@@ -95,7 +95,7 @@ async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):
     if not svc: raise HTTPException(404)
     
     name = svc.name
-    await db.delete(svc)
+    db.delete(svc)
     log = models.AuditLog(
         user_id="admin", action="DELETE", target_table="logical_services", 
         target_id=str(service_id), description=f"De-registered service: {name}"

@@ -78,7 +78,7 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     if in_use:
         raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
         
-    await db.delete(opt)
+    db.delete(opt)
     await db.commit()
     return {"status": "success"}
 
