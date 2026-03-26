@@ -4,7 +4,7 @@ import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings }
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 
-const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
+export const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
   const queryClient = useQueryClient()
   const [newValue, setNewValue] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
