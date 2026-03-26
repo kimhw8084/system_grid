@@ -392,14 +392,6 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
                 </div>
             </div>
 
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                <MetadataEditor 
-                  value={formData.config_json} 
-                  onChange={v => setFormData({...formData, config_json: v})} 
-                  onError={setMetadataError}
-                />
-            </div>
-            
             <div className="grid grid-cols-2 gap-6">
                 <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
                     <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Host Information</h4>
@@ -418,6 +410,14 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
                     <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Metadata Context</h4>
                     <p className="text-[10px] text-slate-500 italic">Advanced operational metadata and configuration payloads for automated provisioning.</p>
                 </div>
+            </div>
+
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+                <MetadataEditor 
+                  value={formData.config_json} 
+                  onChange={v => setFormData({...formData, config_json: v})} 
+                  onError={setMetadataError}
+                />
             </div>
         </div>
     )

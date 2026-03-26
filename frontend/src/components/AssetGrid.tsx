@@ -430,9 +430,10 @@ export default function AssetGrid() {
 }
 
 const AssetDetailsView = ({ device, options }: { device: any, options: any }) => {
-    const [tab, setTab] = useState('metadata')
+    const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
     const [metadata, setMetadata] = useState(device.metadata_json || {})
+    const [metadataError, setMetadataError] = useState<string | null>(null)
 
     const metaMutation = useMutation({
         mutationFn: async (data: any) => fetch(`/api/v1/devices/${device.id}`, { 
@@ -445,18 +446,30 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['metadata', 'hardware', 'secrets', 'relations'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
                 </div>
                 {tab === 'metadata' && (
-                    <button onClick={() => metaMutation.mutate(metadata)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Metadata</button>
+                    <button 
+                      onClick={() => {
+                        if (metadataError) return toast.error(`Cannot save: ${metadataError}`);
+                        metaMutation.mutate(metadata);
+                      }} 
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-emerald-600 text-white shadow-emerald-500/20 active:scale-95'}`}
+                    >
+                      {metadataError ? `BLOCKED: ${metadataError}` : 'Save Metadata'}
+                    </button>
                 )}
             </div>
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                {tab === 'metadata' && <MetadataEditor value={metadata} onChange={setMetadata} />}
+                {tab === 'metadata' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <MetadataEditor value={metadata} onChange={setMetadata} onError={setMetadataError} />
+                  </div>
+                )}
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
                 {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
                 {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
@@ -827,7 +840,7 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
   return (
     <div className="space-y-6 py-6">
       <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit mb-4">
-         {['config', 'hardware', 'secrets', 'relations'].map(t => (
+         {['config', 'hardware', 'secrets', 'relations', 'metadata'].map(t => (
            <button key={t} onClick={() => setActiveSubTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
              {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
            </button>
@@ -919,14 +932,16 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
                 </div>
              </div>
           </div>
+        </div>
+      )}
 
-          <div className="col-span-3">
-             <MetadataEditor 
-               value={formData.metadata_json} 
-               onChange={v => setFormData({...formData, metadata_json: v})} 
-               onError={setMetadataError}
-             />
-          </div>
+      {activeSubTab === 'metadata' && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+           <MetadataEditor 
+             value={formData.metadata_json} 
+             onChange={v => setFormData({...formData, metadata_json: v})} 
+             onError={setMetadataError}
+           />
         </div>
       )}
 
