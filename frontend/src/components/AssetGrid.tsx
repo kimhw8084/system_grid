@@ -1,10 +1,89 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
+
+const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
+  const { data: services, isLoading } = useQuery({ 
+    queryKey: ['device-services', deviceId], 
+    queryFn: async () => (await fetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json() 
+  })
+
+  return (
+    <div className="p-0 overflow-hidden">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Service Name</th>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Status</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Environment</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Version</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {services?.map((s: any) => (
+            <tr key={s.id} className="hover:bg-white/5 transition-colors">
+              <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
+              <td className="px-4 py-3 text-slate-400 uppercase font-black text-[9px]">{s.service_type}</td>
+              <td className="px-4 py-3 text-center">
+                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                    s.status === 'Running' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'
+                 }`}>{s.status}</span>
+              </td>
+              <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold">{s.environment}</td>
+              <td className="px-4 py-3 text-center font-mono text-slate-600">{s.version || 'N/A'}</td>
+            </tr>
+          ))}
+          {!services?.length && !isLoading && (
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options }: { isOpen: boolean, onClose: () => void, onApply: (status: string) => void, options: any[] }) => {
+  const [selectedStatus, setSelectedStatus] = useState('')
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border-blue-500/30 space-y-6">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+             <RefreshCcw size={24}/> <span>Bulk Status Transition</span>
+          </h2>
+          <div>
+             <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Target Operational State</label>
+             <select 
+               value={selectedStatus} 
+               onChange={e => setSelectedStatus(e.target.value)}
+               className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500"
+             >
+                <option value="">Select Status...</option>
+                {options?.filter((o:any) => o.category === 'Status').map((o:any) => (
+                  <option key={o.id} value={o.value}>{o.label}</option>
+                ))}
+             </select>
+          </div>
+          <div className="flex space-x-3 pt-2">
+             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+             <button 
+               disabled={!selectedStatus}
+               onClick={() => onApply(selectedStatus)} 
+               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+             >
+                Apply to Selection
+             </button>
+          </div>
+       </motion.div>
+    </div>
+  )
+}
 
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
@@ -15,7 +94,6 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
   const [error, setError] = useState<string | null>(null)
 
-  // Internal helper to validate and notify parent
   const validateAndNotify = (rows: {key: string, value: string}[]) => {
     const obj: any = {}
     const keys = new Set()
@@ -42,10 +120,15 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     }
   }
 
-  // Sync from JSON to Table
   const syncFromJSON = (json: string) => {
     try {
         const obj = JSON.parse(json)
+        const keys = Object.keys(obj)
+        if (new Set(keys).size !== keys.length) {
+            setError("Duplicate keys in JSON")
+            onError?.("Duplicate keys in JSON")
+            return false
+        }
         const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
         setTableRows(rows)
         setError(null)
@@ -64,7 +147,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Payload</span>
-            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
+            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse tracking-tighter">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
             <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
@@ -79,7 +162,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 <input value={row.key} onChange={e => {
                   const n = [...tableRows]; n[i].key = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
-                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error?.includes('Duplicate') ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
                 <input value={row.value} onChange={e => {
                   const n = [...tableRows]; n[i].value = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
@@ -102,7 +185,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 setJsonValue(e.target.value);
                 syncFromJSON(e.target.value);
             }} 
-            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
           />
         )}
       </div>
@@ -146,11 +229,11 @@ export default function AssetGrid() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
-  const [viewMetadata, setViewMetadata] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [showUI, setShowUI] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
   const { data: uiSettings } = useQuery({ queryKey: ['ui-settings'], queryFn: async () => (await fetch('/api/v1/settings/ui')).json() })
@@ -204,6 +287,7 @@ export default function AssetGrid() {
       queryClient.invalidateQueries({ queryKey: ['assets'] })
       setSelectedIds([])
       setShowBulkMenu(false)
+      setIsBulkStatusOpen(false)
       if (variables.action === 'restore') {
         if (data.conflicts?.length > 0) {
             toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
@@ -327,9 +411,8 @@ export default function AssetGrid() {
                      <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
                    ) : (
                      <>
-                        <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Active' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Active</button>
-                        <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Maintenance' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Maintenance</button>
-                        <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Decommissioned' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-rose-400 transition-all">Decommission</button>
+                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                        <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { environment: 'Production' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Env: Production</button>
                      </>
                    )}
                    <div className="h-px bg-white/5 mx-2 my-1" />
@@ -361,6 +444,13 @@ export default function AssetGrid() {
         />
       </div>
 
+      <StatusBulkUpdateModal 
+        isOpen={isBulkStatusOpen} 
+        onClose={() => setIsBulkStatusOpen(false)} 
+        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
+        options={options || []}
+      />
+
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
@@ -391,7 +481,7 @@ export default function AssetGrid() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <AssetDetailsView device={activeDetails} />
+                  <AssetDetailsView device={activeDetails} options={options} />
                </div>
             </motion.div>
           </div>
@@ -447,7 +537,7 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
@@ -455,15 +545,11 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
                 </div>
                 {tab === 'metadata' && (
                     <button 
+                      disabled={!!metadataError}
                       onClick={() => {
-                        if (metadataError) {
-                          if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
-                            return;
-                          }
-                        }
                         metaMutation.mutate(metadata);
                       }} 
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                      className={`px-4 py-2 ${metadataError ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600'} text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all`}
                     >
                       Save Metadata
                     </button>
@@ -478,9 +564,35 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
                 {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
                 {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
+                {tab === 'services' && <AssetServicesTable deviceId={device.id} />}
             </div>
         </div>
     )
+}
+
+const HWTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const [newComp, setNewComp] = useState({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] }); setNewComp({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 }) }
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
+         </select>
+         <input value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} placeholder="Component Name" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input value={newComp.specs} onChange={e => setNewComp({...newComp, specs: e.target.value})} placeholder="Specifications" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input type="number" value={newComp.count} onChange={e => setNewComp({...newComp, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Add</button>
+      </div>
+      <HWTable deviceId={deviceId} />
+    </div>
+  )
 }
 
 const HWTable = ({ deviceId }: { deviceId: number }) => {
@@ -491,17 +603,17 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
   
   const delMutation = useMutation({
     mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw'] }); toast.success('Component Purged') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] }); toast.success('Component Purged') }
   })
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => fetch(`/api/v1/devices/hardware/${data.id}`, { 
-        method: 'POST', // Backend might need a specific PUT for hardware, but usually POST with ID works if handled
+        method: 'POST', 
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     }),
     onSuccess: () => { 
-        queryClient.invalidateQueries({ queryKey: ['device-hw'] })
+        queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] })
         setEditingId(null)
         toast.success('Component Updated')
     }
@@ -568,22 +680,51 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
+const SecretsTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const [newSec, setNewSec] = useState({ secret_type: 'Root Password', username: '', encrypted_payload: '' })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setNewSec({ secret_type: 'Root Password', username: '', encrypted_payload: '' }); toast.success('Credential Secured') }
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newSec.secret_type} onChange={e => setNewSec({...newSec, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
+         </select>
+         <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Sensitive Value" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Vault Entry</button>
+      </div>
+      <SecretsTable deviceId={deviceId} />
+    </div>
+  )
+}
+
 const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/secrets`)).json() })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
+  const [visibleIds, setVisibleIds] = useState<number[]>([])
+
+  const toggleVisibility = (id: number) => {
+    setVisibleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
 
   const delMutation = useMutation({
     mutationFn: async (id: number) => fetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); toast.success('Credential Purged') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); toast.success('Credential Purged') }
   })
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => fetch(`/api/v1/devices/secrets/${data.id}`, { 
         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
     }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); setEditingId(null); toast.success('Credential Updated') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential Updated') }
   })
 
   return (
@@ -612,10 +753,17 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
                     <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
                 ) : s.username}
               </td>
-              <td className="px-4 py-2 font-mono text-slate-600 italic">
+              <td className="px-4 py-2 font-mono text-slate-400">
                 {editingId === s.id ? (
-                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" placeholder="Update secret..." />
-                ) : '****************'}
+                    <input value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" placeholder="Update secret..." />
+                ) : (
+                    <div className="flex items-center space-x-3 group">
+                       <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
+                       <button onClick={() => toggleVisibility(s.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-blue-400">
+                          {visibleIds.includes(s.id) ? <EyeOff size={12}/> : <Eye size={12}/>}
+                       </button>
+                    </div>
+                )}
               </td>
               <td className="px-4 py-2 text-center">
                 {editingId === s.id ? (
@@ -625,7 +773,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
                     </div>
                 ) : (
                     <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => { setEditingId(s.id); setEditData({...s, encrypted_payload: ''}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
+                        <button onClick={() => { setEditingId(s.id); setEditData({...s}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
                         <button onClick={() => confirm('Purge credential?') && delMutation.mutate(s.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
                     </div>
                 )}
@@ -639,153 +787,6 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const RelationsTable = ({ deviceId }: { deviceId: number }) => {
-  const queryClient = useQueryClient()
-  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/relationships`)).json() })
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editData, setEditData] = useState<any>(null)
-
-  const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); toast.success('Vector Purged') }
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/devices/relationships/${data.id}`, { 
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
-    }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); setEditingId(null); toast.success('Vector Updated') }
-  })
-
-  const types = [
-    { label: 'Depends On', s: 'Consumer', t: 'Provider' },
-    { label: 'Hosts', s: 'Hypervisor', t: 'Guest' },
-    { label: 'Backs Up', s: 'Source', t: 'Target' },
-    { label: 'Replicates to', s: 'Primary', t: 'Replica' },
-    { label: 'Cluster Member', s: 'Node', t: 'Peer' }
-  ]
-
-  return (
-    <div className="p-6">
-      <table className="w-full text-[10px]">
-        <thead className="bg-white/5 border-b border-white/5">
-          <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Vector</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Role</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Target Entity</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {relationships?.map((r: any) => {
-            const peer = devices?.find((d:any) => d.id === r.target_device_id)
-            return (
-              <tr key={r.id} className="hover:bg-white/5 transition-colors">
-                <td className="px-4 py-2 font-black uppercase text-indigo-400">
-                  {editingId === r.id ? (
-                      <select value={editData.relationship_type} onChange={e => {
-                        const found = types.find(t => t.label === e.target.value)
-                        setEditData({...editData, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
-                      }} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        {types.map(t => <option key={t.label}>{t.label}</option>)}
-                      </select>
-                  ) : r.relationship_type}
-                </td>
-                <td className="px-4 py-2 font-bold text-slate-400">
-                    {r.source_role} → {r.target_role}
-                </td>
-                <td className="px-4 py-2 font-black text-blue-400 uppercase tracking-tight">
-                  {editingId === r.id ? (
-                      <select value={editData.target_device_id} onChange={e => setEditData({...editData, target_device_id: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                  ) : (peer?.name || 'Unknown Entity')}
-                </td>
-                <td className="px-4 py-2 text-center">
-                  {editingId === r.id ? (
-                      <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
-                          <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
-                      </div>
-                  ) : (
-                      <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => { setEditingId(r.id); setEditData({...r}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
-                          <button onClick={() => confirm('Purge relationship?') && delMutation.mutate(r.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
-                      </div>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relational vectors mapped</td></tr>}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-const HWTab = ({ deviceId }: { deviceId: number }) => {
-  const queryClient = useQueryClient()
-  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/hardware`)).json() })
-  const [newComp, setNewComp] = useState({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 })
-
-  const mutation = useMutation({
-    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw'] }); setNewComp({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 }) }
-  })
-
-  const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-hw'] })
-  })
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
-         <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
-            <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
-         </select>
-         <input value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} placeholder="Component Name" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <input value={newComp.specs} onChange={e => setNewComp({...newComp, specs: e.target.value})} placeholder="Specifications" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <input type="number" value={newComp.count} onChange={e => setNewComp({...newComp, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Add</button>
-      </div>
-      <HWTable deviceId={deviceId} />
-    </div>
-  )
-}
-
-const SecretsTab = ({ deviceId }: { deviceId: number }) => {
-  const queryClient = useQueryClient()
-  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/secrets`)).json() })
-  const [newSec, setNewSec] = useState({ secret_type: 'Root Password', username: '', encrypted_payload: '' })
-
-  const mutation = useMutation({
-    mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets'] }); setNewSec({ secret_type: 'Root Password', username: '', encrypted_payload: '' }); toast.success('Credential Secured') }
-  })
-
-  const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-secrets'] })
-  })
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
-         <select value={newSec.secret_type} onChange={e => setNewSec({...newSec, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
-            <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
-         </select>
-         <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Sensitive Value" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Vault Entry</button>
-      </div>
-      <SecretsTable deviceId={deviceId} />
-    </div>
-  )
-}
-
 const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
@@ -794,12 +795,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
   const mutation = useMutation({
     mutationFn: async (d: any) => fetch(`/api/v1/devices/${deviceId}/relationships`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel'] }); toast.success('Relational Vector Mapped') }
-  })
-
-  const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['device-rel'] })
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); toast.success('Relational Vector Mapped') }
   })
 
   const types = [
@@ -826,6 +822,107 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
          <button onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer"); mutation.mutate(newRel) }} className="bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Establish Vector</button>
       </div>
       <RelationsTable deviceId={deviceId} />
+    </div>
+  )
+}
+
+const RelationsTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/relationships`)).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+
+  const currentDevice = useMemo(() => devices?.find((d: any) => d.id === deviceId), [devices, deviceId]);
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); toast.success('Vector Purged') }
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => fetch(`/api/v1/devices/relationships/${data.id}`, { 
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Vector Updated') }
+  })
+
+  const types = [
+    { label: 'Depends On', s: 'Consumer', t: 'Provider' },
+    { label: 'Hosts', s: 'Hypervisor', t: 'Guest' },
+    { label: 'Backs Up', s: 'Source', t: 'Target' },
+    { label: 'Replicates to', s: 'Primary', t: 'Replica' },
+    { label: 'Cluster Member', s: 'Node', t: 'Peer' }
+  ]
+
+  return (
+    <div className="p-6">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Source Asset</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Vector Type</th>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Target Asset</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {relationships?.map((r: any) => {
+            const peer = devices?.find((d:any) => d.id === r.target_device_id)
+            return (
+              <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                <td className="px-4 py-3">
+                   <div className="flex flex-col">
+                      <span className="font-black text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase">{r.source_role}</span>
+                   </div>
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {editingId === r.id ? (
+                      <select value={editData.relationship_type} onChange={e => {
+                        const found = types.find(t => t.label === e.target.value)
+                        setEditData({...editData, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
+                      }} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        {types.map(t => <option key={t.label}>{t.label}</option>)}
+                      </select>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                       <span className="font-black text-indigo-400 uppercase tracking-widest">{r.relationship_type}</span>
+                       <Check size={10} className="text-slate-700 mt-1" />
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {editingId === r.id ? (
+                      <select value={editData.target_device_id} onChange={e => setEditData({...editData, target_device_id: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
+                        {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                  ) : (
+                    <div className="flex flex-col">
+                       <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
+                       <span className="text-[8px] font-bold text-slate-500 uppercase">{r.target_role}</span>
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {editingId === r.id ? (
+                      <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
+                          <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                      </div>
+                  ) : (
+                      <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => { setEditingId(r.id); setEditData({...r}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
+                          <button onClick={() => confirm('Purge relationship?') && delMutation.mutate(r.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                      </div>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relational vectors mapped</td></tr>}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -962,16 +1059,12 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button 
+          disabled={!!metadataError}
           onClick={() => { 
-            if(metadataError) {
-              if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
-                return;
-              }
-            }
             if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory"); 
             onSave({ data: formData }) 
           }} 
-          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+          className={`flex-1 py-4 ${metadataError ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all`}
         >
            Commit Matrix Configuration
         </button>

@@ -67,6 +67,9 @@ async def create_device(data: dict, force: bool = False, db: AsyncSession = Depe
         active = [e for e in existing if e.status != "Decommissioned"]
         if active: raise HTTPException(409, "DUPLICATE_HOSTNAME_ACTIVE")
         if not force: raise HTTPException(409, "WARN_EXISTING_DECOMMISSIONED")
+        # If we are here, it means existing are all decommissioned AND force is True.
+        # We allow creation.
+
 
     clean_data = filter_valid_columns(models.Device, data)
     for date_f in ["purchase_date", "install_date", "warranty_end", "eol_date"]:
