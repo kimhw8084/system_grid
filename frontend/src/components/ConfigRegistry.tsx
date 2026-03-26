@@ -79,7 +79,10 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                 </div>
             ) : (
                 <>
-                    <span className="text-[10px] font-bold text-slate-300">{opt.label}</span>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-[9px] font-black text-blue-500/40 bg-blue-500/5 w-4 h-4 flex items-center justify-center rounded-md border border-blue-500/10">{opt.id}</span>
+                        <span className="text-[10px] font-bold text-slate-300">{opt.label}</span>
+                    </div>
                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); }} className="p-1 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded transition-all">
                             <Edit2 size={12} />
