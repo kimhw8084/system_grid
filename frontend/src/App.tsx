@@ -15,8 +15,29 @@ import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 
-const APP_VERSION = "1.2.2"
+const APP_VERSION = "1.2.4"
 const PATCH_HISTORY = [
+  {
+    version: "1.2.4",
+    date: "2026-03-26",
+    changes: [
+      { type: "FIXED", text: "Navigation hang and lifecycle management" },
+      { type: "RESTORED", text: "Settings tabs and full configuration access" },
+      { type: "IMPROVED", text: "Global Table Center-Alignment for data density" },
+      { type: "NEW", text: "Environment-based API configuration" }
+    ]
+  },
+  {
+    version: "1.2.3",
+    date: "2026-03-25",
+    changes: [
+      { type: "NEW", text: "Global Registry Overhaul: Soft-Delete implementation" },
+      { type: "NEW", text: "Site & Rack Provisioning workflow expansion" },
+      { type: "NEW", text: "Detail Matrix for enhanced device metadata" },
+      { type: "IMPROVED", text: "UI Intelligence: Predictive navigation and state persistence" },
+      { type: "RESTORED", text: "Full Audit Logs integration" }
+    ]
+  },
   {
     version: "1.2.2",
     date: "2026-03-25",
