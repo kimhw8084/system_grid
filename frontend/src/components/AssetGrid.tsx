@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
 
-const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
+const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
   const [tableRows, setTableRows] = useState<{key: string, value: string}[]>(() => {
     const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
@@ -31,9 +31,11 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
 
     if (hasDuplicate) {
         setError("Duplicate keys detected")
+        onError?.("Duplicate keys detected")
         return false
     } else {
         setError(null)
+        onError?.(null)
         setJsonValue(JSON.stringify(obj, null, 2))
         onChange(obj)
         return true
@@ -47,10 +49,12 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
         const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
         setTableRows(rows)
         setError(null)
+        onError?.(null)
         onChange(obj)
         return true
     } catch (e) {
         setError("Invalid JSON format")
+        onError?.("Invalid JSON format")
         return false
     }
   }
@@ -810,6 +814,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
 const AssetForm = ({ initialData, onSave, options }: any) => {
   const [activeSubTab, setActiveSubTab] = useState('config')
+  const [metadataError, setMetadataError] = useState<string | null>(null)
   const [formData, setFormData] = useState({ 
     name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
     owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
@@ -916,7 +921,11 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
           </div>
 
           <div className="col-span-3">
-             <MetadataEditor value={formData.metadata_json} onChange={v => setFormData({...formData, metadata_json: v})} />
+             <MetadataEditor 
+               value={formData.metadata_json} 
+               onChange={v => setFormData({...formData, metadata_json: v})} 
+               onError={setMetadataError}
+             />
           </div>
         </div>
       )}
@@ -926,8 +935,15 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
       {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Registry entity required before relational mapping</div>)}
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button onClick={() => { if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory"); onSave({ data: formData }) }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all">
-           Commit Matrix Configuration
+        <button 
+          onClick={() => { 
+            if(metadataError) return toast.error(`Cannot save: ${metadataError}`);
+            if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory"); 
+            onSave({ data: formData }) 
+          }} 
+          className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20 hover:scale-[1.02] active:scale-95'}`}
+        >
+           {metadataError ? `BLOCKED: ${metadataError}` : 'Commit Matrix Configuration'}
         </button>
       </div>
     </div>

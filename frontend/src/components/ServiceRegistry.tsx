@@ -6,7 +6,7 @@ import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
 import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
 
-const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) => void }) => {
+const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
   const [tableRows, setTableRows] = useState(() => {
     const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
@@ -19,7 +19,7 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
     const obj: any = {}
     const keys = new Set()
     let hasDuplicate = false
-    
+
     rows.forEach(r => {
       if (r.key) {
         if (keys.has(r.key)) hasDuplicate = true
@@ -30,9 +30,11 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
 
     if (hasDuplicate) {
         setError("Duplicate keys detected")
+        onError?.("Duplicate keys detected")
         return false
     } else {
         setError(null)
+        onError?.(null)
         setJsonValue(JSON.stringify(obj, null, 2))
         onChange(obj)
         return true
@@ -45,14 +47,15 @@ const MetadataEditor = ({ value, onChange }: { value: any, onChange: (v: any) =>
         const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
         setTableRows(rows)
         setError(null)
+        onError?.(null)
         onChange(obj)
         return true
     } catch (e) {
         setError("Invalid JSON format")
+        onError?.("Invalid JSON format")
         return false
     }
   }
-
   return (
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
@@ -333,6 +336,7 @@ export default function ServiceRegistry() {
 
 const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
     const queryClient = useQueryClient()
+    const [metadataError, setMetadataError] = useState<string | null>(null)
     const [formData, setFormData] = useState({ ...service })
 
     const updateMutation = useMutation({
@@ -348,7 +352,15 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Service Configuration & Metadata</h3>
-                <button onClick={() => updateMutation.mutate(formData)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Save Changes</button>
+                <button 
+                  onClick={() => {
+                    if (metadataError) return toast.error(`Cannot save: ${metadataError}`);
+                    updateMutation.mutate(formData);
+                  }} 
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-emerald-600 text-white shadow-emerald-500/20 active:scale-95'}`}
+                >
+                  {metadataError ? `BLOCKED: ${metadataError}` : 'Save Changes'}
+                </button>
             </div>
             
             <div className="grid grid-cols-2 gap-6">
@@ -381,7 +393,11 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
             </div>
 
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                <MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} />
+                <MetadataEditor 
+                  value={formData.config_json} 
+                  onChange={v => setFormData({...formData, config_json: v})} 
+                  onError={setMetadataError}
+                />
             </div>
             
             <div className="grid grid-cols-2 gap-6">
@@ -408,6 +424,7 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
 }
 
 const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
+  const [metadataError, setMetadataError] = useState<string | null>(null)
   const [formData, setFormData] = useState({ 
     name: "", service_type: "Database", status: "Running", environment: "Production", version: "",
     device_id: null, config_json: {}, ...initialData 
@@ -462,13 +479,24 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
         </div>
 
         <div className="col-span-2">
-           <MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} />
+           <MetadataEditor 
+             value={formData.config_json} 
+             onChange={v => setFormData({...formData, config_json: v})} 
+             onError={setMetadataError}
+           />
         </div>
       </div>
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button onClick={() => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
-           Commit Service Configuration
+        <button 
+          onClick={() => { 
+            if (metadataError) return toast.error(`Cannot commit: ${metadataError}`);
+            if(!formData.name) return toast.error("Instance name required"); 
+            onSave(formData) 
+          }} 
+          className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20 active:scale-95'}`}
+        >
+           {metadataError ? `BLOCKED: ${metadataError}` : 'Commit Service Configuration'}
         </button>
       </div>
     </div>
