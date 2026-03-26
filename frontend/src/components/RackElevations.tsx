@@ -283,7 +283,12 @@ export default function RackElevations() {
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Target Asset</label>
                 <select value={isProvisioning.device_id || ''} onChange={e => setIsProvisioning({...isProvisioning, device_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none">
                   <option value="">Select Asset from Registry...</option>
-                  {devices?.filter((d:any) => d.status !== 'Decommissioned' && d.u_start === null).map((d: any) => <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
+                  {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).map((d: any) => (
+                    <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>
+                  ))}
+                  {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).length === 0 && (
+                    <option disabled>No unmounted assets available</option>
+                  )}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
