@@ -222,10 +222,7 @@ export default function AssetGrid() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-2 h-full font-bold text-blue-400">
-           <LayoutGrid size={12} className="opacity-50" />
-           <span>{p.value}</span>
-        </div>
+        <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
     { field: "system", headerName: "System", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
