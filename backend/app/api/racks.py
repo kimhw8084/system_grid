@@ -149,7 +149,17 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         rack.name = data['name']
         
     if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
-    if 'total_u' in data: rack.total_u_height = data['total_u']
+    if 'total_u' in data: 
+        new_total = data['total_u']
+        if new_total < rack.total_u_height:
+            # Check if any devices are mounted above the new limit
+            loc_res = await db.execute(select(models.DeviceLocation).filter(
+                models.DeviceLocation.rack_id == rack_id,
+                (models.DeviceLocation.start_unit + models.DeviceLocation.size_u - 1) > new_total
+            ))
+            if loc_res.scalars().first():
+                raise HTTPException(status_code=400, detail="RACK_SHRINK_CONFLICT: Units to be removed are occupied")
+        rack.total_u_height = new_total
     
     if 'new_site_id' in data:
         if data['new_site_id'] is None:

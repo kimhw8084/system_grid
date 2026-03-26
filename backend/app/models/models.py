@@ -28,11 +28,11 @@ class Room(Base, BaseMixin):
     hvac_zone = Column(String)
     fire_suppression_type = Column(String)
     site = relationship("Site", back_populates="rooms")
-    racks = relationship("Rack", back_populates="room")
+    racks = relationship("Rack", back_populates="room", cascade="all, delete-orphan")
 
 class Rack(Base, BaseMixin):
     __tablename__ = "racks"
-    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=True)
     name = Column(String, index=True)
     total_u_height = Column(Integer, default=42)
     max_power_kw = Column(Float, default=8.0)

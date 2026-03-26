@@ -38,7 +38,7 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage, isEv
   )
 }
 
-const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, onManageDevice, isSelected, onToggleSelect }: { rack: any, onDelete: any, onEdit: any, onMove?: (direction: 'left' | 'right') => void, searchTerm: string, onMount: (rackId: number, u: number) => void, onManageDevice: (device: any) => void, isSelected: boolean, onToggleSelect: (id: number) => void }) => {
+const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, onManageDevice, isSelected, onToggleSelect, onRestore, isDeleted }: { rack: any, onDelete: any, onEdit: any, onMove?: (direction: 'left' | 'right') => void, searchTerm: string, onMount: (rackId: number, u: number) => void, onManageDevice: (device: any) => void, isSelected: boolean, onToggleSelect: (id: number) => void, onRestore?: (id: number) => void, isDeleted?: boolean }) => {
   const units = Array.from({ length: rack.total_u || 42 }, (_, i) => (rack.total_u || 42) - i)
   const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -54,7 +54,7 @@ const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, on
   }, [rack.device_locations])
 
   return (
-    <div className={`glass-panel w-64 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/10 transition-all group relative ${isSelected ? 'border-blue-500 shadow-blue-500/20 shadow-xl z-10 bg-blue-900/10' : 'hover:border-[#034EA2]/40'}`}>
+    <div className={`glass-panel w-64 flex-shrink-0 rounded-xl overflow-hidden flex flex-col border-white/10 transition-all group relative ${isSelected ? 'border-blue-500 shadow-blue-500/20 shadow-xl z-10 bg-blue-900/10' : 'hover:border-[#034EA2]/40'} ${isDeleted ? 'opacity-70 grayscale-[0.5]' : ''}`}>
       <div className="absolute top-2.5 left-2 z-20">
          <div onClick={() => onToggleSelect(rack.id)} className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-colors ${isSelected ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/20 bg-slate-900 hover:border-blue-400'}`}>
             {isSelected && <Check size={12} strokeWidth={4} />}
@@ -65,19 +65,28 @@ const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, on
         <div className="flex items-center justify-between ml-6">
           <h3 className="font-black text-[11px] uppercase tracking-widest text-white truncate pr-2">{rack.name}</h3>
           <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {onMove && (
+            {isDeleted ? (
+              <button onClick={() => onRestore?.(rack.id)} className="px-2 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500/30 transition-all flex items-center space-x-1">
+                 <RefreshCcw size={10} /> <span>Restore</span>
+              </button>
+            ) : (
               <>
-                <button onClick={() => onMove('left')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} className="scale-x-[-1]" /></button>
-                <button onClick={() => onMove('right')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} /></button>
+                {onMove && (
+                  <>
+                    <button onClick={() => onMove('left')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} className="scale-x-[-1]" /></button>
+                    <button onClick={() => onMove('right')} className="p-1 hover:bg-white/10 rounded text-slate-400"><ArrowRightLeft size={10} /></button>
+                  </>
+                )}
+                <button onClick={() => onEdit(rack)} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-blue-400"><Edit2 size={12}/></button>
+                <button onClick={() => onDelete(rack.id)} className="p-1 hover:bg-rose-500/10 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12}/></button>
               </>
             )}
-            <button onClick={() => onEdit(rack)} className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-blue-400"><Edit2 size={12}/></button>
-            <button onClick={() => onDelete(rack.id)} className="p-1 hover:bg-rose-500/10 rounded text-slate-400 hover:text-rose-400"><Trash2 size={12}/></button>
           </div>
         </div>
         <div className="flex items-center space-x-3 mt-2 ml-6">
            <div className="flex items-center space-x-1 text-[8px] font-bold text-slate-500 uppercase"><MapPin size={10}/><span>{rack.site_name || 'Unassigned'}</span></div>
            <div className="flex items-center space-x-1 text-[8px] font-bold text-blue-400 uppercase"><Zap size={10}/><span>{rack.total_u}U</span></div>
+           {isDeleted && <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">Purged</span>}
         </div>
       </div>
 
@@ -93,7 +102,7 @@ const RackElevation = ({ rack, onDelete, onEdit, onMove, searchTerm, onMount, on
                 isBase={u === loc?.start_unit}
                 isEvenServer={loc ? serverParityMap[loc.device_id] : false}
                 highlight={loc?.device ? isHighlighted(loc.device) : false}
-                onSelect={() => onMount(rack.id, u)}
+                onSelect={() => !isDeleted && onMount(rack.id, u)}
                 onManage={onManageDevice}
               />
             )
@@ -150,9 +159,22 @@ export default function RackElevations() {
   })
 
   const siteDeleteMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/sites/${id}`, { method: 'DELETE' }),
+    mutationFn: async (id: number) => {
+        const res = await fetch(`/api/v1/sites/${id}`, { method: 'DELETE' })
+        if (!res.ok) {
+            const err = await res.json()
+            throw new Error(err.detail || 'FAILED_TO_DELETE')
+        }
+        return res.json()
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sites'] }); toast.success('Site Decommissioned'); setActiveSite(null) },
-    onError: () => toast.error('Failed to decommission site. Ensure it has no rooms/racks.')
+    onError: (e: any) => {
+        if (e.message.includes('FOREIGN KEY')) {
+            toast.error('Cannot delete site: Racks or Devices are still mounted. Please clear the site first.')
+        } else {
+            toast.error(`Decommission failure: ${e.message}`)
+        }
+    }
   })
 
   const rackMutation = useMutation({
@@ -163,25 +185,18 @@ export default function RackElevations() {
         if (!res.ok) {
             const err = await res.json()
             if (err.detail === 'RACK_NAME_DUPLICATE') throw new Error('DUPLICATE_RACK')
+            if (err.detail === 'RACK_NAME_DUPLICATE_IN_SITE') throw new Error('DUPLICATE_RACK_SITE')
+            if (err.detail === 'RACK_SHRINK_CONFLICT: Units to be removed are occupied') throw new Error('SHRINK_CONFLICT')
             throw new Error('Failed to synchronize rack')
         }
         return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); setIsAddingRack(false); setIsEditingRack(null); toast.success('Rack Infrastructure Synchronized') },
     onError: (e: any) => {
-        if (e.message === 'DUPLICATE_RACK') toast.error('ERROR: Rack name already exists in inventory')
+        if (e.message === 'DUPLICATE_RACK' || e.message === 'DUPLICATE_RACK_SITE') toast.error('ERROR: Rack name already exists in this site')
+        else if (e.message === 'SHRINK_CONFLICT') toast.error('ERROR: Cannot shrink rack. Occupied slots detected in target removal zone.')
         else toast.error(e.message)
     }
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-        const res = await fetch(`/api/v1/racks/${id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error('Failed to purge rack')
-        return res.json()
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Rack Purged') },
-    onError: (e: any) => toast.error(e.message)
   })
 
   const mountMutation = useMutation({
@@ -192,6 +207,16 @@ export default function RackElevations() {
         const res = await fetch(`/api/v1/racks/${rackId}/mount`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
         if (!res.ok) {
             const err = await res.json()
+            if (res.status === 409) {
+                if (confirm(`${err.detail}\n\nDo you want to relocate this asset to the new position?`)) {
+                    return (await fetch(`/api/v1/racks/${rackId}/mount`, { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({ ...payload, relocate: true }) 
+                    })).json();
+                }
+                throw new Error('RELOCATION_CANCELLED')
+            }
             throw new Error(err.detail || 'Mount failed')
         }
         return res.json()
@@ -199,8 +224,36 @@ export default function RackElevations() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset Racked Successfully'); setIsProvisioning(null) },
     onError: (e: any) => {
         if (e.message === 'DEVICE_REQUIRED') toast.error('ERROR: No asset selected for mounting')
+        else if (e.message === 'RELOCATION_CANCELLED') return
         else toast.error(e.message)
     }
+  })
+
+  const unmountMutation = useMutation({
+    mutationFn: async (deviceId: number) => {
+        const res = await fetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error('Failed to unmount asset')
+        return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset Removed from Rack'); setManagingDevice(null) },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const updateMountMutation = useMutation({
+    mutationFn: async ({ rackId, device_id, start_u, size_u }: any) => {
+        const res = await fetch(`/api/v1/racks/${rackId}/mount`, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ device_id, start_u, size_u, relocate: true }) 
+        })
+        if (!res.ok) {
+            const err = await res.json()
+            throw new Error(err.detail || 'Update failed')
+        }
+        return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset Configuration Updated'); setManagingDevice(null) },
+    onError: (e: any) => toast.error(e.message)
   })
 
   const siteReorderMutation = useMutation({
@@ -250,18 +303,30 @@ export default function RackElevations() {
   return (
     <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight italic">Elevation Control</h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Capacity & Spatial Intelligence</p>
+        <div className="flex items-center space-x-8">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Elevation Control</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Capacity & Spatial Intelligence</p>
+           </div>
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
+              <button onClick={() => { setActiveTab('active'); setSelectedRacks([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active Inventory</button>
+              <button onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
+           </div>
         </div>
         <div className="flex items-center space-x-4">
-          <button onClick={() => { 
-            const sId = activeSite ? String(activeSite) : '';
-            setNewRack({ name: '', total_u: 42, site_id: sId }); 
-            setIsAddingRack(true); 
-          }} className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center space-x-2">
-            <Plus size={14}/> <span>Add Rack</span>
-          </button>
+          {activeTab === 'active' ? (
+            <button onClick={() => { 
+                const sId = activeSite ? String(activeSite) : '';
+                setNewRack({ name: '', total_u: 42, site_id: sId, max_power_kw: 8.0 }); 
+                setIsAddingRack(true); 
+              }} className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center space-x-2">
+                <Plus size={14}/> <span>Add Rack</span>
+              </button>
+          ) : (
+            <button disabled={selectedRacks.length === 0} onClick={() => bulkActionMutation.mutate({ action: 'restore', ids: selectedRacks })} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${selectedRacks.length > 0 ? 'bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20' : 'bg-white/5 text-slate-700 border-white/5 cursor-not-allowed'}`}>
+                <RefreshCcw size={14}/> <span>Restore Selected</span>
+            </button>
+          )}
           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
              <button onClick={() => setShowCompareOnly(false)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>Site View</button>
              <button onClick={() => setShowCompareOnly(true)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}>Compare ({selectedRacks.length})</button>
@@ -276,19 +341,53 @@ export default function RackElevations() {
       {!showCompareOnly && (
         <div className="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar items-center">
           <button onClick={() => setActiveSite(null)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>Global Matrix</button>
-          {sites?.map((s: any) => (
-            <div key={s.id} className="relative group">
-               <button onClick={() => setActiveSite(s.id)} className={`px-4 py-2 pr-12 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${activeSite === s.id ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>
+          {sites?.map((s: any) => {
+            const [showMenu, setShowMenu] = useState(false);
+            return (
+              <div key={s.id} className="relative group">
+                <button 
+                  onClick={() => setActiveSite(s.id)} 
+                  className={`px-4 py-2 pr-10 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${activeSite === s.id ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/5 text-slate-500 hover:border-white/20'}`}
+                >
                   {s.name}
-               </button>
-               <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex items-center space-x-1 ${activeSite === s.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                  <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'left') }} className="p-1 rounded hover:bg-white/10 text-slate-500"><ArrowRightLeft size={10} className="rotate-90 scale-x-[-1]" /></button>
-                  <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'right') }} className="p-1 rounded hover:bg-white/10 text-slate-500"><ArrowRightLeft size={10} className="rotate-90" /></button>
-                  <button onClick={(e) => { e.stopPropagation(); setIsEditingSite(s) }} className={`p-1 rounded transition-colors ${activeSite === s.id ? 'hover:bg-white/20 text-white' : 'hover:bg-white/10 text-slate-500'}`}><Edit2 size={10}/></button>
-                  <button onClick={(e) => { e.stopPropagation(); if(confirm(`Destroy site ${s.name}?`)) siteDeleteMutation.mutate(s.id) }} className={`p-1 rounded transition-colors ${activeSite === s.id ? 'hover:bg-rose-500/30 text-white' : 'hover:bg-rose-500/10 text-slate-500'}`}><Trash2 size={10}/></button>
-               </div>
-            </div>
-          ))}
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${activeSite === s.id ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-400'}`}
+                >
+                  <MoreVertical size={14} />
+                </button>
+                
+                <AnimatePresence>
+                  {showMenu && (
+                    <>
+                      <div className="fixed inset-0 z-[60]" onClick={() => setShowMenu(false)} />
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 mt-2 w-32 bg-slate-900 border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                      >
+                        <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'left'); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center space-x-2">
+                          <ArrowRightLeft size={10} className="rotate-90 scale-x-[-1]" /> <span>Move Left</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); moveSite(s.id, 'right'); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center space-x-2">
+                          <ArrowRightLeft size={10} className="rotate-90" /> <span>Move Right</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setIsEditingSite(s); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 rounded-lg flex items-center space-x-2">
+                          <Edit2 size={10} /> <span>Edit Site</span>
+                        </button>
+                        <div className="h-px bg-white/5 my-1" />
+                        <button onClick={(e) => { e.stopPropagation(); if(confirm(`Destroy site ${s.name}?`)) siteDeleteMutation.mutate(s.id); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center space-x-2">
+                          <Trash2 size={10} /> <span>Decommission</span>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
           <button onClick={() => { setNewSite({ name: '', address: '' }); setIsAddingSite(true) }} className="p-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all ml-2">
             <Plus size={16}/>
           </button>
@@ -308,12 +407,14 @@ export default function RackElevations() {
             onMove={(dir) => moveRack(r.id, dir)}
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
             onManageDevice={setManagingDevice}
+            isDeleted={activeTab === 'deleted'}
+            onRestore={(id) => bulkActionMutation.mutate({ action: 'restore', ids: [id] })}
           />
         ))}
         {displayedRacks.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center opacity-20 space-y-4">
              <Server size={64} />
-             <p className="text-[10px] font-black uppercase tracking-[0.4em]">No Racks in Selected Scope</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.4em]">{activeTab === 'deleted' ? 'No Purged Records' : 'No Racks in Selected Scope'}</p>
           </div>
         )}
       </div>
@@ -409,6 +510,74 @@ export default function RackElevations() {
                     if(!isEditingRack && !newRack.site_id) return toast.error("Site selection is required"); 
                     rackMutation.mutate(isEditingRack || newRack) 
                 }} className="flex-2 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">{isEditingRack ? 'Sync Rack' : 'Deploy Rack'}</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {managingDevice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-[40px] space-y-6 border-blue-500/30">
+              <div className="flex items-center justify-between">
+                 <h2 className="text-xl font-black uppercase tracking-tighter flex items-center space-x-3 text-blue-400"><Monitor size={24} /><span>Asset Control Matrix</span></h2>
+                 <button onClick={() => setManagingDevice(null)} className="p-2 hover:bg-white/10 rounded-full text-slate-500 transition-colors"><X size={20}/></button>
+              </div>
+
+              <div className="bg-slate-900/50 rounded-2xl p-6 border border-white/5 space-y-4">
+                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div>
+                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Hostname</p>
+                       <h3 className="text-lg font-black text-white">{managingDevice.name}</h3>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Classification</p>
+                       <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{managingDevice.type}</span>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-6">
+                    <div>
+                       <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Position (U)</label>
+                       <div className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-300 font-mono">
+                          Unit {allRacks?.find((r:any) => r.device_locations?.some((l:any) => l.device_id === managingDevice.id))?.device_locations?.find((l:any) => l.device_id === managingDevice.id)?.start_unit}
+                       </div>
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Vertical Size (U)</label>
+                       <input 
+                          type="number" 
+                          value={managingDevice.size_u || 1} 
+                          onChange={e => setManagingDevice({...managingDevice, size_u: parseInt(e.target.value)})}
+                          className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" 
+                       />
+                    </div>
+                 </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button 
+                  onClick={() => {
+                    const rack = allRacks?.find((r:any) => r.device_locations?.some((l:any) => l.device_id === managingDevice.id));
+                    const loc = rack?.device_locations?.find((l:any) => l.device_id === managingDevice.id);
+                    if (rack && loc) {
+                      updateMountMutation.mutate({ 
+                        rackId: rack.id, 
+                        device_id: managingDevice.id, 
+                        start_u: loc.start_unit, 
+                        size_u: managingDevice.size_u 
+                      });
+                    }
+                  }}
+                  className="flex-1 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase hover:bg-blue-600/20 transition-all flex items-center justify-center space-x-2"
+                >
+                   <Check size={14}/> <span>Apply Resize</span>
+                </button>
+                <button 
+                  onClick={() => confirm(`Permanently remove ${managingDevice.name} from its rack?`) && unmountMutation.mutate(managingDevice.id)}
+                  className="flex-1 py-3 bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase hover:bg-rose-600/20 transition-all flex items-center justify-center space-x-2"
+                >
+                   <Trash2 size={14}/> <span>Unmount Asset</span>
+                </button>
               </div>
             </motion.div>
           </div>
