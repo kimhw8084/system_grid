@@ -455,12 +455,16 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
                 {tab === 'metadata' && (
                     <button 
                       onClick={() => {
-                        if (metadataError) return toast.error(`Cannot save: ${metadataError}`);
+                        if (metadataError) {
+                          if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
+                            return;
+                          }
+                        }
                         metaMutation.mutate(metadata);
                       }} 
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-emerald-600 text-white shadow-emerald-500/20 active:scale-95'}`}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                     >
-                      {metadataError ? `BLOCKED: ${metadataError}` : 'Save Metadata'}
+                      Save Metadata
                     </button>
                 )}
             </div>
@@ -952,13 +956,17 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
       <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button 
           onClick={() => { 
-            if(metadataError) return toast.error(`Cannot save: ${metadataError}`);
+            if(metadataError) {
+              if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
+                return;
+              }
+            }
             if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory"); 
             onSave({ data: formData }) 
           }} 
-          className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20 hover:scale-[1.02] active:scale-95'}`}
+          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all"
         >
-           {metadataError ? `BLOCKED: ${metadataError}` : 'Commit Matrix Configuration'}
+           Commit Matrix Configuration
         </button>
       </div>
     </div>

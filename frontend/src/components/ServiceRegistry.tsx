@@ -354,12 +354,16 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
                 <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Service Configuration & Metadata</h3>
                 <button 
                   onClick={() => {
-                    if (metadataError) return toast.error(`Cannot save: ${metadataError}`);
+                    if (metadataError) {
+                      if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
+                        return;
+                      }
+                    }
                     updateMutation.mutate(formData);
                   }} 
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-emerald-600 text-white shadow-emerald-500/20 active:scale-95'}`}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                 >
-                  {metadataError ? `BLOCKED: ${metadataError}` : 'Save Changes'}
+                  Save Changes
                 </button>
             </div>
             
@@ -490,13 +494,17 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
       <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button 
           onClick={() => { 
-            if (metadataError) return toast.error(`Cannot commit: ${metadataError}`);
+            if (metadataError) {
+              if (!confirm(`Warning: Metadata has errors (${metadataError}). Do you want to save anyway?`)) {
+                return;
+              }
+            }
             if(!formData.name) return toast.error("Instance name required"); 
             onSave(formData) 
           }} 
-          className={`flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all ${metadataError ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20 active:scale-95'}`}
+          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
         >
-           {metadataError ? `BLOCKED: ${metadataError}` : 'Commit Service Configuration'}
+           Commit Service Configuration
         </button>
       </div>
     </div>
