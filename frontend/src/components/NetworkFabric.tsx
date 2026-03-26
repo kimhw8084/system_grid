@@ -7,12 +7,15 @@ import toast from 'react-hot-toast'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { ConfigRegistryModal } from "./ConfigRegistry"
+import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { StyledSelect } from "./shared/StyledSelect"
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [editingLink, setEditingLink] = useState<any>(null)
   const [showConfig, setShowConfig] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [connData, setConnData] = useState<any>({
     device_a_id: '', source_port: '', device_b_id: '', target_port: '',
     purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
@@ -101,7 +104,7 @@ export default function NetworkFabric() {
              }); 
              setShowConnectModal(true) 
            }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
-           <button onClick={() => { if(confirm('Sever this connection?')) deleteMutation.mutate(p.data.id) }} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
+           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this physical connection?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
         </div>
       )
     }
@@ -149,6 +152,15 @@ export default function NetworkFabric() {
         />
       </div>
 
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
+
       <AnimatePresence>
         {showConnectModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
@@ -159,50 +171,56 @@ export default function NetworkFabric() {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Entity *</label>
-                  <select value={connData.device_a_id} onChange={e => setConnData({...connData, device_a_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
-                    <option value="">Select Registry Asset...</option>
-                    {devices?.map((d: any) => <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
-                  </select>
+                  <StyledSelect
+                    label="Source Entity *"
+                    value={connData.device_a_id}
+                    onChange={e => setConnData({...connData, device_a_id: e.target.value})}
+                    options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                    placeholder="Select Registry Asset..."
+                  />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Source Port *</label>
-                  <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" placeholder="eth0" />
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
+                  <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
                 </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Direction</label>
-                  <select value={connData.direction} onChange={e => setConnData({...connData, direction: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs">
-                    <option>Bidirectional</option><option>Unidirectional</option>
-                  </select>
-                </div>
+                <StyledSelect
+                    label="Direction"
+                    value={connData.direction}
+                    onChange={e => setConnData({...connData, direction: e.target.value})}
+                    options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
+                />
                 <div className="col-span-2 border-t border-white/5 pt-4">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Entity *</label>
-                  <select value={connData.device_b_id} onChange={e => setConnData({...connData, device_b_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
-                    <option value="">Select Registry Asset...</option>
-                    {devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => <option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
-                  </select>
+                  <StyledSelect
+                    label="Peer Entity *"
+                    value={connData.device_b_id}
+                    onChange={e => setConnData({...connData, device_b_id: e.target.value})}
+                    options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                    placeholder="Select Registry Asset..."
+                  />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Peer Port *</label>
-                  <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" placeholder="Te1/1/1" />
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
+                  <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
                 </div>
+                <StyledSelect
+                    label="Link Purpose *"
+                    value={connData.purpose}
+                    onChange={e => setConnData({...connData, purpose: e.target.value})}
+                    options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
+                        ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
+                        : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
+                    }
+                />
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Link Purpose *</label>
-                  <select value={connData.purpose} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs outline-none focus:border-blue-500">
-                    {Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => <option key={p.id} value={p.value}>{p.label}</option>)}
-                    {(!Array.isArray(options) || options.filter((o:any) => o.category === 'LinkPurpose').length === 0) && ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => <option key={p}>{p}</option>)}
-                  </select>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
+                  <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Speed *</label>
-                  <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Unit</label>
-                  <select value={connData.unit} onChange={e => setConnData({...connData, unit: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 mt-1 text-xs">
-                    <option>Gbps</option><option>Mbps</option><option>Tbps</option>
-                  </select>
-                </div>
+                <StyledSelect
+                    label="Unit"
+                    value={connData.unit}
+                    onChange={e => setConnData({...connData, unit: e.target.value})}
+                    options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
+                />
               </div>
               <div className="flex space-x-3 pt-4 border-t border-white/5">
                 <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500">Abort</button>

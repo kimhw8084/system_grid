@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Info, Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server, Monitor, AlertTriangle, Check, MoreVertical } from 'lucide-react'
+import { Info, Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server, Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { StyledSelect } from "./shared/StyledSelect"
 
 const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage, isEvenServer }: { uNumber: number, device?: any, isBase?: boolean, highlight?: boolean, onSelect: () => void, onManage: (device: any) => void, isEvenServer?: boolean }) => {
   const getBadgeColor = (type: string) => {
@@ -131,6 +133,11 @@ export default function RackElevations() {
   const [showCompareOnly, setShowCompareOnly] = useState(false)
   const [activeTab, setActiveTab] = useState('active') // 'active' or 'deleted'
   const [selectedRacks, setSelectedRacks] = useState<number[]>([])
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
+  }
 
   const { data: allRacks } = useQuery({ queryKey: ['racks-all', activeTab], queryFn: async () => (await fetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json() })
   
@@ -208,14 +215,7 @@ export default function RackElevations() {
         if (!res.ok) {
             const err = await res.json()
             if (res.status === 409) {
-                if (confirm(`${err.detail}\n\nDo you want to relocate this asset to the new position?`)) {
-                    return (await fetch(`/api/v1/racks/${rackId}/mount`, { 
-                        method: 'POST', 
-                        headers: {'Content-Type': 'application/json'}, 
-                        body: JSON.stringify({ ...payload, relocate: true }) 
-                    })).json();
-                }
-                throw new Error('RELOCATION_CANCELLED')
+                throw { type: 'RELOCATION_CONFLICT', detail: err.detail, payload, rackId }
             }
             throw new Error(err.detail || 'Mount failed')
         }
@@ -223,7 +223,14 @@ export default function RackElevations() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset Racked Successfully'); setIsProvisioning(null) },
     onError: (e: any) => {
-        if (e.message === 'DEVICE_REQUIRED') toast.error('ERROR: No asset selected for mounting')
+        if (e.type === 'RELOCATION_CONFLICT') {
+            openConfirm(
+                'Relocation Request',
+                `${e.detail}\n\nDo you want to relocate this asset to the new position?`,
+                () => mountMutation.mutate({ ...e.payload, relocate: true, rackId: e.rackId }),
+                'warning'
+            )
+        } else if (e.message === 'DEVICE_REQUIRED') toast.error('ERROR: No asset selected for mounting')
         else if (e.message === 'RELOCATION_CANCELLED') return
         else toast.error(e.message)
     }
@@ -254,6 +261,23 @@ export default function RackElevations() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset Configuration Updated'); setManagingDevice(null) },
     onError: (e: any) => toast.error(e.message)
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => fetch(`/api/v1/racks/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Rack Decommissioned') }
+  })
+
+  const bulkActionMutation = useMutation({
+    mutationFn: async ({ action, ids }: any) => {
+        const res = await fetch('/api/v1/racks/bulk-action', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ ids, action }) 
+        })
+        return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); setSelectedRacks([]); toast.success('Bulk Operation Complete') }
   })
 
   const siteReorderMutation = useMutation({
@@ -378,7 +402,7 @@ export default function RackElevations() {
                           <Edit2 size={10} /> <span>Edit Site</span>
                         </button>
                         <div className="h-px bg-white/5 my-1" />
-                        <button onClick={(e) => { e.stopPropagation(); if(confirm(`Destroy site ${s.name}?`)) siteDeleteMutation.mutate(s.id); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center space-x-2">
+                        <button onClick={(e) => { e.stopPropagation(); openConfirm('Decommission Site', `Destroy site ${s.name}?`, () => siteDeleteMutation.mutate(s.id)); setShowMenu(false) }} className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center space-x-2">
                           <Trash2 size={10} /> <span>Decommission</span>
                         </button>
                       </motion.div>
@@ -402,7 +426,7 @@ export default function RackElevations() {
             searchTerm={searchTerm}
             isSelected={selectedRacks.includes(r.id)}
             onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-            onDelete={(id) => confirm('Destroy this rack structure?') && deleteMutation.mutate(id)}
+            onDelete={(id) => openConfirm('Destroy Rack', 'Destroy this rack structure?', () => deleteMutation.mutate(id))}
             onEdit={(rack: any) => setIsEditingRack({...rack, total_u: rack.total_u})}
             onMove={(dir) => moveRack(r.id, dir)}
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
@@ -419,35 +443,39 @@ export default function RackElevations() {
         )}
       </div>
 
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
+
       <AnimatePresence>
         {isProvisioning && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[450px] p-10 rounded-[40px] space-y-6">
               <h2 className="text-xl font-black uppercase tracking-tighter flex items-center space-x-3 text-blue-400"><Server size={24} /><span>Rack Mounting Matrix</span></h2>
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Target Asset</label>
-                <select value={isProvisioning.device_id || ''} onChange={e => {
+              <StyledSelect
+                label="Target Asset"
+                value={isProvisioning.device_id || ''}
+                onChange={e => {
                     const selectedDevice = devices?.find((d: any) => String(d.id) === e.target.value);
-                    const size_u = selectedDevice?.size_u || 1; // Default to 1U if not specified
+                    const size_u = selectedDevice?.size_u || 1;
                     setIsProvisioning({...isProvisioning, device_id: e.target.value, size_u: size_u});
-                }} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none">
-                  <option value="">Select Asset from Registry...</option>
-                  {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).map((d: any) => (
-                    <option key={d.id} value={d.id}>{d.name} [{d.type}] ({d.size_u || 1}U)</option>
-                  ))}
-                  {devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).length === 0 && (
-                    <option disabled>No unmounted assets available</option>
-                  )}
-                </select>
-              </div>
+                }}
+                options={devices?.filter((d:any) => d.status !== 'Decommissioned' && (d.u_start === null || d.u_start === undefined)).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}] (${d.size_u || 1}U)` })) || []}
+                placeholder="Select Asset from Registry..."
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Start Unit (U)</label>
-                  <input type="number" value={isProvisioning.start_u} onChange={e => setIsProvisioning({...isProvisioning, start_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs" />
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Start Unit (U)</label>
+                  <input type="number" value={isProvisioning.start_u} onChange={e => setIsProvisioning({...isProvisioning, start_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Vertical Size (U)</label>
-                  <input type="number" value={isProvisioning.size_u || 1} onChange={e => setIsProvisioning({...isProvisioning, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs" />
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Vertical Size (U)</label>
+                  <input type="number" value={isProvisioning.size_u || 1} onChange={e => setIsProvisioning({...isProvisioning, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500" />
                 </div>
               </div>
               <div className="flex space-x-3 pt-4">
@@ -487,13 +515,13 @@ export default function RackElevations() {
               <h2 className="text-xl font-black uppercase tracking-tighter flex items-center space-x-3 text-blue-400"><Server size={24} /><span>{isEditingRack ? 'Modify Rack Matrix' : 'Provision Rack Structure'}</span></h2>
               <div className="space-y-4">
                 {!isEditingRack && (
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Target Site</label>
-                    <select value={newRack.site_id} onChange={e => setNewRack({...newRack, site_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none">
-                      <option value="">Select Deployment Site...</option>
-                      {sites?.map((s:any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
+                  <StyledSelect
+                    label="Target Site"
+                    value={newRack.site_id}
+                    onChange={e => setNewRack({...newRack, site_id: e.target.value})}
+                    options={sites?.map((s:any) => ({ value: String(s.id), label: s.name })) || []}
+                    placeholder="Select Deployment Site..."
+                  />
                 )}
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Rack Identifier</label>
@@ -573,7 +601,7 @@ export default function RackElevations() {
                    <Check size={14}/> <span>Apply Resize</span>
                 </button>
                 <button 
-                  onClick={() => confirm(`Permanently remove ${managingDevice.name} from its rack?`) && unmountMutation.mutate(managingDevice.id)}
+                  onClick={() => openConfirm('Unmount Asset', `Permanently remove ${managingDevice.name} from its rack?`, () => unmountMutation.mutate(managingDevice.id))}
                   className="flex-1 py-3 bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-xl text-[10px] font-black uppercase hover:bg-rose-600/20 transition-all flex items-center justify-center space-x-2"
                 >
                    <Trash2 size={14}/> <span>Unmount Asset</span>

@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, Key, X, Save, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
+import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { StyledSelect } from "./shared/StyledSelect"
 
 const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
   const { data: services, isLoading } = useQuery({ 
@@ -57,19 +59,13 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options }: { isOpen: 
           <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
              <RefreshCcw size={24}/> <span>Bulk Status Transition</span>
           </h2>
-          <div>
-             <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Target Operational State</label>
-             <select 
-               value={selectedStatus} 
-               onChange={e => setSelectedStatus(e.target.value)}
-               className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-blue-500"
-             >
-                <option value="">Select Status...</option>
-                {options?.filter((o:any) => o.category === 'Status').map((o:any) => (
-                  <option key={o.id} value={o.value}>{o.label}</option>
-                ))}
-             </select>
-          </div>
+          <StyledSelect
+            label="Target Operational State"
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            options={options?.filter((o:any) => o.category === 'Status') || []}
+            placeholder="Select Status..."
+          />
           <div className="flex space-x-3 pt-2">
              <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
              <button 
@@ -234,6 +230,11 @@ export default function AssetGrid() {
   const [showConfig, setShowConfig] = useState(false)
   const [showUI, setShowUI] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
+  }
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
   const { data: uiSettings } = useQuery({ queryKey: ['ui-settings'], queryFn: async () => (await fetch('/api/v1/settings/ui')).json() })
@@ -267,9 +268,12 @@ export default function AssetGrid() {
     onError: (e: any) => {
       if (e.message === 'DUPLICATE_ACTIVE') toast.error('ERROR: Hostname is currently ACTIVE in registry')
       else if (e.message === 'WARN_DECOM') {
-        if (confirm('A decommissioned entry with this hostname exists. Reuse identity?')) {
-          mutation.mutate({ data: activeModal, force: true })
-        }
+        openConfirm(
+          'Reactivation Request',
+          'A decommissioned entry with this hostname exists. Reuse identity?',
+          () => mutation.mutate({ data: activeModal, force: true }),
+          'warning'
+        )
       } else toast.error(e.message)
     }
   })
@@ -360,9 +364,9 @@ export default function AssetGrid() {
                <button onClick={() => setActiveDetails(p.data)} title="System Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Search size={14}/></button>
                <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
                {activeTab !== 'deleted' ? (
-                 <button onClick={() => { if(confirm('Soft-delete this asset?')) bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) }} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => openConfirm('Soft Delete', 'Decommission this asset?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
                ) : (
-                 <button onClick={() => { if(confirm('PURGE PERMANENTLY?')) bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }) }} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
                )}
            </div>
         </div>
@@ -416,7 +420,11 @@ export default function AssetGrid() {
                      </>
                    )}
                    <div className="h-px bg-white/5 mx-2 my-1" />
-                   <button onClick={() => { if(confirm(activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?')) bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }) }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+                   <button onClick={() => { 
+                       const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
+                       const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
+                       openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                    }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -449,6 +457,15 @@ export default function AssetGrid() {
         onClose={() => setIsBulkStatusOpen(false)} 
         onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
         options={options || []}
+      />
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
       />
 
       <AnimatePresence>
@@ -600,6 +617,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
   const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/hardware`)).json() })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   
   const delMutation = useMutation({
     mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
@@ -619,6 +637,15 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
     }
   })
 
+  const catOptions = [
+    { value: 'CPU', label: 'CPU' },
+    { value: 'Memory', label: 'Memory' },
+    { value: 'Card', label: 'Card' },
+    { value: 'Disk', label: 'Disk' },
+    { value: 'NIC', label: 'NIC' },
+    { value: 'PSU', label: 'PSU' }
+  ]
+
   return (
     <div className="p-0">
       <table className="w-full text-[10px]">
@@ -636,38 +663,41 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
             <tr key={h.id} className="hover:bg-white/5 transition-colors">
               <td className="px-4 py-2 text-center">
                 {editingId === h.id ? (
-                    <select value={editData.category} onChange={e => setEditData({...editData, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
-                    </select>
+                    <StyledSelect
+                        value={editData.category}
+                        onChange={e => setEditData({...editData, category: e.target.value})}
+                        options={catOptions}
+                        className="w-24 mx-auto"
+                    />
                 ) : (
                     <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
                 )}
               </td>
               <td className="px-4 py-2 font-bold text-slate-200 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
               </td>
               <td className="px-4 py-2 text-slate-500 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
               <td className="px-4 py-2 font-mono text-center text-slate-400">
                 {editingId === h.id ? (
-                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[10px] w-12" />
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
               </td>
               <td className="px-4 py-2 text-center">
                 {editingId === h.id ? (
                     <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
-                        <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => { setEditingId(h.id); setEditData({...h}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
-                        <button onClick={() => confirm('Purge component?') && delMutation.mutate(h.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                        <button onClick={() => { setEditingId(h.id); setEditData({...h}); }} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                        <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Component', message: 'Purge this hardware component?', onConfirm: () => delMutation.mutate(h.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
                     </div>
                 )}
               </td>
@@ -676,6 +706,14 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
           {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
         </tbody>
       </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
     </div>
   )
 }
@@ -689,15 +727,32 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setNewSec({ secret_type: 'Root Password', username: '', encrypted_payload: '' }); toast.success('Credential Secured') }
   })
 
+  const secOptions = [
+    { value: 'Root Password', label: 'Root Password' },
+    { value: 'Admin API Key', label: 'Admin API Key' },
+    { value: 'Service Account', label: 'Service Account' },
+    { value: 'SSH Key', label: 'SSH Key' },
+    { value: 'ILO/IDRAC', label: 'ILO/IDRAC' }
+  ]
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
-         <select value={newSec.secret_type} onChange={e => setNewSec({...newSec, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
-            <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
-         </select>
-         <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Sensitive Value" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Vault Entry</button>
+      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5 items-end">
+         <StyledSelect
+            value={newSec.secret_type}
+            onChange={e => setNewSec({...newSec, secret_type: e.target.value})}
+            options={secOptions}
+            label="Secret Type"
+         />
+         <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Identity</label>
+            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+         </div>
+         <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
+            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+         </div>
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Vault Entry</button>
       </div>
       <SecretsTable deviceId={deviceId} />
     </div>
@@ -710,6 +765,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
   const [visibleIds, setVisibleIds] = useState<number[]>([])
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
 
   const toggleVisibility = (id: number) => {
     setVisibleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -727,8 +783,16 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential Updated') }
   })
 
+  const secOptions = [
+    { value: 'Root Password', label: 'Root Password' },
+    { value: 'Admin API Key', label: 'Admin API Key' },
+    { value: 'Service Account', label: 'Service Account' },
+    { value: 'SSH Key', label: 'SSH Key' },
+    { value: 'ILO/IDRAC', label: 'ILO/IDRAC' }
+  ]
+
   return (
-    <div className="p-6">
+    <div className="p-0">
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
@@ -743,24 +807,27 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
               <td className="px-4 py-2 font-black uppercase text-amber-500/80">
                 {editingId === s.id ? (
-                    <select value={editData.secret_type} onChange={e => setEditData({...editData, secret_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        <option>Root Password</option><option>Admin API Key</option><option>Service Account</option><option>SSH Key</option><option>ILO/IDRAC</option>
-                    </select>
+                    <StyledSelect
+                        value={editData.secret_type}
+                        onChange={e => setEditData({...editData, secret_type: e.target.value})}
+                        options={secOptions}
+                        className="w-32"
+                    />
                 ) : s.secret_type}
               </td>
               <td className="px-4 py-2 font-bold text-slate-200">
                 {editingId === s.id ? (
-                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" />
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
               </td>
               <td className="px-4 py-2 font-mono text-slate-400">
                 {editingId === s.id ? (
-                    <input value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-0.5 text-[10px] w-full" placeholder="Update secret..." />
+                    <input value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
                 ) : (
                     <div className="flex items-center space-x-3 group">
                        <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
                        <button onClick={() => toggleVisibility(s.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-blue-400">
-                          {visibleIds.includes(s.id) ? <EyeOff size={12}/> : <Eye size={12}/>}
+                          {visibleIds.includes(s.id) ? <EyeOff size={14}/> : <Eye size={14}/>}
                        </button>
                     </div>
                 )}
@@ -768,13 +835,13 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               <td className="px-4 py-2 text-center">
                 {editingId === s.id ? (
                     <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
-                        <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => { setEditingId(s.id); setEditData({...s}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
-                        <button onClick={() => confirm('Purge credential?') && delMutation.mutate(s.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                        <button onClick={() => { setEditingId(s.id); setEditData({...s}); }} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                        <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Credential', message: 'Permanently purge this vault entry?', onConfirm: () => delMutation.mutate(s.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
                     </div>
                 )}
               </td>
@@ -783,6 +850,14 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
           {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No vault entries found</td></tr>}
         </tbody>
       </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
     </div>
   )
 }
@@ -808,18 +883,24 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
-         <select value={newRel.target_device_id} onChange={e => setNewRel({...newRel, target_device_id: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
-            <option value="">Select Peer Entity...</option>
-            {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name} [{d.type}]</option>)}
-         </select>
-         <select value={newRel.relationship_type} onChange={e => {
-           const found = types.find(t => t.label === e.target.value)
-           setNewRel({...newRel, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
-         }} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
-            {types.map(t => <option key={t.label}>{t.label}</option>)}
-         </select>
-         <button onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer"); mutation.mutate(newRel) }} className="bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Establish Vector</button>
+      <div className="grid grid-cols-3 gap-2 bg-white/5 p-3 rounded-xl border border-white/5 items-end">
+         <StyledSelect
+            value={newRel.target_device_id}
+            onChange={e => setNewRel({...newRel, target_device_id: e.target.value})}
+            options={devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+            label="Peer Entity"
+            placeholder="Select Peer..."
+         />
+         <StyledSelect
+            value={newRel.relationship_type}
+            onChange={e => {
+                const found = types.find(t => t.label === e.target.value)
+                setNewRel({...newRel, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
+            }}
+            options={types.map(t => ({ value: t.label, label: t.label }))}
+            label="Vector Type"
+         />
+         <button onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer"); mutation.mutate(newRel) }} className="h-[38px] bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">Establish Vector</button>
       </div>
       <RelationsTable deviceId={deviceId} />
     </div>
@@ -832,6 +913,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
 
   const currentDevice = useMemo(() => devices?.find((d: any) => d.id === deviceId), [devices, deviceId]);
 
@@ -856,7 +938,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   ]
 
   return (
-    <div className="p-6">
+    <div className="p-0">
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
@@ -879,24 +961,29 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {editingId === r.id ? (
-                      <select value={editData.relationship_type} onChange={e => {
-                        const found = types.find(t => t.label === e.target.value)
-                        setEditData({...editData, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
-                      }} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        {types.map(t => <option key={t.label}>{t.label}</option>)}
-                      </select>
+                      <StyledSelect
+                        value={editData.relationship_type}
+                        onChange={e => {
+                            const found = types.find(t => t.label === e.target.value)
+                            setEditData({...editData, relationship_type: e.target.value, source_role: found?.s || '', target_role: found?.t || ''})
+                        }}
+                        options={types.map(t => ({ value: t.label, label: t.label }))}
+                        className="w-32 mx-auto"
+                      />
                   ) : (
                     <div className="flex flex-col items-center">
                        <span className="font-black text-indigo-400 uppercase tracking-widest">{r.relationship_type}</span>
-                       <Check size={10} className="text-slate-700 mt-1" />
                     </div>
                   )}
                 </td>
                 <td className="px-4 py-3">
                   {editingId === r.id ? (
-                      <select value={editData.target_device_id} onChange={e => setEditData({...editData, target_device_id: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded px-1 py-0.5 text-[9px] outline-none">
-                        {devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
+                      <StyledSelect
+                        value={String(editData.target_device_id)}
+                        onChange={e => setEditData({...editData, target_device_id: parseInt(e.target.value)})}
+                        options={devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=>({ value: String(d.id), label: d.name })) || []}
+                        className="w-32"
+                      />
                   ) : (
                     <div className="flex flex-col">
                        <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
@@ -907,13 +994,13 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 <td className="px-4 py-3 text-center">
                   {editingId === r.id ? (
                       <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => updateMutation.mutate(editData)} className="p-1 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={12}/></button>
-                          <button onClick={() => setEditingId(null)} className="p-1 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={12}/></button>
+                          <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                          <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
                       </div>
                   ) : (
                       <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => { setEditingId(r.id); setEditData({...r}); }} className="p-1 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={12}/></button>
-                          <button onClick={() => confirm('Purge relationship?') && delMutation.mutate(r.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={12}/></button>
+                          <button onClick={() => { setEditingId(r.id); setEditData({...r}); }} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                          <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vector', message: 'Purge this relational vector?', onConfirm: () => delMutation.mutate(r.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
                       </div>
                   )}
                 </td>
@@ -923,6 +1010,14 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
           {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relational vectors mapped</td></tr>}
         </tbody>
       </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
     </div>
   )
 }
@@ -955,65 +1050,77 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname *</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="SRV-NAME-01" />
+                <input 
+                  value={formData.name} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
+                  placeholder="SRV-NAME-01" 
+                />
              </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Logical System *</label>
-                <select value={formData.system} onChange={e => setFormData({...formData, system: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
-                   <option value="">Select System...</option>
-                   {getOptions('LogicalSystem').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                </select>
-             </div>
+             <StyledSelect
+                label="Logical System *"
+                value={formData.system}
+                onChange={e => setFormData({...formData, system: e.target.value})}
+                options={getOptions('LogicalSystem')}
+                placeholder="Select System..."
+                error={!formData.system}
+             />
              <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner (Optional)</label>
                     <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
-                <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Business Unit (Optional)</label>
-                    <select value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50">
-                        <option value="">Select BU...</option>
-                        {getOptions('BusinessUnit').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                    </select>
-                </div>
+                <StyledSelect
+                    label="Business Unit (Optional)"
+                    value={formData.business_unit}
+                    onChange={e => setFormData({...formData, business_unit: e.target.value})}
+                    options={getOptions('BusinessUnit')}
+                    placeholder="Select BU..."
+                />
              </div>
           </div>
 
           <div className="col-span-1 space-y-4">
              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
              <div className="grid grid-cols-2 gap-2">
-                <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Type</label>
-                    <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
-                       {getOptions('DeviceType').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                       {getOptions('DeviceType').length === 0 && <>
-                          <option>Physical</option><option>Virtual</option><option>Storage</option><option>Switch</option>
-                       </>}
-                    </select>
-                </div>
+                <StyledSelect
+                    label="Asset Type"
+                    value={formData.type}
+                    onChange={e => setFormData({...formData, type: e.target.value})}
+                    options={getOptions('DeviceType').length > 0 ? getOptions('DeviceType') : [
+                        { value: 'Physical', label: 'Physical' },
+                        { value: 'Virtual', label: 'Virtual' },
+                        { value: 'Storage', label: 'Storage' },
+                        { value: 'Switch', label: 'Switch' }
+                    ]}
+                />
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
                     <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
              </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operational Status</label>
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
-                   {getOptions('Status').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                   {getOptions('Status').length === 0 && <>
-                      <option>Planned</option><option>Active</option><option>Maintenance</option><option>Decommissioned</option>
-                   </>}
-                </select>
-             </div>
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Environment</label>
-                <select value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none">
-                   {getOptions('Environment').map(o => <option key={o.id} value={o.value}>{o.label}</option>)}
-                   {getOptions('Environment').length === 0 && <>
-                      <option>Production</option><option>QA</option><option>Dev</option><option>DR</option>
-                   </>}
-                </select>
-             </div>
+             <StyledSelect
+                label="Operational Status"
+                value={formData.status}
+                onChange={e => setFormData({...formData, status: e.target.value})}
+                options={getOptions('Status').length > 0 ? getOptions('Status') : [
+                    { value: 'Planned', label: 'Planned' },
+                    { value: 'Active', label: 'Active' },
+                    { value: 'Maintenance', label: 'Maintenance' },
+                    { value: 'Decommissioned', label: 'Decommissioned' }
+                ]}
+             />
+             <StyledSelect
+                label="Environment"
+                value={formData.environment}
+                onChange={e => setFormData({...formData, environment: e.target.value})}
+                options={getOptions('Environment').length > 0 ? getOptions('Environment') : [
+                    { value: 'Production', label: 'Production' },
+                    { value: 'QA', label: 'QA' },
+                    { value: 'Dev', label: 'Dev' },
+                    { value: 'DR', label: 'DR' }
+                ]}
+             />
           </div>
 
           <div className="col-span-1 space-y-4">
