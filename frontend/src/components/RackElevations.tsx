@@ -39,7 +39,7 @@ const RackUnit = ({ uNumber, device, isBase, highlight, onSelect, onManage, isEv
 }
 
 const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDevice, isSelected, onToggleSelect }: { rack: any, onDelete: any, onEdit: any, searchTerm: string, onMount: (rackId: number, u: number) => void, onManageDevice: (device: any) => void, isSelected: boolean, onToggleSelect: (id: number) => void }) => {
-  const units = Array.from({ length: rack.total_u_height || 42 }, (_, i) => (rack.total_u_height || 42) - i)
+  const units = Array.from({ length: rack.total_u || 42 }, (_, i) => (rack.total_u || 42) - i)
   const isHighlighted = (device: any) => searchTerm && device.name.toLowerCase().includes(searchTerm.toLowerCase())
 
   const serverParityMap = useMemo(() => {
@@ -70,8 +70,8 @@ const RackElevation = ({ rack, onDelete, onEdit, searchTerm, onMount, onManageDe
           </div>
         </div>
         <div className="flex items-center space-x-3 mt-2 ml-6">
-           <div className="flex items-center space-x-1 text-[8px] font-bold text-slate-500 uppercase"><MapPin size={10}/><span>{rack.room?.name || 'Unassigned'}</span></div>
-           <div className="flex items-center space-x-1 text-[8px] font-bold text-blue-400 uppercase"><Zap size={10}/><span>{rack.total_u_height}U</span></div>
+           <div className="flex items-center space-x-1 text-[8px] font-bold text-slate-500 uppercase"><MapPin size={10}/><span>{rack.site_name || 'Unassigned'}</span></div>
+           <div className="flex items-center space-x-1 text-[8px] font-bold text-blue-400 uppercase"><Zap size={10}/><span>{rack.total_u}U</span></div>
         </div>
       </div>
 
@@ -261,7 +261,7 @@ export default function RackElevations() {
             isSelected={selectedRacks.includes(r.id)}
             onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
             onDelete={(id) => confirm('Destroy this rack structure?') && deleteMutation.mutate(id)}
-            onEdit={(rack: any) => setIsEditingRack(rack)}
+            onEdit={(rack: any) => setIsEditingRack({...rack, total_u: rack.total_u})}
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
             onManageDevice={setManagingDevice}
           />
