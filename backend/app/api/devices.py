@@ -82,6 +82,12 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
     db_device = result.scalar_one_or_none()
     if not db_device: raise HTTPException(404)
     
+    if 'name' in data and data['name'] != db_device.name:
+        # Check for duplicate name in ANOTHER active device
+        dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False, models.Device.id != device_id))
+        if dup_res.scalars().first():
+            raise HTTPException(409, "DUPLICATE_HOSTNAME_ACTIVE")
+
     clean_data = filter_valid_columns(models.Device, data)
     # Exclude read-only fields
     for ro_field in ["id", "created_at", "updated_at", "created_by_user_id"]:

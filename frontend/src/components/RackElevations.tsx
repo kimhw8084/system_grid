@@ -152,11 +152,18 @@ export default function RackElevations() {
         const url = data.id ? `/api/v1/racks/${data.id}` : '/api/v1/racks/'
         const method = data.id ? 'PUT' : 'POST'
         const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) })
-        if (!res.ok) throw new Error('Failed to synchronize rack')
+        if (!res.ok) {
+            const err = await res.json()
+            if (err.detail === 'RACK_NAME_DUPLICATE') throw new Error('DUPLICATE_RACK')
+            throw new Error('Failed to synchronize rack')
+        }
         return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); setIsAddingRack(false); setIsEditingRack(null); toast.success('Rack Infrastructure Synchronized') },
-    onError: (e: any) => toast.error(e.message)
+    onError: (e: any) => {
+        if (e.message === 'DUPLICATE_RACK') toast.error('ERROR: Rack name already exists in inventory')
+        else toast.error(e.message)
+    }
   })
 
   const deleteMutation = useMutation({

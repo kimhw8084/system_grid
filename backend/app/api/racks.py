@@ -65,13 +65,19 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     if not site_id:
         raise HTTPException(status_code=400, detail="Site selection mandatory")
     
+    name = data.get('name', 'New Rack')
+    # Check for duplicate name
+    dup_result = await db.execute(select(models.Rack).filter(models.Rack.name == name))
+    if dup_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE")
+
     room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(site_id)))
     room = room_res.scalar_one_or_none()
     if not room:
         raise HTTPException(status_code=400, detail="Site has no rooms")
 
     rack = models.Rack(
-        name=data.get('name', 'New Rack'), 
+        name=name, 
         total_u_height=data.get('total_u', 42),
         max_power_kw=data.get('max_power_kw', 8.0),
         room_id=room.id
@@ -98,7 +104,13 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
     if not rack:
         raise HTTPException(status_code=404, detail="Rack not found")
     
-    if 'name' in data: rack.name = data['name']
+    if 'name' in data and data['name'] != rack.name:
+        # Check for duplicate name in ANOTHER rack
+        dup_result = await db.execute(select(models.Rack).filter(models.Rack.name == data['name'], models.Rack.id != rack_id))
+        if dup_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE")
+        rack.name = data['name']
+        
     if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
     if 'total_u' in data: rack.total_u_height = data['total_u']
     

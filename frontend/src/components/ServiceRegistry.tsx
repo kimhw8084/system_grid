@@ -119,12 +119,21 @@ export default function ServiceRegistry() {
       const url = data.id ? `/api/v1/logical-services/${data.id}` : "/api/v1/logical-services/"
       const method = data.id ? "PUT" : "POST"
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+      if (!res.ok) {
+        const err = await res.json()
+        if (err.detail === 'SERVICE_NAME_DUPLICATE') throw new Error('DUPLICATE_SERVICE')
+        throw new Error('Failed to synchronize service')
+      }
       return res.json()
     },
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ["logical-services"] })
       toast.success("Service Registry Updated")
       setActiveModal(null)
+    },
+    onError: (e: any) => {
+      if (e.message === 'DUPLICATE_SERVICE') toast.error('ERROR: Service name already exists in registry')
+      else toast.error(e.message)
     }
   })
 

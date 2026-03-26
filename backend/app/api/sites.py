@@ -51,7 +51,13 @@ async def update_site(site_id: int, data: dict, db: AsyncSession = Depends(get_d
     site = result.scalar_one_or_none()
     if not site: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
     
-    if 'name' in data: site.name = data['name']
+    if 'name' in data and data['name'] != site.name:
+        # Check if the new name is already taken by ANOTHER site
+        dup_result = await db.execute(select(models.Site).filter(models.Site.name == data['name'], models.Site.id != site_id))
+        if dup_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SITE_NAME_DUPLICATE")
+        site.name = data['name']
+        
     if 'address' in data: site.address = data['address']
     
     log = models.AuditLog(
