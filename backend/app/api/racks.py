@@ -215,21 +215,23 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/{rack_id}/mount")
 async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     device_id = int(data['device_id'])
-    
+
+    # Get ALL existing locations for this device (should only be 1, but cleanup any duplicates)
     loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
-    existing_loc = loc_res.scalar_one_or_none()
-    
-    if existing_loc and not data.get('relocate'):
+    existing_locs = loc_res.scalars().all()
+
+    if existing_locs and not data.get('relocate'):
+        existing_loc = existing_locs[0]
         rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == existing_loc.rack_id))
         r = rack_res.scalar_one_or_none()
         raise HTTPException(status_code=409, detail=f"Device already mounted in {r.name if r else 'another rack'} at U{existing_loc.start_unit}")
 
     rack_locs_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.rack_id == rack_id))
     rack_locs = rack_locs_res.scalars().all()
-    
+
     new_start = int(data['start_u'])
     new_end = new_start + int(data['size_u'])
-    
+
     for loc in rack_locs:
         if loc.device_id == device_id: continue
         loc_end = loc.start_unit + loc.size_u
@@ -238,9 +240,10 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
             d = dev_res.scalar_one_or_none()
             raise HTTPException(status_code=400, detail=f"Collision with {d.name if d else 'existing device'} at U{loc.start_unit}")
 
-    if existing_loc:
-        db.delete(existing_loc)
-        
+    # Delete ALL existing locations (cleanup stale duplicates + prepare for new location)
+    if existing_locs:
+        await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
+
     loc = models.DeviceLocation(
         rack_id=rack_id,
         device_id=device_id,
@@ -248,12 +251,12 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
         size_u=int(data['size_u'])
     )
     db.add(loc)
-    
+
     log = models.AuditLog(
-        user_id="admin", 
-        action="MOUNT", 
-        target_table="devices", 
-        target_id=str(device_id), 
+        user_id="admin",
+        action="MOUNT",
+        target_table="devices",
+        target_id=str(device_id),
         description=f"Mounted/Relocated device in rack ID {rack_id}"
     )
     db.add(log)
@@ -331,17 +334,16 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.delete("/mount/{device_id}")
 async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
-    loc = result.scalar_one_or_none()
-    if loc:
-        db.delete(loc)
-        log = models.AuditLog(
-            user_id="admin", 
-            action="UNMOUNT", 
-            target_table="devices", 
-            target_id=str(device_id), 
-            description="Removed device from rack"
-        )
-        db.add(log)
-        await db.commit()
+    # Delete ALL locations for this device (should only be 1, but cleanup stale duplicates)
+    await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
+
+    log = models.AuditLog(
+        user_id="admin",
+        action="UNMOUNT",
+        target_table="devices",
+        target_id=str(device_id),
+        description="Removed device from rack"
+    )
+    db.add(log)
+    await db.commit()
     return {"status": "success"}
