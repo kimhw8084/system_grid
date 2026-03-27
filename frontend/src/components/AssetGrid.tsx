@@ -302,7 +302,7 @@ export default function AssetGrid() {
   const { data: uiSettings } = useQuery({ queryKey: ['ui-settings'], queryFn: async () => (await fetch('/api/v1/settings/ui')).json() })
 
   const { data: assets, isLoading } = useQuery({ 
-    queryKey: ['assets', activeTab], 
+    queryKey: ['devices'], 
     queryFn: async () => {
         const flag = activeTab === 'deleted' ? 'include_deleted=true' : `include_decommissioned=${activeTab === 'decommissioned'}`
         return (await fetch(`/api/v1/devices/?${flag}`)).json() 
@@ -322,8 +322,9 @@ export default function AssetGrid() {
       if (!res.ok) throw new Error('Failed to commit asset')
       return res.json()
     },
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       toast.success('System Registry Updated')
       setActiveModal(null)
     },
@@ -350,7 +351,8 @@ export default function AssetGrid() {
       return res.json()
     },
     onSuccess: (data: any, variables: any) => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setSelectedIds([])
       setShowBulkMenu(false)
       setIsBulkStatusOpen(false)
@@ -611,7 +613,7 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
         mutationFn: async (data: any) => fetch(`/api/v1/devices/${device.id}`, { 
             method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ metadata_json: data }) 
         }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assets'] }); toast.success('Metadata Synchronized') }
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Metadata Synchronized') }
     })
 
     return (
