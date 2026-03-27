@@ -72,6 +72,7 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
             "site_id": room.site_id if room else None,
             "site_name": site_name,
             "order_index": rack.order_index,
+            "is_deleted": rack.is_deleted,
             "device_locations": device_locations_list
         })
     return final_result
