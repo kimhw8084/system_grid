@@ -15,7 +15,7 @@ export default function IPAM() {
   ]
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col space-y-4">
-      <h1 className="text-2xl font-black uppercase text-blue-400 italic">IPAM Engine</h1>
+      <h1 className="text-2xl font-black uppercase italic">IPAM Engine</h1>
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark">
         <AgGridReact rowData={Array.isArray(subnets) ? subnets : []} columnDefs={columnDefs} />
       </div>

@@ -52,7 +52,7 @@ export default function Intelligence() {
   return (
     <div className="h-full flex flex-col space-y-8 max-w-5xl mx-auto overflow-y-auto custom-scrollbar pr-4">
       <div className="text-center space-y-2 mt-8">
-        <h1 className="text-3xl font-black tracking-tighter uppercase italic text-blue-400">Intelligent Registry Provisioning</h1>
+        <h1 className="text-3xl font-black tracking-tighter uppercase italic">Intelligent Registry Provisioning</h1>
         <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">Automated multi-relational infrastructure ingestion engine</p>
       </div>
 
