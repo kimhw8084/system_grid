@@ -80,9 +80,9 @@ export const ConfirmationModal = ({
           >
             {cancelText}
           </button>
-          <button 
-            onClick={() => { onConfirm(); onClose(); }} 
-            className={`flex-2 py-4 px-6 ${getVariantColor()} text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all`}
+          <button
+            onClick={() => { onConfirm(); onClose(); }}
+            className={`flex-1 py-4 px-6 ${getVariantColor()} text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all`}
           >
             {confirmText}
           </button>

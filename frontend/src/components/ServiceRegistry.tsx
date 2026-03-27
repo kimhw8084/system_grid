@@ -17,6 +17,12 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    setTableRows(Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) })))
+    setJsonValue(JSON.stringify(obj, null, 2))
+  }, [value])
+
   const validateAndNotify = (rows: {key: string, value: string}[]) => {
     const obj: any = {}
     const keys = new Set()
@@ -114,6 +120,7 @@ export default function ServiceRegistry() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showConfig, setShowConfig] = useState(false)
   const [showUI, setShowUI] = useState(false)
+  const [activeTab, setActiveTab] = useState<'active' | 'purged'>('active')
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
@@ -121,7 +128,10 @@ export default function ServiceRegistry() {
   }
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
-  const { data: services, isLoading } = useQuery({ queryKey: ["logical-services"], queryFn: async () => (await fetch("/api/v1/logical-services/")).json() })
+  const { data: services, isLoading } = useQuery({ 
+    queryKey: ["logical-services", activeTab], 
+    queryFn: async () => (await fetch(`/api/v1/logical-services/?include_deleted=${activeTab === 'purged'}`)).json() 
+  })
   const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await fetch("/api/v1/devices/")).json() })
 
   const mutation = useMutation({
@@ -148,21 +158,21 @@ export default function ServiceRegistry() {
   })
 
   const bulkMutation = useMutation({
-    mutationFn: async ({ action, payload = {} }: any) => {
+    mutationFn: async ({ action, payload = {}, ids = selectedIds }: any) => {
       const res = await fetch('/api/v1/logical-services/bulk-action', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: selectedIds.length ? selectedIds : [], action, payload }) 
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: ids.length ? ids : [], action, payload }) 
       })
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["logical-services"] })
       setSelectedIds([]); setShowBulkMenu(false)
-      toast.success('Bulk Operation Complete')
+      toast.success('Operation Complete')
     }
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 50, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "name", 
       headerName: "Instance Name", 
@@ -196,7 +206,7 @@ export default function ServiceRegistry() {
     { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
     {
       headerName: "Ops",
-      width: 120,
+      width: 140,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -204,21 +214,31 @@ export default function ServiceRegistry() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
                <button onClick={() => setActiveDetails(params.data)} title="Service Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><List size={14}/></button>
-               <button onClick={() => setActiveModal(params.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
-               <button onClick={() => openConfirm('Terminate Service', 'Purge this service instance?', () => bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }))} title="Terminate" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               {activeTab === 'active' ? (
+                 <>
+                   <button onClick={() => setActiveModal(params.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+                   <button onClick={() => openConfirm('Terminate Service', 'Purge this service instance?', () => bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }))} title="Terminate" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+                 </>
+               ) : (
+                 <button onClick={() => bulkMutation.mutate({ action: 'restore', ids: [params.data.id] })} title="Restore Service" className="p-1.5 hover:bg-emerald-600 hover:text-white text-slate-500 rounded-md transition-all"><RefreshCcw size={14}/></button>
+               )}
            </div>
         </div>
       )
     }
-  ], [selectedIds]) as any
+  ], [selectedIds, activeTab]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Logical Service Matrix</h1>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Service Registry</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Application Layer & Service Dependency Mapping</p>
+           </div>
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
+              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active Payloads</button>
+              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
            </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -242,11 +262,17 @@ export default function ServiceRegistry() {
               {showBulkMenu && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
                    <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Services Selected</p>
-                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Running' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Running</button>
-                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Stopped' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Stopped</button>
-                   <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { environment: 'Production' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Prod Env</button>
-                   <div className="h-px bg-white/5 mx-2 my-1" />
-                   <button onClick={() => openConfirm('Bulk Termination', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Terminate</button>
+                   {activeTab === 'active' ? (
+                     <>
+                       <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Running' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Running</button>
+                       <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { status: 'Stopped' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Stopped</button>
+                       <button onClick={() => bulkMutation.mutate({ action: 'update', payload: { environment: 'Production' } })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Prod Env</button>
+                       <div className="h-px bg-white/5 mx-2 my-1" />
+                       <button onClick={() => openConfirm('Bulk Termination', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Terminate</button>
+                     </>
+                   ) : (
+                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                   )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -325,6 +351,7 @@ export default function ServiceRegistry() {
         onClose={() => setShowConfig(false)} 
         title="Service Registry Enumerations"
         sections={[
+            { title: "Service Types", category: "ServiceType", icon: Database },
             { title: "Status Options", category: "Status", icon: RefreshCcw },
             { title: "Environments", category: "Environment", icon: Globe }
         ]}
@@ -368,7 +395,10 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Service Configuration & Metadata</h3>
+                <div>
+                  <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Configuration Payload</h3>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">Operational metadata for automation and provisioning</p>
+                </div>
                 <button 
                   onClick={() => {
                     if (metadataError) {
@@ -383,66 +413,20 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
                     }
                     updateMutation.mutate(formData);
                   }} 
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                 >
                   Save Changes
                 </button>
             </div>
             
-            <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Instance Name</label>
-                        <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-                    </div>
-                    <StyledSelect
-                        label="Status"
-                        value={formData.status}
-                        onChange={e => setFormData({...formData, status: e.target.value})}
-                        options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Running', label: 'Running'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
-                    />
-                </div>
-                <div className="space-y-4">
-                    <StyledSelect
-                        label="Environment"
-                        value={formData.environment}
-                        onChange={e => setFormData({...formData, environment: e.target.value})}
-                        options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
-                    />
-                    <div>
-                        <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Version</label>
-                        <input value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-                <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Host Information</h4>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
-                            <span className="text-slate-500 font-bold uppercase">Node ID</span>
-                            <span className="text-blue-400 font-mono">{service.device_id || 'Floating'}</span>
-                        </div>
-                        <div className="flex justify-between text-[11px] border-b border-white/5 pb-2">
-                            <span className="text-slate-500 font-bold uppercase">Node Name</span>
-                            <span className="text-slate-300 font-bold">{service.device_name || 'N/A'}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="glass-panel rounded-3xl border-white/5 p-6 space-y-4">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Metadata Context</h4>
-                    <p className="text-[10px] text-slate-500 italic">Advanced operational metadata and configuration payloads for automated provisioning.</p>
-                </div>
-            </div>
-
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
                 <MetadataEditor 
                   value={formData.config_json} 
                   onChange={v => setFormData({...formData, config_json: v})} 
                   onError={setMetadataError}
                 />
             </div>
+
             <ConfirmationModal 
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
@@ -464,6 +448,21 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   })
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+
+  useEffect(() => {
+    if (!initialData.id) { // Only for new services
+      const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
+      if (selectedType?.metadata_keys) {
+        const newConfig = { ...formData.config_json };
+        selectedType.metadata_keys.forEach((key: string) => {
+          if (!(key in newConfig)) {
+            newConfig[key] = "";
+          }
+        });
+        setFormData(prev => ({ ...prev, config_json: newConfig }));
+      }
+    }
+  }, [formData.service_type, options]);
 
   return (
     <div className="space-y-8 py-6">
@@ -489,8 +488,11 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <StyledSelect
                 label="Service Payload Type"
                 value={formData.service_type}
-                onChange={e => setFormData({...formData, service_type: e.target.value})}
-                options={["Database", "Web Server", "Middleware", "Container", "Microservice"].map(t => ({ value: t, label: t }))}
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData(prev => ({...prev, service_type: val}));
+                }}
+                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "Microservice"].map(t => ({ value: t, label: t }))}
            />
         </div>
 

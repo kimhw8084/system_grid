@@ -113,6 +113,7 @@ class LogicalService(Base, BaseMixin):
     
     # Smart Expandability: Unlimited custom key-values
     custom_attributes = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)
     
     device = relationship("Device", back_populates="logical_services")
 
@@ -190,9 +191,11 @@ class Subnet(Base, BaseMixin):
 
 class SettingOption(Base, BaseMixin):
     __tablename__ = "settings_options"
-    category = Column(String, index=True) # LogicalSystem, DeviceType, etc.
+    category = Column(String, index=True) # LogicalSystem, DeviceType, ServiceType, etc.
     label = Column(String)
     value = Column(String)
+    description = Column(String, nullable=True)
+    metadata_keys = Column(JSON, default=list) # For ServiceType: ["port", "dbname", etc]
     is_default = Column(Boolean, default=False)
 
 class SecretVault(Base, BaseMixin):

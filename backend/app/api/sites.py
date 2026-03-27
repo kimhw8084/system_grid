@@ -91,8 +91,8 @@ async def delete_site(site_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Site).filter(models.Site.id == site_id))
     site = result.scalar_one_or_none()
     if not site: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
-            
-    db.delete(site)
+
+    await db.delete(site)
     log = models.AuditLog(
         user_id="admin", action="DELETE", target_table="sites", 
         target_id=str(site_id), description=f"Decommissioned site: {site.name}"

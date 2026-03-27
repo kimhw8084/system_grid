@@ -18,16 +18,12 @@ def filter_valid_columns(model, data):
     return {k: v for k, v in data.items() if k in valid_keys}
 
 @router.get("/")
-async def get_devices(include_decommissioned: bool = False, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Device)
     if include_deleted:
         query = query.filter(models.Device.is_deleted == True)
     else:
         query = query.filter(models.Device.is_deleted == False)
-        if not include_decommissioned:
-            query = query.filter(models.Device.status != "Decommissioned")
-        else:
-            query = query.filter(models.Device.status == "Decommissioned")
     
     result = await db.execute(query)
     devices = result.scalars().all()
@@ -174,7 +170,13 @@ async def add_secret(device_id: int, data: dict, db: AsyncSession = Depends(get_
 
 @router.get("/{device_id}/relationships")
 async def get_relationships(device_id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.DeviceRelationship).filter(models.DeviceRelationship.source_device_id == device_id))
+    from sqlalchemy import or_
+    res = await db.execute(select(models.DeviceRelationship).filter(
+        or_(
+            models.DeviceRelationship.source_device_id == device_id,
+            models.DeviceRelationship.target_device_id == device_id
+        )
+    ))
     return res.scalars().all()
 
 @router.post("/{device_id}/relationships")

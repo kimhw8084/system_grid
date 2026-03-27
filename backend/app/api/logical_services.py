@@ -8,8 +8,8 @@ from ..models import models
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 
 @router.get("/")
-async def get_services(device_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
-    query = select(models.LogicalService)
+async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+    query = select(models.LogicalService).filter(models.LogicalService.is_deleted == include_deleted)
     if device_id:
         query = query.filter(models.LogicalService.device_id == device_id)
     
@@ -34,7 +34,8 @@ async def get_services(device_id: Optional[int] = None, db: AsyncSession = Depen
             "device_id": s.device_id,
             "device_name": device_name,
             "config_json": s.config_json,
-            "custom_attributes": s.custom_attributes
+            "custom_attributes": s.custom_attributes,
+            "is_deleted": s.is_deleted
         })
     return final_result
 
@@ -44,7 +45,7 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     name = data.get('name')
     if not name: raise HTTPException(400, "Service name required")
     
-    dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == name))
+    dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == name, models.LogicalService.is_deleted == False))
     if dup_res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="SERVICE_NAME_DUPLICATE")
 
@@ -72,7 +73,7 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     if not svc: raise HTTPException(404)
     
     if 'name' in data and data['name'] != svc.name:
-        dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == data['name'], models.LogicalService.id != service_id))
+        dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == data['name'], models.LogicalService.id != service_id, models.LogicalService.is_deleted == False))
         if dup_res.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="SERVICE_NAME_DUPLICATE")
         svc.name = data['name']
@@ -95,10 +96,10 @@ async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):
     if not svc: raise HTTPException(404)
     
     name = svc.name
-    db.delete(svc)
+    svc.is_deleted = True
     log = models.AuditLog(
         user_id="admin", action="DELETE", target_table="logical_services", 
-        target_id=str(service_id), description=f"De-registered service: {name}"
+        target_id=str(service_id), description=f"Soft-deleted service: {name}"
     )
     db.add(log)
     await db.commit()
@@ -112,7 +113,9 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     if not ids: return {"status": "no_op"}
     
     if action == "delete":
-        await db.execute(delete(models.LogicalService).where(models.LogicalService.id.in_(ids)))
+        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=True))
+    elif action == "restore":
+        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=False))
     elif action == "update":
         # Filter valid columns for LogicalService
         valid_keys = {c.name for c in models.LogicalService.__table__.columns}

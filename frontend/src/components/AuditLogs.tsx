@@ -44,7 +44,7 @@ export default function AuditLogs() {
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight uppercase italic text-blue-400">Security & Forensic Audit</h1>
+          <h1 className="text-2xl font-black tracking-tight uppercase italic text-blue-400">Audit Logs</h1>
           <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
         </div>
         

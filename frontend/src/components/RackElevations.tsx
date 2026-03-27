@@ -630,6 +630,14 @@ export default function RackElevations() {
   const [selectedRacks, setSelectedRacks] = useState<number[]>([])
   const [viewMode, setViewMode] = useState<'normal' | 'compact'>('normal')
   const [showRelocateModal, setShowRelocateModal] = useState(false)
+  const [restoreWizard, setRestoreWizard] = useState<{
+    step: 'site-select' | 'name-conflict' | 'asset-warning' | null
+    ids: number[]
+    targetSiteId?: number
+    nameConflicts: Array<{ rackId: number; rackName: string; newName: string }>
+    assetWarnings: Array<{ rackName: string; devices: string[] }>
+    generalAssetWarning: boolean
+  } | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
@@ -639,6 +647,11 @@ export default function RackElevations() {
   const { data: allRacks } = useQuery({
     queryKey: ['racks-all', activeTab],
     queryFn: async () => (await fetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json()
+  })
+
+  const { data: activeRacks } = useQuery({
+    queryKey: ['racks-active'],
+    queryFn: async () => (await fetch('/api/v1/racks/?include_deleted=false')).json()
   })
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
@@ -762,11 +775,89 @@ export default function RackElevations() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
       setSelectedRacks([])
       if (data.conflicts?.length > 0) toast.error(`${data.conflicts.length} rack(s) had name conflicts and were skipped`)
       else toast.success('Bulk operation complete')
     }
   })
+
+  const handleRestore = (ids: number[]) => {
+    if (activeTab !== 'deleted' || !sites || !allRacks) {
+      bulkActionMutation.mutate({ action: 'restore', ids })
+      return
+    }
+
+    // ALWAYS show site selection for restore — user must confirm target site
+    setRestoreWizard({
+      step: 'site-select',
+      ids,
+      nameConflicts: [],
+      assetWarnings: [],
+      generalAssetWarning: false
+    })
+  }
+
+  const proceedRestoreWizard = (targetSiteId?: number) => {
+    if (!restoreWizard || !sites || !activeRacks) return
+
+    const racksToRestore = allRacks?.filter((r: any) => restoreWizard.ids.includes(r.id)) || []
+
+    // Step 1: Check name conflicts
+    const nameConflicts: Array<{ rackId: number; rackName: string; newName: string }> = []
+    if (targetSiteId) {
+      const activeRacksInSite = activeRacks.filter((r: any) => r.site_id === targetSiteId)
+      const activeRackNames = new Set(activeRacksInSite.map((r: any) => r.name))
+
+      for (const rack of racksToRestore) {
+        if (activeRackNames.has(rack.name)) {
+          nameConflicts.push({ rackId: rack.id, rackName: rack.name, newName: rack.name })
+        }
+      }
+    }
+
+    // Step 2: Check asset warnings
+    const assetWarnings: Array<{ rackName: string; devices: string[] }> = []
+    let generalAssetWarning = false
+
+    const activeDeviceIds = new Set(activeRacks.flatMap((r: any) => (r.device_locations || []).map((l: any) => l.device_id)))
+
+    for (const rack of racksToRestore) {
+      if (!rack.device_locations || rack.device_locations.length === 0) {
+        generalAssetWarning = true
+      } else {
+        const conflictingDevices = rack.device_locations
+          .filter((l: any) => activeDeviceIds.has(l.device_id))
+          .map((l: any) => l.device?.name || `Device ${l.device_id}`)
+
+        if (conflictingDevices.length > 0) {
+          assetWarnings.push({ rackName: rack.name, devices: conflictingDevices })
+        }
+      }
+    }
+
+    // Advance to next step
+    if (nameConflicts.length > 0) {
+      setRestoreWizard({ ...restoreWizard, step: 'name-conflict', targetSiteId, nameConflicts })
+    } else if (assetWarnings.length > 0 || generalAssetWarning) {
+      setRestoreWizard({ ...restoreWizard, step: 'asset-warning', targetSiteId, assetWarnings, generalAssetWarning })
+    } else {
+      // No conflicts or warnings, execute restore
+      executeRestore(restoreWizard.ids, targetSiteId, {})
+    }
+  }
+
+  const executeRestore = (ids: number[], targetSiteId?: number, renames: Record<string, string> = {}) => {
+    bulkActionMutation.mutate({
+      action: 'restore',
+      ids,
+      payload: {
+        ...(targetSiteId && { new_site_id: targetSiteId }),
+        ...(Object.keys(renames).length > 0 && { renames })
+      }
+    })
+    setRestoreWizard(null)
+  }
 
   const siteReorderMutation = useMutation({
     mutationFn: async (ids: number[]) => fetch('/api/v1/sites/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }),
@@ -796,10 +887,10 @@ export default function RackElevations() {
     let filtered = allRacks
     if (showCompareOnly) {
       filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
-    } else if (activeSite && sites) {
-      const sName = sites.find((s: any) => s.id === activeSite)?.name
-      filtered = allRacks.filter((r: any) => r.site_name === sName)
+    } else if (activeSite) {
+      filtered = allRacks.filter((r: any) => r.site_id === activeSite)
     }
+    // In deleted tab, show all deleted racks (no site filtering) — site_name is displayed on the card
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       filtered = filtered.filter((r: any) =>
@@ -923,14 +1014,14 @@ export default function RackElevations() {
       </div>
 
       {/* ── Capacity Summary Bar ── */}
-      {allRacks && allRacks.length > 0 && !showCompareOnly && (
+      {activeRacks && activeRacks.length > 0 && !showCompareOnly && (
         <div className="shrink-0">
-          <SiteCapacityBar racks={displayedRacks} />
+          <SiteCapacityBar racks={activeRacks} />
         </div>
       )}
 
       {/* ── Site Tabs ── */}
-      {!showCompareOnly && (
+      {!showCompareOnly && activeTab !== 'deleted' && (
         <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center shrink-0">
           <button
             onClick={() => setActiveSite(null)}
@@ -941,7 +1032,7 @@ export default function RackElevations() {
           </button>
 
           {sites?.map((s: any) => {
-            const siteRacks = allRacks?.filter((r: any) => r.site_name === s.name) || []
+            const siteRacks = allRacks?.filter((r: any) => r.site_id === s.id) || []
             const siteUsed = siteRacks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
             const siteTotal = siteRacks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
             const siteFill = siteTotal > 0 ? Math.round((siteUsed / siteTotal) * 100) : 0
@@ -963,7 +1054,16 @@ export default function RackElevations() {
                 </button>
 
                 <button
-                  onClick={e => { e.stopPropagation(); setActiveSiteMenu(isMenuOpen ? null : s.id) }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (!isMenuOpen) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const style = document.documentElement.style
+                      style.setProperty('--site-menu-x', `${rect.left}px`)
+                      style.setProperty('--site-menu-y', `${rect.bottom + 8}px`)
+                    }
+                    setActiveSiteMenu(isMenuOpen ? null : s.id)
+                  }}
                   className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors opacity-0 group-hover/site:opacity-100 ${isActive ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-400'}`}
                 >
                   <MoreVertical size={12} />
@@ -975,7 +1075,11 @@ export default function RackElevations() {
                       <div className="fixed inset-0 z-[60]" onClick={() => setActiveSiteMenu(null)} />
                       <motion.div
                         initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="absolute left-0 top-full mt-1 w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                        className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                        style={{
+                          left: 'var(--site-menu-x, auto)',
+                          top: 'var(--site-menu-y, auto)',
+                        }}
                       >
                         <button onClick={e => { e.stopPropagation(); moveSite(s.id, 'left'); setActiveSiteMenu(null) }}
                           className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2 transition-colors">
@@ -1026,7 +1130,7 @@ export default function RackElevations() {
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
             onManageDevice={(device, loc, rack) => setManagingDevice({ device, loc, rack })}
             isDeleted={activeTab === 'deleted'}
-            onRestore={id => bulkActionMutation.mutate({ action: 'restore', ids: [id] })}
+            onRestore={id => handleRestore([id])}
             viewMode={viewMode}
           />
         ))}
@@ -1062,7 +1166,7 @@ export default function RackElevations() {
             onDelete={() => openConfirm('Decommission Racks', `Decommission ${selectedRacks.length} selected rack(s)?`, () => bulkActionMutation.mutate({ action: 'delete', ids: selectedRacks }))}
             onRelocate={() => setShowRelocateModal(true)}
             onCompare={() => setShowCompareOnly(true)}
-            onRestore={() => bulkActionMutation.mutate({ action: 'restore', ids: selectedRacks })}
+            onRestore={() => handleRestore(selectedRacks)}
             onClear={() => setSelectedRacks([])}
           />
         )}
@@ -1267,6 +1371,97 @@ export default function RackElevations() {
             onClose={() => setShowRelocateModal(false)}
             onRelocate={siteId => bulkActionMutation.mutate({ action: 'relocate', ids: selectedRacks, payload: { new_site_id: siteId } })}
           />
+        )}
+
+        {/* Restore Wizard */}
+        {restoreWizard && sites && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur flex items-center justify-center z-[100]"
+            onClick={() => setRestoreWizard(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-slate-900/95 border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
+            >
+              {/* Step 1: Site Selection */}
+              {restoreWizard.step === 'site-select' && (
+                <>
+                  <h2 className="text-lg font-bold text-white">Select Target Site</h2>
+                  <p className="text-sm text-slate-400">Choose where to restore these racks.</p>
+                  <StyledSelect
+                    options={[
+                      { value: '', label: 'Standalone (No Site)' },
+                      ...sites.map((s: any) => ({ value: String(s.id), label: s.name }))
+                    ]}
+                    value={String(restoreWizard.targetSiteId || '')}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRestoreWizard({ ...restoreWizard, targetSiteId: e.target.value ? parseInt(e.target.value) : undefined })}
+                    label="Target Site"
+                  />
+                  <div className="flex gap-2 pt-4">
+                    <button onClick={() => setRestoreWizard(null)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-semibold transition-colors">Cancel</button>
+                    <button onClick={() => proceedRestoreWizard(restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Next</button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 2: Name Conflicts */}
+              {restoreWizard.step === 'name-conflict' && (
+                <>
+                  <h2 className="text-lg font-bold text-white">Name Conflicts</h2>
+                  <p className="text-sm text-slate-400">These racks have name conflicts. Rename or skip them.</p>
+                  <div className="space-y-3">
+                    {restoreWizard.nameConflicts.map(nc => (
+                      <div key={nc.rackId} className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">{nc.rackName}</label>
+                        <input
+                          type="text"
+                          value={nc.newName}
+                          onChange={e => {
+                            const updated = restoreWizard.nameConflicts.map(c => c.rackId === nc.rackId ? { ...c, newName: e.target.value } : c)
+                            setRestoreWizard({ ...restoreWizard, nameConflicts: updated })
+                          }}
+                          className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-blue-500 outline-none"
+                          placeholder="New name..."
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <button onClick={() => setRestoreWizard(null)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-semibold transition-colors">Cancel</button>
+                    <button onClick={() => proceedRestoreWizard(restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Next</button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Asset Warning */}
+              {restoreWizard.step === 'asset-warning' && (
+                <>
+                  <h2 className="text-lg font-bold text-white">⚠️ Asset Status</h2>
+                  {restoreWizard.generalAssetWarning && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                      <p className="text-xs text-amber-200">Previously mounted assets have been reassigned elsewhere and will not return to this rack when restored.</p>
+                    </div>
+                  )}
+                  {restoreWizard.assetWarnings.length > 0 && (
+                    <div className="space-y-2">
+                      {restoreWizard.assetWarnings.map((w, i) => (
+                        <div key={i} className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2">
+                          <p className="text-[9px] font-bold text-amber-300 mb-1">{w.rackName}</p>
+                          <p className="text-[8px] text-amber-200">Currently active in other racks: {w.devices.join(', ')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-4">
+                    <button onClick={() => setRestoreWizard(null)} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-semibold transition-colors">Cancel</button>
+                    <button onClick={() => executeRestore(restoreWizard.ids, restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors">Restore</button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
         )}
 
       </AnimatePresence>

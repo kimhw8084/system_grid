@@ -1,14 +1,74 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from .database import engine, Base
+from sqlalchemy import select, text
+from .database import engine, Base, AsyncSessionLocal
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings, ipam
+
+async def _auto_seed():
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(select(models.SettingOption))
+        if res.scalars().first():
+            return  # Already seeded
+
+        defaults = [
+            # Logical Systems
+            ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
+            ("LogicalSystem", "HR-Core", "Human Resources Core System"),
+            ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
+            ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
+            ("LogicalSystem", "DevOps", "DevOps Platform"),
+            # Device Types
+            ("DeviceType", "Physical", "Bare metal hardware"),
+            ("DeviceType", "Virtual", "Virtual machine or instance"),
+            ("DeviceType", "Storage", "Storage array or appliance"),
+            ("DeviceType", "Switch", "Network switch or router"),
+            ("DeviceType", "Firewall", "Network firewall appliance"),
+            ("DeviceType", "Load Balancer", "Load balancer appliance"),
+            # Operational Status
+            ("Status", "Planned", "Scheduled for deployment"),
+            ("Status", "Active", "Operational and healthy"),
+            ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+            ("Status", "Standby", "Powered on, not serving traffic"),
+            ("Status", "Offline", "Powered off or unreachable"),
+            ("Status", "Decommissioned", "Retired from service"),
+            # Environments
+            ("Environment", "Production", "Live user traffic"),
+            ("Environment", "Staging", "Pre-production staging"),
+            ("Environment", "QA", "Quality Assurance and Testing"),
+            ("Environment", "Dev", "Development environment"),
+            ("Environment", "DR", "Disaster Recovery Node"),
+            ("Environment", "Lab", "Lab or sandbox environment"),
+            # Business Units
+            ("BusinessUnit", "Engineering", "Engineering & R&D"),
+            ("BusinessUnit", "Operations", "IT Operations"),
+            ("BusinessUnit", "Finance", "Finance & Accounting"),
+            ("BusinessUnit", "HR", "Human Resources"),
+            ("BusinessUnit", "Sales", "Sales & Business Development"),
+            ("BusinessUnit", "Security", "Information Security"),
+        ]
+        for cat, val, desc in defaults:
+            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+
+        service_types = [
+            ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
+            ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
+            ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
+            ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
+            ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
+            ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
+        ]
+        for val, keys in service_types:
+            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+
+        await db.commit()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await _auto_seed()
     yield
 
 app = FastAPI(title="SYSGRID Production API", lifespan=lifespan)

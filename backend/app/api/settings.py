@@ -45,6 +45,8 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
     
     opt.value = new_value
     opt.label = new_label
+    opt.description = data.get('description', opt.description)
+    opt.metadata_keys = data.get('metadata_keys', opt.metadata_keys)
     
     await db.commit()
     await db.refresh(opt)
@@ -130,12 +132,54 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         return {"status": "already_initialized"}
         
     defaults = [
-        ("LogicalSystem", "SAP ERP"), ("LogicalSystem", "HR-Core"), ("LogicalSystem", "Sales-B2B"),
-        ("DeviceType", "Physical"), ("DeviceType", "Virtual"), ("DeviceType", "Storage"), ("DeviceType", "Switch"),
-        ("Status", "Planned"), ("Status", "Active"), ("Status", "Maintenance"), ("Status", "Decommissioned"),
-        ("Environment", "Production"), ("Environment", "QA"), ("Environment", "Dev"), ("Environment", "DR")
+        # Logical Systems
+        ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
+        ("LogicalSystem", "HR-Core", "Human Resources Core System"),
+        ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
+        ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
+        ("LogicalSystem", "DevOps", "DevOps Platform"),
+        # Device Types
+        ("DeviceType", "Physical", "Bare metal hardware"),
+        ("DeviceType", "Virtual", "Virtual machine or instance"),
+        ("DeviceType", "Storage", "Storage array or appliance"),
+        ("DeviceType", "Switch", "Network switch or router"),
+        ("DeviceType", "Firewall", "Network firewall appliance"),
+        ("DeviceType", "Load Balancer", "Load balancer appliance"),
+        # Operational Status
+        ("Status", "Planned", "Scheduled for deployment"),
+        ("Status", "Active", "Operational and healthy"),
+        ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+        ("Status", "Standby", "Powered on, not serving traffic"),
+        ("Status", "Offline", "Powered off or unreachable"),
+        ("Status", "Decommissioned", "Retired from service"),
+        # Environments
+        ("Environment", "Production", "Live user traffic"),
+        ("Environment", "Staging", "Pre-production staging"),
+        ("Environment", "QA", "Quality Assurance and Testing"),
+        ("Environment", "Dev", "Development and Staging"),
+        ("Environment", "DR", "Disaster Recovery Node"),
+        ("Environment", "Lab", "Lab or sandbox environment"),
+        # Business Units
+        ("BusinessUnit", "Engineering", "Engineering & R&D"),
+        ("BusinessUnit", "Operations", "IT Operations"),
+        ("BusinessUnit", "Finance", "Finance & Accounting"),
+        ("BusinessUnit", "HR", "Human Resources"),
+        ("BusinessUnit", "Sales", "Sales & Business Development"),
+        ("BusinessUnit", "Security", "Information Security"),
     ]
-    for cat, val in defaults:
-        db.add(models.SettingOption(category=cat, label=val, value=val))
+    for cat, val, desc in defaults:
+        db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+        
+    service_types = [
+        ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
+        ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
+        ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
+        ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
+        ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
+        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"])
+    ]
+    for val, keys in service_types:
+        db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+        
     await db.commit()
     return {"status": "initialized"}

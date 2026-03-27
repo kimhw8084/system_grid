@@ -23,7 +23,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   return (
     <div className="h-full flex flex-col justify-center items-center space-y-12 pr-4">
       <div className="text-center space-y-2">
-        <h1 className="text-5xl font-black tracking-tighter uppercase italic text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">SYSGRID COMMAND</h1>
+        <h1 className="text-5xl font-black tracking-tighter uppercase italic text-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]">Dashboard</h1>
         <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Real-time Infrastructure Intelligence</p>
       </div>
 

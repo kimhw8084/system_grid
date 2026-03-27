@@ -9,13 +9,14 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
   const [newValue, setNewValue] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editValue, setEditValue] = useState("")
+  const [editMetadata, setEditMetadata] = useState("")
 
   const addMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/v1/settings/options", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, label: newValue, value: newValue })
+        body: JSON.stringify({ category, label: newValue, value: newValue, metadata_keys: [] })
       })
       return res.json()
     },
@@ -23,11 +24,11 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, value }: any) => {
+    mutationFn: async ({ id, value, metadata_keys }: any) => {
         const res = await fetch(`/api/v1/settings/options/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ label: value, value: value })
+            body: JSON.stringify({ label: value, value: value, metadata_keys: metadata_keys })
         })
         if (!res.ok) {
             const err = await res.json()
@@ -68,30 +69,49 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
          </div>
       </div>
 
-      <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar pr-2 min-h-[100px]">
+      <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-2 min-h-[100px]">
         {options?.map((opt: any) => (
-          <div key={opt.id} className="group flex items-center justify-between p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10">
-            {editingId === opt.id ? (
-                <div className="flex items-center space-x-2 flex-1">
-                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded px-2 py-1 text-[10px] outline-none" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue })} />
-                    <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue })} className="text-emerald-400"><Check size={14}/></button>
-                    <button onClick={() => setEditingId(null)} className="text-slate-500"><X size={14}/></button>
+          <div key={opt.id} className="flex flex-col p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group">
+            <div className="flex items-center justify-between">
+                {editingId === opt.id ? (
+                    <div className="flex items-center space-x-2 flex-1">
+                        <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded px-2 py-1 text-[10px] outline-none" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} />
+                        <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} className="text-emerald-400"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="text-slate-500"><X size={14}/></button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-[9px] font-black text-blue-500/40 bg-blue-500/5 w-4 h-4 flex items-center justify-center rounded-md border border-blue-500/10">{opt.id}</span>
+                            <span className="text-[10px] font-bold text-slate-300">{opt.label}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); setEditMetadata(opt.metadata_keys?.join(', ') || ""); }} className="p-1 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded transition-all">
+                                <Edit2 size={12} />
+                            </button>
+                            <button onClick={() => deleteMutation.mutate(opt.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded transition-all">
+                                <Trash2 size={12} />
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
+            {category === 'ServiceType' && (
+                <div className="mt-2 pl-6">
+                    {editingId === opt.id ? (
+                        <div className="space-y-1">
+                            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Default Metadata Keys (CSV)</label>
+                            <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname, engine..." className="w-full bg-black/40 border border-white/5 rounded px-2 py-1 text-[9px] outline-none focus:border-blue-500/30" />
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap gap-1">
+                            {opt.metadata_keys?.map((k: string) => (
+                                <span key={k} className="px-1.5 py-0.5 bg-blue-500/5 border border-blue-500/10 text-blue-400/60 rounded text-[7px] font-black uppercase tracking-tighter">{k}</span>
+                            ))}
+                            {(!opt.metadata_keys || opt.metadata_keys.length === 0) && <span className="text-[7px] text-slate-600 italic font-bold uppercase">No default keys</span>}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <>
-                    <div className="flex items-center space-x-2">
-                        <span className="text-[9px] font-black text-blue-500/40 bg-blue-500/5 w-4 h-4 flex items-center justify-center rounded-md border border-blue-500/10">{opt.id}</span>
-                        <span className="text-[10px] font-bold text-slate-300">{opt.label}</span>
-                    </div>
-                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); }} className="p-1 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded transition-all">
-                            <Edit2 size={12} />
-                        </button>
-                        <button onClick={() => deleteMutation.mutate(opt.id)} className="p-1 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded transition-all">
-                            <Trash2 size={12} />
-                        </button>
-                    </div>
-                </>
             )}
           </div>
         ))}

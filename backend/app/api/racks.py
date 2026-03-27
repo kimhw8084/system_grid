@@ -70,6 +70,7 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
             "total_u": rack.total_u_height,
             "max_power_kw": rack.max_power_kw or 8.0,
             "room_id": rack.room_id,
+            "site_id": room.site_id if room else None,
             "site_name": site_name,
             "order_index": rack.order_index,
             "device_locations": device_locations_list
@@ -279,17 +280,31 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     elif action == "purge": # Hard delete
         await db.execute(delete(models.Rack).where(models.Rack.id.in_(ids)))
     elif action == "restore":
-        # Check for name conflicts in target site before restoring
         res = await db.execute(select(models.Rack).where(models.Rack.id.in_(ids)))
         racks_to_restore = res.scalars().all()
-        
+
+        # If payload contains new_site_id, reassign racks to that site
+        new_site_id = payload.get("new_site_id") if payload else None
+        renames = payload.get("renames", {}) if payload else {}
+        new_room = None
+        if new_site_id:
+            room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(new_site_id)))
+            new_room = room_res.scalar_one_or_none()
+            if not new_room:
+                raise HTTPException(status_code=400, detail="Target site has no rooms for restoration")
+
         restored_ids, conflict_ids = [], []
         for r in racks_to_restore:
-            room_res = await db.execute(select(models.Room).filter(models.Room.id == r.room_id))
+            # Use new_room if provided, otherwise use existing room_id
+            target_room_id = new_room.id if new_room else r.room_id
+
+            room_res = await db.execute(select(models.Room).filter(models.Room.id == target_room_id))
             room = room_res.scalar_one_or_none()
             if room:
+                # Check for name conflict using final name (possibly renamed)
+                final_name = renames.get(str(r.id), r.name)
                 dup_res = await db.execute(select(models.Rack).filter(
-                    models.Rack.name == r.name,
+                    models.Rack.name == final_name,
                     models.Rack.room_id == room.id,
                     models.Rack.is_deleted == False
                 ))
@@ -297,9 +312,17 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                     conflict_ids.append(r.id)
                 else:
                     r.is_deleted = False
+                    if new_room:
+                        r.room_id = new_room.id
+                    if str(r.id) in renames:
+                        r.name = renames[str(r.id)]
                     restored_ids.append(r.id)
-            else: # If rack has no room, it can be restored directly
+            else: # If rack has no room, it can be restored directly (standalone)
                 r.is_deleted = False
+                if new_room:
+                    r.room_id = new_room.id
+                if str(r.id) in renames:
+                    r.name = renames[str(r.id)]
                 restored_ids.append(r.id)
         await db.commit()
         return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}

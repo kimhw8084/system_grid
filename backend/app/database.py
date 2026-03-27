@@ -1,9 +1,15 @@
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import event
 
+# Base directory of the app
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Database path relative to this file
+DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "system_grid.db"))
+
 # SQLite async URL
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./system_grid.db"
+SQLALCHEMY_DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 # High-concurrency engine configuration
 engine = create_async_engine(

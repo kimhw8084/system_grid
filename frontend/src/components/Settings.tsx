@@ -23,7 +23,7 @@ export default function SettingsPage() {
     <div className="h-full flex flex-col space-y-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight uppercase italic text-blue-400">Control Plane</h1>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic text-blue-400">System Settings</h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">System-wide Configuration & Orchestration</p>
         </div>
         <button onClick={() => setShowUI(true)} className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
