@@ -95,11 +95,11 @@ class Device(Base, BaseMixin):
     relationships = relationship("DeviceRelationship", primaryjoin="Device.id==DeviceRelationship.source_device_id", cascade="all, delete-orphan")
     interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
     maintenance_windows = relationship("MaintenanceWindow", back_populates="device", cascade="all, delete-orphan")
-    logical_services = relationship("LogicalService", back_populates="device", cascade="all, delete-orphan")
+    logical_services = relationship("LogicalService", back_populates="device")
 
 class LogicalService(Base, BaseMixin):
     __tablename__ = "logical_services"
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True) # Nullable if service is floating/clustered
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True) # Nullable if service is floating/clustered
     name = Column(String, index=True) # Service Name
     service_type = Column(String, index=True) # Database, Web, Middleware, Container, ToolStack, Other
     status = Column(String, default="Running") # Running, Stopped, Critical, Maintenance

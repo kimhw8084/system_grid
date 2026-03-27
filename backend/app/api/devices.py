@@ -61,14 +61,35 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     if dup_res.scalars().first():
         raise HTTPException(409, "DUPLICATE_HOSTNAME")
 
-
     clean_data = filter_valid_columns(models.Device, data)
     for date_f in ["purchase_date", "install_date", "warranty_end", "eol_date"]:
         if date_f in clean_data: clean_data[date_f] = parse_iso_date(clean_data[date_f])
     
     db_device = models.Device(**clean_data)
-    db.add(db_device); await db.commit(); await db.refresh(db_device)
-    return db_device
+    db.add(db_device)
+    await db.commit()
+    await db.refresh(db_device)
+
+    # Return full object with joins like get_devices
+    loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == db_device.id))
+    loc = loc_res.scalars().first()
+    rack_name, site_name, u_start = None, "Unplaced", None
+    if loc:
+        rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == loc.rack_id))
+        rack = rack_res.scalar_one_or_none()
+        if rack:
+            rack_name = rack.name; u_start = loc.start_unit
+            if rack.room_id:
+                room_res = await db.execute(select(models.Room).filter(models.Room.id == rack.room_id))
+                room = room_res.scalar_one_or_none()
+                if room:
+                    site_res = await db.execute(select(models.Site).filter(models.Site.id == room.site_id))
+                    site = site_res.scalar_one_or_none()
+                    if site: site_name = site.name
+
+    device_dict = {c.name: getattr(db_device, c.name) for c in db_device.__table__.columns}
+    device_dict.update({"rack_name": rack_name, "site_name": site_name, "u_start": u_start, "size_u": db_device.size_u})
+    return device_dict
 
 @router.put("/{device_id}")
 async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(get_db)):

@@ -44,10 +44,6 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     # data includes: name, service_type, status, version, environment, device_id, config_json, custom_attributes
     name = data.get('name')
     if not name: raise HTTPException(400, "Service name required")
-    
-    dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == name, models.LogicalService.is_deleted == False))
-    if dup_res.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="SERVICE_NAME_DUPLICATE")
 
     svc = models.LogicalService(**data)
     db.add(svc)
@@ -72,14 +68,8 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     svc = result.scalar_one_or_none()
     if not svc: raise HTTPException(404)
     
-    if 'name' in data and data['name'] != svc.name:
-        dup_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.name == data['name'], models.LogicalService.id != service_id, models.LogicalService.is_deleted == False))
-        if dup_res.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="SERVICE_NAME_DUPLICATE")
-        svc.name = data['name']
-
     for k, v in data.items():
-        if k != 'name' and hasattr(svc, k): setattr(svc, k, v)
+        if hasattr(svc, k): setattr(svc, k, v)
         
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="logical_services", 

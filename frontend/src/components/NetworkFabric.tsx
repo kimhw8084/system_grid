@@ -40,8 +40,17 @@ export default function NetworkFabric() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/networks/connections/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['connections'] }); toast.success('Link Severed') }
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/v1/networks/connections/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to sever connection')
+      return res.json()
+    },
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['connections'] })
+      toast.success('Link Severed')
+      setConfirmModal({ ...confirmModal, isOpen: false })
+    },
+    onError: (e: any) => toast.error(e.message)
   })
 
   const columnDefs = useMemo(() => [

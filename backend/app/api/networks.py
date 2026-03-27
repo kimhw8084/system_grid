@@ -111,9 +111,10 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
 async def delete_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
     conn = result.scalar_one_or_none()
-    if conn:
-        db.delete(conn)
-        log = models.AuditLog(user_id="admin", action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
-        db.add(log)
-        await db.commit()
+    if not conn: raise HTTPException(status_code=404, detail="Connection not found")
+    
+    await db.delete(conn)
+    log = models.AuditLog(user_id="admin", action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
+    db.add(log)
+    await db.commit()
     return {"status": "success"}
