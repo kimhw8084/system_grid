@@ -10,7 +10,8 @@ router = APIRouter(prefix="/monitoring", tags=["Monitoring Matrix"])
 
 def filter_valid_columns(model, data):
     valid_keys = {c.name for c in model.__table__.columns}
-    return {k: v for k, v in data.items() if k in valid_keys}
+    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
@@ -53,7 +54,7 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     
     clean_data = filter_valid_columns(models.MonitoringItem, data)
     for k, v in clean_data.items():
-        if k != "id": setattr(item, k, v)
+        setattr(item, k, v)
         
     await db.commit()
     await db.refresh(item)

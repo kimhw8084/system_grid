@@ -145,8 +145,8 @@ export default function NetworkFabric() {
              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH FABRIC..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
-             <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Fabric Config">
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Fabric Config">
                 <Settings size={16} />
              </button>
           </div>
@@ -165,7 +165,7 @@ export default function NetworkFabric() {
           </div>
         )}
         <AgGridReact 
-          rowData={links || []} 
+          rowData={connections || []} 
           columnDefs={columnDefs}
           headerHeight={28}
           rowHeight={28}

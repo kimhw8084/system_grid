@@ -147,8 +147,8 @@ export default function MonitoringGrid() {
             />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
-             <button className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Config">
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Config">
                 <Settings size={16} />
              </button>
           </div>

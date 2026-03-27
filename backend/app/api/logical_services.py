@@ -9,7 +9,8 @@ router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 
 def filter_valid_columns(model, data):
     valid_keys = {c.name for c in model.__table__.columns}
-    return {k: v for k, v in data.items() if k in valid_keys}
+    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
@@ -49,7 +50,9 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "device_name": device_name,
             "config_json": s.config_json,
             "custom_attributes": s.custom_attributes,
-            "is_deleted": s.is_deleted
+            "is_deleted": s.is_deleted,
+            "purchase_date": s.purchase_date,
+            "expiry_date": s.expiry_date
         })
     return final_result
 
@@ -69,19 +72,19 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     if not name: raise HTTPException(400, "Service name required")
 
     clean_data = filter_valid_columns(models.LogicalService, data)
-    # Ensure ID is not passed to constructor if it's empty string/null
-    if 'id' in clean_data and not clean_data['id']:
-        del clean_data['id']
     
     # Handle date fields for license
     for date_f in ["purchase_date", "expiry_date"]:
-        if date_f in clean_data and clean_data[date_f]:
-            from datetime import datetime
-            try:
-                if isinstance(clean_data[date_f], str):
-                    clean_data[date_f] = datetime.fromisoformat(clean_data[date_f].replace("Z", "+00:00"))
-            except:
+        if date_f in clean_data:
+            val = clean_data[date_f]
+            if not val:
                 clean_data[date_f] = None
+            elif isinstance(val, str):
+                from datetime import datetime
+                try:
+                    clean_data[date_f] = datetime.fromisoformat(val.replace("Z", "+00:00"))
+                except:
+                    clean_data[date_f] = None
 
     svc = models.LogicalService(**clean_data)
     db.add(svc)
@@ -111,17 +114,20 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     
     clean_data = filter_valid_columns(models.LogicalService, data)
     for k, v in clean_data.items():
-        if k != "id":
-            if k in ["purchase_date", "expiry_date"] and v:
+        if k in ["purchase_date", "expiry_date"]:
+            if not v:
+                setattr(svc, k, None)
+            elif isinstance(v, str):
                 from datetime import datetime
                 try:
-                    if isinstance(v, str):
-                        v = datetime.fromisoformat(v.replace("Z", "+00:00"))
-                    setattr(svc, k, v)
+                    dt_val = datetime.fromisoformat(v.replace("Z", "+00:00"))
+                    setattr(svc, k, dt_val)
                 except:
                     setattr(svc, k, None)
             else:
                 setattr(svc, k, v)
+        else:
+            setattr(svc, k, v)
     
     # Sync back to device if OS
     await sync_service_to_device(svc, db)
