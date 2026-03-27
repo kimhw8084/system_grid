@@ -220,12 +220,21 @@ const RackElevation = ({
 
           <div className="flex items-center gap-1 shrink-0">
             {isDeleted ? (
-              <button
-                onClick={() => onRestore?.(rack.id)}
-                className="px-2 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[7px] font-black uppercase tracking-widest hover:bg-emerald-500/25 transition-all flex items-center gap-1"
-              >
-                <RefreshCcw size={9} /> Restore
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => onRestore?.(rack.id)}
+                  className="px-2 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[7px] font-black uppercase tracking-widest hover:bg-emerald-500/25 transition-all flex items-center gap-1"
+                >
+                  <RefreshCcw size={9} /> Restore
+                </button>
+                <button
+                  onClick={() => onDelete(rack.id)}
+                  className="p-1 hover:bg-rose-500/10 rounded text-rose-500 transition-colors"
+                  title="Permanent Delete"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
             ) : (
               <div className="relative">
                 <button
@@ -379,9 +388,14 @@ const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDelete
     <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest mr-2">{count} selected</span>
     <div className="h-4 w-px bg-white/10" />
     {isDeleted ? (
-      <button onClick={onRestore} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/25 transition-all">
-        <RefreshCcw size={11} /> Restore
-      </button>
+      <>
+        <button onClick={onRestore} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/25 transition-all">
+          <RefreshCcw size={11} /> Restore
+        </button>
+        <button onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/15 text-rose-400 border border-rose-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-rose-500/25 transition-all">
+          <Trash2 size={11} /> Purge
+        </button>
+      </>
     ) : (<>
       <button onClick={onCompare} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-400 border border-blue-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-blue-500/25 transition-all">
         <Server size={11} /> Compare
@@ -895,11 +909,11 @@ export default function RackElevations() {
 
   const displayedRacks = useMemo(() => {
     if (!racks) return []
-    let filtered = racks
+    let filtered = [...racks]
     if (showCompareOnly) {
-      filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
+      filtered = filtered.filter((r: any) => selectedRacks.includes(r.id))
     } else if (activeSite) {
-      filtered = allRacks.filter((r: any) => r.site_id === activeSite)
+      filtered = filtered.filter((r: any) => r.site_id === activeSite)
     }
     // In deleted tab, show all deleted racks (no site filtering) — site_name is displayed on the card
     if (searchTerm) {
@@ -913,7 +927,7 @@ export default function RackElevations() {
       )
     }
     return filtered
-  }, [allRacks, activeSite, showCompareOnly, selectedRacks, sites, searchTerm])
+  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm])
 
   const availableDevices = useMemo(() => {
     if (!devices) return []
@@ -1038,11 +1052,11 @@ export default function RackElevations() {
             className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
           >
             All Sites
-            {allRacks && <span className="opacity-60 font-mono">{allRacks.length}</span>}
+            {activeRacks && <span className="opacity-60 font-mono">{activeRacks.length}</span>}
           </button>
 
           {sites?.map((s: any) => {
-            const siteRacks = allRacks?.filter((r: any) => r.site_id === s.id) || []
+            const siteRacks = activeRacks?.filter((r: any) => r.site_id === s.id) || []
             const siteUsed = siteRacks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
             const siteTotal = siteRacks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
             const siteFill = siteTotal > 0 ? Math.round((siteUsed / siteTotal) * 100) : 0
@@ -1134,7 +1148,13 @@ export default function RackElevations() {
             searchTerm={searchTerm}
             isSelected={selectedRacks.includes(r.id)}
             onToggleSelect={toggleSelect}
-            onDelete={id => openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => deleteMutation.mutate(id))}
+            onDelete={id => {
+              if (activeTab === 'deleted') {
+                openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+              } else {
+                openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => deleteMutation.mutate(id))
+              }
+            }}
             onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
             onMove={dir => moveRack(r.id, dir)}
             onMount={(rackId, u) => setIsProvisioning({ rackId, start_u: u })}
@@ -1173,7 +1193,13 @@ export default function RackElevations() {
           <BulkToolbar
             count={selectedRacks.length}
             isDeleted={activeTab === 'deleted'}
-            onDelete={() => openConfirm('Decommission Racks', `Decommission ${selectedRacks.length} selected rack(s)?`, () => bulkActionMutation.mutate({ action: 'delete', ids: selectedRacks }))}
+            onDelete={() => {
+              if (activeTab === 'deleted') {
+                openConfirm('Purge Racks', `Permanently delete ${selectedRacks.length} selected rack(s)? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: selectedRacks }))
+              } else {
+                openConfirm('Decommission Racks', `Decommission ${selectedRacks.length} selected rack(s)?`, () => bulkActionMutation.mutate({ action: 'delete', ids: selectedRacks }))
+              }
+            }}
             onRelocate={() => setShowRelocateModal(true)}
             onCompare={() => setShowCompareOnly(true)}
             onRestore={() => handleRestore(selectedRacks)}
