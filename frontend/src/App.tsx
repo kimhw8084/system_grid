@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3 } from "lucide-react"
 import { Toaster } from "react-hot-toast"
 
 import Dashboard from "./components/Dashboard"
@@ -136,11 +136,11 @@ function MainLayout() {
       <Toaster position="top-right" />
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-white/5 flex flex-col z-20 shadow-2xl relative">
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
-          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-             <div className="w-8 h-8 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <Zap size={20} className="text-white fill-white" />
+          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
+             <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
+                <Grid3X3 size={20} className="text-white" />
              </div>
-             {isSidebarOpen && <span className="font-black text-lg text-white tracking-tighter uppercase">SYSGRID</span>}
+             {isSidebarOpen && <span className="font-black text-xl text-white tracking-tighter uppercase italic">SYSGRID</span>}
           </Link>
           {isSidebarOpen && (
             <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
