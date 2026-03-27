@@ -3,12 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Settings, Plus, Trash2, CheckCircle2, AlertCircle, Save, RefreshCcw, Layout, Shield, Database, Cpu, Sliders, Box, Network, Globe, Lock, Key, Activity } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
-import { UISettingsModal } from "./ConfigRegistry"
 import { ConfigSection } from "./ConfigRegistry"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('global')
-  const [showUI, setShowUI] = useState(false)
   const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await fetch("/api/v1/settings/options")).json() })
   
   const tabs = [
@@ -26,10 +24,6 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-black tracking-tight uppercase italic">System Settings</h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">System-wide Configuration & Orchestration</p>
         </div>
-        <button onClick={() => setShowUI(true)} className="flex items-center space-x-2 bg-white/5 hover:bg-white/10 border border-white/5 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-            <Sliders size={14} />
-            <span>Global Visuals</span>
-        </button>
       </div>
 
       <div className="flex space-x-2 border-b border-white/5 pb-1">
@@ -73,8 +67,6 @@ export default function SettingsPage() {
           )}
         </AnimatePresence>
       </div>
-
-      <UISettingsModal isOpen={showUI} onClose={() => setShowUI(false)} />
     </div>
   )
 }

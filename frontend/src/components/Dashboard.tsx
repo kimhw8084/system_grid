@@ -13,13 +13,6 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     }
   })
 
-  const stats = [
-    { label: 'Data Center Sites', value: metrics?.sites || 0, icon: MapPin, color: 'text-blue-400', bg: 'bg-blue-500/10', target: 'racks' },
-    { label: 'Total Racks', value: metrics?.racks || 0, icon: ServerCrash, color: 'text-indigo-400', bg: 'bg-indigo-500/10', target: 'racks' },
-    { label: 'Infrastructure Assets', value: (metrics?.physical_servers || 0) + (metrics?.virtual_servers || 0) + (metrics?.storage_arrays || 0) + (metrics?.switches || 0), icon: Server, color: 'text-emerald-400', bg: 'bg-emerald-500/10', target: 'assets' },
-    { label: 'Logical Systems', value: metrics?.total_systems || 0, icon: LayoutDashboard, color: 'text-purple-400', bg: 'bg-purple-500/10', target: 'assets' }
-  ]
-
   return (
     <div className="h-full flex flex-col justify-center items-center space-y-12 pr-4">
       <div className="text-center space-y-2">
@@ -27,25 +20,77 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em]">Real-time Infrastructure Intelligence</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 w-full max-w-4xl">
-        {stats.map((stat, i) => (
-          <motion.div 
-            key={stat.label}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.1 }}
-            onClick={() => onNavigate(stat.target)}
-            className="glass-panel p-10 rounded-[40px] flex flex-col items-center justify-center border-white/5 hover:border-[#034EA2]/30 transition-all cursor-pointer group active:scale-95 shadow-lg hover:shadow-[#034EA2]/10"
-          >
-            <div className={`p-5 rounded-3xl mb-6 transition-transform group-hover:scale-110 ${stat.bg}`}>
-              <stat.icon size={40} className={stat.color} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl px-4">
+        {/* Physical Infrastructure */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          onClick={() => onNavigate('racks')}
+          className="glass-panel p-8 rounded-[40px] border-white/5 hover:border-blue-500/30 transition-all cursor-pointer group active:scale-[0.98] flex flex-col items-center"
+        >
+          <div className="p-4 bg-blue-500/10 rounded-2xl mb-6 group-hover:scale-110 transition-transform">
+            <MapPin size={32} className="text-blue-400" />
+          </div>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8">Infrastructure Nodes</h3>
+          
+          <div className="grid grid-cols-2 gap-8 w-full">
+            <div className="text-center space-y-1 border-r border-white/5">
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Sites</p>
+              <h2 className="text-4xl font-black text-white">{metrics?.sites || 0}</h2>
             </div>
             <div className="text-center space-y-1">
-              <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">{stat.label}</p>
-              <h2 className="text-6xl font-black text-white">{stat.value}</h2>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Racks</p>
+              <h2 className="text-4xl font-black text-white">{metrics?.racks || 0}</h2>
             </div>
-          </motion.div>
-        ))}
+          </div>
+        </motion.div>
+
+        {/* Asset Inventory Breakdown */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          onClick={() => onNavigate('assets')}
+          className="glass-panel p-8 rounded-[40px] border-white/5 hover:border-emerald-500/30 transition-all cursor-pointer group active:scale-[0.98] flex flex-col items-center h-full"
+        >
+          <div className="p-4 bg-emerald-500/10 rounded-2xl mb-6 group-hover:scale-110 transition-transform">
+            <Server size={32} className="text-emerald-400" />
+          </div>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Asset Composition</h3>
+          
+          <div className="w-full space-y-3 flex-1 flex flex-col justify-center">
+            {metrics?.asset_types && Object.entries(metrics.asset_types).length > 0 ? (
+              Object.entries(metrics.asset_types).map(([type, count]: [string, any]) => (
+                <div key={type} className="flex justify-between items-center bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">{type}</span>
+                  <span className="text-lg font-black text-emerald-400 tabular-nums">{count}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-[10px] text-slate-600 font-bold uppercase italic text-center py-4">No assets registered</p>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Logical Layer */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          onClick={() => onNavigate('services')}
+          className="glass-panel p-8 rounded-[40px] border-white/5 hover:border-purple-500/30 transition-all cursor-pointer group active:scale-[0.98] flex flex-col items-center"
+        >
+          <div className="p-4 bg-purple-500/10 rounded-2xl mb-6 group-hover:scale-110 transition-transform">
+            <Layers size={32} className="text-purple-400" />
+          </div>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-8">Application Layer</h3>
+          
+          <div className="grid grid-cols-2 gap-8 w-full">
+            <div className="text-center space-y-1 border-r border-white/5">
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Services</p>
+              <h2 className="text-4xl font-black text-white">{metrics?.services || 0}</h2>
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Systems</p>
+              <h2 className="text-4xl font-black text-white">{metrics?.total_systems || 0}</h2>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   )

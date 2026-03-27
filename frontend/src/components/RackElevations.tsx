@@ -271,7 +271,7 @@ const RackElevation = ({
         {/* Capacity bars */}
         <div className="space-y-1.5">
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
-          <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 8} colorFn={powerColor} label="Power" unit="kW" />
+          <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 10} colorFn={powerColor} label="Power" unit="kW" />
         </div>
 
         {/* KPI pills */}
@@ -337,7 +337,7 @@ const SiteCapacityBar = ({ racks }: { racks: any[] }) => {
   const fillPct = totalU > 0 ? Math.round((usedU / totalU) * 100) : 0
   const estimatedPowerKw = racks.reduce((a: number, r: any) =>
     a + (r.device_locations || []).reduce((b: number, l: any) => b + ((l.device?.power_typical_w || 0) / 1000), 0), 0)
-  const totalPowerCapKw = racks.reduce((a: number, r: any) => a + (r.max_power_kw || 8), 0)
+  const totalPowerCapKw = racks.reduce((a: number, r: any) => a + (r.max_power_kw || 10), 0)
 
   const stats = [
     { label: 'Racks',     value: String(racks.length),                icon: <Server size={12}/>,      color: 'text-blue-400' },
@@ -631,7 +631,7 @@ export default function RackElevations() {
   const [newSite, setNewSite] = useState({ name: '', address: '' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
   const [isAddingRack, setIsAddingRack] = useState(false)
-  const [newRack, setNewRack] = useState({ name: '', total_u: 42, max_power_kw: 8.0, site_id: '' })
+  const [newRack, setNewRack] = useState({ name: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
   const [isEditingRack, setIsEditingRack] = useState<any>(null)
   const [isProvisioning, setIsProvisioning] = useState<any>(null)
   const [managingDevice, setManagingDevice] = useState<{ device: any; loc: any; rack: any } | null>(null)
@@ -737,7 +737,12 @@ export default function RackElevations() {
       }
       return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset mounted'); setIsProvisioning(null) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success('Asset mounted')
+      setIsProvisioning(null)
+    },
     onError: (e: any) => {
       if (e.type === 'RELOCATION_CONFLICT') {
         openConfirm('Relocate Asset', `${e.detail}\n\nRelocate to the new position?`,
@@ -753,7 +758,12 @@ export default function RackElevations() {
       if (!res.ok) throw new Error('Unmount failed')
       return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset unmounted'); setManagingDevice(null) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success('Asset unmounted')
+      setManagingDevice(null)
+    },
     onError: (e: any) => toast.error(e.message)
   })
 
@@ -766,7 +776,12 @@ export default function RackElevations() {
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Update failed') }
       return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Mount updated'); setManagingDevice(null) },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success('Mount updated')
+      setManagingDevice(null)
+    },
     onError: (e: any) => toast.error(e.message)
   })
 
@@ -914,11 +929,10 @@ export default function RackElevations() {
     return filtered
   }, [allRacks, activeSite, showCompareOnly, selectedRacks, sites, searchTerm])
 
-  const unmountedDevices = useMemo(() => {
-    if (!devices || !allRacks) return devices || []
-    const mountedIds = new Set(allRacks.flatMap((r: any) => (r.device_locations || []).map((l: any) => l.device_id)))
-    return devices.filter((d: any) => !mountedIds.has(d.id) && d.status !== 'Decommissioned')
-  }, [devices, allRacks])
+  const availableDevices = useMemo(() => {
+    if (!devices) return []
+    return devices.filter((d: any) => d.status !== 'Decommissioned')
+  }, [devices])
 
   const moveSite = (id: number, direction: 'left' | 'right') => {
     if (!sites) return
@@ -1014,7 +1028,7 @@ export default function RackElevations() {
           {/* Add Rack */}
           {activeTab === 'active' && (
             <button
-              onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 8.0 }); setIsAddingRack(true) }}
+              onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
               className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
             >
               <Plus size={13} /> Add Rack
@@ -1225,13 +1239,16 @@ export default function RackElevations() {
               </div>
 
               <StyledSelect
-                label="Asset (unmounted only)"
+                label="Asset (Registry)"
                 value={isProvisioning.device_id || ''}
                 onChange={e => {
                   const d = devices?.find((d: any) => String(d.id) === e.target.value)
                   setIsProvisioning({ ...isProvisioning, device_id: e.target.value, size_u: d?.size_u || 1 })
                 }}
-                options={unmountedDevices?.map((d: any) => ({ value: String(d.id), label: `${d.name}  [${d.type}]  ${d.size_u || 1}U  —  ${d.system || '–'}` })) || []}
+                options={availableDevices?.map((d: any) => ({
+                  value: String(d.id),
+                  label: `${d.name} [${d.type}] ${d.size_u || 1}U ${d.rack_name ? `(@ ${d.rack_name} U${d.u_start})` : ''} — ${d.system || '–'}`
+                })) || []}
                 placeholder="Select asset from registry..."
               />
 
@@ -1335,15 +1352,15 @@ export default function RackElevations() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Height (U)</label>
-                    <input type="number" min={1} max={84}
+                    <input type="number" min={1} max={100}
                       value={isEditingRack ? isEditingRack.total_u : newRack.total_u}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, total_u: parseInt(e.target.value) }) : setNewRack({ ...newRack, total_u: parseInt(e.target.value) })}
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
                   </div>
                   <div>
                     <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Max Power (kW)</label>
-                    <input type="number" min={0} step={0.5}
-                      value={isEditingRack ? (isEditingRack.max_power_kw ?? 8.0) : newRack.max_power_kw}
+                    <input type="number" min={0} max={1000} step={0.5}
+                      value={isEditingRack ? (isEditingRack.max_power_kw ?? 10.0) : newRack.max_power_kw}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, max_power_kw: parseFloat(e.target.value) }) : setNewRack({ ...newRack, max_power_kw: parseFloat(e.target.value) })}
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
                   </div>

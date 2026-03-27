@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
+import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
 
@@ -152,7 +152,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
             label="Target Operational State"
             value={selectedStatus}
             onChange={e => setSelectedStatus(e.target.value)}
-            options={options?.filter((o:any) => o.category === 'Status') || []}
+            options={STATUS_ITEMS}
             placeholder="Select Status..."
           />
           <div className="flex space-x-3 pt-2">
@@ -192,7 +192,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
             label="Target Environment"
             value={selectedEnv}
             onChange={e => setSelectedEnv(e.target.value)}
-            options={options?.filter((o:any) => o.category === 'Environment') || []}
+            options={ENVIRONMENT_ITEMS}
             placeholder="Select Environment..."
           />
           <div className="flex space-x-3 pt-2">
@@ -372,7 +372,6 @@ export default function AssetGrid() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
-  const [showUI, setShowUI] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
@@ -395,45 +394,42 @@ export default function AssetGrid() {
   }, [showBulkMenu])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
-  const { data: uiSettings } = useQuery({ queryKey: ['ui-settings'], queryFn: async () => (await fetch('/api/v1/settings/ui')).json() })
-
-  const { data: assets, isLoading } = useQuery({
-    queryKey: ['devices', activeTab],
-    queryFn: async () => {
-        const flag = activeTab === 'deleted' ? 'include_deleted=true' : ''
-        return (await fetch(`/api/v1/devices/?${flag}`)).json()
-    }
+  const { data: allAssets, isLoading } = useQuery({
+    queryKey: ['devices-all'],
+    queryFn: async () => (await fetch('/api/v1/devices/?include_deleted=true')).json()
   })
 
+  const { inventoryAssets, deletedAssets } = useMemo(() => {
+    if (!allAssets) return { inventoryAssets: [], deletedAssets: [] }
+    return {
+      inventoryAssets: allAssets.filter((a: any) => !a.is_deleted),
+      deletedAssets: allAssets.filter((a: any) => a.is_deleted)
+    }
+  }, [allAssets])
+
+  const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
+
   const mutation = useMutation({
-    mutationFn: async ({ data, force = false }: any) => {
-      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/?force=${force}`
+    mutationFn: async ({ data }: any) => {
+      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
       const method = data.id ? 'PUT' : 'POST'
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       if (res.status === 409) {
         const err = await res.json()
-        if (err.detail === 'DUPLICATE_HOSTNAME_ACTIVE') throw new Error('DUPLICATE_ACTIVE')
-        if (err.detail === 'WARN_EXISTING_DECOMMISSIONED') throw new Error('WARN_DECOM')
+        if (err.detail === 'DUPLICATE_HOSTNAME') throw new Error('DUPLICATE_HOSTNAME')
       }
       if (!res.ok) throw new Error('Failed to commit asset')
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['devices-all'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       toast.success('System Registry Updated')
       setActiveModal(null)
     },
     onError: (e: any) => {
-      if (e.message === 'DUPLICATE_ACTIVE') toast.error('ERROR: Hostname is currently ACTIVE in registry')
-      else if (e.message === 'WARN_DECOM') {
-        openConfirm(
-          'Reactivation Request',
-          'A decommissioned entry with this hostname exists. Reuse identity?',
-          () => mutation.mutate({ data: activeModal, force: true }),
-          'warning'
-        )
-      } else toast.error(e.message)
+      if (e.message === 'DUPLICATE_HOSTNAME') toast.error('ERROR: Hostname already exists in registry')
+      else toast.error(e.message)
     }
   })
 
@@ -449,7 +445,7 @@ export default function AssetGrid() {
       return res.json()
     },
     onSuccess: (data: any, variables: any) => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['devices-all'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setSelectedIds([])
       setShowBulkMenu(false)
@@ -506,10 +502,15 @@ export default function AssetGrid() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const isBadged = uiSettings?.status_badged ?? true
-        if (!isBadged) return <span className="text-slate-400">{p.value}</span>
-        const color = uiSettings?.status_colors?.[p.value] || '#64748b'
-        return <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase border" style={{ color: color, borderColor: `${color}40`, backgroundColor: `${color}10` }}>{p.value}</span>
+        const colors: any = {
+          Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
+          Maintenance: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
+          Decommissioned: 'text-rose-400 border-rose-500/20 bg-rose-500/5',
+          Planned: 'text-blue-400 border-blue-500/20 bg-blue-500/5',
+          Standby: 'text-sky-400 border-sky-500/20 bg-sky-500/5',
+          Offline: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
+        }
+        return <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span>
       }
     },
     { field: "environment", headerName: "Environment", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
@@ -544,7 +545,7 @@ export default function AssetGrid() {
         </div>
       )
     }
-  ], [uiSettings, activeTab]) as any
+  ], [activeTab]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -555,11 +556,12 @@ export default function AssetGrid() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
            </div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-              {['inventory', 'deleted'].map(tab => (
-                <button key={tab} onClick={() => setActiveTab(tab as any)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    {tab === 'inventory' ? `Inventory (${assets?.length || 0})` : `Soft Deleted (${assets?.length || 0})`}
+                <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Inventory ({inventoryAssets.length})
                 </button>
-              ))}
+                <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Soft Deleted ({deletedAssets.length})
+                </button>
            </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -571,9 +573,6 @@ export default function AssetGrid() {
           <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
              <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
                 <Settings size={16} />
-             </button>
-             <button onClick={() => setShowUI(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="View Customization">
-                <Sliders size={16} />
              </button>
           </div>
 
@@ -692,14 +691,9 @@ export default function AssetGrid() {
         title="Asset Registry Enumerations"
         sections={[
             { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
-            { title: "Asset Types", category: "DeviceType", icon: Cpu },
-            { title: "Operational Status", category: "Status", icon: RefreshCcw },
-            { title: "Environments", category: "Environment", icon: Globe },
             { title: "Business Units", category: "BusinessUnit", icon: Sliders },
         ]}
       />
-
-      <UISettingsModal isOpen={showUI} onClose={() => setShowUI(false)} />
 
       <style>{`
         .ag-theme-alpine-dark {
@@ -1337,6 +1331,37 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
+const ASSET_TYPES = [
+    { value: 'Physical', label: 'Physical' },
+    { value: 'Virtual', label: 'Virtual' },
+    { value: 'Storage', label: 'Storage' },
+    { value: 'Switch', label: 'Switch' },
+    { value: 'Firewall', label: 'Firewall' },
+    { value: 'Load Balancer', label: 'Load Balancer' },
+    { value: 'PDU', label: 'PDU' },
+    { value: 'UPS', label: 'UPS' },
+    { value: 'Patch Panel', label: 'Patch Panel' }
+]
+
+const STATUS_ITEMS = [
+    { value: 'Planned', label: 'Planned' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Maintenance', label: 'Maintenance' },
+    { value: 'Standby', label: 'Standby' },
+    { value: 'Offline', label: 'Offline' },
+    { value: 'Decommissioned', label: 'Decommissioned' }
+]
+
+const ENVIRONMENT_ITEMS = [
+    { value: 'Production', label: 'Production' },
+    { value: 'Staging', label: 'Staging' },
+    { value: 'QA', label: 'QA' },
+    { value: 'Dev', label: 'Dev' },
+    { value: 'DR', label: 'DR' },
+    { value: 'Lab', label: 'Lab' },
+    { value: 'Sandbox', label: 'Sandbox' }
+]
+
 const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
   const [activeSubTab, setActiveSubTab] = useState('config')
   const [metadataError, setMetadataError] = useState<string | null>(null)
@@ -1384,7 +1409,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
           <div className="col-span-1 space-y-4">
              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname *</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname</label>
                 <input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value})} 
@@ -1393,7 +1418,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 />
              </div>
              <StyledSelect
-                label="Logical System *"
+                label="Logical System"
                 value={formData.system}
                 onChange={e => setFormData({...formData, system: e.target.value})}
                 options={getOptions('LogicalSystem')}
@@ -1402,21 +1427,14 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              />
              <div className="grid grid-cols-2 gap-2">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner (Optional)</label>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner</label>
                     <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
                 <StyledSelect
-                    label="Business Unit (Optional)"
+                    label="Business Unit"
                     value={formData.business_unit}
                     onChange={e => setFormData({...formData, business_unit: e.target.value})}
-                    options={getOptions('BusinessUnit').length > 0 ? getOptions('BusinessUnit') : [
-                        { value: 'Engineering', label: 'Engineering' },
-                        { value: 'Operations', label: 'Operations' },
-                        { value: 'Finance', label: 'Finance' },
-                        { value: 'HR', label: 'HR' },
-                        { value: 'Sales', label: 'Sales' },
-                        { value: 'Security', label: 'Security' }
-                    ]}
+                    options={getOptions('BusinessUnit')}
                     placeholder="Select BU..."
                 />
              </div>
@@ -1429,14 +1447,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                     label="Asset Type"
                     value={formData.type}
                     onChange={e => setFormData({...formData, type: e.target.value})}
-                    options={getOptions('DeviceType').length > 0 ? getOptions('DeviceType') : [
-                        { value: 'Physical', label: 'Physical' },
-                        { value: 'Virtual', label: 'Virtual' },
-                        { value: 'Storage', label: 'Storage' },
-                        { value: 'Switch', label: 'Switch' },
-                        { value: 'Firewall', label: 'Firewall' },
-                        { value: 'Load Balancer', label: 'Load Balancer' }
-                    ]}
+                    options={ASSET_TYPES}
                 />
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
@@ -1447,27 +1458,13 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 label="Operational Status"
                 value={formData.status}
                 onChange={e => setFormData({...formData, status: e.target.value})}
-                options={getOptions('Status').length > 0 ? getOptions('Status') : [
-                    { value: 'Planned', label: 'Planned' },
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Maintenance', label: 'Maintenance' },
-                    { value: 'Standby', label: 'Standby' },
-                    { value: 'Offline', label: 'Offline' },
-                    { value: 'Decommissioned', label: 'Decommissioned' }
-                ]}
+                options={STATUS_ITEMS}
              />
              <StyledSelect
                 label="Environment"
                 value={formData.environment}
                 onChange={e => setFormData({...formData, environment: e.target.value})}
-                options={getOptions('Environment').length > 0 ? getOptions('Environment') : [
-                    { value: 'Production', label: 'Production' },
-                    { value: 'Staging', label: 'Staging' },
-                    { value: 'QA', label: 'QA' },
-                    { value: 'Dev', label: 'Dev' },
-                    { value: 'DR', label: 'DR' },
-                    { value: 'Lab', label: 'Lab' }
-                ]}
+                options={ENVIRONMENT_ITEMS}
              />
           </div>
 

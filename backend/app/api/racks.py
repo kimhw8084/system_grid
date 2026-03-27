@@ -222,8 +222,12 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
 async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     device_id = int(data['device_id'])
 
-    # Get ALL existing locations for this device (should only be 1, but cleanup any duplicates)
-    loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
+    # Get ALL existing locations for this device in ACTIVE racks
+    loc_res = await db.execute(
+        select(models.DeviceLocation)
+        .join(models.Rack, models.DeviceLocation.rack_id == models.Rack.id)
+        .filter(models.DeviceLocation.device_id == device_id, models.Rack.is_deleted == False)
+    )
     existing_locs = loc_res.scalars().all()
 
     if existing_locs and not data.get('relocate'):
@@ -246,9 +250,8 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
             d = dev_res.scalar_one_or_none()
             raise HTTPException(status_code=400, detail=f"Collision with {d.name if d else 'existing device'} at U{loc.start_unit}")
 
-    # Delete ALL existing locations (cleanup stale duplicates + prepare for new location)
-    if existing_locs:
-        await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
+    # Delete ANY existing locations (cleanup stale/deleted-rack locations + prepare for new location)
+    await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
 
     loc = models.DeviceLocation(
         rack_id=rack_id,

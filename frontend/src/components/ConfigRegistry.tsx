@@ -70,7 +70,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
       </div>
 
       <div className="space-y-1 max-h-[300px] overflow-y-auto custom-scrollbar pr-2 min-h-[100px]">
-        {options?.map((opt: any) => (
+        {options?.map((opt: any, index: number) => (
           <div key={opt.id} className="flex flex-col p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10 group">
             <div className="flex items-center justify-between">
                 {editingId === opt.id ? (
@@ -82,7 +82,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                 ) : (
                     <>
                         <div className="flex items-center space-x-2">
-                            <span className="text-[9px] font-black text-blue-500/40 bg-blue-500/5 w-4 h-4 flex items-center justify-center rounded-md border border-blue-500/10">{opt.id}</span>
+                            <span className="text-[9px] font-black text-blue-500/40 bg-blue-500/5 w-4 h-4 flex items-center justify-center rounded-md border border-blue-500/10">{index + 1}</span>
                             <span className="text-[10px] font-bold text-slate-300">{opt.label}</span>
                         </div>
                         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -163,76 +163,6 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                                     options={Array.isArray(options) ? options.filter((o:any) => o.category === s.category) : []} 
                                 />
                             ))}
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </AnimatePresence>
-    )
-}
-
-export const UISettingsModal = ({ isOpen, onClose }: any) => {
-    const queryClient = useQueryClient()
-    const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await fetch("/api/v1/settings/options")).json() })
-    const { data: uiSettings } = useQuery({ queryKey: ["ui-settings"], queryFn: async () => (await fetch("/api/v1/settings/ui")).json() })
-
-    const uiMutation = useMutation({
-        mutationFn: async (data: any) => fetch('/api/v1/settings/ui', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ui-settings"] }); toast.success("UI Preferences Synchronized") }
-    })
-
-    const statusOptions = Array.isArray(options) ? options.filter((o:any) => o.category === 'Status') : []
-    const statusColors = uiSettings?.status_colors || {}
-
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[500px] p-10 rounded-[40px] border-blue-500/30">
-                        <div className="flex items-center justify-between border-b border-white/5 pb-6 mb-6">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400"><Database size={20} /></div>
-                                <div>
-                                    <h2 className="text-xl font-black uppercase text-white tracking-tighter">View Customization</h2>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Styling & Visual Rendering</p>
-                                </div>
-                            </div>
-                            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase text-white">Status Badging</p>
-                                    <p className="text-[8px] font-bold text-slate-500 uppercase">Toggle visual badges for status column</p>
-                                </div>
-                                <button 
-                                    onClick={() => uiMutation.mutate({ ...uiSettings, status_badged: !uiSettings?.status_badged })}
-                                    className={`w-12 h-6 rounded-full transition-all relative ${uiSettings?.status_badged ? 'bg-blue-600' : 'bg-slate-800'}`}
-                                >
-                                    <motion.div animate={{ x: uiSettings?.status_badged ? 26 : 4 }} className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg" />
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Status Color Mapping</h4>
-                                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                                    {statusOptions.map((opt:any) => (
-                                    <div key={opt.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                                        <span className="text-[11px] font-bold text-slate-300">{opt.label}</span>
-                                        <input 
-                                            type="color" 
-                                            value={statusColors[opt.label] || '#64748b'} 
-                                            onChange={e => {
-                                                const newColors = { ...statusColors, [opt.label]: e.target.value }
-                                                uiMutation.mutate({ ...uiSettings, status_colors: newColors })
-                                            }}
-                                            className="w-8 h-8 bg-transparent border-none cursor-pointer"
-                                        />
-                                    </div>
-                                    ))}
-                                </div>
-                            </div>
                         </div>
                     </motion.div>
                 </div>

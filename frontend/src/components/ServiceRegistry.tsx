@@ -4,7 +4,7 @@ import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, Layout
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
-import { ConfigRegistryModal, UISettingsModal } from "./ConfigRegistry"
+import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
 
@@ -119,7 +119,6 @@ export default function ServiceRegistry() {
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showConfig, setShowConfig] = useState(false)
-  const [showUI, setShowUI] = useState(false)
   const [activeTab, setActiveTab] = useState<'active' | 'purged'>('active')
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
@@ -251,9 +250,6 @@ export default function ServiceRegistry() {
              <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
                 <Settings size={16} />
              </button>
-             <button onClick={() => setShowUI(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="View Customization">
-                <Sliders size={16} />
-             </button>
           </div>
 
           <div className="relative">
@@ -356,8 +352,6 @@ export default function ServiceRegistry() {
             { title: "Environments", category: "Environment", icon: Globe }
         ]}
       />
-
-      <UISettingsModal isOpen={showUI} onClose={() => setShowUI(false)} />
 
       <style>{`
         .ag-theme-alpine-dark {

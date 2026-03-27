@@ -52,19 +52,14 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
     return final_devices
 
 @router.post("/")
-async def create_device(data: dict, force: bool = False, db: AsyncSession = Depends(get_db)):
+async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     required = ["name", "system"]
     for f in required:
         if not data.get(f): raise HTTPException(400, f"Field {f} is mandatory")
     
     dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False))
-    existing = dup_res.scalars().all()
-    if existing:
-        active = [e for e in existing if e.status != "Decommissioned"]
-        if active: raise HTTPException(409, "DUPLICATE_HOSTNAME_ACTIVE")
-        if not force: raise HTTPException(409, "WARN_EXISTING_DECOMMISSIONED")
-        # If we are here, it means existing are all decommissioned AND force is True.
-        # We allow creation.
+    if dup_res.scalars().first():
+        raise HTTPException(409, "DUPLICATE_HOSTNAME")
 
 
     clean_data = filter_valid_columns(models.Device, data)
@@ -85,7 +80,7 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
         # Check for duplicate name in ANOTHER active device
         dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False, models.Device.id != device_id))
         if dup_res.scalars().first():
-            raise HTTPException(409, "DUPLICATE_HOSTNAME_ACTIVE")
+            raise HTTPException(409, "DUPLICATE_HOSTNAME")
 
     clean_data = filter_valid_columns(models.Device, data)
     # Exclude read-only fields
