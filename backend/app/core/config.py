@@ -13,7 +13,12 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./system_grid.db"
+    @property
+    def DATABASE_URL(self) -> str:
+        # Get the absolute path to the backend directory
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        db_path = os.path.join(base_dir, "system_grid.db")
+        return f"sqlite+aiosqlite:///{db_path}"
 
     model_config = SettingsConfigDict(
         env_file=".env",

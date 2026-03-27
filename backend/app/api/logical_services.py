@@ -51,8 +51,13 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "config_json": s.config_json,
             "custom_attributes": s.custom_attributes,
             "is_deleted": s.is_deleted,
-            "purchase_date": s.purchase_date,
-            "expiry_date": s.expiry_date
+            "license_type": s.license_type,
+            "license_key": s.license_key,
+            "purchase_type": s.purchase_type,
+            "cost": s.cost,
+            "vendor": s.vendor,
+            "purchase_date": s.purchase_date.isoformat() if s.purchase_date else None,
+            "expiry_date": s.expiry_date.isoformat() if s.expiry_date else None
         })
     return final_result
 
