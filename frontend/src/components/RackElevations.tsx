@@ -1140,9 +1140,9 @@ export default function RackElevations() {
 
         {/* Rack Create / Edit */}
         {(isAddingRack || isEditingRack) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[440px] p-8 rounded-3xl space-y-5 border border-blue-500/20">
+              className="glass-panel w-[440px] p-8 rounded-3xl space-y-5 border border-blue-500/20 my-auto">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-blue-500/15 rounded-xl border border-blue-500/20">
                   <Server size={18} className="text-blue-400" />
@@ -1151,7 +1151,7 @@ export default function RackElevations() {
                   {isEditingRack ? 'Edit Rack' : 'Provision Rack'}
                 </h2>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                 {!isEditingRack && (
                   <StyledSelect
                     label="Target Site"
