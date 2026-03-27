@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -20,7 +21,7 @@ const ServiceMetadataModal = ({ isOpen, onClose, service }: { isOpen: boolean, o
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400"><FileJson size={20} /></div>
             <div>
-              <h2 className="text-xl font-black uppercase text-white tracking-tighter">{service.name} Payload</h2>
+              <h2 className="text-xl font-black uppercase text-white tracking-tighter">{service.name} Metadata</h2>
               <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{service.service_type} Configuration Metadata</p>
             </div>
           </div>
@@ -281,7 +282,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Payload</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Metadata</span>
             {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-black uppercase tracking-tighter">{error}</span></div>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
@@ -393,10 +394,10 @@ export default function AssetGrid() {
     }
   }, [showBulkMenu])
 
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: allAssets, isLoading } = useQuery({
-    queryKey: ['devices-all'],
-    queryFn: async () => (await fetch('/api/v1/devices/?include_deleted=true')).json()
+    queryKey: ['devices'],
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/?include_deleted=true')).json())
   })
 
   const { inventoryAssets, deletedAssets } = useMemo(() => {
@@ -413,7 +414,7 @@ export default function AssetGrid() {
     mutationFn: async ({ data }: any) => {
       const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
       const method = data.id ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       if (res.status === 409) {
         const err = await res.json()
         if (err.detail === 'DUPLICATE_HOSTNAME') throw new Error('DUPLICATE_HOSTNAME')
@@ -422,7 +423,7 @@ export default function AssetGrid() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices-all'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       toast.success('System Registry Updated')
       setActiveModal(null)
@@ -436,16 +437,15 @@ export default function AssetGrid() {
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
-      const res = await fetch('/api/v1/devices/bulk-action', {
+      const res = await apiFetch('/api/v1/devices/bulk-action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: idsToUse, action, payload })
       })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
     onSuccess: (data: any, variables: any) => {
-      queryClient.invalidateQueries({ queryKey: ['devices-all'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setSelectedIds([])
       setShowBulkMenu(false)
@@ -721,8 +721,8 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
 
     const metaMutation = useMutation({
         mutationFn: async (data: any) => {
-            const res = await fetch(`/api/v1/devices/${device.id}`, {
-                method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ metadata_json: data })
+            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
+                method: 'PUT', body: JSON.stringify({ metadata_json: data })
             })
             if (!res.ok) throw new Error(await res.text())
             return res.json()

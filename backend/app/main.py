@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings, ipam
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, ipam
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
@@ -64,6 +64,8 @@ async def _auto_seed():
 
         await db.commit()
 
+from .core.config import settings
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -71,34 +73,38 @@ async def lifespan(app: FastAPI):
     await _auto_seed()
     yield
 
-app = FastAPI(title="SYSGRID Production API", lifespan=lifespan)
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(devices.router, prefix="/api/v1")
-app.include_router(import_engine.router, prefix="/api/v1")
-app.include_router(networks.router, prefix="/api/v1")
-app.include_router(security.router, prefix="/api/v1")
-app.include_router(dashboard.router, prefix="/api/v1")
-app.include_router(racks.router, prefix="/api/v1")
-app.include_router(audit.router, prefix="/api/v1")
-app.include_router(sites.router, prefix="/api/v1")
-app.include_router(maintenance.router, prefix="/api/v1")
-app.include_router(logical_services.router, prefix="/api/v1")
-app.include_router(settings.router, prefix="/api/v1")
-app.include_router(ipam.router, prefix="/api/v1")
+app.include_router(devices.router, prefix=settings.API_V1_STR)
+app.include_router(import_engine.router, prefix=settings.API_V1_STR)
+app.include_router(networks.router, prefix=settings.API_V1_STR)
+app.include_router(security.router, prefix=settings.API_V1_STR)
+app.include_router(dashboard.router, prefix=settings.API_V1_STR)
+app.include_router(racks.router, prefix=settings.API_V1_STR)
+app.include_router(audit.router, prefix=settings.API_V1_STR)
+app.include_router(sites.router, prefix=settings.API_V1_STR)
+app.include_router(maintenance.router, prefix=settings.API_V1_STR)
+app.include_router(logical_services.router, prefix=settings.API_V1_STR)
+app.include_router(settings_api.router, prefix=settings.API_V1_STR)
+app.include_router(ipam.router, prefix=settings.API_V1_STR)
+
+@app.get(f"{settings.API_V1_STR}/health")
+def health_check():
+    return {"status": "online"}
 
 @app.get("/")
 def read_root():
     return {
         "status": "online",
-        "system": "SYSGRID",
+        "system": settings.PROJECT_NAME,
         "engine": "Standard Production",
         "mode": "Fully Asynchronous"
     }

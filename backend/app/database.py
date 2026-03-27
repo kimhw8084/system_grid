@@ -1,25 +1,26 @@
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import event
-
-# Base directory of the app
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Database path relative to this file
-DB_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "system_grid.db"))
+from .core.config import settings
 
 # SQLite async URL
-SQLALCHEMY_DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
 # High-concurrency engine configuration
+engine_args = {
+    "pool_pre_ping": True,
+}
+
+# Add sqlite-specific args if needed
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine_args["connect_args"] = {
+        "check_same_thread": False,
+        "timeout": 30
+    }
+
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={
-        "check_same_thread": False,
-        "timeout": 30  # Increased timeout for busy database
-    },
-    # Connection pooling for SQLite
-    pool_pre_ping=True,
+    **engine_args
 )
 
 # Force SQLite into WAL mode for concurrent read/write

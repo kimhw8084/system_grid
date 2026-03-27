@@ -4,6 +4,7 @@ import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, Layout
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
+import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -68,7 +69,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Configuration Payload</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Configuration Metadata</span>
             {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
@@ -121,7 +122,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
   return (
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Payload Inspection</span>
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Inspection</span>
       </div>
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
@@ -138,7 +139,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
             </tr>
           ))}
           {Object.keys(obj).length === 0 && (
-            <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No metadata keys defined for this payload</td></tr>
+            <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No metadata keys defined</td></tr>
           )}
         </tbody>
       </table>
@@ -285,18 +286,18 @@ export default function ServiceRegistry() {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
 
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: services, isLoading } = useQuery({ 
     queryKey: ["logical-services", activeTab], 
-    queryFn: async () => (await fetch(`/api/v1/logical-services/?include_deleted=${activeTab === 'purged'}`)).json() 
+    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?include_deleted=${activeTab === 'purged'}`)).json())
   })
-  const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await fetch("/api/v1/devices/")).json() })
+  const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/logical-services/${data.id}` : "/api/v1/logical-services/"
       const method = data.id ? "PUT" : "POST"
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       if (!res.ok) throw new Error('Failed to synchronize service')
       return res.json()
     },
@@ -310,8 +311,8 @@ export default function ServiceRegistry() {
 
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids = selectedIds }: any) => {
-      const res = await fetch('/api/v1/logical-services/bulk-action', { 
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: ids.length ? ids : [], action, payload }) 
+      const res = await apiFetch('/api/v1/logical-services/bulk-action', { 
+        method: 'POST', body: JSON.stringify({ ids: ids.length ? ids : [], action, payload }) 
       })
       return res.json()
     },
@@ -389,14 +390,14 @@ export default function ServiceRegistry() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Application Layer & Service Dependency Mapping</p>
            </div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
-              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active Payloads</button>
+              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active Services</button>
               <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
            </div>
         </div>
         <div className="flex items-center space-x-3">
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH PAYLOADS..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH REGISTRY..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
@@ -427,7 +428,7 @@ export default function ServiceRegistry() {
             </AnimatePresence>
           </div>
 
-          <button onClick={() => setActiveModal({})} className="bg-[#034EA2] hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Provision Payload</button>
+          <button onClick={() => setActiveModal({})} className="bg-[#034EA2] hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Service</button>
         </div>
       </div>
 
@@ -566,9 +567,9 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['payload', 'editor'].map(t => (
+                    {['metadata', 'editor'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                            {t === 'payload' ? 'Payload View' : 'Payload Editor'}
+                            {t === 'metadata' ? 'Metadata View' : 'Metadata Editor'}
                         </button>
                     ))}
                 </div>
@@ -595,7 +596,7 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
             </div>
             
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
-                {tab === 'payload' ? (
+                {tab === 'metadata' ? (
                   <MetadataViewer data={formData.config_json} />
                 ) : (
                   <MetadataEditor 
@@ -632,16 +633,18 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
     if (!initialData.id) { // Only for new services
       const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
       if (selectedType?.metadata_keys) {
-        const newConfig = { ...formData.config_json };
+        // Reset to ONLY the keys for the selected type to prevent appending
+        const newConfig: any = {};
         selectedType.metadata_keys.forEach((key: string) => {
-          if (!(key in newConfig)) {
-            newConfig[key] = "";
-          }
+          newConfig[key] = "";
         });
         setFormData(prev => ({ ...prev, config_json: newConfig }));
+      } else {
+        // If no predefined keys, just reset to empty object for new service
+        setFormData(prev => ({ ...prev, config_json: {} }));
       }
     }
-  }, [formData.service_type, options]);
+  }, [formData.service_type, options, initialData.id]);
 
   return (
     <div className="space-y-8 py-6">
@@ -665,7 +668,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 placeholder="Unassigned (Floating)"
            />
            <StyledSelect
-                label="Service Payload Type"
+                label="Service Metadata Type"
                 value={formData.service_type}
                 onChange={e => {
                   const val = e.target.value;
@@ -722,7 +725,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
           }} 
           className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
         >
-           Commit Service Configuration
+           Save Service
         </button>
       </div>
       <ConfirmationModal 

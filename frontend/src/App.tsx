@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw } from "lucide-react"
@@ -157,6 +157,20 @@ function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
 
+  const { data: healthData, isError: isHealthError } = useQuery({
+    queryKey: ['health'],
+    queryFn: async () => {
+      const response = await fetch("/api/v1/health");
+      if (!response.ok) throw new Error("Offline");
+      return response.json();
+    },
+    refetchInterval: 10000,
+    retry: 2,
+    staleTime: 5000
+  });
+
+  const isOnline = !!healthData && !isHealthError;
+
   useEffect(() => { 
     fetch("/api/v1/settings/initialize").catch(() => {}) 
   }, [])
@@ -201,7 +215,11 @@ function MainLayout() {
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-[#020617]/80 backdrop-blur-xl z-10">
           <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">SYSGRID ENGINE <span className="text-blue-400 animate-pulse">ONLINE</span></div>
+          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+            SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
+              {isOnline ? 'ONLINE' : 'OFFLINE'}
+            </span>
+          </div>
         </header>
         <div className="flex-1 p-8 overflow-hidden relative">
           <ErrorBoundary>

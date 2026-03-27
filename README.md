@@ -32,7 +32,32 @@ npm install
 npm run dev
 ```
 
-## 🛠 Testing Protocol
+## ⚙ï¸ Configuration & Environment
+
+SYSGRID uses a rigid environment-based configuration system to ensure portability across any deployment scenario.
+
+### Backend Configuration (`backend/.env`)
+Create a `.env` file in the `backend/` directory:
+```bash
+# API Configuration
+PROJECT_NAME="SYSGRID Production API"
+API_V1_STR="/api/v1"
+
+# Database Configuration (supports SQLite, PostgreSQL, etc.)
+DATABASE_URL=sqlite+aiosqlite:///./system_grid.db
+
+# CORS Configuration
+BACKEND_CORS_ORIGINS=["*"]
+```
+
+### Frontend Configuration (`frontend/.env`)
+Create a `.env` file in the `frontend/` directory:
+```bash
+# Base URL for the backend API
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+## ðŸ›  Testing Protocol
 The application includes a rigorous backend test suite to verify schema integrity and API reliability.
 ```bash
 cd backend
