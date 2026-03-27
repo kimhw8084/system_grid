@@ -15,65 +15,10 @@ import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
+import metadata from "./metadata.json"
 
-const APP_VERSION = "1.2.5"
-const PATCH_HISTORY = [
-  {
-    version: "1.2.5",
-    date: "2026-03-27",
-    changes: [
-      { type: "NEW", text: "Monitoring Matrix: Global observability and logic registry" },
-      { type: "NEW", text: "AppGlobal Settings: Centralized configuration and branding" },
-      { type: "IMPROVED", text: "API Sanitization: Robust input validation for all critical routes" },
-      { type: "IMPROVED", text: "Operational Status normalization (Running -> Active)" }
-    ]
-  },
-  {
-    version: "1.2.4",
-    date: "2026-03-26",
-    changes: [
-      { type: "FIXED", text: "Navigation hang and lifecycle management" },
-      { type: "RESTORED", text: "Settings tabs and full configuration access" },
-      { type: "IMPROVED", text: "Global Table Center-Alignment for data density" },
-      { type: "NEW", text: "Environment-based API configuration" }
-    ]
-  },
-  {
-    version: "1.2.3",
-    date: "2026-03-25",
-    changes: [
-      { type: "NEW", text: "Global Registry Overhaul: Soft-Delete implementation" },
-      { type: "NEW", text: "Site & Rack Provisioning workflow expansion" },
-      { type: "NEW", text: "Detail Matrix for enhanced device metadata" },
-      { type: "IMPROVED", text: "UI Intelligence: Predictive navigation and state persistence" },
-      { type: "RESTORED", text: "Full Audit Logs integration" }
-    ]
-  },
-  {
-    version: "1.2.2",
-    date: "2026-03-25",
-    changes: [
-      { type: "IMPROVED", text: "Global UI optimization and performance pass" },
-      { type: "FIXED", text: "Removed restrictive unique constraints on assets" },
-      { type: "FIXED", text: "DateTime handling for asset edits (SQLite compatibility)" },
-      { type: "NEW", text: "Dual-mode metadata editor (Table & JSON modes)" },
-      { type: "NEW", text: "Comprehensive Bulk Actions for Assets and Services" },
-      { type: "FIXED", text: "Decommissioned view filtering logic" },
-      { type: "IMPROVED", text: "Tabbed Settings interface with dynamic configuration" },
-      { type: "FIXED", text: "Network Fabric port display and persistence" },
-      { type: "IMPROVED", text: "Visual identity: Added System Grid Icon" }
-    ]
-  },
-  {
-    version: "1.2.1",
-    date: "2026-03-25",
-    changes: [
-      { type: "FIXED", text: "Rack View 'devices is not defined' reference error" },
-      { type: "FIXED", text: "Asset addition 400 Bad Request" },
-      { type: "FIXED", text: "Navigation bar icon visibility when collapsed" }
-    ]
-  }
-]
+const APP_VERSION = metadata.version
+const PATCH_HISTORY = metadata.patchHistory
 const queryClient = new QueryClient()
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
