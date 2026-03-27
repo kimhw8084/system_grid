@@ -38,10 +38,19 @@ async def sync_device_to_os(device, db: AsyncSession):
                 version=device.os_version,
                 service_type="OS",
                 status="Active",
-                environment=device.environment or "Production"
+                environment=device.environment or "Production",
+                config_json={},
+                custom_attributes={}
             )
             db.add(svc)
-        # No internal commit here, calling code handles it
+    else:
+        # If os_name is cleared, decommissioning the OS service
+        await db.execute(update(models.LogicalService).where(
+            models.LogicalService.device_id == device.id,
+            models.LogicalService.service_type == "OS",
+            models.LogicalService.is_deleted == False
+        ).values(is_deleted=True))
+    # No internal commit here, calling code handles it
 
 @router.get("/")
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):

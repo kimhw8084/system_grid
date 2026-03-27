@@ -126,6 +126,13 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
                     setattr(svc, k, None)
             else:
                 setattr(svc, k, v)
+        elif k in ["config_json", "custom_attributes"]:
+            if isinstance(v, str):
+                import json
+                try: setattr(svc, k, json.loads(v))
+                except: setattr(svc, k, v)
+            else:
+                setattr(svc, k, v)
         else:
             setattr(svc, k, v)
     

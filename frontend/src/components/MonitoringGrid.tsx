@@ -213,7 +213,7 @@ export default function MonitoringGrid() {
 }
 
 function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
-  const [formData, setFormData] = useState(item || {
+  const [formData, setFormData] = useState({
     category: 'Hardware',
     status: 'Planned',
     title: '',
@@ -223,7 +223,8 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     purpose: '',
     notification_method: 'Email',
     logic: '',
-    device_id: null
+    device_id: null,
+    ...item
   })
 
   const mutation = useMutation({

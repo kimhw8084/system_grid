@@ -653,14 +653,23 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
 const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
-  const [formData, setFormData] = useState({ 
-    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
-    device_id: null, config_json: {}, 
-    license_type: "", license_key: "", purchase_type: "One-time", 
-    purchase_date: "", expiry_date: "", cost: 0, vendor: "",
-    ...initialData 
+  const [formData, setFormData] = useState({
+    ...initialData,
+    name: initialData.name || "",
+    service_type: initialData.service_type || "Database",
+    status: initialData.status || "Active",
+    environment: initialData.environment || "Production",
+    version: initialData.version || "",
+    device_id: initialData.device_id || null,
+    config_json: initialData.config_json || {},
+    license_type: initialData.license_type || "",
+    license_key: initialData.license_key || "",
+    purchase_type: initialData.purchase_type || "One-time",
+    purchase_date: initialData.purchase_date || "",
+    expiry_date: initialData.expiry_date || "",
+    cost: initialData.cost || 0,
+    vendor: initialData.vendor || ""
   })
-
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
   useEffect(() => {
