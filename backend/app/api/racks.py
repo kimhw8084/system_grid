@@ -46,7 +46,11 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
                         "id": d.id,
                         "name": d.name,
                         "status": d.status,
-                        "type": d.type
+                        "type": d.type,
+                        "system": d.system,
+                        "owner": d.owner,
+                        "power_typical_w": d.power_typical_w or 0,
+                        "power_max_w": d.power_max_w or 0
                     }
                 })
         

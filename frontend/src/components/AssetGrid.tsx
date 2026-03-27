@@ -1150,6 +1150,17 @@ const AssetForm = ({ initialData, onSave, options }: any) => {
     metadata_json: {}, ...initialData
   })
 
+  // Sync form data when initialData changes
+  React.useEffect(() => {
+    setFormData({
+      name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
+      owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
+      os_name: '', os_version: '',
+      power_typical_w: 0, power_max_w: 0,
+      metadata_json: {}, ...initialData
+    })
+  }, [initialData])
+
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
   return (
