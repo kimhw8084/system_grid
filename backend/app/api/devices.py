@@ -48,7 +48,10 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
     # Using joinedload or selectinload for relationships if they were defined in models.
     # But here we seem to have manual join logic. Let's optimize it.
     
-    query = select(models.Device).filter(models.Device.is_deleted == include_deleted)
+    query = select(models.Device)
+    if not include_deleted:
+        query = query.filter(models.Device.is_deleted == False)
+        
     result = await db.execute(query)
     devices = result.scalars().all()
     

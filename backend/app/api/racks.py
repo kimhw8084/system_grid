@@ -16,9 +16,7 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
     else:
         query = select(models.Rack)
     
-    if include_deleted:
-        query = query.filter(models.Rack.is_deleted == True)
-    else:
+    if not include_deleted:
         query = query.filter(models.Rack.is_deleted == False)
     
     query = query.order_by(models.Rack.order_index.asc())

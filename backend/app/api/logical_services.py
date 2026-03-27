@@ -13,9 +13,11 @@ def filter_valid_columns(model, data):
 
 @router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.LogicalService).filter(models.LogicalService.is_deleted == include_deleted)
+    query = select(models.LogicalService)
     if device_id:
         query = query.filter(models.LogicalService.device_id == device_id)
+    if not include_deleted:
+        query = query.filter(models.LogicalService.is_deleted == False)
     
     result = await db.execute(query)
     services = result.scalars().all()

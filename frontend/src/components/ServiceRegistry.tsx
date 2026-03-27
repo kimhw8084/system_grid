@@ -287,10 +287,20 @@ export default function ServiceRegistry() {
   }
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
-  const { data: services, isLoading } = useQuery({ 
-    queryKey: ["logical-services", activeTab], 
-    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?include_deleted=${activeTab === 'purged'}`)).json())
+  const { data: allServices, isLoading } = useQuery({ 
+    queryKey: ["logical-services"], 
+    queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json())
   })
+  
+  const { activeServices, purgedServices } = useMemo(() => {
+    if (!allServices) return { activeServices: [], purgedServices: [] }
+    return {
+      activeServices: allServices.filter((s: any) => !s.is_deleted),
+      purgedServices: allServices.filter((s: any) => s.is_deleted)
+    }
+  }, [allServices])
+
+  const services = activeTab === 'active' ? activeServices : purgedServices
   const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
 
   const mutation = useMutation({

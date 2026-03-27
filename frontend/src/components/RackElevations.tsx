@@ -655,15 +655,20 @@ export default function RackElevations() {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
 
-  const { data: allRacks } = useQuery({
-    queryKey: ['racks-all', activeTab],
-    queryFn: async () => (await (await apiFetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json())
+  const { data: allRacks, isLoading } = useQuery({
+    queryKey: ['racks-all'],
+    queryFn: async () => (await (await apiFetch('/api/v1/racks/?include_deleted=true')).json())
   })
 
-  const { data: activeRacks } = useQuery({
-    queryKey: ['racks-active'],
-    queryFn: async () => (await (await apiFetch('/api/v1/racks/?include_deleted=false')).json())
-  })
+  const { activeRacks, deletedRacks } = useMemo(() => {
+    if (!allRacks) return { activeRacks: [], deletedRacks: [] }
+    return {
+      activeRacks: allRacks.filter((r: any) => !r.is_deleted),
+      deletedRacks: allRacks.filter((r: any) => r.is_deleted)
+    }
+  }, [allRacks])
+
+  const racks = activeTab === 'active' ? activeRacks : deletedRacks
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
@@ -889,8 +894,8 @@ export default function RackElevations() {
   // ── Derived Data ──────────────────────────────────────────────────────────────
 
   const displayedRacks = useMemo(() => {
-    if (!allRacks) return []
-    let filtered = allRacks
+    if (!racks) return []
+    let filtered = racks
     if (showCompareOnly) {
       filtered = allRacks.filter((r: any) => selectedRacks.includes(r.id))
     } else if (activeSite) {

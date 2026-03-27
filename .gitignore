@@ -1,0 +1,15 @@
+*.db
+*.db-wal
+*.db-shm
+__pycache__/
+*.pyc
+venv/
+node_modules/
+dist/
+.DS_Store
+.pytest_cache/
+.claude/
+.gemini/
+.aider*
+.cline/
+.cursor*
