@@ -49,11 +49,22 @@ export default function AuditLogs() {
           <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
         </div>
         
-        <div className="flex items-center space-x-3 bg-slate-900/50 p-2 rounded-xl border border-white/5">
-           <Calendar size={14} className="text-slate-500 ml-2" />
-           <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-bold uppercase outline-none text-slate-300" />
-           <span className="text-slate-600 font-bold">→</span>
-           <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-bold uppercase outline-none text-slate-300" />
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 bg-white/5 px-3 py-2 rounded-xl border border-white/5">
+            <Calendar size={14} className="text-slate-600" />
+            <div className="flex items-center space-x-2">
+              <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-slate-300 [color-scheme:dark]" />
+              <span className="text-slate-700 font-black">→</span>
+              <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-slate-300 [color-scheme:dark]" />
+            </div>
+          </div>
+          <button 
+            onClick={() => setDateRange({ start: '', end: '' })}
+            className="p-2 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white border border-white/5 rounded-xl transition-all"
+            title="Reset Filters"
+          >
+            <RefreshCcw size={14} />
+          </button>
         </div>
       </div>
 

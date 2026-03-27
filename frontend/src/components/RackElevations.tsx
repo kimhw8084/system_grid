@@ -963,75 +963,70 @@ export default function RackElevations() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col gap-5 min-h-0">
+    <div className="h-full flex flex-col space-y-4 min-h-0">
 
       {/* ── Page Header ── */}
-      <div className="flex items-start justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-6">
           <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight italic leading-none">Rack Elevations</h1>
-            <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
+            <h1 className="text-2xl font-black uppercase tracking-tight italic">Rack Elevations</h1>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Capacity & Spatial Intelligence</p>
           </div>
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06] self-start">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
             <button
               onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
-              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
             >Active</button>
             <button
               onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }}
-              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
             >Purged</button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center space-x-3">
           {/* View mode toggle */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
             <button onClick={() => setViewMode('normal')} title="Normal"
               className={`p-1.5 rounded-lg transition-all ${viewMode === 'normal' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Server size={13} />
+              <Server size={14} />
             </button>
             <button onClick={() => setViewMode('compact')} title="Compact"
               className={`p-1.5 rounded-lg transition-all ${viewMode === 'compact' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Layers size={13} />
+              <Layers size={14} />
             </button>
           </div>
 
           {/* Site View / Compare */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
             <button onClick={() => setShowCompareOnly(false)}
-              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
               Site View
             </button>
             <button onClick={() => setShowCompareOnly(true)}
-              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
               Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
             </button>
           </div>
 
           {/* Search */}
           <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
             <input
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search racks & devices..."
-              className="bg-white/5 border border-white/[0.06] rounded-xl pl-9 pr-8 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
+              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
             />
-            {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
-                <X size={11} />
-              </button>
-            )}
           </div>
 
           {/* Add Rack */}
           {activeTab === 'active' && (
             <button
               onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
-              className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
-              <Plus size={13} /> Add Rack
+              <Plus size={14} /> Add Rack
             </button>
           )}
         </div>
