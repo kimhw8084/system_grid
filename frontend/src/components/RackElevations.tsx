@@ -912,7 +912,7 @@ export default function RackElevations() {
     let filtered = [...racks]
     if (showCompareOnly) {
       filtered = filtered.filter((r: any) => selectedRacks.includes(r.id))
-    } else if (activeSite) {
+    } else if (activeTab === 'active' && activeSite) {
       filtered = filtered.filter((r: any) => r.site_id === activeSite)
     }
     // In deleted tab, show all deleted racks (no site filtering) — site_name is displayed on the card
@@ -927,7 +927,7 @@ export default function RackElevations() {
       )
     }
     return filtered
-  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm])
+  }, [racks, activeTab, activeSite, showCompareOnly, selectedRacks, searchTerm])
 
   const availableDevices = useMemo(() => {
     if (!devices) return []
