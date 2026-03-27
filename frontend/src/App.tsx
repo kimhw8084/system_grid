@@ -151,18 +151,6 @@ const PatchNotesModal = ({ onClose }: any) => {
   )
 }
 
-const PageTransition = ({ children }: { children: ReactNode }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
-    className="h-full w-full"
-  >
-    {children}
-  </motion.div>
-)
-
 function MainLayout() {
   const location = useLocation(); 
   const navigate = useNavigate(); 
@@ -217,18 +205,16 @@ function MainLayout() {
         </header>
         <div className="flex-1 p-8 overflow-hidden relative">
           <ErrorBoundary>
-            <AnimatePresence mode="wait">
-              <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<PageTransition><Dashboard onNavigate={(p:any) => navigate("/" + p)} /></PageTransition>} />
-                <Route path="/racks" element={<PageTransition><RackElevations /></PageTransition>} />
-                <Route path="/assets" element={<PageTransition><AssetGrid /></PageTransition>} />
-                <Route path="/services" element={<PageTransition><ServiceRegistry /></PageTransition>} />
-                <Route path="/network" element={<PageTransition><NetworkFabric /></PageTransition>} />
-                <Route path="/settings" element={<PageTransition><SettingsPage /></PageTransition>} />
-                <Route path="/logs" element={<PageTransition><AuditLogs /></PageTransition>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </AnimatePresence>
+            <Routes>
+              <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
+              <Route path="/racks" element={<RackElevations />} />
+              <Route path="/assets" element={<AssetGrid />} />
+              <Route path="/services" element={<ServiceRegistry />} />
+              <Route path="/network" element={<NetworkFabric />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/logs" element={<AuditLogs />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </ErrorBoundary>
         </div>
         <footer className="h-8 border-t border-white/5 px-8 flex items-center justify-between text-[8px] font-black text-slate-600 uppercase tracking-widest bg-slate-900/20">
