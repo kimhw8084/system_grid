@@ -391,9 +391,11 @@ const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDelete
 
 // ─── Device Detail Modal ───────────────────────────────────────────────────────
 
-const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMount }:
-  { device: any; loc: any; rack: any; onClose: () => void; onUnmount: (id: number) => void; onUpdateMount: (data: any) => void }) => {
+const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMount, onUpdateDevice }:
+  { device: any; loc: any; rack: any; onClose: () => void; onUnmount: (id: number) => void; onUpdateMount: (data: any) => void; onUpdateDevice?: (data: any) => void }) => {
   const [newSizeU, setNewSizeU] = useState(loc?.size_u || device?.size_u || 1)
+  const [powerTypicalW, setPowerTypicalW] = useState(device?.power_typical_w || 0)
+  const [powerMaxW, setPowerMaxW] = useState(device?.power_max_w || 0)
   const [confirmUnmount, setConfirmUnmount] = useState(false)
 
   const statusCfg = getStatusCfg(device?.status)
@@ -474,6 +476,41 @@ const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMoun
                 {device.management_url} <ExternalLink size={9} className="shrink-0" />
               </a>
             </div>
+          )}
+        </div>
+
+        {/* Power consumption (editable) */}
+        <div className="px-6 py-4 bg-white/[0.02] border-t border-white/[0.06] space-y-3">
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Power Consumption (W)</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[8px] font-black text-slate-600 uppercase block mb-1">Avg (Typical)</label>
+              <input
+                type="number" min={0} step={0.1}
+                value={powerTypicalW}
+                onChange={e => setPowerTypicalW(parseFloat(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] font-black text-slate-600 uppercase block mb-1">Max Peak</label>
+              <input
+                type="number" min={0} step={0.1}
+                value={powerMaxW}
+                onChange={e => setPowerMaxW(parseFloat(e.target.value) || 0)}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono"
+              />
+            </div>
+          </div>
+          {(powerTypicalW !== device?.power_typical_w || powerMaxW !== device?.power_max_w) && (
+            <button
+              onClick={() => {
+                onUpdateDevice?.({ id: device.id, power_typical_w: powerTypicalW, power_max_w: powerMaxW })
+              }}
+              className="w-full px-3 py-2 bg-emerald-600/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-600/25 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Check size={11} /> Save Power
+            </button>
           )}
         </div>
 
@@ -739,6 +776,17 @@ export default function RackElevations() {
   const rackReorderMutation = useMutation({
     mutationFn: async (ids: number[]) => fetch('/api/v1/racks/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+  })
+
+  const updateDeviceMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { id, ...payload } = data
+      const res = await fetch(`/api/v1/devices/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error('Update failed')
+      return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Device power updated'); setManagingDevice(null) },
+    onError: (e: any) => toast.error(e.message)
   })
 
   // ── Derived Data ──────────────────────────────────────────────────────────────
@@ -1041,6 +1089,7 @@ export default function RackElevations() {
             onClose={() => setManagingDevice(null)}
             onUnmount={id => unmountMutation.mutate(id)}
             onUpdateMount={data => updateMountMutation.mutate(data)}
+            onUpdateDevice={data => updateDeviceMutation.mutate(data)}
           />
         )}
 
