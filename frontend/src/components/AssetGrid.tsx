@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -639,11 +641,14 @@ export default function AssetGrid() {
         <AgGridReact 
           rowData={assets || []} 
           columnDefs={columnDefs} 
+          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
           rowSelection="multiple"
           headerHeight={28}
           rowHeight={28}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
+          enableCellTextSelection={true}
+          animateRows={true}
         />
       </div>
 

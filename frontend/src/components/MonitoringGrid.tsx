@@ -9,6 +9,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from '../api/apiClient'
 import { StyledSelect } from './shared/StyledSelect'
 
@@ -169,16 +171,18 @@ export default function MonitoringGrid() {
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
           </div>
         )}
-        <AgGridReact 
-          rowData={items || []} 
-          columnDefs={columnDefs} 
+        <AgGridReact
+          rowData={items || []}
+          columnDefs={columnDefs}
+          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
           rowSelection="multiple"
           headerHeight={28}
           rowHeight={28}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
-        />
-      </div>
+          enableCellTextSelection={true}
+          animateRows={true}
+        />      </div>
 
       <AnimatePresence>
         {isFormOpen && (

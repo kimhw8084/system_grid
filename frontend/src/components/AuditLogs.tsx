@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, RefreshCcw } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Calendar, RefreshCcw, Search, Database } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 export default function AuditLogs() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [searchTerm, setSearchTerm] = useState('')
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ['audit', dateRange],
@@ -44,13 +45,25 @@ export default function AuditLogs() {
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight uppercase italic">Audit Logs</h1>
-          <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Audit Ledger</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold leading-relaxed">Immutable registry of all administrative transactions</p>
+           </div>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-3 bg-white/5 px-3 py-2 rounded-xl border border-white/5">
+          <div className="relative">
+             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+             <input 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                placeholder="SEARCH TRANSACTIONS..." 
+                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
+             />
+          </div>
+
+          <div className="flex items-center space-x-3 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
             <Calendar size={14} className="text-slate-600" />
             <div className="flex items-center space-x-2">
               <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-slate-300 [color-scheme:dark]" />
@@ -58,13 +71,16 @@ export default function AuditLogs() {
               <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-slate-300 [color-scheme:dark]" />
             </div>
           </div>
-          <button 
-            onClick={() => setDateRange({ start: '', end: '' })}
-            className="p-2 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white border border-white/5 rounded-xl transition-all"
-            title="Reset Filters"
-          >
-            <RefreshCcw size={14} />
-          </button>
+
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+            <button 
+              onClick={() => { setDateRange({ start: '', end: '' }); setSearchTerm(''); }}
+              className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-white rounded-lg transition-all"
+              title="Reset Filters"
+            >
+              <RefreshCcw size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -78,10 +94,12 @@ export default function AuditLogs() {
         <AgGridReact
           rowData={logs || []}
           columnDefs={columnDefs}
-          defaultColDef={{ resizable: true, filter: true }}
-          animateRows={false}
-          headerHeight={32}
-          rowHeight={32}
+          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
+          animateRows={true}
+          headerHeight={28}
+          rowHeight={28}
+          quickFilterText={searchTerm}
+          enableCellTextSelection={true}
         />
       </div>
 

@@ -4,6 +4,8 @@ import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, Layout
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -470,16 +472,18 @@ export default function ServiceRegistry() {
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Application Layer...</p>
           </div>
         )}
-        <AgGridReact 
-          rowData={services || []} 
-          columnDefs={columnDefs} 
+        <AgGridReact
+          rowData={services || []}
+          columnDefs={columnDefs}
+          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
           rowSelection="multiple"
           headerHeight={28}
           rowHeight={28}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
-        />
-      </div>
+          enableCellTextSelection={true}
+          animateRows={true}
+        />      </div>
 
       <StatusBulkUpdateModal
         isOpen={isBulkStatusOpen}

@@ -164,14 +164,16 @@ export default function NetworkFabric() {
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Mapping Topology...</p>
           </div>
         )}
-        <AgGridReact 
-          rowData={connections || []} 
+        <AgGridReact
+          rowData={connections || []}
           columnDefs={columnDefs}
+          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
           headerHeight={28}
           rowHeight={28}
           quickFilterText={searchTerm}
-        />
-      </div>
+          enableCellTextSelection={true}
+          animateRows={true}
+        />      </div>
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
