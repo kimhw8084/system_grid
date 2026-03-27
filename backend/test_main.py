@@ -110,6 +110,44 @@ async def test_global_settings_flow():
         assert settings_2["site_id"] == "HQ-01" # Should remain same
 
 @pytest.mark.anyio
+async def test_monitoring_matrix_flow():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # Create a device first
+        dev_res = await ac.post("/api/v1/devices/", json={
+            "name": "MON-SRV", "serial_number": "MON-SN", "asset_tag": "MON-AT",
+            "system": "GRID-TEST", "status": "Active", "type": "Physical",
+            "owner": "IT", "business_unit": "ENG"
+        })
+        assert dev_res.status_code == 200, dev_res.text
+        dev_id = dev_res.json()["id"]
+        
+        # Create monitoring item
+        payload = {
+            "device_id": dev_id,
+            "category": "Hardware",
+            "status": "Planned",
+            "title": "CPU Thermal Monitoring",
+            "platform": "Zabbix",
+            "purpose": "Prevent overheating",
+            "notification_method": "Slack"
+        }
+        post_res = await ac.post("/api/v1/monitoring/", json=payload)
+        assert post_res.status_code == 200
+        item_id = post_res.json()["id"]
+        
+        # Verify get with enrichment
+        get_res = await ac.get("/api/v1/monitoring/")
+        items = get_res.json()
+        assert any(i["id"] == item_id and i["device_name"] == "MON-SRV" for i in items)
+        
+        # Update
+        await ac.put(f"/api/v1/monitoring/{item_id}", json={"status": "Existing"})
+        
+        # Verify
+        get_res_2 = await ac.get("/api/v1/monitoring/")
+        assert any(i["id"] == item_id and i["status"] == "Existing" for i in get_res_2.json())
+
+@pytest.mark.anyio
 async def test_ipam_subnet_creation():
     payload = {
         "network_cidr": "10.10.10.0/24",

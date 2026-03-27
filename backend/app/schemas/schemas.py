@@ -97,3 +97,20 @@ class MaintenanceWindowBase(BaseModel):
 
 class MaintenanceWindowCreate(MaintenanceWindowBase): pass
 class MaintenanceWindowResponse(MaintenanceWindowBase, BaseSchema): pass
+
+class MonitoringItemBase(BaseModel):
+    device_id: Optional[int] = None
+    category: str # Hardware, Log, Network, App, Synthetic
+    status: str # Existing, Planned, Cancelled
+    title: str # What's being monitored
+    spec: Optional[str] = None # Details/Thresholds
+    platform: Optional[str] = None # Zabbix, Prometheus, Datadog, etc.
+    external_link: Optional[str] = None # Direct clickable link
+    purpose: Optional[str] = None
+    notification_method: Optional[str] = None # Email, Slack, PagerDuty
+    logic: Optional[str] = None # For log-based: regex or query
+    owner: Optional[str] = None
+
+class MonitoringItemCreate(MonitoringItemBase): pass
+class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
+    device_name: Optional[str] = None

@@ -96,6 +96,7 @@ class Device(Base, BaseMixin):
     interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
     maintenance_windows = relationship("MaintenanceWindow", back_populates="device", cascade="all, delete-orphan")
     logical_services = relationship("LogicalService", back_populates="device")
+    monitoring_items = relationship("MonitoringItem", back_populates="device", cascade="all, delete-orphan")
 
 class LogicalService(Base, BaseMixin):
     __tablename__ = "logical_services"
@@ -217,6 +218,22 @@ class MaintenanceWindow(Base, BaseMixin):
     coordinator = Column(String)
     status = Column(String)
     device = relationship("Device", back_populates="maintenance_windows")
+
+class MonitoringItem(Base, BaseMixin):
+    __tablename__ = "monitoring_items"
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True)
+    category = Column(String, index=True) # Hardware, Log, Network, App, Synthetic
+    status = Column(String, index=True) # Existing, Planned, Cancelled
+    title = Column(String) # What's being monitored
+    spec = Column(Text) # Details/Thresholds
+    platform = Column(String) # Zabbix, Prometheus, Datadog, etc.
+    external_link = Column(String) # Direct clickable link
+    purpose = Column(Text)
+    notification_method = Column(String) # Email, Slack, PagerDuty
+    logic = Column(Text) # For log-based: regex or query
+    owner = Column(String)
+    
+    device = relationship("Device", back_populates="monitoring_items")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity } from "lucide-react"
 import { Toaster } from "react-hot-toast"
 
 import Dashboard from "./components/Dashboard"
@@ -14,9 +14,20 @@ import AuditLogs from "./components/AuditLogs"
 import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
+import MonitoringGrid from "./components/MonitoringGrid"
 
-const APP_VERSION = "1.2.4"
+const APP_VERSION = "1.2.5"
 const PATCH_HISTORY = [
+  {
+    version: "1.2.5",
+    date: "2026-03-27",
+    changes: [
+      { type: "NEW", text: "Monitoring Matrix: Global observability and logic registry" },
+      { type: "NEW", text: "AppGlobal Settings: Centralized configuration and branding" },
+      { type: "IMPROVED", text: "API Sanitization: Robust input validation for all critical routes" },
+      { type: "IMPROVED", text: "Operational Status normalization (Running -> Active)" }
+    ]
+  },
   {
     version: "1.2.4",
     date: "2026-03-26",
@@ -205,6 +216,7 @@ function MainLayout() {
           <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
@@ -229,6 +241,7 @@ function MainLayout() {
               <Route path="/assets" element={<AssetGrid />} />
               <Route path="/services" element={<ServiceRegistry />} />
               <Route path="/network" element={<NetworkFabric />} />
+              <Route path="/monitoring" element={<MonitoringGrid />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />
               <Route path="*" element={<Navigate to="/" replace />} />
