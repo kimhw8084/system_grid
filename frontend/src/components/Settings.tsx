@@ -1,29 +1,110 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Settings, Plus, Trash2, CheckCircle2, AlertCircle, Save, RefreshCcw, Layout, Shield, Database, Cpu, Sliders, Box, Network, Globe, Lock, Key, Activity } from "lucide-react"
+import { 
+  Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
+  Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server
+} from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
-import { ConfigSection } from "./ConfigRegistry"
+
+const SettingField = ({ label, description, children }: any) => (
+  <div className="flex flex-col space-y-2 p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all group">
+    <div className="flex flex-col">
+      <label className="text-[10px] font-black uppercase tracking-widest text-white">{label}</label>
+      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-1">{description}</p>
+    </div>
+    <div className="mt-2">
+      {children}
+    </div>
+  </div>
+)
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('global')
-  const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await fetch("/api/v1/settings/options")).json() })
+  const [activeTab, setActiveTab] = useState('general')
+  const queryClient = useQueryClient()
   
+  const { data: globalSettings, isLoading: isLoadingGlobal } = useQuery({ 
+    queryKey: ["global-settings"], 
+    queryFn: async () => (await fetch("/api/v1/settings/global")).json() 
+  })
+
+  const { data: uiSettings, isLoading: isLoadingUI } = useQuery({ 
+    queryKey: ["ui-settings"], 
+    queryFn: async () => (await fetch("/api/v1/settings/ui")).json() 
+  })
+
+  const [localSettings, setLocalSettings] = useState<any>({})
+  const [localUI, setLocalUI] = useState<any>({})
+
+  useEffect(() => {
+    if (globalSettings) setLocalSettings(globalSettings)
+  }, [globalSettings])
+
+  useEffect(() => {
+    if (uiSettings) setLocalUI(uiSettings)
+  }, [uiSettings])
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const resGlobal = await fetch("/api/v1/settings/global", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(localSettings)
+      })
+      
+      const resUI = await fetch("/api/v1/settings/ui", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(localUI)
+      })
+
+      if (!resGlobal.ok || !resUI.ok) throw new Error("Failed to save settings")
+      return { status: "success" }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["global-settings"] })
+      queryClient.invalidateQueries({ queryKey: ["ui-settings"] })
+      toast.success("Settings synchronized successfully")
+    },
+    onError: (err: any) => toast.error(err.message)
+  })
+
   const tabs = [
-    { id: 'global', label: 'Global Inventory', icon: Globe },
-    { id: 'security', label: 'Security & Access', icon: Shield },
-    { id: 'advanced', label: 'Advanced Logic', icon: Cpu },
+    { id: 'general', label: 'General', icon: Globe },
+    { id: 'system', label: 'System', icon: Server },
+    { id: 'branding', label: 'Branding', icon: Palette },
+    { id: 'security', label: 'Security', icon: Shield },
   ]
 
-  const getOptions = (category: string) => Array.isArray(options) ? options.filter((o: any) => o.category === category) : []
+  const handleChange = (key: string, value: string) => {
+    setLocalSettings((prev: any) => ({ ...prev, [key]: value }))
+  }
+
+  const handleUIChange = (key: string, value: any) => {
+    setLocalUI((prev: any) => ({ ...prev, [key]: value }))
+  }
+
+  if (isLoadingGlobal || isLoadingUI) return (
+    <div className="h-full flex items-center justify-center">
+      <RefreshCcw size={48} className="text-blue-500 animate-spin opacity-20" />
+    </div>
+  )
 
   return (
-    <div className="h-full flex flex-col space-y-8 max-w-7xl mx-auto">
+    <div className="h-full flex flex-col space-y-8 max-w-5xl mx-auto pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black tracking-tight uppercase italic">System Settings</h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">System-wide Configuration & Orchestration</p>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic">Global Settings</h1>
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Central Infrastructure Orchestration & Policy</p>
         </div>
+        <button 
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          className="flex items-center space-x-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+        >
+          {saveMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
+          <span>{saveMutation.isPending ? 'Syncing...' : 'Commit Changes'}</span>
+        </button>
       </div>
 
       <div className="flex space-x-2 border-b border-white/5 pb-1">
@@ -42,27 +123,103 @@ export default function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
         <AnimatePresence mode="wait">
-          {activeTab === 'global' && (
-            <motion.div key="global" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-3 gap-8">
-               <ConfigSection title="Asset Categories" category="Category" icon={Box} options={getOptions('Category')} />
-               <ConfigSection title="Network Roles" category="Role" icon={Network} options={getOptions('Role')} />
-               <ConfigSection title="System Statuses" category="Status" icon={Activity} options={getOptions('Status')} />
+          {activeTab === 'general' && (
+            <motion.div key="general" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-6">
+               <SettingField label="Application Name" description="The primary identifier for this instance.">
+                  <input value={localSettings.app_name || ""} onChange={e => handleChange('app_name', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all" />
+               </SettingField>
+               <SettingField label="Organization Name" description="Legal or corporate entity owning the infrastructure.">
+                  <input value={localSettings.org_name || ""} onChange={e => handleChange('org_name', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all" />
+               </SettingField>
+               <SettingField label="Primary Site ID" description="Default site code for global resource allocation.">
+                  <input value={localSettings.site_id || ""} onChange={e => handleChange('site_id', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all uppercase" />
+               </SettingField>
+               <SettingField label="Support Contact" description="Email address for system administrative inquiries.">
+                  <input value={localSettings.support_email || ""} onChange={e => handleChange('support_email', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all" />
+               </SettingField>
+            </motion.div>
+          )}
+
+          {activeTab === 'system' && (
+            <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-6">
+               <SettingField label="Log Retention (Days)" description="Duration to persist audit and system logs before purging.">
+                  <input type="number" value={localSettings.retention_days || "30"} onChange={e => handleChange('retention_days', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all" />
+               </SettingField>
+               <SettingField label="Default Timezone" description="Global temporal reference for scheduling and logging.">
+                  <select value={localSettings.default_timezone || "UTC"} onChange={e => handleChange('default_timezone', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all">
+                     <option value="UTC">UTC (Universal Coordinated)</option>
+                     <option value="EST">EST (Eastern Standard)</option>
+                     <option value="PST">PST (Pacific Standard)</option>
+                     <option value="GMT">GMT (Greenwich Mean Time)</option>
+                  </select>
+               </SettingField>
+               <SettingField label="Dashboard Refresh (Sec)" description="Interval for automated data synchronization on the dashboard.">
+                  <input type="number" value={localSettings.dashboard_refresh_interval || "60"} onChange={e => handleChange('dashboard_refresh_interval', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all" />
+               </SettingField>
+               <SettingField label="Maintenance Mode" description="Restrict non-admin access and signal read-only state.">
+                  <div className="flex items-center space-x-4">
+                     <button onClick={() => handleChange('maintenance_mode', 'true')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localSettings.maintenance_mode === 'true' ? 'bg-rose-500/20 border-rose-500 text-rose-400' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>Enabled</button>
+                     <button onClick={() => handleChange('maintenance_mode', 'false')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localSettings.maintenance_mode !== 'true' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>Disabled</button>
+                  </div>
+               </SettingField>
+            </motion.div>
+          )}
+
+          {activeTab === 'branding' && (
+            <motion.div key="branding" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-6">
+               <SettingField label="Primary UI Color" description="The dominant color used for highlights and active states.">
+                  <div className="flex items-center space-x-3">
+                     <input type="color" value={localSettings.ui_primary_color || "#3b82f6"} onChange={e => handleChange('ui_primary_color', e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                     <input value={localSettings.ui_primary_color || ""} onChange={e => handleChange('ui_primary_color', e.target.value)} className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-mono text-white outline-none focus:border-blue-500" />
+                  </div>
+               </SettingField>
+               <SettingField label="Accent UI Color" description="Secondary color for emphasis and status indicators.">
+                  <div className="flex items-center space-x-3">
+                     <input type="color" value={localSettings.ui_accent_color || "#10b981"} onChange={e => handleChange('ui_accent_color', e.target.value)} className="w-10 h-10 rounded-lg bg-transparent border-none cursor-pointer" />
+                     <input value={localSettings.ui_accent_color || ""} onChange={e => handleChange('ui_accent_color', e.target.value)} className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-mono text-white outline-none focus:border-blue-500" />
+                  </div>
+               </SettingField>
+               <SettingField label="Status Badging" description="Enable stylized badges for operational status visualization.">
+                  <div className="flex items-center space-x-4">
+                     <button onClick={() => handleUIChange('status_badged', true)} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localUI.status_badged ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>Pills</button>
+                     <button onClick={() => handleUIChange('status_badged', false)} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${!localUI.status_badged ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10'}`}>Text Only</button>
+                  </div>
+               </SettingField>
+               <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 flex items-start space-x-4">
+                  <Info className="text-blue-400 mt-1" size={16} />
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-400">Visual Identity Note</h4>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter mt-1 leading-relaxed">Status colors can still be refined individually within the specific registry views to ensure maximum contrast and visibility across all device types.</p>
+                  </div>
+               </div>
             </motion.div>
           )}
 
           {activeTab === 'security' && (
-            <motion.div key="security" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-3 gap-8">
-               <ConfigSection title="Access Protocols" category="Protocol" icon={Lock} options={getOptions('Protocol')} />
-               <ConfigSection title="Security Zones" category="Zone" icon={Shield} options={getOptions('Zone')} />
-               <ConfigSection title="Identity Providers" category="IdP" icon={Key} options={getOptions('IdP')} />
-            </motion.div>
-          )}
-
-          {activeTab === 'advanced' && (
-            <motion.div key="advanced" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-3 gap-8">
-               <ConfigSection title="Service Types" category="ServiceType" icon={Database} options={getOptions('ServiceType')} />
-               <ConfigSection title="Environment Tiers" category="Tier" icon={Sliders} options={getOptions('Tier')} />
-               <ConfigSection title="Logic Providers" category="Logic" icon={Cpu} options={getOptions('Logic')} />
+            <motion.div key="security" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-2 gap-6">
+               <SettingField label="Security Posture" description="Global enforcement level for access and validation.">
+                  <select value={localSettings.security_level || "Standard"} onChange={e => handleChange('security_level', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all">
+                     <option value="Standard">Standard (Balanced)</option>
+                     <option value="Strict">Strict (Zero Trust)</option>
+                     <option value="Lax">Lax (Development)</option>
+                  </select>
+               </SettingField>
+               <SettingField label="Audit Log Verbosity" description="Detail level captured for system and user actions.">
+                  <select value={localSettings.audit_log_level || "Full"} onChange={e => handleChange('audit_log_level', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all">
+                     <option value="Full">Full (Trace All)</option>
+                     <option value="Minimal">Minimal (Critical Only)</option>
+                     <option value="None">Disabled (Not Recommended)</option>
+                  </select>
+               </SettingField>
+               <div className="col-span-2 p-8 bg-amber-500/5 rounded-[32px] border border-amber-500/10 flex flex-col items-center text-center space-y-4">
+                  <Lock className="text-amber-500" size={32} />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-amber-500">Security & Integrity Management</h3>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-2 max-w-lg mx-auto leading-relaxed">
+                      Changes to security posture may require a system-wide session invalidation. Ensure all critical operations are completed before adjusting the global enforcement level.
+                    </p>
+                  </div>
+               </div>
             </motion.div>
           )}
         </AnimatePresence>

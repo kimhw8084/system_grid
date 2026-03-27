@@ -414,13 +414,15 @@ export default function AssetGrid() {
     mutationFn: async ({ data }: any) => {
       const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
       const method = data.id ? 'PUT' : 'POST'
-      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
-      if (res.status === 409) {
-        const err = await res.json()
-        if (err.detail === 'DUPLICATE_HOSTNAME') throw new Error('DUPLICATE_HOSTNAME')
+      try {
+        const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+        return res.json()
+      } catch (e: any) {
+        if (e.message.includes('409') || e.message.includes('DUPLICATE')) {
+          throw new Error('DUPLICATE_HOSTNAME')
+        }
+        throw e
       }
-      if (!res.ok) throw new Error('Failed to commit asset')
-      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })

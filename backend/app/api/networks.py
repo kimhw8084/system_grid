@@ -8,6 +8,10 @@ from ..schemas import schemas
 
 router = APIRouter(prefix="/networks", tags=["Network Fabric"])
 
+def filter_valid_columns(model, data):
+    valid_keys = {c.name for c in model.__table__.columns}
+    return {k: v for k, v in data.items() if k in valid_keys}
+
 @router.get("/interfaces")
 async def get_interfaces(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.NetworkInterface))
@@ -16,7 +20,10 @@ async def get_interfaces(db: AsyncSession = Depends(get_db)):
 
 @router.post("/interfaces")
 async def create_interface(data: dict, db: AsyncSession = Depends(get_db)):
-    db_obj = models.NetworkInterface(**data)
+    clean_data = filter_valid_columns(models.NetworkInterface, data)
+    if 'id' in clean_data and not clean_data['id']:
+        del clean_data['id']
+    db_obj = models.NetworkInterface(**clean_data)
     db.add(db_obj)
     await db.commit()
     await db.refresh(db_obj)

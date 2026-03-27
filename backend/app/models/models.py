@@ -102,7 +102,7 @@ class LogicalService(Base, BaseMixin):
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True) # Nullable if service is floating/clustered
     name = Column(String, index=True) # Service Name
     service_type = Column(String, index=True) # Database, Web, Middleware, Container, ToolStack, Other
-    status = Column(String, default="Running") # Running, Stopped, Critical, Maintenance
+    status = Column(String, default="Active") # Active, Stopped, Critical, Maintenance
     version = Column(String)
     environment = Column(String, default="Production")
     

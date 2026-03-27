@@ -86,6 +86,30 @@ async def test_settings_initialization():
         assert any(o["category"] == "LogicalSystem" for o in options)
 
 @pytest.mark.anyio
+async def test_global_settings_flow():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # Initialize
+        await ac.get("/api/v1/settings/initialize")
+        
+        # Get global settings
+        get_res = await ac.get("/api/v1/settings/global")
+        assert get_res.status_code == 200
+        settings = get_res.json()
+        assert settings["app_name"] == "SYSGRID ENGINE"
+        
+        # Update global settings
+        payload = {"app_name": "NEW GRID", "org_name": "ACME CORP"}
+        post_res = await ac.post("/api/v1/settings/global", json=payload)
+        assert post_res.status_code == 200
+        
+        # Verify update
+        get_res_2 = await ac.get("/api/v1/settings/global")
+        settings_2 = get_res_2.json()
+        assert settings_2["app_name"] == "NEW GRID"
+        assert settings_2["org_name"] == "ACME CORP"
+        assert settings_2["site_id"] == "HQ-01" # Should remain same
+
+@pytest.mark.anyio
 async def test_ipam_subnet_creation():
     payload = {
         "network_cidr": "10.10.10.0/24",

@@ -7,6 +7,10 @@ from ..models import models
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 
+def filter_valid_columns(model, data):
+    valid_keys = {c.name for c in model.__table__.columns}
+    return {k: v for k, v in data.items() if k in valid_keys}
+
 @router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.LogicalService).filter(models.LogicalService.is_deleted == include_deleted)
@@ -45,7 +49,12 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     name = data.get('name')
     if not name: raise HTTPException(400, "Service name required")
 
-    svc = models.LogicalService(**data)
+    clean_data = filter_valid_columns(models.LogicalService, data)
+    # Ensure ID is not passed to constructor if it's empty string/null
+    if 'id' in clean_data and not clean_data['id']:
+        del clean_data['id']
+
+    svc = models.LogicalService(**clean_data)
     db.add(svc)
     try:
         await db.commit()
@@ -68,8 +77,9 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     svc = result.scalar_one_or_none()
     if not svc: raise HTTPException(404)
     
-    for k, v in data.items():
-        if hasattr(svc, k): setattr(svc, k, v)
+    clean_data = filter_valid_columns(models.LogicalService, data)
+    for k, v in clean_data.items():
+        if k != "id": setattr(svc, k, v)
         
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="logical_services", 

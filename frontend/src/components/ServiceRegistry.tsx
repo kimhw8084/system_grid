@@ -170,7 +170,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
             label="Target Operational State"
             value={selectedStatus}
             onChange={e => setSelectedStatus(e.target.value)}
-            options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Running', label: 'Running'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
+            options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
             placeholder="Select Status..."
           />
           <div className="flex space-x-3 pt-2">
@@ -298,7 +298,6 @@ export default function ServiceRegistry() {
       const url = data.id ? `/api/v1/logical-services/${data.id}` : "/api/v1/logical-services/"
       const method = data.id ? "PUT" : "POST"
       const res = await apiFetch(url, { method, body: JSON.stringify(data) })
-      if (!res.ok) throw new Error('Failed to synchronize service')
       return res.json()
     },
     onSuccess: () => { 
@@ -350,7 +349,7 @@ export default function ServiceRegistry() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = { Running: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
+        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
         return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
       }
     },
@@ -623,7 +622,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [formData, setFormData] = useState({ 
-    name: "", service_type: "Database", status: "Running", environment: "Production", version: "",
+    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
     device_id: null, config_json: {}, ...initialData 
   })
 
@@ -684,7 +683,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 label="Runtime Status"
                 value={formData.status}
                 onChange={e => setFormData({...formData, status: e.target.value})}
-                options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Running', label: 'Running'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
+                options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
            />
            <StyledSelect
                 label="Environment"

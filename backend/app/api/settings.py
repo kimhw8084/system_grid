@@ -6,6 +6,10 @@ from ..models import models
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
+def filter_valid_columns(model, data):
+    valid_keys = {c.name for c in model.__table__.columns}
+    return {k: v for k, v in data.items() if k in valid_keys}
+
 @router.get("/options")
 async def get_options(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.SettingOption))
@@ -13,7 +17,10 @@ async def get_options(db: AsyncSession = Depends(get_db)):
 
 @router.post("/options")
 async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
-    opt = models.SettingOption(**data)
+    clean_data = filter_valid_columns(models.SettingOption, data)
+    if 'id' in clean_data and not clean_data['id']:
+        del clean_data['id']
+    opt = models.SettingOption(**clean_data)
     db.add(opt)
     await db.commit()
     await db.refresh(opt)
@@ -124,11 +131,72 @@ async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
+@router.get("/global")
+async def get_global_settings(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
+    opts = res.scalars().all()
+    
+    settings = {
+        "app_name": "SYSGRID ENGINE",
+        "org_name": "Global Infrastructure Corp",
+        "site_id": "HQ-01",
+        "retention_days": "30",
+        "maintenance_mode": "false",
+        "default_timezone": "UTC",
+        "dashboard_refresh_interval": "60",
+        "security_level": "Standard",
+        "audit_log_level": "Full",
+        "ui_primary_color": "#3b82f6",
+        "ui_accent_color": "#10b981",
+        "support_email": "admin@infra.local"
+    }
+    
+    for o in opts:
+        settings[o.label] = o.value
+            
+    return settings
+
+@router.post("/global")
+async def update_global_settings(data: dict, db: AsyncSession = Depends(get_db)):
+    for key, value in data.items():
+        res = await db.execute(select(models.SettingOption).filter(
+            models.SettingOption.category == "AppGlobal",
+            models.SettingOption.label == key
+        ))
+        opt = res.scalar_one_or_none()
+        if opt:
+            opt.value = str(value)
+        else:
+            db.add(models.SettingOption(category="AppGlobal", label=key, value=str(value)))
+            
+    await db.commit()
+    return {"status": "success"}
+
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
     # Simple check if already initialized
     res = await db.execute(select(models.SettingOption))
     if res.scalars().first():
+        # Even if initialized, check if AppGlobal exists, if not, add it
+        res_global = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
+        if not res_global.scalars().first():
+             global_defaults = [
+                ("AppGlobal", "app_name", "SYSGRID ENGINE"),
+                ("AppGlobal", "org_name", "Global Infrastructure Corp"),
+                ("AppGlobal", "site_id", "HQ-01"),
+                ("AppGlobal", "retention_days", "30"),
+                ("AppGlobal", "maintenance_mode", "false"),
+                ("AppGlobal", "default_timezone", "UTC"),
+                ("AppGlobal", "dashboard_refresh_interval", "60"),
+                ("AppGlobal", "security_level", "Standard"),
+                ("AppGlobal", "audit_log_level", "Full"),
+                ("AppGlobal", "ui_primary_color", "#3b82f6"),
+                ("AppGlobal", "ui_accent_color", "#10b981"),
+                ("AppGlobal", "support_email", "admin@infra.local")
+            ]
+             for cat, key, val in global_defaults:
+                db.add(models.SettingOption(category=cat, label=key, value=val))
+             await db.commit()
         return {"status": "already_initialized"}
         
     defaults = [
@@ -169,6 +237,23 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     ]
     for cat, val, desc in defaults:
         db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+        
+    global_defaults = [
+        ("AppGlobal", "app_name", "SYSGRID ENGINE"),
+        ("AppGlobal", "org_name", "Global Infrastructure Corp"),
+        ("AppGlobal", "site_id", "HQ-01"),
+        ("AppGlobal", "retention_days", "30"),
+        ("AppGlobal", "maintenance_mode", "false"),
+        ("AppGlobal", "default_timezone", "UTC"),
+        ("AppGlobal", "dashboard_refresh_interval", "60"),
+        ("AppGlobal", "security_level", "Standard"),
+        ("AppGlobal", "audit_log_level", "Full"),
+        ("AppGlobal", "ui_primary_color", "#3b82f6"),
+        ("AppGlobal", "ui_accent_color", "#10b981"),
+        ("AppGlobal", "support_email", "admin@infra.local")
+    ]
+    for cat, key, val in global_defaults:
+        db.add(models.SettingOption(category=cat, label=key, value=val))
         
     service_types = [
         ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),

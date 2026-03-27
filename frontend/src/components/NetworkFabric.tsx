@@ -6,6 +6,7 @@ import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
+import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -21,15 +22,15 @@ export default function NetworkFabric() {
     purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
   })
 
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await fetch('/api/v1/settings/options')).json() })
-  const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await fetch('/api/v1/networks/connections')).json() })
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+  const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = editingLink ? `/api/v1/networks/connections/${editingLink.id}` : '/api/v1/networks/connections'
       const method = editingLink ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) })
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       return res.json()
     },
     onSuccess: () => {
@@ -41,8 +42,7 @@ export default function NetworkFabric() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/v1/networks/connections/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to sever connection')
+      const res = await apiFetch(`/api/v1/networks/connections/${id}`, { method: 'DELETE' })
       return res.json()
     },
     onSuccess: () => { 
