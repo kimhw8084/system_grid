@@ -50,39 +50,48 @@ const powerColor = (pct: number) => {
 interface RackUnitProps {
   uNumber: number
   loc?: any
-  isBase?: boolean
+  isTop?: boolean
+  isBottom?: boolean
   highlight: boolean
   onSelect: () => void
   onManage: (device: any, loc: any) => void
   isDeleted: boolean
 }
 
-const RackUnit = ({ uNumber, loc, isBase, highlight, onSelect, onManage, isDeleted }: RackUnitProps) => {
+const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage, isDeleted }: RackUnitProps) => {
   const device = loc?.device
   const statusCfg = device ? getStatusCfg(device.status) : null
   const typeCfg = device ? getTypeCfg(device.type) : null
 
-  const bgClass = device
+  const bgBase = device
     ? highlight
-      ? 'bg-amber-500/25 border-l-2 border-amber-400'
+      ? 'bg-amber-500/30'
       : device.status === 'Maintenance'
-        ? 'bg-amber-500/10 border-l-2 border-amber-500/50'
+        ? 'bg-amber-500/15'
         : device.status === 'Decommissioned'
-          ? 'bg-rose-500/10 border-l-2 border-rose-500/40'
-          : 'bg-blue-600/30 border-l-2 border-blue-500/60'
+          ? 'bg-rose-500/15'
+          : 'bg-blue-600/30'
     : 'hover:bg-white/[0.04]'
+
+  const borderClass = device
+    ? `${isTop ? 'border-t border-white/10' : ''} ${isBottom ? 'border-b border-black/40' : 'border-b border-white/[0.03]'}`
+    : 'border-b border-white/[0.06]'
+
+  const roundedClass = device
+    ? `${isTop ? 'rounded-t-md' : ''} ${isBottom ? 'rounded-b-md' : ''}`
+    : ''
 
   return (
     <div
       onClick={() => device ? (!isDeleted && onManage(device, loc)) : (!isDeleted && onSelect())}
-      className={`relative border-b border-white/[0.06] flex items-center px-2 transition-all cursor-pointer group ${bgClass}`}
+      className={`relative flex items-center px-2 transition-all cursor-pointer group ${bgBase} ${borderClass} ${roundedClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''}`}
       style={{ height: '22px' }}
     >
-      <span className="text-[8px] font-mono text-slate-600 w-5 select-none shrink-0 group-hover:text-slate-400 transition-colors tabular-nums">
+      <span className={`text-[8px] font-mono w-5 select-none shrink-0 transition-colors tabular-nums ${device ? 'text-slate-400 font-bold' : 'text-slate-600 group-hover:text-slate-400'}`}>
         {uNumber}
       </span>
 
-      {isBase && device && (
+      {isBottom && device && (
         <div className="flex-1 flex items-center justify-between overflow-hidden gap-1 pl-1">
           <div className="flex items-center gap-1.5 overflow-hidden">
             <span className={`shrink-0 ${statusCfg?.dot} w-1.5 h-1.5 rounded-full`} />
@@ -298,7 +307,8 @@ const RackElevation = ({
                 key={u}
                 uNumber={u}
                 loc={loc}
-                isBase={u === loc?.start_unit}
+                isTop={loc ? u === loc.start_unit + loc.size_u - 1 : false}
+                isBottom={loc ? u === loc.start_unit : false}
                 highlight={loc?.device ? isHighlighted(loc.device) : false}
                 onSelect={() => onMount(rack.id, u)}
                 onManage={(device, l) => onManageDevice(device, l, rack)}
