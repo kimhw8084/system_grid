@@ -359,44 +359,28 @@ export default function ServiceRegistry() {
     { 
       field: "license_type", 
       headerName: "License", 
-      width: 130, 
+      width: 120, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? (
-        <div className="flex flex-col items-center justify-center leading-tight h-full">
-          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">{p.value}</span>
-          {p.data.purchase_type && <span className="text-[7px] text-slate-500 uppercase font-bold">{p.data.purchase_type}</span>}
-        </div>
-      ) : <span className="text-slate-700 italic text-[8px]">Unlicensed</span>
+        <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{p.value}</span>
+      ) : <span className="text-slate-700 italic text-[8px]">N/A</span>
     },
     {
       field: "expiry_date",
-      headerName: "Status / Expiry",
-      width: 140,
+      headerName: "Expiry",
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
-        const expiry = new Date(p.value)
-        const now = new Date()
-        const diff = expiry.getTime() - now.getTime()
-        const days = Math.ceil(diff / (1000 * 3600 * 24))
-        
-        let color = "text-emerald-400"
-        if (days < 0) color = "text-rose-500"
-        else if (days < 30) color = "text-amber-500"
-        
-        return (
-          <div className="flex flex-col items-center justify-center leading-tight h-full">
-            <span className={`text-[9px] font-black uppercase ${color}`}>{days < 0 ? 'Expired' : `${days} Days Left`}</span>
-            <span className="text-[7px] text-slate-500 font-mono">{expiry.toLocaleDateString()}</span>
-          </div>
-        )
+        const d = new Date(p.value)
+        return <span className="text-[9px] font-mono text-slate-400">{d.toLocaleDateString()}</span>
       }
     },
     {
-      headerName: "Ops",
-      width: 140,
+      headerName: "Actions",
+      width: 120,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -427,8 +411,8 @@ export default function ServiceRegistry() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Application Layer & Service Dependency Mapping</p>
            </div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
-              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active Services</button>
-              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
+              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Active Services</button>
+              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
            </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -465,7 +449,7 @@ export default function ServiceRegistry() {
             </AnimatePresence>
           </div>
 
-          <button onClick={() => setActiveModal({})} className="bg-[#034EA2] hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Service</button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Service</button>
         </div>
       </div>
 

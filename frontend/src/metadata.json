@@ -1,6 +1,16 @@
 {
-  "version": "1.2.5",
+  "version": "1.2.6",
   "patchHistory": [
+    {
+      "version": "1.2.6",
+      "date": "2026-03-27",
+      "changes": [
+        { "type": "IMPROVED", "text": "UI Standardization: Matched Monitoring, Services, and Network views with Asset Inventory gold standard" },
+        { "type": "IMPROVED", "text": "Grid Evolution: Switched Monitoring Matrix to AgGrid for advanced filtering and consistency" },
+        { "type": "FIXED", "text": "Search parity: Integrated high-performance filtering across all registry views" },
+        { "type": "IMPROVED", "text": "Visual Language: Normalized button sizes, icon container geometry, and typographic scales" }
+      ]
+    },
     {
       "version": "1.2.5",
       "date": "2026-03-27",

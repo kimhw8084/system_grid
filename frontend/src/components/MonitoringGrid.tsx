@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Activity, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
-  AlertCircle, Clock, Zap
+  AlertCircle, Clock, Zap, Settings, MoreVertical, List
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
 import { StyledSelect } from './shared/StyledSelect'
@@ -30,6 +31,7 @@ export default function MonitoringGrid() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const { data: items, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
@@ -51,123 +53,132 @@ export default function MonitoringGrid() {
     }
   })
 
-  const filteredItems = items?.filter((item: any) => 
-    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.platform?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.device_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const columnDefs = useMemo(() => [
+    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
+    { 
+      field: "category", 
+      headerName: "Category", 
+      width: 130,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const cat = CATEGORIES.find(c => c.value === p.value)
+        const Icon = cat?.icon || Activity
+        return (
+          <div className="flex items-center justify-center space-x-2 h-full">
+            <Icon size={12} className={cat?.color || 'text-slate-400'} />
+            <span className="text-[10px] font-black uppercase tracking-tight text-white">{p.value}</span>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "status", 
+      headerName: "Status", 
+      width: 110,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const style = STATUSES.find(s => s.value === p.value)?.color || 'bg-slate-500/20 text-slate-400'
+        return (
+          <div className="flex items-center justify-center h-full">
+            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${style}`}>
+              {p.value}
+            </span>
+          </div>
+        )
+      }
+    },
+    { field: "device_name", headerName: "Host / Target", flex: 1, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { field: "title", headerName: "Monitoring Intent", flex: 1.5, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
+    { 
+      field: "platform", 
+      headerName: "Platform", 
+      width: 130, 
+      cellClass: 'text-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center space-x-2 h-full">
+          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-[10px] font-black uppercase text-slate-300">{p.value}</span>
+        </div>
+      )
+    },
+    {
+      headerName: "Actions",
+      width: 120,
+      pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+               {p.data.external_link && (
+                 <button onClick={() => window.open(p.data.external_link, '_blank')} title="External Link" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
+               )}
+               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+           </div>
+        </div>
+      )
+    }
+  ], []) as any
 
   return (
-    <div className="h-full flex flex-col space-y-6">
+    <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight uppercase italic flex items-center space-x-3">
-            <Activity className="text-blue-500" size={32} />
-            <span>Monitoring Matrix</span>
-          </h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Observability Infrastructure & Logic Registry</p>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center space-x-3">
+                <Activity className="text-blue-500" size={24} />
+                <span>Monitoring Matrix</span>
+              </h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Observability Infrastructure & Logic Registry</p>
+           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={14} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
             <input 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search logic, platform, or host..."
-              className="bg-white/5 border border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 w-64 transition-all"
+              placeholder="SEARCH LOGIC, PLATFORM..."
+              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all"
             />
           </div>
+
+          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+             <button className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Config">
+                <Settings size={16} />
+             </button>
+          </div>
+
           <button 
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-            className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
-            <Plus size={14} />
-            <span>Deploy Logic</span>
+            + Deploy Logic
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden glass-panel rounded-[32px] border-white/5 flex flex-col">
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-[#020617]/80 backdrop-blur-md">
-              <tr className="border-b border-white/5">
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Category</th>
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Status</th>
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Host / Target</th>
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Monitoring Intent</th>
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Platform</th>
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {isLoading ? (
-                <tr><td colSpan={6} className="py-20 text-center"><Zap size={32} className="mx-auto text-blue-500 animate-pulse opacity-20" /></td></tr>
-              ) : filteredItems?.length === 0 ? (
-                <tr><td colSpan={6} className="py-20 text-center text-slate-600 text-[10px] font-black uppercase tracking-widest italic">No monitoring logic found</td></tr>
-              ) : filteredItems?.map((item: any) => {
-                const CatIcon = CATEGORIES.find(c => c.value === item.category)?.icon || Activity
-                const catColor = CATEGORIES.find(c => c.value === item.category)?.color || 'text-slate-400'
-                const statusStyle = STATUSES.find(s => s.value === item.status)?.color || 'bg-slate-500/20 text-slate-400'
-                
-                return (
-                  <motion.tr 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }} 
-                    key={item.id} 
-                    className="group hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg bg-white/5 ${catColor}`}><CatIcon size={14} /></div>
-                        <span className="text-[10px] font-black uppercase tracking-tight text-white">{item.category}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${statusStyle}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-bold text-white uppercase">{item.device_name || 'Global Target'}</span>
-                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter mt-0.5">ID: {item.device_id || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col max-w-md">
-                        <span className="text-[11px] font-black text-blue-400 uppercase tracking-tight">{item.title}</span>
-                        <span className="text-[9px] font-medium text-slate-400 line-clamp-1 mt-1">{item.purpose}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase text-slate-300">{item.platform}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
-                        {item.external_link && (
-                          <a href={item.external_link} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-blue-500/20 text-blue-400 rounded-xl transition-all">
-                            <ExternalLink size={14} />
-                          </a>
-                        )}
-                        <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-2 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => deleteMutation.mutate(item.id)} className="p-2 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-xl transition-all">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+             <Zap size={32} className="text-blue-400 animate-pulse" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
+          </div>
+        )}
+        <AgGridReact 
+          rowData={items || []} 
+          columnDefs={columnDefs} 
+          rowSelection="multiple"
+          headerHeight={28}
+          rowHeight={28}
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          quickFilterText={searchTerm}
+        />
       </div>
 
       <AnimatePresence>
@@ -183,6 +194,21 @@ export default function MonitoringGrid() {
           />
         )}
       </AnimatePresence>
+
+      <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: transparent;
+          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-foreground-color: #f1f5f9;
+          --ag-header-foreground-color: #94a3b8;
+          --ag-font-family: 'Inter', sans-serif;
+          --ag-font-size: 10px;
+        }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
+      `}</style>
     </div>
   )
 }
@@ -219,7 +245,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[48px] border-blue-500/30"
+        className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-8 mb-8">
            <div className="flex items-center space-x-4">

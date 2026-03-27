@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check, MoreVertical, Settings } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check, MoreVertical, Settings, Search, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
@@ -15,6 +15,7 @@ export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [editingLink, setEditingLink] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [showConfig, setShowConfig] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [connData, setConnData] = useState<any>({
@@ -132,17 +133,27 @@ export default function NetworkFabric() {
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight italic">Network Fabric</h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Interconnect & Logical Topology</p>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Network Fabric</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Interconnect & Logical Topology</p>
+           </div>
         </div>
         <div className="flex items-center space-x-3">
-            <button onClick={() => setShowConfig(true)} className="p-2 bg-white/5 border border-white/5 rounded-xl text-slate-500 hover:text-blue-400 transition-all" title="Fabric Config">
-                <Settings size={18} />
-            </button>
-            <button onClick={() => { resetForm(); setShowConnectModal(true) }} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+          <div className="relative">
+             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH FABRIC..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+          </div>
+
+          <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+             <button onClick={() => setShowConfig(true)} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Fabric Config">
+                <Settings size={16} />
+             </button>
+          </div>
+
+          <button onClick={() => { resetForm(); setShowConnectModal(true) }} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
             + Establish Link
-            </button>
+          </button>
         </div>
       </div>
 
@@ -154,10 +165,11 @@ export default function NetworkFabric() {
           </div>
         )}
         <AgGridReact 
-          rowData={connections || []} 
-          columnDefs={columnDefs} 
+          rowData={links || []} 
+          columnDefs={columnDefs}
           headerHeight={28}
           rowHeight={28}
+          quickFilterText={searchTerm}
         />
       </div>
 
