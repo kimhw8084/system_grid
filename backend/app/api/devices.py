@@ -17,6 +17,31 @@ def filter_valid_columns(model, data):
     valid_keys = {c.name for c in model.__table__.columns}
     return {k: v for k, v in data.items() if k in valid_keys}
 
+async def sync_device_to_os(device, db: AsyncSession):
+    if device.os_name:
+        # Check if OS service already exists for this device
+        result = await db.execute(select(models.LogicalService).filter(
+            models.LogicalService.device_id == device.id,
+            models.LogicalService.service_type == "OS",
+            models.LogicalService.is_deleted == False
+        ))
+        svc = result.scalar_one_or_none()
+        
+        if svc:
+            svc.name = device.os_name
+            svc.version = device.os_version
+        else:
+            svc = models.LogicalService(
+                device_id=device.id,
+                name=device.os_name,
+                version=device.os_version,
+                service_type="OS",
+                status="Active",
+                environment=device.environment or "Production"
+            )
+            db.add(svc)
+        await db.commit()
+
 @router.get("/")
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Device)
@@ -70,6 +95,9 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(db_device)
 
+    # Sync OS to services
+    await sync_device_to_os(db_device, db)
+
     # Return full object with joins like get_devices
     loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == db_device.id))
     loc = loc_res.scalars().first()
@@ -121,7 +149,12 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
                 setattr(db_device, k, v)
         else:
             setattr(db_device, k, v)
-    await db.commit(); await db.refresh(db_device); return db_device
+    await db.commit(); await db.refresh(db_device); 
+    
+    # Sync OS to services
+    await sync_device_to_os(db_device, db)
+    
+    return db_device
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):

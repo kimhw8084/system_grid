@@ -112,6 +112,15 @@ class LogicalService(Base, BaseMixin):
     # For Web: { server_type, url, bindings, app_pool, ssl_expiry, root_path }
     config_json = Column(JSON, default=dict)
     
+    # License & Procurement
+    license_type = Column(String) # Proprietary, Open Source, etc.
+    license_key = Column(String)
+    purchase_type = Column(String) # One-time, Subscription
+    purchase_date = Column(DateTime)
+    expiry_date = Column(DateTime)
+    cost = Column(Float, default=0.0)
+    vendor = Column(String)
+    
     # Smart Expandability: Unlimited custom key-values
     custom_attributes = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)

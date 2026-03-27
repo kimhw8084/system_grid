@@ -43,6 +43,15 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
         })
     return final_result
 
+async def sync_service_to_device(service, db: AsyncSession):
+    if service.service_type == "OS" and service.device_id:
+        result = await db.execute(select(models.Device).filter(models.Device.id == service.device_id))
+        dev = result.scalar_one_or_none()
+        if dev:
+            dev.os_name = service.name
+            dev.os_version = service.version
+            await db.commit()
+
 @router.post("/")
 async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     # data includes: name, service_type, status, version, environment, device_id, config_json, custom_attributes
@@ -53,12 +62,25 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     # Ensure ID is not passed to constructor if it's empty string/null
     if 'id' in clean_data and not clean_data['id']:
         del clean_data['id']
+    
+    # Handle date fields for license
+    for date_f in ["purchase_date", "expiry_date"]:
+        if date_f in clean_data and clean_data[date_f]:
+            from datetime import datetime
+            try:
+                if isinstance(clean_data[date_f], str):
+                    clean_data[date_f] = datetime.fromisoformat(clean_data[date_f].replace("Z", "+00:00"))
+            except:
+                clean_data[date_f] = None
 
     svc = models.LogicalService(**clean_data)
     db.add(svc)
     try:
         await db.commit()
         await db.refresh(svc)
+        
+        # Sync back to device if OS
+        await sync_service_to_device(svc, db)
         
         log = models.AuditLog(
             user_id="admin", action="CREATE", target_table="logical_services", 
@@ -79,7 +101,21 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     
     clean_data = filter_valid_columns(models.LogicalService, data)
     for k, v in clean_data.items():
-        if k != "id": setattr(svc, k, v)
+        if k != "id":
+            if k in ["purchase_date", "expiry_date"] and v:
+                from datetime import datetime
+                try:
+                    if isinstance(v, str):
+                        v = datetime.fromisoformat(v.replace("Z", "+00:00"))
+                    setattr(svc, k, v)
+                except:
+                    setattr(svc, k, None)
+            else:
+                setattr(svc, k, v)
+    
+    await db.commit()
+    # Sync back to device if OS
+    await sync_service_to_device(svc, db)
         
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="logical_services", 

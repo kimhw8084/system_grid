@@ -521,6 +521,28 @@ export default function AssetGrid() {
     { field: "model", headerName: "Model", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "os_name", headerName: "OS", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "os_version", headerName: "OS Ver", width: 70, cellClass: 'text-center', headerClass: 'text-center' },
+    { 
+      field: "license_type", 
+      headerName: "License", 
+      width: 120, 
+      cellClass: 'text-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{p.value}</span>
+      ) : <span className="text-slate-700 italic text-[8px]">N/A</span>
+    },
+    { 
+      field: "expiry_date", 
+      headerName: "License Expiry", 
+      width: 120, 
+      cellClass: 'text-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
+        const d = new Date(p.value)
+        return <span className="text-[9px] font-mono text-slate-400">{d.toLocaleDateString()}</span>
+      }
+    },
     { field: "site_name", headerName: "Site", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "rack_name", headerName: "Rack", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
@@ -1468,6 +1490,23 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 onChange={e => setFormData({...formData, environment: e.target.value})}
                 options={ENVIRONMENT_ITEMS}
              />
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3 mt-6">Procurement & Licensing</h3>
+             <div className="space-y-3">
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">License Type</label>
+                    <input value={formData.license_type || ""} onChange={e => setFormData({...formData, license_type: e.target.value})} placeholder="e.g. Volume License" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Purchase Date</label>
+                        <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] outline-none" />
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Expiry Date</label>
+                        <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] outline-none border-amber-500/30" />
+                    </div>
+                </div>
+             </div>
           </div>
 
           <div className="col-span-1 space-y-4">

@@ -356,6 +356,44 @@ export default function ServiceRegistry() {
     { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
     { field: "environment", headerName: "Env", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
+    { 
+      field: "license_type", 
+      headerName: "License", 
+      width: 130, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <div className="flex flex-col items-center justify-center leading-tight h-full">
+          <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">{p.value}</span>
+          {p.data.purchase_type && <span className="text-[7px] text-slate-500 uppercase font-bold">{p.data.purchase_type}</span>}
+        </div>
+      ) : <span className="text-slate-700 italic text-[8px]">Unlicensed</span>
+    },
+    {
+      field: "expiry_date",
+      headerName: "Status / Expiry",
+      width: 140,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
+        const expiry = new Date(p.value)
+        const now = new Date()
+        const diff = expiry.getTime() - now.getTime()
+        const days = Math.ceil(diff / (1000 * 3600 * 24))
+        
+        let color = "text-emerald-400"
+        if (days < 0) color = "text-rose-500"
+        else if (days < 30) color = "text-amber-500"
+        
+        return (
+          <div className="flex flex-col items-center justify-center leading-tight h-full">
+            <span className={`text-[9px] font-black uppercase ${color}`}>{days < 0 ? 'Expired' : `${days} Days Left`}</span>
+            <span className="text-[7px] text-slate-500 font-mono">{expiry.toLocaleDateString()}</span>
+          </div>
+        )
+      }
+    },
     {
       headerName: "Ops",
       width: 140,
@@ -623,7 +661,10 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [formData, setFormData] = useState({ 
     name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
-    device_id: null, config_json: {}, ...initialData 
+    device_id: null, config_json: {}, 
+    license_type: "", license_key: "", purchase_type: "One-time", 
+    purchase_date: "", expiry_date: "", cost: 0, vendor: "",
+    ...initialData 
   })
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
@@ -651,12 +692,12 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
         <div className="space-y-4">
            <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Deployment</h3>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Service Instance Name *</label>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Operating System Name *' : 'Service Instance Name *'}</label>
               <input 
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value})} 
                 className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
-                placeholder="e.g. ERP-API-PROD" 
+                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"} 
               />
            </div>
            <StyledSelect
@@ -673,7 +714,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                   const val = e.target.value;
                   setFormData(prev => ({...prev, service_type: val}));
                 }}
-                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "Microservice"].map(t => ({ value: t, label: t }))}
+                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map(t => ({ value: t, label: t }))}
            />
         </div>
 
@@ -692,8 +733,43 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
            />
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Software Version</label>
-              <input value={formData.version} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Kernel / Version' : 'Software Version'}</label>
+              <input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
+           </div>
+        </div>
+
+        <div className="col-span-2 space-y-4">
+           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3">Licensing & Procurement</h3>
+           <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License Type</label>
+                <input value={formData.license_type || ""} onChange={e => setFormData({...formData, license_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="e.g. Proprietary / GPL" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Model</label>
+                <select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500">
+                  <option value="One-time">One-time Purchase</option>
+                  <option value="Subscription">Subscription / SaaS</option>
+                  <option value="Volume">Volume Licensing</option>
+                  <option value="OEM">OEM / Embedded</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Vendor / Provider</label>
+                <input value={formData.vendor || ""} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft / AWS" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License / Activation Key</label>
+                <input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="XXXXX-XXXXX..." />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Expiry / Renewal Date</label>
+                <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
+                <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+              </div>
            </div>
         </div>
 
