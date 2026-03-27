@@ -16,6 +16,7 @@ import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import metadata from "./metadata.json"
+import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
@@ -112,6 +113,7 @@ function MainLayout() {
   const navigate = useNavigate(); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [globalError, setGlobalError] = useState<any>(null);
 
   const { data: healthData, isError: isHealthError } = useQuery({
     queryKey: ['health'],
@@ -126,6 +128,33 @@ function MainLayout() {
   });
 
   const isOnline = !!healthData && !isHealthError;
+
+  useEffect(() => {
+    const handleError = (event: PromiseRejectionEvent) => {
+      const error = event.reason;
+      // Only handle errors that have our custom traceback or status from apiFetch
+      if (error && (error.traceback || error.status || error.data)) {
+        setGlobalError(error);
+        toast.error((t) => (
+          <div className="flex items-center justify-between space-x-4 min-w-[220px]">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-tight text-white">{error.message || 'System Fault'}</span>
+              <span className="text-[8px] font-bold text-rose-400/70 uppercase">Execution Exception</span>
+            </div>
+            <button 
+              onClick={() => { setGlobalError(error); toast.dismiss(t.id); }}
+              className="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border border-white/5"
+            >
+              Details
+            </button>
+          </div>
+        ), { duration: 8000, position: 'top-right' });
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleError);
+    return () => window.removeEventListener('unhandledrejection', handleError);
+  }, []);
 
   useEffect(() => { 
     fetch("/api/v1/settings/initialize").catch(() => {}) 
@@ -198,7 +227,10 @@ function MainLayout() {
            <span className="text-blue-500">VERSION {APP_VERSION}</span>
         </footer>
       </main>
-      <AnimatePresence>{showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
+        {globalError && <ErrorDetailModal isOpen={!!globalError} onClose={() => setGlobalError(null)} error={globalError} />}
+      </AnimatePresence>
     </div>
   )
 }

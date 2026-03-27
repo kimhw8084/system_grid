@@ -17,16 +17,22 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     let errorData: any = {};
+    let fullTraceback = null;
     try {
       errorData = await response.json();
+      // If FastAPI returns an error, it often includes details in 'detail'
+      // If we've implemented custom traceback capture on backend, it might be in 'traceback'
+      fullTraceback = errorData.traceback || null;
     } catch (e) {
-      // Fallback for non-JSON error responses
       errorData = { detail: `API Error ${response.status}: ${response.statusText}` };
     }
     
-    // Support both 'message' and FastAPI's 'detail' fields
     const errorMessage = errorData.detail || errorData.message || `API error: ${response.status}`;
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage) as any;
+    error.status = response.status;
+    error.traceback = fullTraceback;
+    error.data = errorData;
+    throw error;
   }
 
   return response;

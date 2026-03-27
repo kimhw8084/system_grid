@@ -50,7 +50,7 @@ async def sync_service_to_device(service, db: AsyncSession):
         if dev:
             dev.os_name = service.name
             dev.os_version = service.version
-            await db.commit()
+            # No internal commit here, calling code handles it
 
 @router.post("/")
 async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
@@ -76,8 +76,7 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     svc = models.LogicalService(**clean_data)
     db.add(svc)
     try:
-        await db.commit()
-        await db.refresh(svc)
+        await db.flush() # Flush to get ID without committing
         
         # Sync back to device if OS
         await sync_service_to_device(svc, db)
@@ -88,6 +87,7 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
         )
         db.add(log)
         await db.commit()
+        await db.refresh(svc)
         return svc
     except Exception as e:
         await db.rollback()
@@ -113,7 +113,6 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
             else:
                 setattr(svc, k, v)
     
-    await db.commit()
     # Sync back to device if OS
     await sync_service_to_device(svc, db)
         
@@ -123,6 +122,7 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     )
     db.add(log)
     await db.commit()
+    await db.refresh(svc)
     return svc
 
 @router.delete("/{service_id}")

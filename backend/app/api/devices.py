@@ -40,7 +40,7 @@ async def sync_device_to_os(device, db: AsyncSession):
                 environment=device.environment or "Production"
             )
             db.add(svc)
-        await db.commit()
+        # No internal commit here, calling code handles it
 
 @router.get("/")
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
@@ -149,11 +149,11 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
                 setattr(db_device, k, v)
         else:
             setattr(db_device, k, v)
-    await db.commit(); await db.refresh(db_device); 
     
     # Sync OS to services
     await sync_device_to_os(db_device, db)
     
+    await db.commit(); await db.refresh(db_device); 
     return db_device
 
 @router.post("/bulk-action")

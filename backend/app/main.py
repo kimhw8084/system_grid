@@ -73,7 +73,26 @@ async def lifespan(app: FastAPI):
     await _auto_seed()
     yield
 
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import traceback
+...
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Capture full traceback
+    tb = traceback.format_exc()
+    print(f"ERROR: {str(exc)}\n{tb}") # Still log to terminal
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": str(exc),
+            "traceback": tb,
+            "path": request.url.path
+        }
+    )
 
 app.add_middleware(
     CORSMiddleware,
