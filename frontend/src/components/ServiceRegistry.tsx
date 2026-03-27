@@ -361,8 +361,15 @@ export default function ServiceRegistry() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
-        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
+        const colors: any = {
+          Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
+          Running: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
+          Degraded: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
+          Maintenance: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
+          Critical: 'text-rose-400 border-rose-500/20 bg-rose-500/5',
+          Stopped: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
+        }
+        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span></div>
       }
     },
     { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
@@ -721,7 +728,13 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                   const val = e.target.value;
                   setFormData(prev => ({...prev, service_type: val}));
                 }}
-                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map(t => ({ value: t, label: t }))}
+                options={(() => {
+                  let opts = getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map((t: string) => ({ value: t, label: t }));
+                  if (!opts.find((o: any) => o.value === formData.service_type) && formData.service_type) {
+                     opts = [...opts, { value: formData.service_type, label: formData.service_type }];
+                  }
+                  return opts;
+                })()}
            />
         </div>
 
