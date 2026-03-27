@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3 } from "lucide-react"
-import { Toaster } from "react-hot-toast"
+import { Toaster, toast } from "react-hot-toast"
+import { apiFetch } from "./api/apiClient"
 
 import Dashboard from "./components/Dashboard"
 import RackElevations from "./components/RackElevations"
@@ -118,8 +119,7 @@ function MainLayout() {
   const { data: healthData, isError: isHealthError } = useQuery({
     queryKey: ['health'],
     queryFn: async () => {
-      const response = await fetch("/api/v1/health");
-      if (!response.ok) throw new Error("Offline");
+      const response = await apiFetch("/api/v1/health");
       return response.json();
     },
     refetchInterval: 10000,
@@ -157,7 +157,7 @@ function MainLayout() {
   }, []);
 
   useEffect(() => { 
-    fetch("/api/v1/settings/initialize").catch(() => {}) 
+    apiFetch("/api/v1/settings/initialize").catch(() => {}) 
   }, [])
 
   return (

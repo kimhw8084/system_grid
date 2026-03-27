@@ -2,11 +2,12 @@ import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Terminal } from "lucide-react"
 import { AgGridReact } from "ag-grid-react"
+import { apiFetch } from "../api/apiClient"
 
 import { motion } from "framer-motion"
 
 export default function Maintenance() {
-  const { data: windows } = useQuery({ queryKey: ["maintenance"], queryFn: async () => (await fetch("/api/v1/maintenance/")).json() })
+  const { data: windows } = useQuery({ queryKey: ["maintenance"], queryFn: async () => (await (await apiFetch("/api/v1/maintenance/")).json()) })
   const columnDefs = [
     { field: "title", headerName: "Title", flex: 1, cellClass: 'text-center', headerClass: 'text-center' }, 
     { field: "status", headerName: "Status", width: 150, cellClass: 'text-center', headerClass: 'text-center' }

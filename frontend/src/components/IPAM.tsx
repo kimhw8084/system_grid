@@ -2,12 +2,13 @@ import React, { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Network, Trash2, X } from "lucide-react"
 import { AgGridReact } from "ag-grid-react"
+import { apiFetch } from "../api/apiClient"
 
 import { motion } from "framer-motion"
 
 export default function IPAM() {
   const queryClient = useQueryClient()
-  const { data: subnets } = useQuery({ queryKey: ["subnets"], queryFn: async () => (await fetch("/api/v1/ipam/subnets")).json() })
+  const { data: subnets } = useQuery({ queryKey: ["subnets"], queryFn: async () => (await (await apiFetch("/api/v1/ipam/subnets")).json()) })
   const columnDefs = [
     { field: "network_cidr", headerName: "CIDR", flex: 1, cellClass: 'text-center', headerClass: 'text-center' }, 
     { field: "vlan_id", headerName: "VLAN", width: 100, cellClass: 'text-center', headerClass: 'text-center' }, 

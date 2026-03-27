@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
+import { apiFetch } from "../api/apiClient"
 
 export const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
   const queryClient = useQueryClient()
@@ -13,9 +14,8 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/v1/settings/options", {
+      const res = await apiFetch("/api/v1/settings/options", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, label: newValue, value: newValue, metadata_keys: [] })
       })
       return res.json()
@@ -25,15 +25,10 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, value, metadata_keys }: any) => {
-        const res = await fetch(`/api/v1/settings/options/${id}`, {
+        const res = await apiFetch(`/api/v1/settings/options/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ label: value, value: value, metadata_keys: metadata_keys })
         })
-        if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.detail || "Failed to update")
-        }
         return res.json()
     },
     onSuccess: () => { 
@@ -49,11 +44,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-        const res = await fetch(`/api/v1/settings/options/${id}`, { method: "DELETE" })
-        if (!res.ok) {
-            const err = await res.json()
-            throw new Error(err.detail || "Failed to delete")
-        }
+        const res = await apiFetch(`/api/v1/settings/options/${id}`, { method: "DELETE" })
         return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); toast.success("Option Removed") },
@@ -135,7 +126,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 }
 
 export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) => {
-    const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await fetch("/api/v1/settings/options")).json() })
+    const { data: options } = useQuery({ queryKey: ["settings-options"], queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) })
 
     return (
         <AnimatePresence>

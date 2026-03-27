@@ -129,8 +129,7 @@ export default function MonitoringGrid() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center space-x-3">
-                <Activity className="text-blue-500" size={24} />
+              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center">
                 <span>Monitoring Matrix</span>
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Observability Infrastructure & Logic Registry</p>

@@ -578,8 +578,8 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
     const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
     const updateMutation = useMutation({
-        mutationFn: async (data: any) => fetch(`/api/v1/logical-services/${service.id}`, { 
-            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) 
+        mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${service.id}`, { 
+            method: 'PUT', body: JSON.stringify(data) 
         }),
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Configuration Updated') }
     })

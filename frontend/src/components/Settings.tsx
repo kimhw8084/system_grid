@@ -6,6 +6,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
+import { apiFetch } from "../api/apiClient"
 
 const SettingField = ({ label, description, children }: any) => (
   <div className="flex flex-col space-y-2 p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/20 transition-all group">
@@ -25,12 +26,12 @@ export default function SettingsPage() {
   
   const { data: globalSettings, isLoading: isLoadingGlobal } = useQuery({ 
     queryKey: ["global-settings"], 
-    queryFn: async () => (await fetch("/api/v1/settings/global")).json() 
+    queryFn: async () => (await (await apiFetch("/api/v1/settings/global")).json()) 
   })
 
   const { data: uiSettings, isLoading: isLoadingUI } = useQuery({ 
     queryKey: ["ui-settings"], 
-    queryFn: async () => (await fetch("/api/v1/settings/ui")).json() 
+    queryFn: async () => (await (await apiFetch("/api/v1/settings/ui")).json()) 
   })
 
   const [localSettings, setLocalSettings] = useState<any>({})
@@ -46,15 +47,13 @@ export default function SettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const resGlobal = await fetch("/api/v1/settings/global", {
+      const resGlobal = await apiFetch("/api/v1/settings/global", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(localSettings)
       })
       
-      const resUI = await fetch("/api/v1/settings/ui", {
+      const resUI = await apiFetch("/api/v1/settings/ui", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(localUI)
       })
 

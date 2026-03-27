@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Upload, FileText, CheckCircle2, Clipboard, Download, AlertCircle, RefreshCcw, Save } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
+import { apiFetch } from '../api/apiClient'
 
 export default function Intelligence() {
   const [dragActive, setDragActive] = useState(false)
@@ -14,11 +15,7 @@ export default function Intelligence() {
       setStatus('uploading')
       const formData = new FormData()
       formData.append('file', file)
-      const res = await fetch('/api/v1/import/csv', { method: 'POST', body: formData })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Ingestion failure')
-      }
+      const res = await apiFetch('/api/v1/import/csv', { method: 'POST', body: formData })
       return res.json()
     },
     onSuccess: () => {

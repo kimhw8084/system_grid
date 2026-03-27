@@ -20,12 +20,20 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
     result = await db.execute(query)
     services = result.scalars().all()
     
+    if not services:
+        return []
+
+    device_ids = {s.device_id for s in services if s.device_id}
+    devices = {}
+    if device_ids:
+        dev_res = await db.execute(select(models.Device).filter(models.Device.id.in_(list(device_ids))))
+        devices = {d.id: d for d in dev_res.scalars().all()}
+    
     final_result = []
     for s in services:
         device_name = "Floating / Unmounted"
         if s.device_id:
-            dev_res = await db.execute(select(models.Device).filter(models.Device.id == s.device_id))
-            dev = dev_res.scalar_one_or_none()
+            dev = devices.get(s.device_id)
             if dev: device_name = dev.name
             
         final_result.append({

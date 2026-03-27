@@ -7,12 +7,14 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ? endpoint 
     : `${API_BASE_URL.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
   
+  const headers: Record<string, string> = { ...options.headers } as any;
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {

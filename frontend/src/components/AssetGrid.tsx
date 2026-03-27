@@ -57,7 +57,7 @@ const ServiceMetadataModal = ({ isOpen, onClose, service }: { isOpen: boolean, o
 const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
   const { data: services, isLoading } = useQuery({
     queryKey: ['device-services', deviceId],
-    queryFn: async () => (await fetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json()
+    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json())
   })
 
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -799,7 +799,7 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
 
   const mutation = useMutation({
     mutationFn: async (d: any) => {
-      const res = await fetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) })
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', body: JSON.stringify(d) })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
@@ -825,21 +825,20 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
 
 const HWTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
-  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/hardware`)).json() })
+  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   
   const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] }); toast.success('Component removed') },
     onError: (e: any) => toast.error(e.message || 'Failed to delete component')
   })
 
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/devices/hardware/${data.id}`, {
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/hardware/${data.id}`, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     }),
     onSuccess: () => {
@@ -937,7 +936,7 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
 
   const mutation = useMutation({
     mutationFn: async (d: any) => {
-      const res = await fetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(d) })
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', body: JSON.stringify(d) })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
@@ -978,7 +977,7 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
 
 const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
-  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/secrets`)).json() })
+  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
   const [visibleIds, setVisibleIds] = useState<number[]>([])
@@ -989,14 +988,14 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   }
 
   const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); toast.success('Credential removed') },
     onError: (e: any) => toast.error(e.message || 'Failed to delete credential')
   })
 
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/devices/secrets/${data.id}`, {
-        method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/secrets/${data.id}`, {
+        method: 'PUT', body: JSON.stringify(data)
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential updated') },
     onError: (e: any) => toast.error(e.message || 'Failed to update credential')
@@ -1083,7 +1082,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
 
 const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
   
   const types = useMemo(() => [
     { label: 'Depends On', s: 'Consumer', t: 'Provider' },
@@ -1104,9 +1103,8 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
   const mutation = useMutation({
     mutationFn: async (d: any) => {
-      const res = await fetch(`/api/v1/devices/${deviceId}/relationships`, {
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/relationships`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(d)
       })
       if (!res.ok) throw new Error(await res.text())
@@ -1215,8 +1213,8 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
 const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
-  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await fetch(`/api/v1/devices/${deviceId}/relationships`)).json() })
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices/')).json() })
+  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)
@@ -1224,14 +1222,14 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   const currentDevice = useMemo(() => devices?.find((d: any) => d.id === deviceId), [devices, deviceId]);
 
   const delMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); toast.success('Relationship removed') },
     onError: (e: any) => toast.error(e.message || 'Failed to delete relationship')
   })
 
   const updateMutation = useMutation({
-    mutationFn: async (data: any) => fetch(`/api/v1/devices/relationships/${data.id}`, {
-        method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/relationships/${data.id}`, {
+        method: 'PUT', body: JSON.stringify(data)
     }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Relationship updated') },
     onError: (e: any) => toast.error(e.message || 'Failed to update relationship')

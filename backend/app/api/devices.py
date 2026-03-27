@@ -44,35 +44,64 @@ async def sync_device_to_os(device, db: AsyncSession):
 
 @router.get("/")
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.Device)
-    if include_deleted:
-        query = query.filter(models.Device.is_deleted == True)
-    else:
-        query = query.filter(models.Device.is_deleted == False)
+    from sqlalchemy.orm import selectinload
+    # Using joinedload or selectinload for relationships if they were defined in models.
+    # But here we seem to have manual join logic. Let's optimize it.
     
+    query = select(models.Device).filter(models.Device.is_deleted == include_deleted)
     result = await db.execute(query)
     devices = result.scalars().all()
     
+    if not devices:
+        return []
+
+    device_ids = [d.id for d in devices]
+    
+    # Batch fetch locations
+    loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id.in_(device_ids)))
+    locations = {l.device_id: l for l in loc_res.scalars().all()}
+    
+    rack_ids = {l.rack_id for l in locations.values() if l.rack_id}
+    racks = {}
+    if rack_ids:
+        rack_res = await db.execute(select(models.Rack).filter(models.Rack.id.in_(list(rack_ids))))
+        racks = {r.id: r for r in rack_res.scalars().all()}
+    
+    room_ids = {r.room_id for r in racks.values() if r.room_id}
+    rooms = {}
+    if room_ids:
+        room_res = await db.execute(select(models.Room).filter(models.Room.id.in_(list(room_ids))))
+        rooms = {rm.id: rm for rm in room_res.scalars().all()}
+        
+    site_ids = {rm.site_id for rm in rooms.values() if rm.site_id}
+    sites = {}
+    if site_ids:
+        site_res = await db.execute(select(models.Site).filter(models.Site.id.in_(list(site_ids))))
+        sites = {s.id: s for s in site_res.scalars().all()}
+
     final_devices = []
     for d in devices:
-        loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == d.id))
-        loc = loc_res.scalars().first()
-        rack_name, site_name, u_start = None, "Unplaced", None
-        if loc:
-            rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == loc.rack_id))
-            rack = rack_res.scalar_one_or_none()
-            if rack:
-                rack_name = rack.name; u_start = loc.start_unit
-                if rack.room_id:
-                    room_res = await db.execute(select(models.Room).filter(models.Room.id == rack.room_id))
-                    room = room_res.scalar_one_or_none()
-                    if room:
-                        site_res = await db.execute(select(models.Site).filter(models.Site.id == room.site_id))
-                        site = site_res.scalar_one_or_none()
-                        if site: site_name = site.name
-
         device_dict = {c.name: getattr(d, c.name) for c in d.__table__.columns}
-        device_dict.update({"rack_name": rack_name, "site_name": site_name, "u_start": u_start, "size_u": d.size_u})
+        loc = locations.get(d.id)
+        rack_name, site_name, u_start = None, "Unplaced", None
+        
+        if loc:
+            u_start = loc.start_unit
+            rack = racks.get(loc.rack_id)
+            if rack:
+                rack_name = rack.name
+                room = rooms.get(rack.room_id)
+                if room:
+                    site = sites.get(room.site_id)
+                    if site:
+                        site_name = site.name
+
+        device_dict.update({
+            "rack_name": rack_name, 
+            "site_name": site_name, 
+            "u_start": u_start, 
+            "size_u": d.size_u
+        })
         final_devices.append(device_dict)
     return final_devices
 
@@ -92,11 +121,13 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     
     db_device = models.Device(**clean_data)
     db.add(db_device)
-    await db.commit()
-    await db.refresh(db_device)
+    await db.flush() # Flush to get ID
 
     # Sync OS to services
     await sync_device_to_os(db_device, db)
+    
+    await db.commit()
+    await db.refresh(db_device)
 
     # Return full object with joins like get_devices
     loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == db_device.id))
@@ -153,7 +184,8 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
     # Sync OS to services
     await sync_device_to_os(db_device, db)
     
-    await db.commit(); await db.refresh(db_device); 
+    await db.commit()
+    await db.refresh(db_device)
     return db_device
 
 @router.post("/bulk-action")

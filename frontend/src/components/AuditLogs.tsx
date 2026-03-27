@@ -3,6 +3,7 @@ import { AgGridReact } from 'ag-grid-react'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, RefreshCcw } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { apiFetch } from '../api/apiClient'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -15,7 +16,7 @@ export default function AuditLogs() {
       const params = new URLSearchParams()
       if (dateRange.start) params.append('start_date', dateRange.start)
       if (dateRange.end) params.append('end_date', dateRange.end)
-      const res = await fetch(`/api/v1/audit/?${params.toString()}`)
+      const res = await apiFetch(`/api/v1/audit/?${params.toString()}`)
       return res.json()
     }
   })

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import { apiFetch } from '../api/apiClient'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 
@@ -621,8 +622,8 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
 export default function RackElevations() {
   const queryClient = useQueryClient()
 
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await fetch('/api/v1/devices')).json() })
-  const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await fetch('/api/v1/sites/')).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+  const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await (await apiFetch('/api/v1/sites/')).json()) })
 
   const [searchTerm, setSearchTerm] = useState('')
   const [activeSite, setActiveSite] = useState<number | null>(null)
@@ -656,12 +657,12 @@ export default function RackElevations() {
 
   const { data: allRacks } = useQuery({
     queryKey: ['racks-all', activeTab],
-    queryFn: async () => (await fetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json()
+    queryFn: async () => (await (await apiFetch(`/api/v1/racks/?include_deleted=${activeTab === 'deleted'}`)).json())
   })
 
   const { data: activeRacks } = useQuery({
     queryKey: ['racks-active'],
-    queryFn: async () => (await fetch('/api/v1/racks/?include_deleted=false')).json()
+    queryFn: async () => (await (await apiFetch('/api/v1/racks/?include_deleted=false')).json())
   })
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
@@ -670,12 +671,7 @@ export default function RackElevations() {
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/sites/${data.id}` : '/api/v1/sites/'
       const method = data.id ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      if (!res.ok) {
-        const err = await res.json()
-        if (err.detail === 'SITE_NAME_DUPLICATE') throw new Error('DUPLICATE_SITE')
-        throw new Error('FAILED_TO_SAVE_SITE')
-      }
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       return res.json()
     },
     onSuccess: () => {
@@ -691,8 +687,7 @@ export default function RackElevations() {
 
   const siteDeleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/v1/sites/${id}`, { method: 'DELETE' })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'FAILED') }
+      const res = await apiFetch(`/api/v1/sites/${id}`, { method: 'DELETE' })
       return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sites'] }); toast.success('Site decommissioned'); setActiveSite(null) },
@@ -703,13 +698,7 @@ export default function RackElevations() {
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/racks/${data.id}` : '/api/v1/racks/'
       const method = data.id ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
-      if (!res.ok) {
-        const err = await res.json()
-        if (err.detail?.includes('RACK_NAME_DUPLICATE')) throw new Error('DUPLICATE_RACK')
-        if (err.detail?.includes('RACK_SHRINK_CONFLICT')) throw new Error('SHRINK_CONFLICT')
-        throw new Error(err.detail || 'Failed to save rack')
-      }
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       return res.json()
     },
     onSuccess: () => {
@@ -729,12 +718,7 @@ export default function RackElevations() {
       const { rackId, ...rest } = data
       if (!rest.device_id) throw new Error('DEVICE_REQUIRED')
       const payload = { ...rest, size_u: rest.size_u || 1 }
-      const res = await fetch(`/api/v1/racks/${rackId}/mount`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (!res.ok) {
-        const err = await res.json()
-        if (res.status === 409) throw { type: 'RELOCATION_CONFLICT', detail: err.detail, payload, rackId }
-        throw new Error(err.detail || 'Mount failed')
-      }
+      const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, { method: 'POST', body: JSON.stringify(payload) })
       return res.json()
     },
     onSuccess: () => {
@@ -754,8 +738,7 @@ export default function RackElevations() {
 
   const unmountMutation = useMutation({
     mutationFn: async (deviceId: number) => {
-      const res = await fetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Unmount failed')
+      const res = await apiFetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
       return res.json()
     },
     onSuccess: () => {
@@ -769,11 +752,10 @@ export default function RackElevations() {
 
   const updateMountMutation = useMutation({
     mutationFn: async ({ rackId, device_id, start_u, size_u }: any) => {
-      const res = await fetch(`/api/v1/racks/${rackId}/mount`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, {
+        method: 'POST',
         body: JSON.stringify({ device_id, start_u, size_u, relocate: true })
       })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Update failed') }
       return res.json()
     },
     onSuccess: () => {
@@ -786,14 +768,14 @@ export default function RackElevations() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/v1/racks/${id}`, { method: 'DELETE' }),
+    mutationFn: async (id: number) => apiFetch(`/api/v1/racks/${id}`, { method: 'DELETE' }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Rack decommissioned') }
   })
 
   const bulkActionMutation = useMutation({
     mutationFn: async ({ action, ids, payload }: any) => {
-      const res = await fetch('/api/v1/racks/bulk-action', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await apiFetch('/api/v1/racks/bulk-action', {
+        method: 'POST',
         body: JSON.stringify({ ids, action, payload })
       })
       return res.json()
@@ -885,20 +867,19 @@ export default function RackElevations() {
   }
 
   const siteReorderMutation = useMutation({
-    mutationFn: async (ids: number[]) => fetch('/api/v1/sites/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }),
+    mutationFn: async (ids: number[]) => apiFetch('/api/v1/sites/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sites'] })
   })
 
   const rackReorderMutation = useMutation({
-    mutationFn: async (ids: number[]) => fetch('/api/v1/racks/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) }),
+    mutationFn: async (ids: number[]) => apiFetch('/api/v1/racks/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks-all'] })
   })
 
   const updateDeviceMutation = useMutation({
     mutationFn: async (data: any) => {
       const { id, ...payload } = data
-      const res = await fetch(`/api/v1/devices/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-      if (!res.ok) throw new Error('Update failed')
+      const res = await apiFetch(`/api/v1/devices/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
       return res.json()
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Device power updated'); setManagingDevice(null) },
