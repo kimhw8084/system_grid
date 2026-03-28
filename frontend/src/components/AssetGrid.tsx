@@ -1,12 +1,7 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { 
-  Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, 
-  Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, 
-  AlertCircle, Layers, Maximize2, Columns, Layout, Table as TableIcon, Zap, 
-  Activity, Shield, MousePointer2, ChevronRight, BarChart3, Terminal, Server
-} from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -14,41 +9,6 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
-
-// --- Constants ---
-
-const ASSET_TYPES = [
-    { value: 'Physical', label: 'Physical' },
-    { value: 'Virtual', label: 'Virtual' },
-    { value: 'Storage', label: 'Storage' },
-    { value: 'Switch', label: 'Switch' },
-    { value: 'Firewall', label: 'Firewall' },
-    { value: 'Load Balancer', label: 'Load Balancer' },
-    { value: 'PDU', label: 'PDU' },
-    { value: 'UPS', label: 'UPS' },
-    { value: 'Patch Panel', label: 'Patch Panel' }
-]
-
-const STATUS_ITEMS = [
-    { value: 'Planned', label: 'Planned' },
-    { value: 'Active', label: 'Active' },
-    { value: 'Maintenance', label: 'Maintenance' },
-    { value: 'Standby', label: 'Standby' },
-    { value: 'Offline', label: 'Offline' },
-    { value: 'Decommissioned', label: 'Decommissioned' }
-]
-
-const ENVIRONMENT_ITEMS = [
-    { value: 'Production', label: 'Production' },
-    { value: 'Staging', label: 'Staging' },
-    { value: 'QA', label: 'QA' },
-    { value: 'Dev', label: 'Dev' },
-    { value: 'DR', label: 'DR' },
-    { value: 'Lab', label: 'Lab' },
-    { value: 'Sandbox', label: 'Sandbox' }
-]
-
-// --- Shared Components ---
 
 const SharedServiceModals = ({ 
   activeDetails, 
@@ -186,75 +146,346 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
     </div>
   )
 }
+const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOpen: boolean, onClose: () => void, onApply: (status: string) => void, options: any[], count?: number }) => {
+  const [selectedStatus, setSelectedStatus] = useState('')
+
+  useEffect(() => {
+    if (isOpen) setSelectedStatus('')
+  }, [isOpen])
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+               <Tag size={24}/> <span>Update Status</span>
+            </h2>
+            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
+          </div>
+          <StyledSelect
+            label="Target Operational State"
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            options={STATUS_ITEMS}
+            placeholder="Select Status..."
+          />
+          <div className="flex space-x-3 pt-2">
+             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+             <button 
+               disabled={!selectedStatus}
+               onClick={() => onApply(selectedStatus)} 
+               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+             >
+                Apply to Selection
+             </button>
+          </div>
+       </motion.div>
+    </div>
+  )
+}
+
+const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOpen: boolean, onClose: () => void, onApply: (env: string) => void, options: any[], count?: number }) => {
+  const [selectedEnv, setSelectedEnv] = useState('')
+
+  useEffect(() => {
+    if (isOpen) setSelectedEnv('')
+  }, [isOpen])
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+               <Globe size={24}/> <span>Update Environment</span>
+            </h2>
+            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
+          </div>
+          <StyledSelect
+            label="Target Environment"
+            value={selectedEnv}
+            onChange={e => setSelectedEnv(e.target.value)}
+            options={ENVIRONMENT_ITEMS}
+            placeholder="Select Environment..."
+          />
+          <div className="flex space-x-3 pt-2">
+             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+             <button
+               disabled={!selectedEnv}
+               onClick={() => onApply(selectedEnv)}
+               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+             >
+                Apply to Selection
+             </button>
+          </div>
+       </motion.div>
+    </div>
+  )
+}
+
+const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
+  const [mode, setMode] = useState<'table' | 'json'>('table')
+  const [tableRows, setTableRows] = useState<{key: string, value: string}[]>([])
+  const [jsonValue, setJsonValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+      setTableRows(Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) })))
+      setJsonValue(JSON.stringify(obj, null, 2))
+    } catch {
+      setTableRows([])
+      setJsonValue('')
+      setError('Invalid metadata format')
+      onError?.('Invalid metadata format')
+    }
+  }, [JSON.stringify(value), onError])
+
+  const validateAndNotify = (rows: {key: string, value: string}[]) => {
+    const obj: any = {}
+    const keys = new Set()
+    let hasDuplicate = false
+    
+    rows.forEach(r => {
+      if (r.key) {
+        if (keys.has(r.key)) hasDuplicate = true
+        keys.add(r.key)
+        obj[r.key] = r.value
+      }
+    })
+
+    if (hasDuplicate) {
+        setError("Duplicate keys detected")
+        onError?.("Duplicate keys detected")
+        return false
+    } else {
+        setError(null)
+        onError?.(null)
+        setJsonValue(JSON.stringify(obj, null, 2))
+        onChange(obj)
+        return true
+    }
+  }
+
+  const syncFromJSON = (json: string) => {
+    try {
+        const obj = JSON.parse(json)
+        const keys = Object.keys(obj)
+        if (new Set(keys).size !== keys.length) {
+            setError("Duplicate keys in JSON")
+            onError?.("Duplicate keys in JSON")
+            return false
+        }
+        const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
+        setTableRows(rows)
+        setError(null)
+        onError?.(null)
+        onChange(obj)
+        return true
+    } catch (e) {
+        setError("Invalid JSON format")
+        onError?.("Invalid JSON format")
+        return false
+    }
+  }
+
+  return (
+    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+         <div className="flex items-center space-x-3">
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Metadata</span>
+            {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-black uppercase tracking-tighter">{error}</span></div>}
+         </div>
+         <div className="flex bg-black/40 rounded-lg p-1">
+            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
+            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+         </div>
+      </div>
+      <div className="p-4 min-h-[120px]">
+        {mode === 'table' ? (
+          <div className="space-y-2">
+            {tableRows.map((row, i) => (
+              <div key={i} className="flex items-center space-x-2">
+                <input value={row.key} onChange={e => {
+                  const n = [...tableRows]; n[i].key = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error?.includes('Duplicate') ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
+                <input value={row.value} onChange={e => {
+                  const n = [...tableRows]; n[i].value = e.target.value; 
+                  setTableRows(n); validateAndNotify(n);
+                }} placeholder="Value" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
+                <button onClick={() => {
+                    const n = tableRows.filter((_, idx) => idx !== i);
+                    setTableRows(n); validateAndNotify(n);
+                }} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
+              </div>
+            ))}
+            <button onClick={() => {
+                const n = [...tableRows, { key: '', value: '' }];
+                setTableRows(n);
+            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
+          </div>
+        ) : (
+          <textarea 
+            value={jsonValue} 
+            onChange={e => {
+                setJsonValue(e.target.value);
+                syncFromJSON(e.target.value);
+            }} 
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+const MetadataViewer = ({ data }: { data: any }) => {
+  let obj: any = {}
+  try {
+    obj = typeof data === 'string' ? JSON.parse(data || '{}') : (data || {})
+  } catch {
+    obj = {}
+  }
+  return (
+    <div className="p-6 space-y-4">
+      <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
+      <div className="bg-slate-900/50 rounded-xl border border-white/5 overflow-hidden">
+        <table className="w-full text-[10px]">
+          <thead className="bg-white/5 border-b border-white/5">
+            <tr>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Key</th>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Value</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {Object.entries(obj).map(([k, v]) => (
+              <tr key={k} className="hover:bg-white/5 transition-colors">
+                <td className="px-4 py-2 font-black uppercase text-slate-400">{k}</td>
+                <td className="px-4 py-2 text-slate-200">{String(v)}</td>
+              </tr>
+            ))}
+            {Object.keys(obj).length === 0 && (
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No additional payload data</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 export default function AssetGrid() {
   const queryClient = useQueryClient()
-  const [viewMode, setViewMode] = useState<'grid' | 'split'>('grid')
-  const [activeTab, setActiveTab] = useState('inventory')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [activeDetails, setActiveDetails] = useState<any>(null)
   const [activeModal, setActiveModal] = useState<any>(null)
-  const [showConfig, setShowConfig] = useState(false)
+  const [activeDetails, setActiveDetails] = useState<any>(null)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+  const [showConfig, setShowConfig] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
-  // Split View Hover State
-  const [hoveredAsset, setHoveredAsset] = useState<any>(null)
-
-  // Shared Service Modal States
+  // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
-
-  const { data: assets, isLoading } = useQuery({ 
-    queryKey: ['assets'], 
-    queryFn: async () => (await apiFetch('/api/v1/devices/?include_deleted=true')).json() 
-  })
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
-  const { data: devicesAll } = useQuery({ 
+  const { data: devices } = useQuery({ 
     queryKey: ["devices-list-all"], 
     queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
   })
-
-  const inventoryAssets = useMemo(() => assets?.filter((a: any) => !a.is_deleted) || [], [assets])
-  const deletedAssets = useMemo(() => assets?.filter((a: any) => a.is_deleted) || [], [assets])
-  const currentAssets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
-
-  // Set initial hovered asset for split view
-  useEffect(() => {
-    if (currentAssets.length > 0 && !hoveredAsset) {
-      setHoveredAsset(currentAssets[0])
-    }
-  }, [currentAssets, hoveredAsset])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (showBulkMenu && !target.closest('.bulk-menu-container')) {
+        setShowBulkMenu(false)
+      }
+    }
+    if (showBulkMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showBulkMenu])
+
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+  const { data: allAssets, isLoading } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/?include_deleted=true')).json())
+  })
+
+  const { inventoryAssets, deletedAssets } = useMemo(() => {
+    if (!allAssets) return { inventoryAssets: [], deletedAssets: [] }
+    return {
+      inventoryAssets: allAssets.filter((a: any) => !a.is_deleted),
+      deletedAssets: allAssets.filter((a: any) => a.is_deleted)
+    }
+  }, [allAssets])
+
+  const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
+
   const mutation = useMutation({
-    mutationFn: async ({ data, id }: any) => {
-      const url = id ? `/api/v1/devices/${id}` : '/api/v1/devices/'
-      const method = id ? 'PUT' : 'POST'
-      return (await apiFetch(url, { method, body: JSON.stringify(data) })).json()
+    mutationFn: async ({ data }: any) => {
+      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
+      const method = data.id ? 'PUT' : 'POST'
+      try {
+        const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+        return res.json()
+      } catch (e: any) {
+        if (e.message.includes('409') || e.message.includes('DUPLICATE')) {
+          throw new Error('DUPLICATE_HOSTNAME')
+        }
+        throw e
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-      setActiveModal(null); setActiveDetails(null)
-      toast.success('Asset Matrix Synchronized')
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      toast.success('System Registry Updated')
+      setActiveModal(null)
+    },
+    onError: (e: any) => {
+      if (e.message === 'DUPLICATE_HOSTNAME') toast.error('ERROR: Hostname already exists in registry')
+      else toast.error(e.message)
     }
   })
 
   const bulkMutation = useMutation({
-    mutationFn: async ({ action, payload }: any) => {
-      const res = await apiFetch('/api/v1/devices/bulk-action', { 
-        method: 'POST', body: JSON.stringify({ ids: selectedIds, action, payload }) 
+    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      const res = await apiFetch('/api/v1/devices/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: idsToUse, action, payload })
       })
+      if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] })
-      setSelectedIds([]); setShowBulkMenu(false); toast.success('Operation Complete')
-    }
+    onSuccess: (data: any, variables: any) => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      setSelectedIds([])
+      setShowBulkMenu(false)
+      setIsBulkStatusOpen(false)
+      if (variables.action === 'restore') {
+        if (data.conflicts?.length > 0) {
+            toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
+        } else {
+            toast.success(`Restored ${data.restored.length} assets successfully.`)
+        }
+      } else {
+        toast.success('Bulk Operation Complete')
+      }
+    },
+    onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
   })
 
   const columnDefs = useMemo(() => [
@@ -349,16 +580,22 @@ export default function AssetGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => setActiveDetails(p.data)} className="p-1.5 hover:bg-blue-600/20 text-blue-400 rounded-lg"><Maximize2 size={14}/></button>
-           <button onClick={() => setActiveModal(p.data)} className="p-1.5 hover:bg-emerald-600/20 text-emerald-400 rounded-lg"><Edit2 size={14}/></button>
+           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Eye size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+               {activeTab !== 'deleted' ? (
+                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               ) : (
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               )}
+           </div>
         </div>
       )
     }
-  ], [])
+  ], [activeTab]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      {/* View Switcher Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -367,21 +604,14 @@ export default function AssetGrid() {
            </div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
                 <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Operational ({inventoryAssets.length})
+                    Inventory ({inventoryAssets.length})
                 </button>
-                <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Purged ({deletedAssets.length})
+                <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Soft Deleted ({deletedAssets.length})
                 </button>
            </div>
         </div>
-
         <div className="flex items-center space-x-3">
-          {/* Toggle View Mode */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-             <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Grid Mode"><TableIcon size={16}/></button>
-             <button onClick={() => setViewMode('split')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'split' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Split Mode"><Columns size={16}/></button>
-          </div>
-
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
@@ -403,8 +633,8 @@ export default function AssetGrid() {
                      <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
                    ) : (
                      <>
-                        <button onClick={() => { /* setIsBulkStatusOpen(true); */ setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                        <button onClick={() => { /* setIsBulkEnvOpen(true); */ setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
+                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                        <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
                      </>
                    )}
                    <div className="h-px bg-white/5 mx-2 my-1" />
@@ -422,192 +652,110 @@ export default function AssetGrid() {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {viewMode === 'grid' ? (
-          <motion.div 
-            key="grid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative"
-          >
-            {isLoading && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400"><RefreshCcw size={32} className="animate-spin" /><p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing asset registry...</p></div>}
-            <AgGridReact 
-              rowData={currentAssets} columnDefs={columnDefs as any}
-              defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
-              rowSelection="multiple" headerHeight={28} rowHeight={28}
-              onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
-              quickFilterText={searchTerm} animateRows={true}
-            />
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="split" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="flex-1 flex space-x-4 min-h-0"
-          >
-             {/* Master List (Left) */}
-             <div className="w-80 glass-panel rounded-2xl flex flex-col overflow-hidden bg-slate-900/50">
-                <div className="p-4 border-b border-white/5 bg-black/20 flex items-center justify-between">
-                   <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">Vector Queue</h3>
-                   <span className="text-[9px] font-black text-slate-600">{currentAssets.length} Nodes</span>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                   {currentAssets.map((a: any) => (
-                     <div 
-                       key={a.id} onMouseEnter={() => setHoveredAsset(a)}
-                       onClick={() => setActiveDetails(a)}
-                       className={`p-3 rounded-xl border cursor-pointer transition-all ${hoveredAsset?.id === a.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
-                     >
-                        <div className="flex items-center justify-between">
-                           <span className="text-[11px] font-black uppercase italic tracking-tighter">{a.name}</span>
-                           <span className="text-[8px] font-bold opacity-60">{a.system}</span>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
-             
-             {/* HUD Detail (Right) */}
-             <div className="flex-1 flex flex-col min-h-0 space-y-4">
-                <AnimatePresence mode="wait">
-                   {hoveredAsset && (
-                     <motion.div 
-                       key={hoveredAsset.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
-                       className="flex-1 glass-panel rounded-3xl border-white/5 p-8 relative overflow-hidden flex flex-col shadow-2xl bg-black/20"
-                     >
-                        <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                           <BarChart3 size={200} className="text-blue-400" />
-                        </div>
-                        
-                        <div className="relative z-10 flex flex-col h-full">
-                           <div className="flex items-start justify-between mb-8">
-                              <div>
-                                 <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">{hoveredAsset.name}</h2>
-                                 <div className="flex items-center space-x-3 mt-3">
-                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${hoveredAsset.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-slate-400 border-white/10'}`}>{hoveredAsset.status}</span>
-                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{hoveredAsset.type} // {hoveredAsset.environment}</span>
-                                 </div>
-                              </div>
-                              <div className="flex space-x-2">
-                                 <button onClick={() => setActiveModal(hoveredAsset)} className="p-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Edit2 size={18}/></button>
-                                 <button onClick={() => setActiveDetails(hoveredAsset)} className="p-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Maximize2 size={18}/></button>
-                              </div>
-                           </div>
-                           
-                           <div className="grid grid-cols-2 gap-8 mb-8">
-                              <div className="space-y-4">
-                                 <div className="space-y-1">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Administrative Owner</span>
-                                    <p className="text-sm font-bold text-slate-200 uppercase">{hoveredAsset.owner || 'N/A'} // {hoveredAsset.business_unit || 'N/A'}</p>
-                                 </div>
-                                 <div className="space-y-1">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Primary Network Interface</span>
-                                    <p className="text-xl font-mono font-black text-blue-400 italic leading-none">{hoveredAsset.management_ip || 'VOID'}</p>
-                                 </div>
-                              </div>
-                              <div className="space-y-4">
-                                 <div className="space-y-1">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Hardware Specifications</span>
-                                    <p className="text-sm font-bold text-slate-200 uppercase">{hoveredAsset.manufacturer} {hoveredAsset.model}</p>
-                                 </div>
-                                 <div className="space-y-1">
-                                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Matrix Registry Info</span>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase">SN: {hoveredAsset.serial_number} // AT: {hoveredAsset.asset_tag}</p>
-                                 </div>
-                              </div>
-                           </div>
-                           
-                           <div className="flex-1 bg-black/40 rounded-3xl border border-white/5 p-6 flex items-center justify-center text-center shadow-inner group overflow-hidden">
-                              <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="relative z-10 flex flex-col items-center">
-                                 <Terminal size={32} className="text-blue-500/40 mb-3 group-hover:text-blue-400 transition-colors" />
-                                 <p className="text-[9px] font-black uppercase text-slate-600 tracking-[0.4em]">Live Intelligence Matrix Ready</p>
-                                 <p className="text-[8px] font-bold text-slate-700 uppercase mt-1 italic opacity-60">Scanning for active telemetry vectors...</p>
-                              </div>
-                           </div>
-                        </div>
-                     </motion.div>
-                   )}
-                </AnimatePresence>
-             </div>
-          </motion.div>
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
+             <RefreshCcw size={32} className="animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing asset registry...</p>
+          </div>
         )}
-      </AnimatePresence>
+        <AgGridReact 
+          rowData={assets || []} 
+          columnDefs={columnDefs} 
+          rowSelection="multiple"
+          headerHeight={28}
+          rowHeight={28}
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          quickFilterText={searchTerm}
+        />
+      </div>
 
-      <SharedServiceModals 
-        activeDetails={activeServiceDetails} setActiveDetails={setActiveServiceDetails}
-        activeEdit={activeServiceEdit} setActiveEdit={setActiveServiceEdit}
-        options={options} devices={devicesAll}
-        onServiceUpdate={() => queryClient.invalidateQueries({ queryKey: ['device-services'] })}
+      <StatusBulkUpdateModal
+        isOpen={isBulkStatusOpen}
+        onClose={() => setIsBulkStatusOpen(false)}
+        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
+        options={options || []}
+        count={selectedIds.length}
       />
 
-      <AnimatePresence>
-        {activeDetails && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-6xl max-h-[90vh] flex flex-col p-10 rounded-[40px] border-blue-500/30">
-                <div className="flex items-center justify-between border-b border-white/5 pb-8 mb-8">
-                   <div className="flex items-center space-x-4">
-                      <div className="p-4 bg-blue-600/10 rounded-[2rem] text-blue-400 shadow-inner"><Server size={28}/></div>
-                      <div>
-                         <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{activeDetails.name}</h2>
-                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">{activeDetails.system} // {activeDetails.type} Node</p>
-                      </div>
-                   </div>
-                   <button onClick={() => setActiveDetails(null)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 transition-all"><X size={28}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                   <AssetDetailsView 
-                     device={activeDetails} 
-                     options={options} 
-                     onViewServiceDetails={(s:any)=>setActiveServiceDetails(s)}
-                     onEditService={(s:any)=>setActiveServiceEdit(s)}
-                   />
-                </div>
-             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {activeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30">
-                <div className="flex items-center justify-between border-b border-white/5 pb-8 mb-8">
-                   <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white flex items-center space-x-4">
-                      <div className="p-4 bg-blue-600/10 rounded-[2rem] text-blue-400 shadow-inner"><Server size={24}/></div>
-                      <span>{activeModal.id ? 'Modify Registry Entry' : 'Register New Matrix Node'}</span>
-                   </h2>
-                   <button onClick={() => setActiveModal(null)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 transition-all"><X size={28}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
-                   <AssetForm 
-                     initialData={activeModal} 
-                     onSave={({data}: any) => mutation.mutate({ data, id: activeModal.id })} 
-                     options={options} 
-                     isSaving={mutation.isPending} 
-                   />
-                </div>
-             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <ConfigRegistryModal 
-        isOpen={showConfig} 
-        onClose={() => setShowConfig(false)} 
-        title="Asset Registry Enumerations"
-        sections={[
-            { title: "Node Types", category: "DeviceType", icon: Cpu },
-            { title: "Status Options", category: "Status", icon: RefreshCcw },
-            { title: "Environments", category: "Environment", icon: Globe },
-            { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
-            { title: "Business Units", category: "BusinessUnit", icon: Layers }
-        ]}
+      <BulkEnvUpdateModal
+        isOpen={isBulkEnvOpen}
+        onClose={() => setIsBulkEnvOpen(false)}
+        onApply={(e) => bulkMutation.mutate({ action: 'update', payload: { environment: e } })}
+        options={options || []}
+        count={selectedIds.length}
       />
 
       <ConfirmationModal 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
+
+      <AnimatePresence>
+        {activeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                     <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
+                  </h2>
+                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               
+               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <div>
+                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
+                  </div>
+                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               
+               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
+                 <AssetDetailsView 
+                   device={activeDetails} 
+                   options={options} 
+                   onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
+                   onEditService={(s:any) => setActiveServiceEdit(s)}
+                 />
+               </div>
+               </motion.div>
+               </div>
+               )}
+               </AnimatePresence>
+
+               <SharedServiceModals 
+               activeDetails={activeServiceDetails}
+               setActiveDetails={setActiveServiceDetails}
+               activeEdit={activeServiceEdit}
+               setActiveEdit={setActiveServiceEdit}
+               options={options}
+               devices={devices}
+               onServiceUpdate={() => {
+               queryClient.invalidateQueries({ queryKey: ['device-services'] })
+               }}
+               />
+      <ConfigRegistryModal
+        isOpen={showConfig}
+        onClose={() => setShowConfig(false)}
+        title="Asset Registry Enumerations"
+        sections={[
+            { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
+            { title: "Business Units", category: "BusinessUnit", icon: Sliders },
+        ]}
       />
 
       <style>{`
@@ -622,48 +770,57 @@ export default function AssetGrid() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
       `}</style>
     </div>
   )
 }
 
-const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: any) => {
+const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
+    const [metadata, setMetadata] = useState(device.metadata_json || {})
+    const [metadataError, setMetadataError] = useState<string | null>(null)
 
-    const mutation = useMutation({
-        mutationFn: async ({ data, id }: any) => {
-            const res = await apiFetch(`/api/v1/devices/${id}`, {
-                method: 'PUT', body: JSON.stringify(data)
+    const metaMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
+                method: 'PUT', body: JSON.stringify({ metadata_json: data })
             })
             if (!res.ok) throw new Error(await res.text())
             return res.json()
         },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assets'] }); toast.success('Intelligence Matrix Synchronized') },
-        onError: (e: any) => toast.error(e.message || 'Failed to save asset')
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Metadata saved') },
+        onError: (e: any) => toast.error(e.message || 'Failed to save metadata')
     })
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'config'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
                 </div>
+                {tab === 'metadata' && (
+                    <button
+                      disabled={!!metadataError || metaMutation.isPending}
+                      onClick={() => {
+                        metaMutation.mutate(metadata);
+                      }}
+                      className={`px-4 py-2 ${metadataError || metaMutation.isPending ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600'} text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center space-x-2`}
+                    >
+                      {metaMutation.isPending && <RefreshCcw size={12} className="animate-spin" />}
+                      <span>Save Metadata</span>
+                    </button>
+                )}
             </div>
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                {tab === 'config' && (
+                {tab === 'metadata' && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <AssetForm 
-                      initialData={device} 
-                      options={options} 
-                      onSave={({data}: any) => mutation.mutate({ data, id: device.id })} 
-                      isSaving={mutation.isPending} 
-                    />
+                    <MetadataEditor value={metadata} onChange={setMetadata} onError={setMetadataError} />
                   </div>
                 )}
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
@@ -681,49 +838,596 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
     )
 }
 
-const HWTab = ({ deviceId }: any) => (
-  <div className="py-12 text-center opacity-30 flex flex-col items-center">
-     <Cpu size={32} className="mb-2" />
-     <p className="text-[9px] font-black uppercase tracking-widest italic">Hardware Vector Null</p>
-  </div>
-)
-const SecretsTab = ({ deviceId }: any) => (
-  <div className="py-12 text-center opacity-30 flex flex-col items-center">
-     <Shield size={32} className="mb-2" />
-     <p className="text-[9px] font-black uppercase tracking-widest italic">Encrypted Matrix Restricted</p>
-  </div>
-)
-const RelationshipsTab = ({ deviceId }: any) => (
-  <div className="py-12 text-center opacity-30 flex flex-col items-center">
-     <ArrowRightLeft size={32} className="mb-2" />
-     <p className="text-[9px] font-black uppercase tracking-widest italic">Relationship Graph Not Initialized</p>
-  </div>
-)
+const HWTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const [newComp, setNewComp] = useState({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 })
 
-const MetadataEditor = ({ value, onChange, onError }: any) => {
-  const [json, setJson] = useState(() => JSON.stringify(value || {}, null, 2))
-  useEffect(() => {
-    try {
-      const obj = JSON.parse(json)
-      onChange(obj); onError(null)
-    } catch (e) {
-      onError("Invalid JSON")
-    }
-  }, [json])
+  const mutation = useMutation({
+    mutationFn: async (d: any) => {
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', body: JSON.stringify(d) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] }); setNewComp({ category: 'CPU', name: '', manufacturer: '', specs: '', count: 1 }) }
+  })
 
   return (
-    <div className="space-y-3">
-       <div className="flex items-center space-x-2 text-blue-400">
-          <FileJson size={16} />
-          <span className="text-[10px] font-black uppercase tracking-widest">Metadata JSON Payload</span>
-       </div>
-       <textarea 
-         value={json} onChange={e=>setJson(e.target.value)} 
-         className="w-full h-64 bg-black/40 border border-white/5 rounded-2xl p-6 text-[11px] font-mono text-blue-300 outline-none focus:border-blue-500 shadow-inner"
-       />
+    <div className="space-y-4">
+      <div className="grid grid-cols-6 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+         <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
+            <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
+         </select>
+         <input value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} placeholder="Component Name" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input value={newComp.manufacturer} onChange={e => setNewComp({...newComp, manufacturer: e.target.value})} placeholder="Manufacturer" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input value={newComp.specs} onChange={e => setNewComp({...newComp, specs: e.target.value})} placeholder="Specifications" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <input type="number" value={newComp.count} onChange={e => setNewComp({...newComp, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
+         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Add</button>
+      </div>
+      <HWTable deviceId={deviceId} />
     </div>
   )
 }
+
+const HWTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+  
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] }); toast.success('Component removed') },
+    onError: (e: any) => toast.error(e.message || 'Failed to delete component')
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/hardware/${data.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    }),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['device-hw', deviceId] })
+        setEditingId(null)
+        toast.success('Component Updated')
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to update component')
+  })
+
+  const catOptions = [
+    { value: 'CPU', label: 'CPU' },
+    { value: 'Memory', label: 'Memory' },
+    { value: 'Card', label: 'Card' },
+    { value: 'Disk', label: 'Disk' },
+    { value: 'NIC', label: 'NIC' },
+    { value: 'PSU', label: 'PSU' }
+  ]
+
+  return (
+    <div className="p-0">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Category</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Component</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Specs</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Qty</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {hardware?.map((h: any) => (
+            <tr key={h.id} className="hover:bg-white/5 transition-colors">
+              <td className="px-4 py-2 text-center">
+                {editingId === h.id ? (
+                    <StyledSelect
+                        value={editData.category}
+                        onChange={e => setEditData({...editData, category: e.target.value})}
+                        options={catOptions}
+                        className="w-24 mx-auto"
+                    />
+                ) : (
+                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
+                )}
+              </td>
+              <td className="px-4 py-2 font-bold text-slate-200 text-center">
+                {editingId === h.id ? (
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                ) : h.name}
+              </td>
+              <td className="px-4 py-2 text-slate-500 text-center">
+                {editingId === h.id ? (
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                ) : h.specs}
+              </td>
+              <td className="px-4 py-2 font-mono text-center text-slate-400">
+                {editingId === h.id ? (
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
+                ) : `x${h.count}`}
+              </td>
+              <td className="px-4 py-2 text-center">
+                {editingId === h.id ? (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => { setEditingId(h.id); setEditData({...h}); }} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                        <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Component', message: 'Purge this hardware component?', onConfirm: () => delMutation.mutate(h.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
+                    </div>
+                )}
+              </td>
+            </tr>
+          ))}
+          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
+        </tbody>
+      </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
+    </div>
+  )
+}
+
+const SecretsTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const [newSec, setNewSec] = useState({ secret_type: 'Root Password', username: '', encrypted_payload: '' })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => {
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', body: JSON.stringify(d) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setNewSec({ secret_type: 'Root Password', username: '', encrypted_payload: '' }); toast.success('Credential added') }
+  })
+
+  const secOptions = [
+    { value: 'Root Password', label: 'Root Password' },
+    { value: 'Admin API Key', label: 'Admin API Key' },
+    { value: 'Service Account', label: 'Service Account' },
+    { value: 'SSH Key', label: 'SSH Key' },
+    { value: 'ILO/IDRAC', label: 'ILO/IDRAC' }
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-4 gap-2 bg-white/5 p-3 rounded-xl border border-white/5 items-end">
+         <StyledSelect
+            value={newSec.secret_type}
+            onChange={e => setNewSec({...newSec, secret_type: e.target.value})}
+            options={secOptions}
+            label="Secret Type"
+         />
+         <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Identity</label>
+            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+         </div>
+         <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
+            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+         </div>
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add Credential</button>
+      </div>
+      <SecretsTable deviceId={deviceId} />
+    </div>
+  )
+}
+
+const SecretsTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+  const [visibleIds, setVisibleIds] = useState<number[]>([])
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+
+  const toggleVisibility = (id: number) => {
+    setVisibleIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); toast.success('Credential removed') },
+    onError: (e: any) => toast.error(e.message || 'Failed to delete credential')
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/secrets/${data.id}`, {
+        method: 'PUT', body: JSON.stringify(data)
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential updated') },
+    onError: (e: any) => toast.error(e.message || 'Failed to update credential')
+  })
+
+  const secOptions = [
+    { value: 'Root Password', label: 'Root Password' },
+    { value: 'Admin API Key', label: 'Admin API Key' },
+    { value: 'Service Account', label: 'Service Account' },
+    { value: 'SSH Key', label: 'SSH Key' },
+    { value: 'ILO/IDRAC', label: 'ILO/IDRAC' }
+  ]
+
+  return (
+    <div className="p-0">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Identity</th>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Payload</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {secrets?.map((s: any) => (
+            <tr key={s.id} className="hover:bg-white/5 transition-colors">
+              <td className="px-4 py-2 font-black uppercase text-amber-500/80">
+                {editingId === s.id ? (
+                    <StyledSelect
+                        value={editData.secret_type}
+                        onChange={e => setEditData({...editData, secret_type: e.target.value})}
+                        options={secOptions}
+                        className="w-32"
+                    />
+                ) : s.secret_type}
+              </td>
+              <td className="px-4 py-2 font-bold text-slate-200">
+                {editingId === s.id ? (
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                ) : s.username}
+              </td>
+              <td className="px-4 py-2 font-mono text-slate-400">
+                {editingId === s.id ? (
+                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
+                ) : (
+                    <div className="flex items-center space-x-3 group">
+                       <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
+                       <button onClick={() => toggleVisibility(s.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-blue-400">
+                          {visibleIds.includes(s.id) ? <EyeOff size={14}/> : <Eye size={14}/>}
+                       </button>
+                    </div>
+                )}
+              </td>
+              <td className="px-4 py-2 text-center">
+                {editingId === s.id ? (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => { setEditingId(s.id); setEditData({...s}); }} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                        <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Credential', message: 'Remove this credential?', onConfirm: () => delMutation.mutate(s.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
+                    </div>
+                )}
+              </td>
+            </tr>
+          ))}
+          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No credentials stored</td></tr>}
+        </tbody>
+      </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
+    </div>
+  )
+}
+
+const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+  
+  const types = useMemo(() => [
+    { label: 'Depends On', s: 'Consumer', t: 'Provider' },
+    { label: 'Hosts', s: 'Hypervisor', t: 'Guest' },
+    { label: 'Backs Up', s: 'Source', t: 'Target' },
+    { label: 'Replicates to', s: 'Primary', t: 'Replica' },
+    { label: 'Cluster Member', s: 'Node', t: 'Peer' }
+  ], [])
+
+  const currentDevice = useMemo(() => devices?.find((d: any) => d.id === deviceId), [devices, deviceId]);
+
+  const [newRel, setNewRel] = useState({ 
+    target_device_id: '', 
+    relationship_type: 'Depends On', 
+    source_role: 'Consumer', 
+    target_role: 'Provider' 
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (d: any) => {
+      const res = await apiFetch(`/api/v1/devices/${deviceId}/relationships`, {
+        method: 'POST',
+        body: JSON.stringify(d)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] });
+        toast.success('Relationship added')
+    }
+  })
+
+  const syncRoles = (role: string, isSource: boolean) => {
+    const pair = types.find(t => t.s === role || t.t === role);
+    if (pair) {
+        if (isSource) {
+            const targetRole = role === pair.s ? pair.t : pair.s;
+            setNewRel(prev => ({ ...prev, source_role: role, target_role: targetRole, relationship_type: pair.label }));
+        } else {
+            const sourceRole = role === pair.s ? pair.t : pair.s;
+            setNewRel(prev => ({ ...prev, target_role: role, source_role: sourceRole, relationship_type: pair.label }));
+        }
+    }
+  }
+
+  const swapRoles = () => {
+    setNewRel(prev => ({
+        ...prev,
+        source_role: prev.target_role,
+        target_role: prev.source_role
+    }));
+  }
+
+  const allRoles = useMemo(() => {
+    const roles = new Set<string>();
+    types.forEach(t => { roles.add(t.s); roles.add(t.t); });
+    return Array.from(roles).map(r => ({ value: r, label: r }));
+  }, [types]);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-6">
+         <div className="grid grid-cols-11 gap-4 items-end">
+            <div className="col-span-3">
+               <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
+               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-xl px-4 py-2.5 text-xs text-blue-400 font-black uppercase truncate">
+                  {currentDevice?.name || 'Local'}
+               </div>
+            </div>
+
+            <div className="col-span-2">
+               <StyledSelect
+                  label="Role (A)"
+                  value={newRel.source_role}
+                  onChange={e => syncRoles(e.target.value, true)}
+                  options={allRoles}
+               />
+            </div>
+
+            <div className="col-span-1 flex justify-center pb-2">
+               <button 
+                 onClick={swapRoles}
+                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all group"
+                 title="Swap Roles"
+               >
+                  <ArrowRightLeft size={16} className="group-active:rotate-180 transition-transform duration-300" />
+               </button>
+            </div>
+
+            <div className="col-span-2">
+               <StyledSelect
+                  label="Role (B)"
+                  value={newRel.target_role}
+                  onChange={e => syncRoles(e.target.value, false)}
+                  options={allRoles}
+               />
+            </div>
+
+            <div className="col-span-3">
+               <StyledSelect
+                  value={newRel.target_device_id}
+                  onChange={e => setNewRel({...newRel, target_device_id: e.target.value})}
+                  options={devices?.filter((d:any)=> d.id !== deviceId).map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                  label="Peer Asset (B)"
+                  placeholder="Select Peer..."
+               />
+            </div>
+         </div>
+
+         <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <div className="flex items-center space-x-2">
+               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Vector Classification:</span>
+               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{newRel.relationship_type}</span>
+            </div>
+            <button 
+              onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
+              className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
+            >
+               <Plus size={14} /> <span>Establish Vector</span>
+            </button>
+         </div>
+      </div>
+      <RelationsTable deviceId={deviceId} />
+    </div>
+  )
+}
+
+const RelationsTable = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+
+  const currentDevice = useMemo(() => devices?.find((d: any) => d.id === deviceId), [devices, deviceId]);
+
+  const delMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); toast.success('Relationship removed') },
+    onError: (e: any) => toast.error(e.message || 'Failed to delete relationship')
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/relationships/${data.id}`, {
+        method: 'PUT', body: JSON.stringify(data)
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Relationship updated') },
+    onError: (e: any) => toast.error(e.message || 'Failed to update relationship')
+  })
+
+  return (
+    <div className="p-0">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Local Identity</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Relationship Type</th>
+            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Peer Entity</th>
+            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {relationships?.map((r: any) => {
+            const isSource = r.source_device_id === deviceId;
+            const peerId = isSource ? r.target_device_id : r.source_device_id;
+            const peer = devices?.find((d:any) => d.id === peerId);
+            const localRole = isSource ? r.source_role : r.target_role;
+            const peerRole = isSource ? r.target_role : r.source_role;
+
+            return (
+              <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                <td className="px-4 py-3">
+                   {editingId === r.id ? (
+                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                       <option>Consumer</option>
+                       <option>Provider</option>
+                       <option>Hypervisor</option>
+                       <option>Guest</option>
+                       <option>Source</option>
+                       <option>Target</option>
+                       <option>Primary</option>
+                       <option>Replica</option>
+                       <option>Node</option>
+                       <option>Peer</option>
+                     </select>
+                   ) : (
+                     <div className="flex flex-col">
+                        <span className="font-black text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                          {localRole}
+                        </span>
+                     </div>
+                   )}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {editingId === r.id ? (
+                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                      <option>Depends On</option>
+                      <option>Hosts</option>
+                      <option>Backs Up</option>
+                      <option>Replicates to</option>
+                      <option>Cluster Member</option>
+                    </select>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                       <span className="font-black text-slate-500 uppercase tracking-widest text-[8px] mb-1">{r.relationship_type}</span>
+                       <div className="flex items-center space-x-2 text-slate-600">
+                          <div className="h-px w-8 bg-white/10" />
+                          <ArrowRightLeft size={10} className={isSource ? "" : "rotate-180"} />
+                          <div className="h-px w-8 bg-white/10" />
+                       </div>
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                    {editingId === r.id ? (
+                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                        <option>Consumer</option>
+                        <option>Provider</option>
+                        <option>Hypervisor</option>
+                        <option>Guest</option>
+                        <option>Source</option>
+                        <option>Target</option>
+                        <option>Primary</option>
+                        <option>Replica</option>
+                        <option>Node</option>
+                        <option>Peer</option>
+                      </select>
+                    ) : (
+                      <div className="flex flex-col">
+                         <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
+                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                           {peerRole}
+                         </span>
+                      </div>
+                    )}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {editingId === r.id ? (
+                    <div className="flex items-center justify-center space-x-1">
+                      <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"><Check size={14}/></button>
+                      <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-slate-500/20 text-slate-500 rounded-lg transition-all"><X size={14}/></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center space-x-1">
+                      <button onClick={() => { setEditingId(r.id); setEditData({...r}) }} className="p-1.5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded-lg transition-all"><Edit2 size={14}/></button>
+                      <button onClick={() => setConfirmModal({ isOpen: true, title: 'Delete Relationship', message: 'Remove this relationship?', onConfirm: () => delMutation.mutate(r.id) })} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all"><Trash2 size={14}/></button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relationships defined</td></tr>}
+        </tbody>
+      </table>
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant="danger"
+      />
+    </div>
+  )
+}
+
+const ASSET_TYPES = [
+    { value: 'Physical', label: 'Physical' },
+    { value: 'Virtual', label: 'Virtual' },
+    { value: 'Storage', label: 'Storage' },
+    { value: 'Switch', label: 'Switch' },
+    { value: 'Firewall', label: 'Firewall' },
+    { value: 'Load Balancer', label: 'Load Balancer' },
+    { value: 'PDU', label: 'PDU' },
+    { value: 'UPS', label: 'UPS' },
+    { value: 'Patch Panel', label: 'Patch Panel' }
+]
+
+const STATUS_ITEMS = [
+    { value: 'Planned', label: 'Planned' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Maintenance', label: 'Maintenance' },
+    { value: 'Standby', label: 'Standby' },
+    { value: 'Offline', label: 'Offline' },
+    { value: 'Decommissioned', label: 'Decommissioned' }
+]
+
+const ENVIRONMENT_ITEMS = [
+    { value: 'Production', label: 'Production' },
+    { value: 'Staging', label: 'Staging' },
+    { value: 'QA', label: 'QA' },
+    { value: 'Dev', label: 'Dev' },
+    { value: 'DR', label: 'DR' },
+    { value: 'Lab', label: 'Lab' },
+    { value: 'Sandbox', label: 'Sandbox' }
+]
 
 const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
   const [activeSubTab, setActiveSubTab] = useState('config')
@@ -736,7 +1440,8 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
     metadata_json: {}, ...initialData
   })
 
-  useEffect(() => {
+  // Sync form data when initialData changes
+  React.useEffect(() => {
     setFormData({
       name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
       owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
@@ -749,7 +1454,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
   return (
-    <div className="space-y-6 py-4 text-left">
+    <div className="space-y-6 py-6">
       <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit mb-4">
          {['config', 'hardware', 'secrets', 'relations', 'metadata'].map(t => {
            const isDisabled = !formData.id && ['hardware', 'secrets', 'relations'].includes(t)
@@ -758,8 +1463,9 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              key={t}
              onClick={() => !isDisabled && setActiveSubTab(t)}
              disabled={isDisabled}
-             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isDisabled ? 'opacity-20 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-             {t === 'config' ? 'Base Config' : t}
+             title={isDisabled ? 'Save asset first' : ''}
+             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+             {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
            </button>
          )
          })}
@@ -767,70 +1473,118 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
 
       {activeSubTab === 'config' && (
         <div className="grid grid-cols-3 gap-6">
-          <div className="space-y-4">
+          <div className="col-span-1 space-y-4">
              <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname</label>
+                <input 
+                  value={formData.name} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
+                  placeholder="SRV-NAME-01" 
+                />
+             </div>
+             <StyledSelect
+                label="Logical System"
+                value={formData.system}
+                onChange={e => setFormData({...formData, system: e.target.value})}
+                options={getOptions('LogicalSystem')}
+                placeholder="Select System..."
+                error={!formData.system}
+             />
+             <div className="grid grid-cols-2 gap-2">
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner</label>
+                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+                </div>
+                <StyledSelect
+                    label="Business Unit"
+                    value={formData.business_unit}
+                    onChange={e => setFormData({...formData, business_unit: e.target.value})}
+                    options={getOptions('BusinessUnit')}
+                    placeholder="Select BU..."
+                />
+             </div>
+          </div>
+
+          <div className="col-span-1 space-y-4">
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
+             <div className="grid grid-cols-2 gap-2">
+                <StyledSelect
+                    label="Asset Type"
+                    value={formData.type}
+                    onChange={e => setFormData({...formData, type: e.target.value})}
+                    options={ASSET_TYPES}
+                />
+                <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
+                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                </div>
+             </div>
+             <StyledSelect
+                label="Operational Status"
+                value={formData.status}
+                onChange={e => setFormData({...formData, status: e.target.value})}
+                options={STATUS_ITEMS}
+             />
+             <StyledSelect
+                label="Environment"
+                value={formData.environment}
+                onChange={e => setFormData({...formData, environment: e.target.value})}
+                options={ENVIRONMENT_ITEMS}
+             />
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3 mt-6">Procurement & Licensing</h3>
              <div className="space-y-3">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname *</label>
-                    <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500`} />
+                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">License Type</label>
+                    <input value={formData.license_type || ""} onChange={e => setFormData({...formData, license_type: e.target.value})} placeholder="e.g. Volume License" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
-                <StyledSelect label="Logical System *" value={formData.system} onChange={e => setFormData({...formData, system: e.target.value})} options={getOptions('LogicalSystem')} />
                 <div className="grid grid-cols-2 gap-2">
                     <div>
-                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner</label>
-                        <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Purchase Date</label>
+                        <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] outline-none" />
                     </div>
-                    <StyledSelect label="Business Unit" value={formData.business_unit} onChange={e => setFormData({...formData, business_unit: e.target.value})} options={getOptions('BusinessUnit')} />
+                    <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Expiry Date</label>
+                        <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] outline-none border-amber-500/30" />
+                    </div>
                 </div>
              </div>
           </div>
 
-          <div className="space-y-4">
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
-             <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <StyledSelect label="Type" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} options={ASSET_TYPES} />
-                    <div>
-                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
-                        <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none" />
-                    </div>
+          <div className="col-span-1 space-y-4">
+             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-600 pl-3">Software & Hardware</h3>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
+                <div className="flex space-x-2">
+                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                 </div>
-                <StyledSelect label="Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={STATUS_ITEMS} />
-                <StyledSelect label="Environment" value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} options={ENVIRONMENT_ITEMS} />
              </div>
-          </div>
-
-          <div className="space-y-4">
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-600 pl-3">Specs & Power</h3>
-             <div className="space-y-3">
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
-                   <div className="flex-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Make</label>
-                      <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   </div>
-                   <div className="flex-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Model</label>
-                      <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   </div>
+                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                 </div>
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Serial / Asset Tag</label>
                 <div className="flex space-x-2">
-                   <div className="flex-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">OS</label>
-                      <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   </div>
-                   <div className="flex-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Ver</label>
-                      <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   </div>
+                    <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                    <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-                    <div>
-                      <label className="text-[8px] text-slate-500 uppercase block mb-1">Avg Watts</label>
-                      <input type="number" step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-mono text-emerald-400 outline-none" />
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
+                <div className="flex space-x-2">
+                    <div className="w-1/2">
+                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Typical</label>
                     </div>
-                    <div>
-                      <label className="text-[8px] text-slate-500 uppercase block mb-1">Max Watts</label>
-                      <input type="number" step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs font-mono text-rose-400 outline-none" />
+                    <div className="w-1/2">
+                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Peak</label>
                     </div>
                 </div>
              </div>
@@ -838,19 +1592,31 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
         </div>
       )}
 
-      {activeSubTab === 'metadata' && <MetadataEditor value={formData.metadata_json} onChange={v => setFormData({...formData, metadata_json: v})} onError={setMetadataError} />}
+      {activeSubTab === 'metadata' && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+           <MetadataEditor 
+             value={formData.metadata_json} 
+             onChange={v => setFormData({...formData, metadata_json: v})} 
+             onError={setMetadataError}
+           />
+        </div>
+      )}
 
-      <div className="flex space-x-4 pt-6 border-t border-white/5">
+      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add hardware components</div>)}
+      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add credentials</div>)}
+      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add relationships</div>)}
+
+      <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button
           disabled={!!metadataError || isSaving}
           onClick={() => {
-            if(!formData.name || !formData.system) return toast.error("Required fields missing");
+            if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory");
             onSave({ data: formData })
           }}
-          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-800' : 'bg-blue-600 hover:bg-blue-500 shadow-xl'} text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center space-x-2`}
+          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
         >
-          {isSaving ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
-          <span>Commit Asset Record</span>
+          {isSaving && <RefreshCcw size={14} className="animate-spin" />}
+          <span>Save Asset</span>
         </button>
       </div>
     </div>
