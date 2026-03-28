@@ -15,6 +15,39 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
+// --- Constants ---
+
+const ASSET_TYPES = [
+    { value: 'Physical', label: 'Physical' },
+    { value: 'Virtual', label: 'Virtual' },
+    { value: 'Storage', label: 'Storage' },
+    { value: 'Switch', label: 'Switch' },
+    { value: 'Firewall', label: 'Firewall' },
+    { value: 'Load Balancer', label: 'Load Balancer' },
+    { value: 'PDU', label: 'PDU' },
+    { value: 'UPS', label: 'UPS' },
+    { value: 'Patch Panel', label: 'Patch Panel' }
+]
+
+const STATUS_ITEMS = [
+    { value: 'Planned', label: 'Planned' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Maintenance', label: 'Maintenance' },
+    { value: 'Standby', label: 'Standby' },
+    { value: 'Offline', label: 'Offline' },
+    { value: 'Decommissioned', label: 'Decommissioned' }
+]
+
+const ENVIRONMENT_ITEMS = [
+    { value: 'Production', label: 'Production' },
+    { value: 'Staging', label: 'Staging' },
+    { value: 'QA', label: 'QA' },
+    { value: 'Dev', label: 'Dev' },
+    { value: 'DR', label: 'DR' },
+    { value: 'Lab', label: 'Lab' },
+    { value: 'Sandbox', label: 'Sandbox' }
+]
+
 // --- Shared Components ---
 
 const SharedServiceModals = ({ 
@@ -598,46 +631,39 @@ export default function AssetGrid() {
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: any) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
-    const [metadata, setMetadata] = useState(device.metadata_json || {})
-    const [metadataError, setMetadataError] = useState<string | null>(null)
 
-    const metaMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
-                method: 'PUT', body: JSON.stringify({ metadata_json: data })
+    const mutation = useMutation({
+        mutationFn: async ({ data, id }: any) => {
+            const res = await apiFetch(`/api/v1/devices/${id}`, {
+                method: 'PUT', body: JSON.stringify(data)
             })
             if (!res.ok) throw new Error(await res.text())
             return res.json()
         },
         onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['assets'] }); toast.success('Intelligence Matrix Synchronized') },
-        onError: (e: any) => toast.error(e.message || 'Failed to save metadata')
+        onError: (e: any) => toast.error(e.message || 'Failed to save asset')
     })
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'config'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
                 </div>
-                {tab === 'metadata' && (
-                    <button
-                      disabled={!!metadataError || metaMutation.isPending}
-                      onClick={() => metaMutation.mutate(metadata)}
-                      className={`px-4 py-2 ${metadataError || metaMutation.isPending ? 'bg-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 shadow-lg active:scale-95'} text-white rounded-xl text-[10px] font-black uppercase transition-all flex items-center space-x-2`}
-                    >
-                      {metaMutation.isPending && <RefreshCcw size={12} className="animate-spin" />}
-                      <span>Save Metadata</span>
-                    </button>
-                )}
             </div>
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
-                {tab === 'metadata' && (
+                {tab === 'config' && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <MetadataEditor value={metadata} onChange={setMetadata} onError={setMetadataError} />
+                    <AssetForm 
+                      initialData={device} 
+                      options={options} 
+                      onSave={({data}: any) => mutation.mutate({ data, id: device.id })} 
+                      isSaving={mutation.isPending} 
+                    />
                   </div>
                 )}
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
