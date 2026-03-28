@@ -18,6 +18,8 @@ import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Troubleshooting from "./components/Troubleshooting"
 import DataFlowDesigner from "./components/DataFlowDesigner"
+import RackSandbox from "./components/RackSandbox"
+import AssetSandbox from "./components/AssetSandbox"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
@@ -197,6 +199,7 @@ function MainLayout() {
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Workflow} label="Flows" path="/flows" active={location.pathname === "/flows"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Package} label="Asset Sandbox" path="/asset-sandbox" active={location.pathname === "/asset-sandbox"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Clock} label="Schedule" path="/maintenance" active={location.pathname === "/maintenance"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Audit" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
@@ -225,6 +228,7 @@ function MainLayout() {
               <Route path="/network" element={<NetworkFabric />} />
               <Route path="/monitoring" element={<MonitoringGrid />} />
               <Route path="/flows" element={<DataFlowDesigner />} />
+              <Route path="/asset-sandbox" element={<AssetSandbox />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />
