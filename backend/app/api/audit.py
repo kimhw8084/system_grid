@@ -10,7 +10,13 @@ from datetime import datetime
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
 @router.get("/")
-async def get_audit_logs(start_date: Optional[str] = None, end_date: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+async def get_audit_logs(
+    start_date: Optional[str] = None, 
+    end_date: Optional[str] = None, 
+    target_table: Optional[str] = None,
+    target_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+):
     query = select(models.AuditLog)
     
     if start_date:
@@ -21,10 +27,15 @@ async def get_audit_logs(start_date: Optional[str] = None, end_date: Optional[st
         
     if end_date:
         try:
-            # End date usually means end of that day
             end_dt = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59)
             query = query.filter(models.AuditLog.timestamp <= end_dt)
         except: pass
+
+    if target_table:
+        query = query.filter(models.AuditLog.target_table == target_table)
+    
+    if target_id:
+        query = query.filter(models.AuditLog.target_id == target_id)
 
     result = await db.execute(query.order_by(models.AuditLog.timestamp.desc()).limit(200))
     logs = result.scalars().all()

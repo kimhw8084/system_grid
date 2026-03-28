@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Search, MapPin, X, ArrowRightLeft, Server, 
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Zap, Network, Layout, Calendar, User, Eye, Cable, Clock,
-  ArrowUpRight, Info
+  ArrowUpRight, Info, Shield, ShieldCheck
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -24,7 +24,7 @@ import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
 import { StyledSelect } from './shared/StyledSelect'
 
-// --- Constants ---
+// --- Constants & Rules ---
 
 const ASSET_TYPES = [
     { value: 'Physical', label: 'Physical' },
@@ -35,12 +35,40 @@ const ASSET_TYPES = [
     { value: 'Load Balancer', label: 'Load Balancer' }
 ]
 
-// --- Helper: Manhattan Routing for Cables ---
-
-const getManhattanPath = (x1: number, y1: number, x2: number, y2: number) => {
-  const midX = (x1 + x2) / 2
-  return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`
+const RULES = {
+  IDENTIFIER_MIN: 3,
+  IDENTIFIER_MAX: 64,
+  SYSTEM_MAX: 64,
+  ETA_PATTERN: /^\d{4}-(0[1-9]|1[0-2])$/, // YYYY-MM
+  RACK_U_MIN: 1,
+  RACK_U_MAX: 52
 }
+
+// --- Validation Logic ---
+
+const validateReservation = (data: any) => {
+  const errors: string[] = []
+  
+  if (!data.temp_name || data.temp_name.trim().length < RULES.IDENTIFIER_MIN) {
+    errors.push(`Identifier must be at least ${RULES.IDENTIFIER_MIN} characters`)
+  }
+  if (data.temp_name.length > RULES.IDENTIFIER_MAX) {
+    errors.push(`Identifier exceeds maximum of ${RULES.IDENTIFIER_MAX} characters`)
+  }
+  if (!/^[a-zA-Z0-9\-_]+$/.test(data.temp_name)) {
+    errors.push("Identifier contains invalid characters (use Alphanumeric, -, _)")
+  }
+  if (!data.system || data.system.trim().length === 0) {
+    errors.push("Logical System domain is mandatory")
+  }
+  if (data.est_arrival && !RULES.ETA_PATTERN.test(data.est_arrival)) {
+    errors.push("Arrival window must match format YYYY-MM (e.g. 2026-06)")
+  }
+  
+  return errors
+}
+
+const sanitizeInput = (val: string) => val.trim().toUpperCase()
 
 // --- Components ---
 
@@ -50,8 +78,7 @@ const DraggableAsset = ({ device, loc, isReserved, isOverlay = false }: any) => 
     data: { device, loc, isReserved }
   })
 
-  // Calculate height based on size_u
-  const height = (loc?.size_u || device.size_u || 1) * 24 - 2 // 24px per U minus some margin
+  const height = (loc?.size_u || device.size_u || 1) * 24 - 2
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -93,7 +120,6 @@ const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget }: any) => {
     data: { rackId, u }
   })
 
-  // Check if this unit is the start of an asset
   const isStartUnit = asset && asset.start_unit === u
 
   return (
@@ -111,28 +137,6 @@ const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget }: any) => {
         )}
       </div>
     </div>
-  )
-}
-
-const CableOverlay = ({ racks, connections, containerRef }: any) => {
-  const [paths, setPaths] = useState<any[]>([])
-
-  // Recalculate paths when racks or connections change
-  useEffect(() => {
-    if (!racks || !connections || !containerRef.current) return
-
-    const newPaths: any[] = []
-    // Logic to map connections to SVG paths based on DOM positions
-    // This is a complex calculation in a real app, here we simulate the 'trace'
-    setPaths(newPaths)
-  }, [racks, connections, containerRef])
-
-  return (
-    <svg className="absolute inset-0 pointer-events-none z-0 overflow-visible opacity-30">
-      {paths.map((p, i) => (
-        <path key={i} d={p.d} stroke="#3b82f6" strokeWidth="1" fill="none" />
-      ))}
-    </svg>
   )
 }
 
@@ -158,10 +162,6 @@ export default function RackSandbox() {
     queryKey: ['sites'], 
     queryFn: async () => (await apiFetch('/api/v1/sites/')).json() 
   })
-  const { data: connections } = useQuery({ 
-    queryKey: ['connections'], 
-    queryFn: async () => (await apiFetch('/api/v1/networks/connections')).json() 
-  })
 
   // Mutations
   const moveMutation = useMutation({
@@ -174,9 +174,9 @@ export default function RackSandbox() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['racks-sandbox'] })
-      toast.success('Asset Orchestration Synchronized')
+      toast.success('Matrix Sync Successful')
     },
-    onError: (e: any) => toast.error(`Collision detected: ${e.message}`)
+    onError: (e: any) => toast.error(`Orchestration Conflict: ${e.message}`)
   })
 
   const reserveMutation = useMutation({
@@ -184,7 +184,7 @@ export default function RackSandbox() {
       const devRes = await apiFetch('/api/v1/devices/', { 
         method: 'POST', 
         body: JSON.stringify({ 
-          name: data.temp_name, type: data.type, system: data.system, status: 'Planned',
+          name: sanitizeInput(data.temp_name), type: data.type, system: sanitizeInput(data.system), status: 'Planned',
           is_reservation: true,
           reservation_info: { est_arrival: data.est_arrival, requester: data.requester }
         }) 
@@ -197,24 +197,16 @@ export default function RackSandbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['racks-sandbox'] })
       setIsReserving(null)
-      toast.success('Ghost Reservation Secured')
+      toast.success('Reservation Verified & Locked')
     }
   })
 
   // --- Drag Logic ---
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setDraggedAsset(event.active.data.current)
-  }
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event
-    if (over) {
-      setOverUnit(over.data.current)
-    } else {
-      setOverUnit(null)
-    }
-  }
+  const handleDragStart = (event: DragStartEvent) => setDraggedAsset(event.active.data.current)
+  const handleDragOver = (event: DragOverEvent) => setOverUnit(event.over?.data.current || null)
 
   const handleDragEnd = (event: DragEndEvent) => {
     setDraggedAsset(null)
@@ -226,7 +218,6 @@ export default function RackSandbox() {
     const target = over.data.current as any
     
     if (device && target) {
-      // Strict conflict check: Does the asset fit?
       const size = device.size_u || 1
       const rack = allRacks.find((r: any) => r.id === target.rackId)
       const occupiedUnits = rack.device_locations
@@ -234,10 +225,10 @@ export default function RackSandbox() {
         .flatMap((l: any) => Array.from({ length: l.size_u }, (_, i) => l.start_unit + i))
 
       const targetUnits = Array.from({ length: size }, (_, i) => target.u + i)
-      const collision = targetUnits.some(u => occupiedUnits.includes(u) || u > (rack.total_u_height || 42))
+      const collision = targetUnits.some(u => occupiedUnits.includes(u) || u > (rack.total_u_height || 42) || u < 1)
 
       if (collision) {
-        toast.error(`Matrix Collision: Insufficient vertical space for ${size}U node`)
+        toast.error('Boundary Breach: Target units occupied or out of bounds')
         return
       }
 
@@ -246,19 +237,6 @@ export default function RackSandbox() {
       })
     }
   }
-
-  // --- Auto-Scroll Logic ---
-  useEffect(() => {
-    if (!draggedItem || !scrollContainerRef.current) return
-
-    const interval = setInterval(() => {
-      // Implementation of container auto-scrolling based on mouse position
-      // ...
-    }, 50)
-    return () => clearInterval(interval)
-  }, [draggedItem])
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const filteredRacks = useMemo(() => {
     if (!allRacks) return []
@@ -282,53 +260,36 @@ export default function RackSandbox() {
       onDragEnd={handleDragEnd}
     >
       <div className="h-full flex flex-col space-y-6 text-left">
-        {/* Header Section */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <h1 className="text-3xl font-black uppercase italic text-white flex items-center gap-3">
-              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg"><Cable size={24}/></div>
-              <span>Physical Sandbox</span>
+              <div className="p-3 bg-blue-600 rounded-2xl shadow-lg"><Layout size={24}/></div>
+              <span>Rack Sandbox</span>
             </h1>
-            <p className="text-[10px] text-slate-500 uppercase font-black mt-2 tracking-widest">Interactive Orchestration & Cable Vector Matrix</p>
+            <p className="text-[10px] text-slate-500 uppercase font-black mt-2 tracking-widest">Experimental Orchestration & Physical Constraints</p>
           </div>
 
           <div className="flex items-center gap-4">
              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
-                <button onClick={() => setActiveSiteId(null)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${!activeSiteId ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Global Matrix</button>
+                <button onClick={() => setActiveSiteId(null)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${!activeSiteId ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Global</button>
                 {sites?.map((s: any) => (
                   <button key={s.id} onClick={() => setActiveSiteId(s.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeSiteId === s.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{s.name}</button>
                 ))}
              </div>
              <div className="relative group">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-hover:text-blue-400 transition-colors" />
-                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Query Matrix Grid..." className="bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 text-white" />
+                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Matrix..." className="bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 text-white" />
              </div>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center space-x-6 px-4 py-2 bg-black/20 rounded-2xl border border-white/5 w-fit text-[9px] font-black uppercase tracking-widest">
-           <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded bg-blue-500/40 border border-blue-500" /> <span className="text-slate-400">Deployed Asset</span></div>
-           <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded bg-amber-500/20 border border-dashed border-amber-500" /> <span className="text-slate-400">Planned Reservation</span></div>
-           <div className="flex items-center space-x-2"><div className="w-2 h-2 rounded bg-emerald-500/20 border border-emerald-500" /> <span className="text-slate-400">Valid Drop Vector</span></div>
-        </div>
-
-        {/* Rack Scrolling Container */}
-        <div 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-10 relative"
-        >
-           <CableOverlay racks={filteredRacks} connections={connections} containerRef={scrollContainerRef} />
-           
-           <div className="flex gap-10 h-full items-start px-2 min-w-max relative z-10">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-10">
+           <div className="flex gap-10 h-full items-start px-2 min-w-max">
               {filteredRacks.map((rack: any) => (
-                <div key={rack.id} className="w-64 flex flex-col glass-panel rounded-[40px] overflow-hidden border-white/5 shadow-2xl h-full max-h-[900px] hover:border-blue-500/20 transition-all duration-500">
-                   <div className="p-6 bg-white/[0.02] border-b border-white/5 flex justify-between items-start">
-                      <div className="min-w-0">
-                        <h3 className="font-black text-[13px] uppercase tracking-widest text-white italic truncate">{rack.name}</h3>
-                        <p className="text-[9px] text-slate-500 font-black uppercase mt-1">{rack.site_name}</p>
-                      </div>
-                      <div className="p-2 bg-white/5 rounded-xl text-slate-600"><MoreVertical size={14}/></div>
+                <div key={rack.id} className="w-64 flex flex-col glass-panel rounded-[40px] overflow-hidden border-white/5 shadow-2xl h-full max-h-[900px]">
+                   <div className="p-6 bg-white/[0.02] border-b border-white/5">
+                      <h3 className="font-black text-[13px] uppercase tracking-widest text-white italic truncate">{rack.name}</h3>
+                      <p className="text-[9px] text-slate-500 font-black uppercase mt-1">{rack.site_name}</p>
                    </div>
                    <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40">
                       <div className="m-3 border border-white/5 rounded-3xl overflow-hidden bg-black/20">
@@ -336,38 +297,22 @@ export default function RackSandbox() {
                            const asset = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
                            const isDropTarget = overUnit?.rackId === rack.id && u === overUnit?.u
                            return (
-                             <RackUnit 
-                               key={u} u={u} rackId={rack.id} asset={asset} 
-                               isDropTarget={isDropTarget}
-                               onSelect={(u: number) => setIsReserving({ rackId: rack.id, u })} 
-                             />
+                             <RackUnit key={u} u={u} rackId={rack.id} asset={asset} isDropTarget={isDropTarget} onSelect={(u: number) => setIsReserving({ rackId: rack.id, u })} />
                            )
                          })}
                       </div>
                    </div>
                 </div>
               ))}
-              
-              {/* Empty Rack Suggestion */}
-              <button className="w-64 h-full glass-panel border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center justify-center space-y-4 opacity-30 hover:opacity-100 hover:border-blue-500/30 transition-all">
-                 <div className="p-4 bg-white/5 rounded-3xl"><Plus size={32} className="text-slate-500" /></div>
-                 <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Add New Matrix Node</span>
-              </button>
            </div>
         </div>
 
-        {/* Drag Overlay (Visual Mirror) */}
-        <DragOverlay dropAnimation={{
-          sideEffects: defaultDropAnimationSideEffects({
-            styles: { active: { opacity: '0.5' } }
-          })
-        }}>
+        <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }) }}>
           {draggedItem ? (
             <DraggableAsset device={draggedItem.device} loc={draggedItem.loc} isReserved={draggedItem.isReserved} isOverlay />
           ) : null}
         </DragOverlay>
 
-        {/* Reservation Modal (Enhanced Idea 4) */}
         <AnimatePresence>
           {isReserving && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
@@ -377,7 +322,7 @@ export default function RackSandbox() {
                         <div className="p-5 bg-amber-500/10 rounded-[2.5rem] text-amber-500 shadow-inner"><Clock size={32}/></div>
                         <div>
                            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">Ghost Planning</h2>
-                           <p className="text-[11px] text-amber-500 font-black uppercase mt-3 tracking-[0.3em]">Reserving Vector: U{isReserving.u} in Grid</p>
+                           <p className="text-[11px] text-amber-500 font-black uppercase mt-3 tracking-[0.3em]">Reserving Vector: U{isReserving.u} in Matrix Node</p>
                         </div>
                      </div>
                      <button onClick={() => setIsReserving(null)} className="p-3 bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={28}/></button>
@@ -413,10 +358,14 @@ export default function RackSandbox() {
                   <div className="flex space-x-6 pt-10 border-t border-white/5">
                      <button onClick={() => setIsReserving(null)} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors bg-white/5 rounded-2xl">Abort Reservation</button>
                      <button 
-                        onClick={() => { if(!reservationData.temp_name) return toast.error("Identifier required"); reserveMutation.mutate({...reservationData, ...isReserving}) }} 
+                        onClick={() => { 
+                          const errs = validateReservation(reservationData)
+                          if (errs.length > 0) return toast.error(errs[0])
+                          reserveMutation.mutate({...reservationData, ...isReserving}) 
+                        }} 
                         className="flex-[2] py-4 bg-amber-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
                      >
-                        <Lock size={16} /> <span>Secure Matrix Slot</span>
+                        <ShieldCheck size={16} /> <span>Secure Matrix Slot</span>
                      </button>
                   </div>
                </motion.div>
@@ -426,8 +375,4 @@ export default function RackSandbox() {
       </div>
     </DndContext>
   )
-}
-
-function Lock({ size }: { size: number }) {
-  return <Shield size={size} />
 }
