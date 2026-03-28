@@ -86,6 +86,8 @@ class Device(Base, BaseMixin):
     recipe_critical = Column(Boolean, default=False)
     
     metadata_json = Column(JSON, default=dict)
+    is_reservation = Column(Boolean, default=False)
+    reservation_info = Column(JSON, default=dict) # {est_arrival: "YYYY-MM", requester: "Name"}
     is_deleted = Column(Boolean, default=False)
     
     locations = relationship("DeviceLocation", back_populates="device", cascade="all, delete-orphan")

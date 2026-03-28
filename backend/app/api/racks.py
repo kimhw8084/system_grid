@@ -373,6 +373,60 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
+@router.post("/move")
+async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
+    device_id = int(data.get("device_id"))
+    target_rack_id = int(data.get("target_rack_id"))
+    target_start_u = int(data.get("target_start_u"))
+    
+    # 1. Get device and its current location
+    dev_res = await db.execute(select(models.Device).filter(models.Device.id == device_id))
+    device = dev_res.scalar_one_or_none()
+    if not device: raise HTTPException(404, "Device not found")
+    
+    # 2. Check target rack
+    rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == target_rack_id))
+    rack = rack_res.scalar_one_or_none()
+    if not rack: raise HTTPException(404, "Target rack not found")
+    
+    # 3. Conflict check (simplified for sandbox, but good practice)
+    size = device.size_u or 1
+    conf_res = await db.execute(
+        select(models.DeviceLocation)
+        .filter(
+            models.DeviceLocation.rack_id == target_rack_id,
+            models.DeviceLocation.device_id != device_id,
+            models.DeviceLocation.start_unit < target_start_u + size,
+            models.DeviceLocation.start_unit + models.DeviceLocation.size_u > target_start_u
+        )
+    )
+    if conf_res.scalars().first():
+        raise HTTPException(409, "Target slot is occupied")
+
+    # Clear existing location
+    await db.execute(delete(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
+    
+    # Create new location
+    new_loc = models.DeviceLocation(
+        device_id=device_id,
+        rack_id=target_rack_id,
+        start_unit=target_start_u,
+        size_u=size
+    )
+    db.add(new_loc)
+    
+    log = models.AuditLog(
+        user_id="admin",
+        action="MOVE",
+        target_table="devices",
+        target_id=str(device_id),
+        description=f"Moved {device.name} to {rack.name} U{target_start_u} (Interactive)"
+    )
+    db.add(log)
+    
+    await db.commit()
+    return {"status": "success"}
+
 @router.delete("/mount/{device_id}")
 async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
     # Delete ALL locations for this device (should only be 1, but cleanup stale duplicates)
