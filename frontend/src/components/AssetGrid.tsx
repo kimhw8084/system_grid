@@ -526,24 +526,26 @@ export default function AssetGrid() {
     { 
       field: "status", 
       headerName: "Status", 
-      width: 120,
+      width: 110,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => {
         const colors: any = {
-          Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
-          Maintenance: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
-          Decommissioned: 'text-rose-400 border-rose-500/20 bg-rose-500/5',
-          Planned: 'text-blue-400 border-blue-500/20 bg-blue-500/5',
-          Standby: 'text-sky-400 border-sky-500/20 bg-sky-500/5',
-          Offline: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
+          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
+          Offline: 'text-slate-400 border-white/20 bg-white/10'
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`inline-flex items-center justify-center w-24 py-1 rounded-full text-[8px] font-black uppercase border tracking-widest ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              {p.value}
-            </span>
+            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="text-[7px] font-black uppercase tracking-tighter leading-none">
+                {p.value}
+              </span>
+            </div>
           </div>
         )
       }
