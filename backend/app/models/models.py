@@ -244,6 +244,34 @@ class MonitoringItem(Base, BaseMixin):
     
     device = relationship("Device", back_populates="monitoring_items")
 
+class IncidentLog(Base, BaseMixin):
+    __tablename__ = "incident_logs"
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String, index=True)
+    severity = Column(String, default="Major") # Critical, Major, Minor
+    status = Column(String, default="Investigating") # Investigating, Identified, Monitoring, Resolved, Prevented
+    start_time = Column(DateTime)
+    end_time = Column(DateTime, nullable=True)
+    impact_analysis = Column(Text)
+    root_cause = Column(Text)
+    resolution_steps = Column(Text)
+    lessons_learned = Column(Text)
+    prevention_strategy = Column(Text)
+    timeline_json = Column(JSON, default=list) # [{time, event, type}]
+    todos_json = Column(JSON, default=list) # [{task, status, owner}]
+    
+    device = relationship("Device")
+
+class DataFlow(Base, BaseMixin):
+    __tablename__ = "data_flows"
+    name = Column(String, index=True)
+    description = Column(Text)
+    category = Column(String, default="System") # System, Service, Application
+    nodes_json = Column(JSON, default=list)
+    edges_json = Column(JSON, default=list)
+    viewport_json = Column(JSON, default=dict)
+    is_template = Column(Boolean, default=False)
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True)

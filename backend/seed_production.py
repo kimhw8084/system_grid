@@ -168,6 +168,68 @@ async def seed():
             if mon_res.status_code != 200:
                 print(f"BUG FOUND in POST /monitoring/: {mon_res.text}")
 
+        # 7. Create Incidents
+        print("Creating incidents...")
+        incidents = [
+            {
+                "title": "Database Connection Pool Exhaustion",
+                "severity": "Critical",
+                "status": "Resolved",
+                "impact_analysis": "Primary ERP system unavailable for 45 minutes. Affected 400+ concurrent users.",
+                "root_cause": "Misconfigured max_connections in PostgreSQL coupled with a leaked connection in the reporting service.",
+                "resolution_steps": "1. Identified leaked connection using pg_stat_activity.\n2. Restarted reporting service to clear pool.\n3. Increased max_connections to 500.",
+                "lessons_learned": "Connection pool monitoring thresholds were too high to trigger early alerts.",
+                "prevention_strategy": "Implement automated connection leak detection and reduce pool size timeout.",
+                "timeline": [
+                    {"time": "2026-03-27T10:00:00", "event": "Alert triggered: DB connection latency high", "type": "Error"},
+                    {"time": "2026-03-27T10:15:00", "event": "War room established. Identified pool exhaustion.", "type": "Info"},
+                    {"time": "2026-03-27T10:45:00", "event": "Services restored after configuration update.", "type": "Success"}
+                ],
+                "todos": [
+                    {"task": "Update terraform configs for PG limits", "status": "Verified", "owner": "DBA"},
+                    {"task": "Audit reporting service code for leaks", "status": "Progress", "owner": "DevOps"}
+                ]
+            },
+            {
+                "title": "Kernel Panic on Core Switch",
+                "severity": "Critical",
+                "status": "Monitoring",
+                "impact_analysis": "Partial network isolation for Frankfurt HUB site. Intermittent packet loss for 2 hours.",
+                "root_cause": "BGP convergence bug in firmware version 15.2(4)M6.",
+                "resolution_steps": "1. Failed over to secondary switch.\n2. Rebooted primary switch with restricted routing tables.",
+                "lessons_learned": "Firmware consistency across redundant pairs is mandatory.",
+                "prevention_strategy": "Upgrade all core switches to stable release 15.5(3)S during next maintenance window.",
+                "timeline": [
+                    {"time": "2026-03-27T14:00:00", "event": "Frankfurt HUB site reported unreachable.", "type": "Error"},
+                    {"time": "2026-03-27T14:30:00", "event": "Engineers on site. Switch rebooted.", "type": "Warning"}
+                ],
+                "todos": [
+                    {"task": "Schedule global firmware audit", "status": "Pending", "owner": "NetEng"}
+                ]
+            },
+            {
+                "title": "API Rate Limit Breach - External Provider",
+                "severity": "Major",
+                "status": "Investigating",
+                "impact_analysis": "Third-party integration for payment processing failing for 15% of transactions.",
+                "root_cause": "Unexpected traffic spike from new marketing campaign.",
+                "resolution_steps": "In progress - Coordinating with provider to increase tier.",
+                "lessons_learned": "Need better synchronization between marketing and engineering on campaign schedules.",
+                "prevention_strategy": "Implement local caching for non-critical provider lookups.",
+                "timeline": [
+                    {"time": "2026-03-27T22:00:00", "event": "Payment gateway status: 429 Too Many Requests", "type": "Error"}
+                ],
+                "todos": []
+            }
+        ]
+        
+        for inc_payload in incidents:
+            target_dev = random.choice(device_ids)
+            inc_payload["device_id"] = target_dev
+            inc_res = await ac.post("/api/v1/incidents/", json=inc_payload)
+            if inc_res.status_code != 200:
+                print(f"BUG FOUND in POST /incidents/: {inc_res.text}")
+
     print("Seeding complete.")
 
 if __name__ == "__main__":

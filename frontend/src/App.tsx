@@ -195,6 +195,7 @@ function MainLayout() {
           <SidebarItem icon={AlertTriangle} label="Incidents" path="/incidents" active={location.pathname === "/incidents"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Workflow} label="Flows" path="/flows" active={location.pathname === "/flows"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Clock} label="Schedule" path="/maintenance" active={location.pathname === "/maintenance"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Audit" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
