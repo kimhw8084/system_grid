@@ -743,15 +743,22 @@ export default function RackElevations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success('Asset mounted')
+      toast.success('Asset mounted successfully')
       setIsProvisioning(null)
     },
     onError: (e: any) => {
-      if (e.type === 'RELOCATION_CONFLICT') {
-        openConfirm('Relocate Asset', `${e.detail}\n\nRelocate to the new position?`,
-          () => mountMutation.mutate({ ...e.payload, relocate: true, rackId: e.rackId }), 'warning')
+      if (e.data?.type === 'RELOCATION_CONFLICT') {
+        const device = devices?.find((d: any) => String(d.id) === String(e.data.payload.device_id))
+        const msg = `${device?.name || 'Asset'} is currently at ${e.data.detail}.\n\nDo you want to relocate it to this new position?`
+        
+        openConfirm(
+          'Relocate Asset', 
+          msg,
+          () => mountMutation.mutate({ ...e.data.payload, relocate: true, rackId: e.data.rackId }), 
+          'warning'
+        )
       } else if (e.message === 'DEVICE_REQUIRED') toast.error('Select an asset first')
-      else toast.error(e.message)
+      else toast.error(e.message || 'Mounting failed')
     }
   })
 
@@ -1257,10 +1264,13 @@ export default function RackElevations() {
                   const d = devices?.find((d: any) => String(d.id) === e.target.value)
                   setIsProvisioning({ ...isProvisioning, device_id: e.target.value, size_u: d?.size_u || 1 })
                 }}
-                options={availableDevices?.map((d: any) => ({
-                  value: String(d.id),
-                  label: `${d.name} [${d.type}] ${d.size_u || 1}U ${d.rack_name ? `(@ ${d.rack_name} U${d.u_start})` : ''} — ${d.system || '–'}`
-                })) || []}
+                options={availableDevices?.map((d: any) => {
+                  const locInfo = d.rack_name ? ` (@ ${d.rack_name} U${d.u_start})` : '';
+                  return {
+                    value: String(d.id),
+                    label: `${d.name} [${d.type}] ${d.size_u || 1}U${locInfo} — ${d.system || '–'}`
+                  }
+                }) || []}
                 placeholder="Select asset from registry..."
               />
 

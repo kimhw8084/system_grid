@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_, update, func
 from ..database import get_db
@@ -233,7 +234,17 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
         existing_loc = existing_locs[0]
         rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == existing_loc.rack_id))
         r = rack_res.scalar_one_or_none()
-        raise HTTPException(status_code=409, detail=f"Device already mounted in {r.name if r else 'another rack'} at U{existing_loc.start_unit}")
+        
+        # Return structured data for frontend to handle confirmation
+        return JSONResponse(
+            status_code=409, 
+            content={
+                "type": "RELOCATION_CONFLICT",
+                "detail": f"{r.name if r else 'another rack'} at U{existing_loc.start_unit}",
+                "rackId": rack_id,
+                "payload": data
+            }
+        )
 
     rack_locs_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.rack_id == rack_id))
     rack_locs = rack_locs_res.scalars().all()
