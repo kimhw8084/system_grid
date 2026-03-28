@@ -498,12 +498,11 @@ export default function AssetGrid() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
       cellRenderer: (p: any) => (
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', floatingFilter: true },
+    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { 
       field: "type", 
       headerName: "Type", 
@@ -511,7 +510,7 @@ export default function AssetGrid() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
+      
       cellRenderer: (p: any) => {
         const colors: any = {
           Physical: 'text-emerald-400',
@@ -531,7 +530,7 @@ export default function AssetGrid() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      floatingFilter: true,
+      
       cellRenderer: (p: any) => {
         const colors: any = {
           Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
@@ -544,7 +543,7 @@ export default function AssetGrid() {
         return <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span>
       }
     },
-    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', floatingFilter: true },
+    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "model", headerName: "Model", width: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
