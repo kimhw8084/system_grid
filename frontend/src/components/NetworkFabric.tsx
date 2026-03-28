@@ -56,29 +56,29 @@ export default function NetworkFabric() {
 
   const columnDefs = useMemo(() => [
     { 
-      headerName: "Source Entity", 
+      headerName: "Src", 
       field: "server_a", 
       flex: 1,
       cellClass: 'text-center font-bold text-blue-400',
       headerClass: 'text-center'
     },
     { 
-      headerName: "Source Port", 
+      headerName: "Src Port", 
       field: "source_port", 
-      width: 120,
+      width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
     { 
-      headerName: "Link Vector", 
-      width: 100, 
+      headerName: "Vector", 
+      width: 80, 
       cellClass: "justify-center text-center",
       headerClass: 'text-center',
       cellRenderer: (p: any) => <div className="flex items-center justify-center text-slate-600"><ArrowRightLeft size={14}/></div> 
     },
     { 
-      headerName: "Peer Entity", 
+      headerName: "Peer", 
       field: "server_b", 
       flex: 1,
       cellClass: 'text-center font-bold text-emerald-400',
@@ -87,17 +87,17 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer Port", 
       field: "target_port", 
-      width: 120,
+      width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
-    { field: "purpose", headerName: "Purpose", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "speed", headerName: "Throughput", width: 100, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
-    { field: "direction", headerName: "Mode", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "purpose", headerName: "Purpose", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "speed", headerName: "Gbps", width: 80, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
+    { field: "direction", headerName: "Mode", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     {
       headerName: "Ops",
-      width: 100,
+      width: 80,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
