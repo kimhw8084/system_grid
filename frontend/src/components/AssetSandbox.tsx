@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react'
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -17,38 +17,13 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { apiFetch } from "../api/apiClient"
 import { StyledSelect } from "./shared/StyledSelect"
-import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
-
-// --- Constants (copied from AssetGrid) ---
-
-const ASSET_TYPES = [
-    { value: 'Physical', label: 'Physical' },
-    { value: 'Virtual', label: 'Virtual' },
-    { value: 'Storage', label: 'Storage' },
-    { value: 'Switch', label: 'Switch' },
-    { value: 'Firewall', label: 'Firewall' },
-    { value: 'Load Balancer', label: 'Load Balancer' }
-]
-
-const STATUS_ITEMS = [
-    { value: 'Planned', label: 'Planned' },
-    { value: 'Active', label: 'Active' },
-    { value: 'Maintenance', label: 'Maintenance' },
-    { value: 'Standby', label: 'Standby' },
-    { value: 'Offline', label: 'Offline' }
-]
-
-const ENVIRONMENT_ITEMS = [
-    { value: 'Production', label: 'Production' },
-    { value: 'Staging', label: 'Staging' },
-    { value: 'QA', label: 'QA' },
-    { value: 'Dev', label: 'Dev' }
-]
 
 // --- Idea 1: Global Command Palette Component ---
 
 const CommandPalette = ({ isOpen, onClose, assets, onSelect }: any) => {
   const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const filtered = useMemo(() => {
     if (!query) return []
     return assets.filter((a: any) => 
@@ -58,33 +33,36 @@ const CommandPalette = ({ isOpen, onClose, assets, onSelect }: any) => {
   }, [query, assets])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        // Parent handles state, but we ensure it works
-      }
-      if (e.key === 'Escape') onClose()
+    if (isOpen) {
+      setQuery('')
+      setTimeout(() => inputRef.current?.focus(), 50)
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] px-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[250] flex items-start justify-center pt-[15vh] px-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
        <motion.div 
          initial={{ opacity: 0, scale: 0.95, y: -20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
          className="w-full max-w-2xl bg-[#1a1b26] border border-blue-500/30 rounded-3xl shadow-2xl overflow-hidden"
+         onClick={e => e.stopPropagation()}
        >
           <div className="flex items-center px-6 py-4 border-b border-white/5 bg-black/20">
              <Search size={20} className="text-blue-400 mr-4" />
              <input 
-               autoFocus value={query} onChange={e => setQuery(e.target.value)}
+               ref={inputRef}
+               value={query} onChange={e => setQuery(e.target.value)}
                placeholder="Jump to node, system, or matrix view..."
                className="flex-1 bg-transparent border-none outline-none text-white text-lg font-medium"
+               onKeyDown={e => {
+                 if (e.key === 'Enter' && filtered.length > 0) {
+                   onSelect(filtered[0])
+                   onClose()
+                 }
+               }}
              />
-             <div className="px-2 py-1 bg-white/5 rounded border border-white/10 text-[10px] text-slate-500 font-black">ESC</div>
+             <div className="px-2 py-1 bg-white/5 rounded border border-white/10 text-[10px] text-slate-500 font-black tracking-widest uppercase">ESC</div>
           </div>
           <div className="max-h-[400px] overflow-y-auto custom-scrollbar p-2">
              {filtered.map((a: any) => (
@@ -97,8 +75,8 @@ const CommandPalette = ({ isOpen, onClose, assets, onSelect }: any) => {
                         <Server size={18} />
                      </div>
                      <div className="flex flex-col text-left">
-                        <span className="text-sm font-black text-white uppercase italic tracking-tighter">{a.name}</span>
-                        <span className="text-[10px] text-slate-500 font-bold uppercase">{a.system} // {a.type}</span>
+                        <span className="text-sm font-black text-white uppercase italic tracking-tighter leading-none">{a.name}</span>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase mt-1">{a.system} // {a.type}</span>
                      </div>
                   </div>
                   <ChevronRight size={16} className="text-slate-700 group-hover:text-blue-400 transition-transform group-hover:translate-x-1" />
@@ -111,9 +89,16 @@ const CommandPalette = ({ isOpen, onClose, assets, onSelect }: any) => {
                <div className="py-8 px-6 space-y-4">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Quick Navigation</p>
                   <div className="grid grid-cols-2 gap-3">
-                     {['Dashboard', 'Racks', 'Assets', 'Services', 'Network', 'Monitoring'].map(v => (
-                       <div key={v} className="flex items-center space-x-3 p-3 bg-white/5 rounded-xl border border-white/5 text-[11px] font-black text-slate-400 uppercase italic cursor-pointer hover:border-blue-500/30 transition-all">
-                          <Zap size={14} className="text-blue-500" /> <span>{v}</span>
+                     {[
+                       { n: 'Dashboard', p: '/' },
+                       { n: 'Racks', p: '/racks' },
+                       { n: 'Assets', p: '/assets' },
+                       { n: 'Services', p: '/services' },
+                       { n: 'Network', p: '/network' },
+                       { n: 'Monitoring', p: '/monitoring' }
+                     ].map(v => (
+                       <div key={v.n} className="flex items-center space-x-3 p-3 bg-white/5 rounded-xl border border-white/5 text-[11px] font-black text-slate-400 uppercase italic cursor-pointer hover:border-blue-500/30 transition-all">
+                          <Zap size={14} className="text-blue-500" /> <span>{v.n}</span>
                        </div>
                      ))}
                   </div>
@@ -127,14 +112,14 @@ const CommandPalette = ({ isOpen, onClose, assets, onSelect }: any) => {
 
 // --- Idea 2: Dependency Map Diagram Components ---
 
-const GraphNode = ({ data }: any) => (
-  <div className="glass-panel p-4 rounded-2xl min-w-[150px] border border-blue-500/20 bg-[#1a1b26]/90">
-    <Handle type="target" position={Position.Top} className="w-2 h-2 bg-blue-500" />
+const GraphNode = ({ data, selected }: any) => (
+  <div className={`glass-panel p-4 rounded-2xl min-w-[150px] border-2 transition-all bg-[#1a1b26]/90 ${selected ? 'border-blue-500 shadow-lg' : 'border-white/10'}`}>
+    <Handle type="target" position={Position.Top} className="w-2 h-2 bg-blue-500 border-none" />
     <div className="flex flex-col items-center text-center space-y-1">
        <span className="text-[11px] font-black text-white uppercase italic tracking-tighter leading-none">{data.label}</span>
        <span className="text-[8px] text-slate-500 font-bold uppercase">{data.system}</span>
     </div>
-    <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-blue-500" />
+    <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-blue-500 border-none" />
   </div>
 )
 
@@ -143,42 +128,53 @@ const nodeTypes = { assetNode: GraphNode }
 function DependencyMap({ assets }: any) {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
-  const [filters, setFilters] = useState({ systems: [] as string[], nodes: [] as string[] })
+  const [filters, setFilters] = useState({ systems: [] as string[] })
 
-  const { data: allRelationships } = useQuery({ 
-    queryKey: ['all-relationships'], 
-    queryFn: async () => (await apiFetch('/api/v1/networks/connections')).json() // Using network connections as proxy for simple flow
+  const { data: relations } = useQuery({ 
+    queryKey: ['all-relationships-global-sandbox'], 
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/networks/connections')
+      return res.json()
+    }
   })
 
   useEffect(() => {
-    // Basic logic to build graph based on filters
     const filteredAssets = assets.filter((a: any) => 
-      (filters.systems.length === 0 || filters.systems.includes(a.system)) &&
-      (filters.nodes.length === 0 || filters.nodes.includes(a.name))
+      filters.systems.length === 0 || filters.systems.includes(a.system)
     )
 
     const newNodes = filteredAssets.map((a: any, i: number) => ({
       id: `asset-${a.id}`,
       type: 'assetNode',
       data: { label: a.name, system: a.system },
-      position: { x: 100 + (i % 3) * 250, y: 100 + Math.floor(i / 3) * 150 }
+      position: { x: 100 + (i % 4) * 220, y: 100 + Math.floor(i / 4) * 120 }
     }))
 
-    // Dummy edges for visualization based on some common systems
     const newEdges: any[] = []
-    filteredAssets.forEach((a: any, i: number) => {
-       if (i > 0 && i < 10) {
+    if (relations) {
+      relations.forEach((rel: any) => {
+        const sourceExists = filteredAssets.find((a:any) => a.id === rel.source_device_id)
+        const targetExists = filteredAssets.find((a:any) => a.id === rel.target_device_id)
+        
+        if (sourceExists && targetExists) {
           newEdges.push({
-             id: `e-${i}`, source: `asset-${filteredAssets[i-1].id}`, target: `asset-${a.id}`,
-             animated: true, label: 'DATA_VECTOR', labelStyle: { fill: '#3b82f6', fontWeight: 900, fontSize: 8 },
-             markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }
+            id: `edge-${rel.id}`,
+            source: `asset-${rel.source_device_id}`,
+            target: `asset-${rel.target_device_id}`,
+            animated: true,
+            label: rel.purpose || 'CONNECT',
+            labelStyle: { fill: '#3b82f6', fontWeight: 900, fontSize: 7, textTransform: 'uppercase' },
+            labelBgStyle: { fill: '#08090a', fillOpacity: 0.8 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+            style: { stroke: '#3b82f6', strokeWidth: 1.5 }
           })
-       }
-    })
+        }
+      })
+    }
 
     setNodes(newNodes)
     setEdges(newEdges)
-  }, [assets, filters, setNodes, setEdges])
+  }, [assets, filters, relations, setNodes, setEdges])
 
   return (
     <div className="flex-1 glass-panel rounded-[40px] border-white/5 flex flex-col overflow-hidden relative">
@@ -187,26 +183,26 @@ function DependencyMap({ assets }: any) {
              <Workflow size={20} className="text-blue-400" />
              <h3 className="text-xs font-black uppercase text-white tracking-widest italic">Logic Relationship Matrix</h3>
           </div>
-          <div className="flex items-center space-x-4">
-             <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                <span className="text-[9px] font-black text-slate-500 uppercase">System:</span>
-                <select 
-                  onChange={e => setFilters(f => ({ ...f, systems: e.target.value === 'All' ? [] : [e.target.value] }))}
-                  className="bg-transparent text-[10px] font-bold text-blue-400 outline-none uppercase"
-                >
-                   <option>All</option>
-                   {Array.from(new Set(assets.map((a:any)=>a.system))).map((s:any)=><option key={s}>{s}</option>)}
-                </select>
-             </div>
+          <div className="flex items-center space-x-2 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">System Focus:</span>
+             <select 
+               onChange={e => setFilters({ systems: e.target.value === 'All' ? [] : [e.target.value] })}
+               className="bg-transparent text-[10px] font-bold text-blue-400 outline-none uppercase cursor-pointer"
+             >
+                <option value="All">All Systems</option>
+                {Array.from(new Set(assets.map((a:any)=>a.system))).map((s:any)=><option key={s} value={s}>{s}</option>)}
+             </select>
           </div>
        </div>
        <div className="flex-1 bg-[#08090a]">
           <ReactFlow 
-            nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
+            nodes={nodes} edges={edges} 
+            onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
             nodeTypes={nodeTypes} fitView
           >
              <Background color="#1e293b" gap={20} />
              <Controls />
+             <MiniMap nodeColor="#3b82f6" maskColor="rgba(0,0,0,0.7)" />
           </ReactFlow>
        </div>
     </div>
@@ -217,36 +213,39 @@ function DependencyMap({ assets }: any) {
 
 const AuditPeekTab = ({ deviceId }: { deviceId: number }) => {
   const { data: logs, isLoading } = useQuery({
-    queryKey: ['audit-peek', deviceId],
-    queryFn: async () => (await apiFetch(`/api/v1/audit/?target_id=${deviceId}`)).json()
+    queryKey: ['audit-peek-sandbox-final', deviceId],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/v1/audit/?target_table=devices&target_id=${deviceId}`)
+      return res.json()
+    }
   })
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4">
        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center space-x-2">
           <History size={14} /> <span>Transaction Forensics (Last 5)</span>
        </h3>
-       {isLoading ? <div className="py-12 animate-pulse text-center text-[9px] font-black uppercase text-slate-600 italic">Reading Ledger...</div> : (
-         <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+       {isLoading ? <div className="py-12 animate-pulse text-center text-[9px] font-black uppercase text-slate-600 italic">Reading Ledger Matrix...</div> : (
+         <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden shadow-inner">
             <table className="w-full text-[10px]">
                <thead className="bg-white/5 border-b border-white/5">
                   <tr>
-                     <th className="px-4 py-2 text-left text-slate-500 uppercase">Ops</th>
-                     <th className="px-4 py-2 text-left text-slate-500 uppercase">Admin</th>
-                     <th className="px-4 py-2 text-left text-slate-500 uppercase">Time</th>
-                     <th className="px-4 py-2 text-left text-slate-500 uppercase">Payload</th>
+                     <th className="px-4 py-2 text-left text-slate-500 uppercase tracking-widest">Ops</th>
+                     <th className="px-4 py-2 text-left text-slate-500 uppercase tracking-widest">Admin</th>
+                     <th className="px-4 py-2 text-left text-slate-500 uppercase tracking-widest">Time</th>
+                     <th className="px-4 py-2 text-left text-slate-500 uppercase tracking-widest">Payload</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-white/5">
                   {logs?.slice(0, 5).map((l: any) => (
-                    <tr key={l.id} className="hover:bg-white/5">
-                       <td className="px-4 py-3 font-black text-blue-400">{l.action}</td>
-                       <td className="px-4 py-3 font-bold text-slate-300">{l.user_id}</td>
-                       <td className="px-4 py-3 text-slate-500 font-mono">{new Date(l.timestamp).toLocaleTimeString()}</td>
-                       <td className="px-4 py-3 text-slate-400 italic truncate max-w-[200px]">{l.description}</td>
+                    <tr key={l.id} className="hover:bg-white/5 group transition-colors">
+                       <td className="px-4 py-3 font-black text-blue-400 uppercase tracking-tighter">{l.action}</td>
+                       <td className="px-4 py-3 font-bold text-slate-300 uppercase">{l.user_id}</td>
+                       <td className="px-4 py-3 text-slate-500 font-mono text-[9px]">{new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+                       <td className="px-4 py-3 text-slate-400 italic truncate max-w-[250px] group-hover:text-white transition-colors">{l.description}</td>
                     </tr>
                   ))}
-                  {!logs?.length && <tr><td colSpan={4} className="py-12 text-center text-[9px] font-black uppercase text-slate-700 italic">Registry Empty</td></tr>}
+                  {!logs?.length && <tr><td colSpan={4} className="py-12 text-center text-[9px] font-black uppercase text-slate-700 italic opacity-40">Forensic history null</td></tr>}
                </tbody>
             </table>
          </div>
@@ -259,6 +258,8 @@ const AuditPeekTab = ({ deviceId }: { deviceId: number }) => {
 
 export default function AssetSandbox() {
   const queryClient = useQueryClient()
+  const gridRef = useRef<AgGridReact>(null)
+  
   const [viewMode, setViewMode] = useState<'grid' | 'graph'>('grid')
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [bulkPattern, setBulkPattern] = useState('')
@@ -266,18 +267,17 @@ export default function AssetSandbox() {
   const [activeDetails, setActiveDetails] = useState<any>(null)
 
   const { data: assets, isLoading } = useQuery({ 
-    queryKey: ['assets'], 
+    queryKey: ['assets-sandbox-final'], 
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json() 
   })
-
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
-        setIsCommandOpen(true)
+        setIsCommandOpen(prev => !prev)
       }
+      if (e.key === 'Escape') setIsCommandOpen(false)
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
@@ -285,16 +285,27 @@ export default function AssetSandbox() {
 
   // Idea 5: Bulk Pattern Matcher Logic
   const handleBulkMatch = useCallback(() => {
-    if (!bulkPattern || !assets) return
+    if (!bulkPattern || !assets || !gridRef.current) return
     try {
       const regex = new RegExp(bulkPattern, 'i')
-      const matched = assets.filter((a: any) => regex.test(a.name)).map((a: any) => a.id)
-      setSelectedIds(matched)
-      toast.success(`Pattern matched ${matched.length} nodes`)
+      
+      gridRef.current.api.forEachNode((node) => {
+        const matches = regex.test(node.data.name) || regex.test(node.data.system)
+        node.setSelected(matches)
+      })
+      
+      const count = gridRef.current.api.getSelectedNodes().length
+      toast.success(`Matrix selection synchronized: ${count} nodes`)
     } catch {
-      toast.error('Invalid Regex Pattern')
+      toast.error('Invalid Pattern Architecture')
     }
   }, [bulkPattern, assets])
+
+  const onSelectionChanged = useCallback(() => {
+    if (gridRef.current) {
+      setSelectedIds(gridRef.current.api.getSelectedNodes().map(n => n.data.id))
+    }
+  }, [])
 
   return (
     <div className="h-full flex flex-col space-y-6">
@@ -306,27 +317,28 @@ export default function AssetSandbox() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
            <h1 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-none">Asset Sandbox</h1>
-           <p className="text-[10px] text-slate-500 uppercase font-black mt-2 tracking-[0.3em]">Experimental Intelligence & Orchestration Lab</p>
+           <p className="text-[10px] text-slate-500 uppercase font-black mt-2 tracking-[0.3em]">Advanced Matrix Forensics & Pattern Processing</p>
         </div>
 
         <div className="flex items-center space-x-4">
            {/* Idea 5: Compact Bulk Pattern Matcher */}
-           <div className="flex items-center space-x-2 bg-black/40 border border-white/5 p-1 rounded-2xl">
+           <div className="flex items-center space-x-2 bg-black/40 border border-white/5 p-1 rounded-2xl shadow-inner group focus-within:border-blue-500/50 transition-all">
               <div className="pl-3 text-slate-600"><Maximize2 size={14}/></div>
               <input 
                 value={bulkPattern} onChange={e => setBulkPattern(e.target.value)}
-                placeholder="REGEXP BULK SELECT..."
+                onKeyDown={e => e.key === 'Enter' && handleBulkMatch()}
+                placeholder="REGEXP PATTERN..."
                 className="bg-transparent border-none outline-none text-[9px] font-black uppercase text-white w-40 placeholder:text-slate-700"
               />
-              <button onClick={handleBulkMatch} className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all">Match</button>
+              <button onClick={handleBulkMatch} className="px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-xl text-[9px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all">Execute Match</button>
            </div>
 
-           <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
-              <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}><TableIcon size={18}/></button>
-              <button onClick={() => setViewMode('graph')} className={`p-2 rounded-xl transition-all ${viewMode === 'graph' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}><Workflow size={18}/></button>
+           <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
+              <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-white'}`}><TableIcon size={18}/></button>
+              <button onClick={() => setViewMode('graph')} className={`p-2 rounded-xl transition-all ${viewMode === 'graph' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-white'}`}><Workflow size={18}/></button>
            </div>
            
-           <div className="px-4 py-2 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase text-blue-400 shadow-inner flex items-center space-x-2">
+           <div className="px-4 py-2 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase text-blue-400 shadow-inner flex items-center space-x-2 animate-pulse">
               <Command size={14} /> <span>CTRL + K</span>
            </div>
         </div>
@@ -336,15 +348,18 @@ export default function AssetSandbox() {
         {viewMode === 'grid' ? (
           <motion.div key="grid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex-1 glass-panel rounded-[40px] overflow-hidden ag-theme-alpine-dark relative border-white/5">
              <AgGridReact 
+               ref={gridRef}
                rowData={assets || []}
                columnDefs={[
-                 { field: 'name', headerName: 'Node', flex: 1, pinned: 'left', cellClass: 'font-black text-blue-400 uppercase tracking-tighter' },
-                 { field: 'system', headerName: 'System', width: 120 },
-                 { field: 'status', headerName: 'Status', width: 110, cellRenderer: (p:any)=><span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-white/10">{p.value}</span> },
-                 { field: 'environment', headerName: 'Env', width: 100 },
-                 { headerName: 'Action', width: 80, pinned: 'right', cellRenderer: (p:any)=><button onClick={()=>setActiveDetails(p.data)} className="p-1.5 hover:bg-blue-600/20 text-blue-400 rounded-lg"><Maximize2 size={14}/></button>}
+                 { field: 'id', headerName: 'ID', width: 70, checkboxSelection: true, headerCheckboxSelection: true, cellClass: 'font-mono text-slate-600 text-[10px]' },
+                 { field: 'name', headerName: 'Node Identity', flex: 1, pinned: 'left', cellClass: 'font-black text-blue-400 uppercase tracking-tighter cursor-pointer hover:underline', onCellClicked: (p:any)=>setActiveDetails(p.data) },
+                 { field: 'system', headerName: 'Logic Domain', width: 130, cellClass: 'font-bold text-slate-300' },
+                 { field: 'status', headerName: 'State', width: 110, cellRenderer: (p:any)=><span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-white/10 bg-white/5">{p.value}</span> },
+                 { field: 'environment', headerName: 'Matrix', width: 100 },
+                 { headerName: 'Action', width: 80, pinned: 'right', cellRenderer: (p:any)=><button onClick={()=>setActiveDetails(p.data)} className="p-1.5 hover:bg-blue-600/20 text-blue-400 rounded-lg transition-all"><Maximize2 size={14}/></button>}
                ]}
                rowSelection="multiple" rowHeight={45} animateRows={true}
+               onSelectionChanged={onSelectionChanged}
              />
           </motion.div>
         ) : (
@@ -359,20 +374,20 @@ export default function AssetSandbox() {
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10 text-left">
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl max-h-[85vh] flex flex-col p-12 rounded-[60px] border-blue-500/30">
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl max-h-[85vh] flex flex-col p-12 rounded-[60px] border-blue-500/30 shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/5 pb-8 mb-8">
                    <div className="flex items-center space-x-6">
                       <div className="p-5 bg-blue-600/10 rounded-[2.5rem] text-blue-400 shadow-inner"><Server size={32}/></div>
                       <div>
                          <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">{activeDetails.name}</h2>
-                         <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] mt-3">{activeDetails.system} // {activeDetails.type} Node</p>
+                         <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] mt-3">{activeDetails.system} // {activeDetails.type} Forensic Node</p>
                       </div>
                    </div>
                    <button onClick={() => setActiveDetails(null)} className="p-4 bg-white/5 hover:bg-white/10 rounded-3xl text-slate-500 transition-all"><X size={32}/></button>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                   <AssetDetailsSandbox device={activeDetails} options={options} />
+                   <AssetDetailsSandbox device={activeDetails} />
                 </div>
              </motion.div>
           </div>
@@ -392,12 +407,13 @@ export default function AssetSandbox() {
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.15em !important; }
         .ag-cell { display: flex; align-items: center; justify-content: center !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.1) !important; }
       `}</style>
     </div>
   )
 }
 
-function AssetDetailsSandbox({ device, options }: any) {
+function AssetDetailsSandbox({ device }: any) {
   const [tab, setTab] = useState('Overview')
   return (
     <div className="space-y-8">
@@ -406,43 +422,43 @@ function AssetDetailsSandbox({ device, options }: any) {
             <button key={t} onClick={()=>setTab(t)} className={`px-10 py-3 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest transition-all ${tab===t?'bg-blue-600 text-white shadow-lg shadow-blue-500/20':'text-slate-500 hover:text-white'}`}>{t}</button>
           ))}
        </div>
-       <div className="glass-panel rounded-[40px] border-white/5 p-10 bg-white/[0.01] shadow-inner">
+       <div className="glass-panel rounded-[40px] border-white/5 p-10 bg-white/[0.01] shadow-inner min-h-[400px]">
           {tab === 'Overview' && (
-            <div className="grid grid-cols-2 gap-12">
+            <div className="grid grid-cols-2 gap-12 text-left">
                <div className="space-y-6">
                   <h3 className="text-[11px] font-black uppercase text-blue-400 tracking-[0.4em] border-l-4 border-blue-600 pl-4 italic">Core Specs</h3>
-                  <div className="bg-white/[0.02] p-8 rounded-3xl border border-white/5 space-y-4">
-                     <div className="flex justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase">Management IP</span>
-                        <span className="text-xs font-mono font-bold text-white uppercase italic">{device.management_ip}</span>
+                  <div className="bg-white/[0.02] p-8 rounded-3xl border border-white/5 space-y-4 shadow-inner">
+                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Management IP</span>
+                        <span className="text-xs font-mono font-bold text-white uppercase italic tracking-tighter">{device.management_ip || 'VOID'}</span>
                      </div>
-                     <div className="flex justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase">Kernel OS</span>
-                        <span className="text-xs font-bold text-white uppercase italic">{device.os_name} {device.os_version}</span>
+                     <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Kernel OS</span>
+                        <span className="text-xs font-bold text-white uppercase italic tracking-tighter">{device.os_name} {device.os_version}</span>
                      </div>
                   </div>
                </div>
                <div className="space-y-6">
                   <h3 className="text-[11px] font-black uppercase text-emerald-400 tracking-[0.4em] border-l-4 border-emerald-600 pl-4 italic">Location Context</h3>
-                  <div className="bg-white/[0.02] p-8 rounded-3xl border border-white/5 space-y-4">
-                     <div className="flex justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase">Site Matrix</span>
-                        <span className="text-xs font-bold text-white uppercase italic">{device.site_name}</span>
+                  <div className="bg-white/[0.02] p-8 rounded-3xl border border-white/5 space-y-4 shadow-inner">
+                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Site Matrix</span>
+                        <span className="text-xs font-bold text-white uppercase italic tracking-tighter">{device.site_name || 'VOID'}</span>
                      </div>
-                     <div className="flex justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase">Rack & Slot</span>
-                        <span className="text-xs font-bold text-white uppercase italic">{device.rack_name} U{device.u_start}</span>
+                     <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rack & Slot</span>
+                        <span className="text-xs font-bold text-white uppercase italic tracking-tighter">{device.rack_name || 'N/A'} U{device.u_start || '–'}</span>
                      </div>
                   </div>
                </div>
             </div>
           )}
-          {/* Idea 4: Audit Trail Peek (Last 5) */}
           {tab === 'Audit Trail' && <AuditPeekTab deviceId={device.id} />}
           {tab === 'Logic Matrix' && (
-            <div className="py-20 text-center opacity-30 flex flex-col items-center">
-               <Workflow size={48} className="mb-4 text-blue-400" />
+            <div className="py-24 text-center opacity-30 flex flex-col items-center">
+               <Workflow size={48} className="mb-4 text-blue-400 animate-pulse" />
                <p className="text-[10px] font-black uppercase tracking-[0.5em] italic">Dependency Graph Logic Initialized</p>
+               <p className="text-[8px] font-bold uppercase mt-2 text-slate-500">Scanning for relationship vectors...</p>
             </div>
           )}
        </div>
