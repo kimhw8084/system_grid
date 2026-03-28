@@ -57,7 +57,7 @@ export default function MonitoringGrid() {
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "category", 
-      headerName: "Category", 
+      headerName: "Cat", 
       width: 130,
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -89,12 +89,12 @@ export default function MonitoringGrid() {
         )
       }
     },
-    { field: "device_name", headerName: "Host / Target", flex: 1, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
-    { field: "title", headerName: "Monitoring Intent", flex: 1.5, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
+    { field: "device_name", headerName: "Target", flex: 1, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { field: "title", headerName: "Intent", flex: 1.5, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
     { 
       field: "platform", 
       headerName: "Platform", 
-      width: 130, 
+      width: 120, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
@@ -105,8 +105,8 @@ export default function MonitoringGrid() {
       )
     },
     {
-      headerName: "Actions",
-      width: 120,
+      headerName: "Ops",
+      width: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
