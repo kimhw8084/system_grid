@@ -337,7 +337,7 @@ export default function ServiceRegistry() {
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "name", 
-      headerName: "Instance Name", 
+      headerName: "Instance", 
       flex: 1, 
       pinned: 'left',
       cellClass: 'text-center',
@@ -351,11 +351,11 @@ export default function ServiceRegistry() {
         </div>
       )
     },
-    { field: "service_type", headerName: "Type", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "service_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "status", 
       headerName: "Status", 
-      width: 110, 
+      width: 100, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -363,13 +363,13 @@ export default function ServiceRegistry() {
         return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
       }
     },
-    { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
-    { field: "environment", headerName: "Env", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "version", headerName: "Version", width: 100, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
+    { field: "device_name", headerName: "Host", width: 130, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
     { 
       field: "license_type", 
-      headerName: "License", 
-      width: 120, 
+      headerName: "Auth", 
+      width: 100, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? (
@@ -379,7 +379,7 @@ export default function ServiceRegistry() {
     {
       field: "expiry_date",
       headerName: "Expiry",
-      width: 120,
+      width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -389,8 +389,8 @@ export default function ServiceRegistry() {
       }
     },
     {
-      headerName: "Actions",
-      width: 120,
+      headerName: "Ops",
+      width: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
