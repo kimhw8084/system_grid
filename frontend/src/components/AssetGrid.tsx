@@ -526,11 +526,10 @@ export default function AssetGrid() {
     { 
       field: "status", 
       headerName: "Status", 
-      width: 90,
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      
       cellRenderer: (p: any) => {
         const colors: any = {
           Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
@@ -540,9 +539,16 @@ export default function AssetGrid() {
           Standby: 'text-sky-400 border-sky-500/20 bg-sky-500/5',
           Offline: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
         }
-        return <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span>
+        return (
+          <div className="flex items-center justify-center h-full">
+            <span className={`inline-flex items-center justify-center w-24 py-1 rounded-full text-[8px] font-black uppercase border tracking-widest ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              {p.value}
+            </span>
+          </div>
+        )
       }
     },
+
     { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
