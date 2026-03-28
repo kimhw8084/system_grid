@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -392,6 +392,14 @@ export default function AssetGrid() {
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
+  // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
+  const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
+  const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
+  const { data: devices } = useQuery({ 
+    queryKey: ["devices-list-all"], 
+    queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
+  })
+
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
@@ -717,13 +725,29 @@ export default function AssetGrid() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <AssetDetailsView device={activeDetails} options={options} />
+                 <AssetDetailsView 
+                   device={activeDetails} 
+                   options={options} 
+                   onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
+                   onEditService={(s:any) => setActiveServiceEdit(s)}
+                 />
                </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+               </motion.div>
+               </div>
+               )}
+               </AnimatePresence>
 
+               <SharedServiceModals 
+               activeDetails={activeServiceDetails}
+               setActiveDetails={setActiveServiceDetails}
+               activeEdit={activeServiceEdit}
+               setActiveEdit={setActiveServiceEdit}
+               options={options}
+               devices={devices}
+               onServiceUpdate={() => {
+               queryClient.invalidateQueries({ queryKey: ['device-services'] })
+               }}
+               />
       <ConfigRegistryModal
         isOpen={showConfig}
         onClose={() => setShowConfig(false)}
@@ -752,20 +776,11 @@ export default function AssetGrid() {
   )
 }
 
-const AssetDetailsView = ({ device, options }: { device: any, options: any }) => {
+const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
     const [metadata, setMetadata] = useState(device.metadata_json || {})
     const [metadataError, setMetadataError] = useState<string | null>(null)
-
-    // Shared Service Modal States
-    const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
-    const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
-
-    const { data: devices } = useQuery({ 
-      queryKey: ["devices"], 
-      queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
-    })
 
     const metaMutation = useMutation({
         mutationFn: async (data: any) => {
@@ -814,23 +829,11 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
                 {tab === 'services' && (
                   <AssetServicesTable 
                     deviceId={device.id} 
-                    onViewDetails={(s) => setActiveServiceDetails(s)}
-                    onEdit={(s) => setActiveServiceEdit(s)}
+                    onViewDetails={onViewServiceDetails}
+                    onEdit={onEditService}
                   />
                 )}
             </div>
-
-            <SharedServiceModals 
-              activeDetails={activeServiceDetails}
-              setActiveDetails={setActiveServiceDetails}
-              activeEdit={activeServiceEdit}
-              setActiveEdit={setActiveServiceEdit}
-              options={options}
-              devices={devices}
-              onServiceUpdate={() => {
-                queryClient.invalidateQueries({ queryKey: ['device-services', device.id] })
-              }}
-            />
         </div>
     )
 }
