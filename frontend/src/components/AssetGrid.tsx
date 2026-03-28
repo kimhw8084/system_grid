@@ -492,22 +492,26 @@ export default function AssetGrid() {
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "name", 
-      headerName: "Node", 
+      headerName: "name", 
       flex: 1.2, 
       pinned: 'left',
       cellClass: 'text-center',
       headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
       cellRenderer: (p: any) => (
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', floatingFilter: true },
     { 
       field: "type", 
       headerName: "Type", 
       width: 80,
       cellClass: 'text-center',
       headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
       cellRenderer: (p: any) => {
         const colors: any = {
           Physical: 'text-emerald-400',
@@ -526,6 +530,8 @@ export default function AssetGrid() {
       width: 90,
       cellClass: 'text-center',
       headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      floatingFilter: true,
       cellRenderer: (p: any) => {
         const colors: any = {
           Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
@@ -538,18 +544,19 @@ export default function AssetGrid() {
         return <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span>
       }
     },
-    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', floatingFilter: true },
+    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { 
       field: "license_type", 
       headerName: "Auth", 
       width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => p.value ? (
         <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{p.value}</span>
       ) : <span className="text-slate-700 italic text-[8px]">N/A</span>
@@ -560,33 +567,34 @@ export default function AssetGrid() {
       width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
+      filter: 'agDateColumnFilter',
       cellRenderer: (p: any) => {
         if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
         const d = new Date(p.value)
         return <span className="text-[9px] font-mono text-slate-400">{d.toLocaleDateString()}</span>
       }
     },
-    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
-    { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
+    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
+    { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
     { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     { field: "power_max_w", headerName: "Max W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     {
-      headerName: "Ops",
+      headerName: "Action",
       width: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Eye size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all"><Edit2 size={14}/></button>
                {activeTab !== 'deleted' ? (
-                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                ) : (
-                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                )}
            </div>
         </div>
@@ -760,9 +768,9 @@ export default function AssetGrid() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
-          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
+          --ag-border-color: #292e42;
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #94a3b8;
           --ag-font-family: 'Inter', sans-serif;
@@ -770,7 +778,16 @@ export default function AssetGrid() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
+        
+        /* Make filter popups non-transparent and on top */
+        .ag-popup { z-index: 1000 !important; }
+        .ag-filter-wrapper { background-color: #24283b !important; border: 1px solid #414868 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
+        .ag-filter-body { background-color: #24283b !important; padding: 12px !important; }
+        
+        /* Action buttons hover effect */
+        .ag-cell button { transition: transform 0.2s ease; }
+        .ag-cell button:hover { transform: scale(1.2); }
       `}</style>
     </div>
   )
@@ -779,48 +796,44 @@ export default function AssetGrid() {
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
-    const [metadata, setMetadata] = useState(device.metadata_json || {})
-    const [metadataError, setMetadataError] = useState<string | null>(null)
 
-    const metaMutation = useMutation({
+    const mutation = useMutation({
         mutationFn: async (data: any) => {
             const res = await apiFetch(`/api/v1/devices/${device.id}`, {
-                method: 'PUT', body: JSON.stringify({ metadata_json: data })
+                method: 'PUT', body: JSON.stringify(data)
             })
             if (!res.ok) throw new Error(await res.text())
             return res.json()
         },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Metadata saved') },
-        onError: (e: any) => toast.error(e.message || 'Failed to save metadata')
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset synchronized') },
+        onError: (e: any) => toast.error(e.message || 'Failed to update asset')
     })
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'config', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
                 </div>
-                {tab === 'metadata' && (
-                    <button
-                      disabled={!!metadataError || metaMutation.isPending}
-                      onClick={() => {
-                        metaMutation.mutate(metadata);
-                      }}
-                      className={`px-4 py-2 ${metadataError || metaMutation.isPending ? 'bg-slate-700 cursor-not-allowed' : 'bg-emerald-600'} text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center space-x-2`}
-                    >
-                      {metaMutation.isPending && <RefreshCcw size={12} className="animate-spin" />}
-                      <span>Save Metadata</span>
-                    </button>
-                )}
             </div>
             <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+                {tab === 'config' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <AssetForm 
+                      initialData={device} 
+                      options={options} 
+                      onSave={({data}: any) => mutation.mutate(data)} 
+                      isSaving={mutation.isPending} 
+                    />
+                  </div>
+                )}
                 {tab === 'metadata' && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <MetadataEditor value={metadata} onChange={setMetadata} onError={setMetadataError} />
+                    <MetadataEditor value={device.metadata_json} onChange={(v:any) => mutation.mutate({ metadata_json: v })} />
                   </div>
                 )}
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
