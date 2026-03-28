@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
