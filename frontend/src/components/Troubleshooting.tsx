@@ -95,7 +95,7 @@ export default function Troubleshooting() {
     { 
       field: "status", 
       headerName: "Status", 
-      width: 130, 
+      width: 110, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value} />
@@ -103,23 +103,23 @@ export default function Troubleshooting() {
     { 
       field: "severity", 
       headerName: "Sev", 
-      width: 130, 
+      width: 100, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value} />
     },
-    { field: "device_name", headerName: "Node", width: 150, cellClass: 'text-center font-black uppercase text-[var(--text-muted)]', headerClass: 'text-center' },
+    { field: "device_name", headerName: "Node", width: 130, cellClass: 'text-center font-black uppercase text-[var(--text-muted)]', headerClass: 'text-center' },
     { 
       field: "start_time", 
       headerName: "Time", 
-      width: 160, 
+      width: 150, 
       cellClass: 'text-center font-mono text-[var(--text-muted)]', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : 'N/A'
     },
     {
       headerName: "Ops",
-      width: 100,
+      width: 80,
       pinned: 'right' as const,
       cellClass: 'text-center',
       headerClass: 'text-center',
