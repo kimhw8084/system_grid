@@ -580,7 +580,7 @@ export default function ServiceRegistry() {
   )
 }
 
-const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
+export const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
     const queryClient = useQueryClient()
     const [tab, setTab] = useState('payload')
     const [metadataError, setMetadataError] = useState<string | null>(null)
@@ -650,7 +650,7 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
     )
 }
 
-const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
+export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [formData, setFormData] = useState({ 

@@ -8,59 +8,80 @@ import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
+import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
-const ServiceMetadataModal = ({ isOpen, onClose, service }: { isOpen: boolean, onClose: () => void, service: any }) => {
-  if (!isOpen || !service) return null;
-  const config = service.config_json || {};
-  const entries = Object.entries(config);
+const SharedServiceModals = ({ 
+  activeDetails, 
+  setActiveDetails, 
+  activeEdit, 
+  setActiveEdit, 
+  options, 
+  devices,
+  onServiceUpdate
+}: any) => {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const url = `/api/v1/logical-services/${data.id}`
+      const method = "PUT"
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      return res.json()
+    },
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ["logical-services"] })
+      queryClient.invalidateQueries({ queryKey: ["device-services"] })
+      toast.success("Service Registry Updated")
+      setActiveEdit(null)
+      onServiceUpdate?.()
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] max-h-[80vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/5 pb-6 mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400"><FileJson size={20} /></div>
-            <div>
-              <h2 className="text-xl font-black uppercase text-white tracking-tighter">{service.name} Metadata</h2>
-              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{service.service_type} Configuration Metadata</p>
-            </div>
+    <>
+      <AnimatePresence>
+        {activeEdit && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                     <Layers size={28}/> <span>Modify Service Configuration</span>
+                  </h2>
+                  <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
+            </motion.div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-        </div>
+        )}
+      </AnimatePresence>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-          <table className="w-full text-[10px]">
-            <thead className="bg-white/5 border-b border-white/5">
-              <tr>
-                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Key</th>
-                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Value</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {entries.map(([k, v]: [string, any]) => (
-                <tr key={k} className="hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 font-black text-blue-400 uppercase tracking-tighter">{k}</td>
-                  <td className="px-4 py-3 font-mono text-slate-300">{String(v)}</td>
-                </tr>
-              ))}
-              {entries.length === 0 && (
-                <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No metadata keys defined for this payload</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
+      <AnimatePresence>
+        {activeDetails && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                  <div>
+                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
+                  </div>
+                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
+                  <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
 
-const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
+const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: number, onViewDetails: (s: any) => void, onEdit: (s: any) => void }) => {
   const { data: services, isLoading } = useQuery({
     queryKey: ['device-services', deviceId],
     queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json())
   })
-
-  const [selectedService, setSelectedService] = useState<any>(null);
 
   return (
     <div className="p-0 overflow-hidden">
@@ -88,7 +109,7 @@ const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
               <td className="px-4 py-3 text-slate-400 uppercase font-black text-[9px]">{s.service_type}</td>
               <td className="px-4 py-3 text-center">
                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
-                    s.status === 'Running' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                    s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
                     s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
@@ -99,16 +120,16 @@ const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
               <td className="px-4 py-3 text-center">
                  <div className="flex items-center justify-center space-x-1">
                    <button
-                     onClick={() => setSelectedService(s)}
+                     onClick={() => onViewDetails(s)}
                      className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all flex items-center justify-center space-x-1"
-                     title="View Metadata Payload"
+                     title="View Service Forensics"
                    >
                      <List size={14}/>
                    </button>
                    <button
-                     onClick={() => window.open(`#service:${s.name}`, '_self')}
+                     onClick={() => onEdit(s)}
                      className="p-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-600/20 transition-all flex items-center justify-center"
-                     title="Edit in Service Registry"
+                     title="Edit Service Instance"
                    >
                      <Edit2 size={14}/>
                    </button>
@@ -122,12 +143,6 @@ const AssetServicesTable = ({ deviceId }: { deviceId: number }) => {
         </tbody>
       </table>
       )}
-
-      <ServiceMetadataModal 
-        isOpen={!!selectedService} 
-        onClose={() => setSelectedService(null)} 
-        service={selectedService} 
-      />
     </div>
   )
 }
@@ -743,6 +758,15 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
     const [metadata, setMetadata] = useState(device.metadata_json || {})
     const [metadataError, setMetadataError] = useState<string | null>(null)
 
+    // Shared Service Modal States
+    const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
+    const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
+
+    const { data: devices } = useQuery({ 
+      queryKey: ["devices"], 
+      queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
+    })
+
     const metaMutation = useMutation({
         mutationFn: async (data: any) => {
             const res = await apiFetch(`/api/v1/devices/${device.id}`, {
@@ -787,8 +811,26 @@ const AssetDetailsView = ({ device, options }: { device: any, options: any }) =>
                 {tab === 'hardware' && <HWTab deviceId={device.id} />}
                 {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
                 {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
-                {tab === 'services' && <AssetServicesTable deviceId={device.id} />}
+                {tab === 'services' && (
+                  <AssetServicesTable 
+                    deviceId={device.id} 
+                    onViewDetails={(s) => setActiveServiceDetails(s)}
+                    onEdit={(s) => setActiveServiceEdit(s)}
+                  />
+                )}
             </div>
+
+            <SharedServiceModals 
+              activeDetails={activeServiceDetails}
+              setActiveDetails={setActiveServiceDetails}
+              activeEdit={activeServiceEdit}
+              setActiveEdit={setActiveServiceEdit}
+              options={options}
+              devices={devices}
+              onServiceUpdate={() => {
+                queryClient.invalidateQueries({ queryKey: ['device-services', device.id] })
+              }}
+            />
         </div>
     )
 }
