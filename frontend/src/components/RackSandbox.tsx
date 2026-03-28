@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { 
   Plus, Trash2, Search, MapPin, X, ArrowRightLeft, Server, 
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
@@ -114,7 +115,7 @@ const DraggableAsset = ({ device, loc, isReserved, isOverlay = false }: any) => 
   )
 }
 
-const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget }: any) => {
+const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget, onViewDetails }: any) => {
   const { setNodeRef } = useDroppable({
     id: `rack-${rackId}-u-${u}`,
     data: { rackId, u }
@@ -125,7 +126,10 @@ const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget }: any) => {
   return (
     <div 
       ref={setNodeRef}
-      onClick={() => !asset && onSelect(u)}
+      onClick={() => {
+        if (asset) onViewDetails(asset.device)
+        else onSelect(u)
+      }}
       className={`relative h-6 border-b border-white/[0.04] flex items-center transition-all px-2
         ${isDropTarget ? 'bg-emerald-500/20 ring-1 ring-inset ring-emerald-500/50' : 'hover:bg-white/[0.02]'}
       `}
@@ -143,12 +147,15 @@ const RackUnit = ({ u, rackId, asset, onSelect, isDropTarget }: any) => {
 export default function RackSandbox() {
   const queryClient = useQueryClient()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
   
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeSiteId, setActiveSiteId] = useState<number | null>(null)
   const [draggedItem, setDraggedAsset] = useState<any>(null)
   const [overUnit, setOverUnit] = useState<any>(null)
   const [isReserving, setIsReserving] = useState<any>(null)
+  const [activeAssetDetails, setActiveAssetDetails] = useState<any>(null)
   const [reservationData, setReservationData] = useState({
     temp_name: '', type: 'Physical', system: '', est_arrival: '', requester: 'System Admin'
   })
@@ -162,6 +169,16 @@ export default function RackSandbox() {
     queryKey: ['sites'], 
     queryFn: async () => (await apiFetch('/api/v1/sites/')).json() 
   })
+
+  // Derived Assets List for "List View"
+  const allMountedAssets = useMemo(() => {
+    if (!allRacks) return []
+    return allRacks.flatMap((r: any) => 
+      (r.device_locations || []).map((l: any) => ({ ...l.device, rack_name: r.name, u_start: l.start_unit }))
+    )
+  }, [allRacks])
+
+  // ... rest of mutations ...
 
   // Mutations
   const moveMutation = useMutation({
@@ -271,6 +288,10 @@ export default function RackSandbox() {
 
           <div className="flex items-center gap-4">
              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
+                <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><TableIcon size={16}/></button>
+                <button onClick={() => setViewMode('list')} className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={16}/></button>
+             </div>
+             <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
                 <button onClick={() => setActiveSiteId(null)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${!activeSiteId ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Global</button>
                 {sites?.map((s: any) => (
                   <button key={s.id} onClick={() => setActiveSiteId(s.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeSiteId === s.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{s.name}</button>
@@ -283,28 +304,55 @@ export default function RackSandbox() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-10">
-           <div className="flex gap-10 h-full items-start px-2 min-w-max">
-              {filteredRacks.map((rack: any) => (
-                <div key={rack.id} className="w-64 flex flex-col glass-panel rounded-[40px] overflow-hidden border-white/5 shadow-2xl h-full max-h-[900px]">
-                   <div className="p-6 bg-white/[0.02] border-b border-white/5">
-                      <h3 className="font-black text-[13px] uppercase tracking-widest text-white italic truncate">{rack.name}</h3>
-                      <p className="text-[9px] text-slate-500 font-black uppercase mt-1">{rack.site_name}</p>
-                   </div>
-                   <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40">
-                      <div className="m-3 border border-white/5 rounded-3xl overflow-hidden bg-black/20">
-                         {Array.from({ length: rack.total_u_height || 42 }, (_, i) => rack.total_u_height - i).map(u => {
-                           const asset = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
-                           const isDropTarget = overUnit?.rackId === rack.id && u === overUnit?.u
-                           return (
-                             <RackUnit key={u} u={u} rackId={rack.id} asset={asset} isDropTarget={isDropTarget} onSelect={(u: number) => setIsReserving({ rackId: rack.id, u })} />
-                           )
-                         })}
-                      </div>
-                   </div>
-                </div>
-              ))}
-           </div>
+        <div 
+          ref={scrollContainerRef}
+          className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-10 relative"
+        >
+           {viewMode === 'grid' ? (
+             <div className="flex gap-10 h-full items-start px-2 min-w-max relative z-10">
+                {filteredRacks.map((rack: any) => (
+                  <div key={rack.id} className="w-64 flex flex-col glass-panel rounded-[40px] overflow-hidden border-white/5 shadow-2xl h-full max-h-[900px]">
+                     <div className="p-6 bg-white/[0.02] border-b border-white/5">
+                        <h3 className="font-black text-[13px] uppercase tracking-widest text-white italic truncate">{rack.name}</h3>
+                        <p className="text-[9px] text-slate-500 font-black uppercase mt-1">{rack.site_name}</p>
+                     </div>
+                     <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/40">
+                        <div className="m-3 border border-white/5 rounded-3xl overflow-hidden bg-black/20">
+                           {Array.from({ length: rack.total_u_height || 42 }, (_, i) => rack.total_u_height - i).map(u => {
+                             const asset = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
+                             const isDropTarget = overUnit?.rackId === rack.id && u === overUnit?.u
+                             return (
+                               <RackUnit 
+                                 key={u} u={u} rackId={rack.id} asset={asset} 
+                                 isDropTarget={isDropTarget}
+                                 onSelect={(u: number) => setIsReserving({ rackId: rack.id, u })}
+                                 onViewDetails={(a: any) => setActiveAssetDetails(a)}
+                               />
+                             )
+                           })}
+                        </div>
+                     </div>
+                  </div>
+                ))}
+             </div>
+           ) : (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-2">
+                {allMountedAssets.map((a: any) => (
+                  <motion.div 
+                    key={a.id} whileHover={{ scale: 1.02 }}
+                    onClick={() => setActiveAssetDetails(a)}
+                    className="glass-panel p-6 rounded-[32px] border border-white/5 hover:border-blue-500/30 cursor-pointer group transition-all"
+                  >
+                     <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all"><Server size={20}/></div>
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{a.rack_name} · U{a.u_start}</span>
+                     </div>
+                     <h3 className="text-lg font-black text-white uppercase italic tracking-tighter truncate">{a.name}</h3>
+                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">{a.system} // {a.type}</p>
+                  </motion.div>
+                ))}
+             </div>
+           )}
         </div>
 
         <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }) }}>
@@ -370,6 +418,16 @@ export default function RackSandbox() {
                   </div>
                </motion.div>
             </div>
+          )}
+          {activeAssetDetails && (
+            <AssetQuickDetailModal 
+              asset={activeAssetDetails} 
+              onClose={() => setActiveAssetDetails(null)} 
+              onGoToMatrix={(id: number) => {
+                navigate(`/asset-sandbox?id=${id}`)
+                setActiveAssetDetails(null)
+              }}
+            />
           )}
         </AnimatePresence>
       </div>

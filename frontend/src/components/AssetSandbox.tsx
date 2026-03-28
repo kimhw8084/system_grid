@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { 
   Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, 
   Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, 
@@ -259,6 +260,7 @@ const AuditPeekTab = ({ deviceId }: { deviceId: number }) => {
 export default function AssetSandbox() {
   const queryClient = useQueryClient()
   const gridRef = useRef<AgGridReact>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
   
   const [viewMode, setViewMode] = useState<'grid' | 'graph'>('grid')
   const [isCommandOpen, setIsCommandOpen] = useState(false)
@@ -270,6 +272,19 @@ export default function AssetSandbox() {
     queryKey: ['assets-sandbox-final'], 
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json() 
   })
+
+  // Auto-open detail window if ID is in URL
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id && assets) {
+      const asset = assets.find((a: any) => String(a.id) === id)
+      if (asset) {
+        setActiveDetails(asset)
+        // Clear param to prevent re-opening if user closes modal
+        setSearchParams({}, { replace: true })
+      }
+    }
+  }, [searchParams, assets, setSearchParams])
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
