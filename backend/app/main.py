@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, ipam, monitoring
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
@@ -76,7 +76,7 @@ async def lifespan(app: FastAPI):
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import traceback
-...
+
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 @app.exception_handler(Exception)
@@ -113,7 +113,6 @@ app.include_router(sites.router, prefix=settings.API_V1_STR)
 app.include_router(maintenance.router, prefix=settings.API_V1_STR)
 app.include_router(logical_services.router, prefix=settings.API_V1_STR)
 app.include_router(settings_api.router, prefix=settings.API_V1_STR)
-app.include_router(ipam.router, prefix=settings.API_V1_STR)
 app.include_router(monitoring.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")

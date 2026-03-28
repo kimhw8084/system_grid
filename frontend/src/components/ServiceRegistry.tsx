@@ -4,8 +4,6 @@ import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, Layout
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -361,15 +359,8 @@ export default function ServiceRegistry() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = {
-          Active: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
-          Running: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5',
-          Degraded: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
-          Maintenance: 'text-amber-400 border-amber-500/20 bg-amber-500/5',
-          Critical: 'text-rose-400 border-rose-500/20 bg-rose-500/5',
-          Stopped: 'text-slate-400 border-slate-500/20 bg-slate-500/5'
-        }
-        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span></div>
+        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
+        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
       }
     },
     { field: "device_name", headerName: "Host Node", width: 150, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
@@ -479,18 +470,16 @@ export default function ServiceRegistry() {
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Application Layer...</p>
           </div>
         )}
-        <AgGridReact
-          rowData={services || []}
-          columnDefs={columnDefs}
-          defaultColDef={{ resizable: true, filter: true, sortable: true, flex: 1, minWidth: 100 }}
+        <AgGridReact 
+          rowData={services || []} 
+          columnDefs={columnDefs} 
           rowSelection="multiple"
           headerHeight={28}
           rowHeight={28}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
-          enableCellTextSelection={true}
-          animateRows={true}
-        />      </div>
+        />
+      </div>
 
       <StatusBulkUpdateModal
         isOpen={isBulkStatusOpen}
@@ -664,23 +653,14 @@ const ServiceDetailsView = ({ service, options, devices }: { service: any, optio
 const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
-  const [formData, setFormData] = useState({
-    ...initialData,
-    name: initialData.name || "",
-    service_type: initialData.service_type || "Database",
-    status: initialData.status || "Active",
-    environment: initialData.environment || "Production",
-    version: initialData.version || "",
-    device_id: initialData.device_id || null,
-    config_json: initialData.config_json || {},
-    license_type: initialData.license_type || "",
-    license_key: initialData.license_key || "",
-    purchase_type: initialData.purchase_type || "One-time",
-    purchase_date: initialData.purchase_date || "",
-    expiry_date: initialData.expiry_date || "",
-    cost: initialData.cost || 0,
-    vendor: initialData.vendor || ""
+  const [formData, setFormData] = useState({ 
+    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
+    device_id: null, config_json: {}, 
+    license_type: "", license_key: "", purchase_type: "One-time", 
+    purchase_date: "", expiry_date: "", cost: 0, vendor: "",
+    ...initialData 
   })
+
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
   useEffect(() => {
@@ -728,13 +708,7 @@ const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                   const val = e.target.value;
                   setFormData(prev => ({...prev, service_type: val}));
                 }}
-                options={(() => {
-                  let opts = getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map((t: string) => ({ value: t, label: t }));
-                  if (!opts.find((o: any) => o.value === formData.service_type) && formData.service_type) {
-                     opts = [...opts, { value: formData.service_type, label: formData.service_type }];
-                  }
-                  return opts;
-                })()}
+                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map(t => ({ value: t, label: t }))}
            />
         </div>
 

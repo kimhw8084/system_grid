@@ -51,13 +51,8 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "config_json": s.config_json,
             "custom_attributes": s.custom_attributes,
             "is_deleted": s.is_deleted,
-            "license_type": s.license_type,
-            "license_key": s.license_key,
-            "purchase_type": s.purchase_type,
-            "cost": s.cost,
-            "vendor": s.vendor,
-            "purchase_date": s.purchase_date.isoformat() if s.purchase_date else None,
-            "expiry_date": s.expiry_date.isoformat() if s.expiry_date else None
+            "purchase_date": s.purchase_date,
+            "expiry_date": s.expiry_date
         })
     return final_result
 
@@ -129,13 +124,6 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
                     setattr(svc, k, dt_val)
                 except:
                     setattr(svc, k, None)
-            else:
-                setattr(svc, k, v)
-        elif k in ["config_json", "custom_attributes"]:
-            if isinstance(v, str):
-                import json
-                try: setattr(svc, k, json.loads(v))
-                except: setattr(svc, k, v)
             else:
                 setattr(svc, k, v)
         else:

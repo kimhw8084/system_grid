@@ -262,9 +262,7 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
         ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
         ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
-        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
-        ("OS", ["Kernel", "Architecture", "Distribution", "PatchLevel", "License"]),
-        ("Software", ["Vendor", "Version", "LicenseType", "InstallPath"])
+        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"])
     ]
     for val, keys in service_types:
         db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))

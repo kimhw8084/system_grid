@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3 } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
 
@@ -16,6 +16,7 @@ import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
+import Troubleshooting from "./components/Troubleshooting"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
@@ -157,51 +158,55 @@ function MainLayout() {
   }, []);
 
   useEffect(() => { 
+    const savedTheme = localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1';
+    document.documentElement.setAttribute('data-theme', savedTheme);
     apiFetch("/api/v1/settings/initialize").catch(() => {}) 
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#020617] text-slate-100 font-sans">
+    <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans transition-colors duration-500">
       <Toaster position="top-right" />
-      <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-white/5 flex flex-col z-20 shadow-2xl relative">
+      <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]">
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
              <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
                 <Grid3X3 size={20} className="text-white" />
              </div>
-             {isSidebarOpen && <span className="font-black text-xl text-white tracking-tighter uppercase italic">SYSGRID</span>}
+             {isSidebarOpen && <span className="font-black text-xl text-[var(--text-primary)] tracking-tighter uppercase italic">SYSGRID</span>}
           </Link>
           {isSidebarOpen && (
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-muted)]">
               <Menu size={18}/>
             </button>
           )}
         </div>
         {!isSidebarOpen && (
           <div className="flex justify-center pb-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-muted)]">
               <Menu size={18}/>
             </button>
           </div>
         )}
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={AlertTriangle} label="Incidents" path="/incidents" active={location.pathname === "/incidents"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Clock} label="Schedule" path="/maintenance" active={location.pathname === "/maintenance"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Terminal} label="Audit" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
-        <div className="p-4 border-t border-white/5 text-center opacity-30">
+        <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
            {isSidebarOpen ? <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_VERSION}</p> : <div className="w-2 h-2 rounded-full bg-blue-500 mx-auto"/>}
         </div>
       </motion.aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-[#020617]/80 backdrop-blur-xl z-10">
+        <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-10">
           <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+          <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
             SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
               {isOnline ? 'ONLINE' : 'OFFLINE'}
             </span>
@@ -214,15 +219,17 @@ function MainLayout() {
               <Route path="/racks" element={<RackElevations />} />
               <Route path="/assets" element={<AssetGrid />} />
               <Route path="/services" element={<ServiceRegistry />} />
+              <Route path="/incidents" element={<Troubleshooting />} />
               <Route path="/network" element={<NetworkFabric />} />
               <Route path="/monitoring" element={<MonitoringGrid />} />
+              <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>
         </div>
-        <footer className="h-8 border-t border-white/5 px-8 flex items-center justify-between text-[8px] font-black text-slate-600 uppercase tracking-widest bg-slate-900/20">
+        <footer className="h-8 border-t border-[var(--glass-border)] px-8 flex items-center justify-between text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-primary)]/20">
            <span>SYSGRID INFRASTRUCTURE COMMAND</span>
            <span className="text-blue-500">VERSION {APP_VERSION}</span>
         </footer>

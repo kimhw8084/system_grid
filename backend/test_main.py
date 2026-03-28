@@ -147,17 +147,3 @@ async def test_monitoring_matrix_flow():
         get_res_2 = await ac.get("/api/v1/monitoring/")
         assert any(i["id"] == item_id and i["status"] == "Existing" for i in get_res_2.json())
 
-@pytest.mark.anyio
-async def test_ipam_subnet_creation():
-    payload = {
-        "network_cidr": "10.10.10.0/24",
-        "name": "TEST-SUBNET",
-        "vlan_id": 100
-    }
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        response = await ac.post("/api/v1/ipam/subnets", json=payload)
-        assert response.status_code == 200
-        assert response.json()["network_cidr"] == "10.10.10.0/24"
-        
-        subnets_res = await ac.get("/api/v1/ipam/subnets")
-        assert any(s["network_cidr"] == "10.10.10.0/24" for s in subnets_res.json())
