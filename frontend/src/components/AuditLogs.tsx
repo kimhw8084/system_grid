@@ -22,13 +22,13 @@ export default function AuditLogs() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: 'ID', width: 70, sortable: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
-    { field: 'timestamp', headerName: 'Timestamp', width: 180, sortable: true, filter: 'agDateColumnFilter', cellClass: 'text-center', headerClass: 'text-center' },
-    { field: 'user_id', headerName: 'Admin', width: 100, filter: true, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: 'id', headerName: 'ID', width: 60, sortable: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
+    { field: 'timestamp', headerName: 'Time', width: 160, sortable: true, filter: 'agDateColumnFilter', cellClass: 'text-center', headerClass: 'text-center' },
+    { field: 'user_id', headerName: 'Admin', width: 90, filter: true, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: 'action', 
-      headerName: 'Action', 
-      width: 100,
+      headerName: 'Ops', 
+      width: 90,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (params: any) => {
@@ -36,9 +36,9 @@ export default function AuditLogs() {
         return <span className={`font-black tracking-widest text-[10px] uppercase ${colors[params.value] || 'text-slate-400'}`}>{params.value}</span>
       }
     },
-    { field: 'target_table', headerName: 'Registry Table', width: 140, filter: true, cellClass: 'text-center font-mono text-slate-400', headerClass: 'text-center' },
-    { field: 'target_id', headerName: 'Target ID', width: 100, filter: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
-    { field: 'description', headerName: 'Audit Intent Note', flex: 1, filter: true, cellClass: 'text-center', headerClass: 'text-center' }
+    { field: 'target_table', headerName: 'Registry', width: 120, filter: true, cellClass: 'text-center font-mono text-slate-400', headerClass: 'text-center' },
+    { field: 'target_id', headerName: 'Vector ID', width: 90, filter: true, cellClass: 'text-center font-mono', headerClass: 'text-center' },
+    { field: 'description', headerName: 'Payload', flex: 1, filter: true, cellClass: 'text-center', headerClass: 'text-center' }
   ], [])
 
   return (
