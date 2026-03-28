@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, 
   Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, 
   AlertCircle, Layers, Maximize2, Columns, Layout, Table as TableIcon, Zap, 
-  Activity, Shield, MousePointer2, ChevronRight, BarChart3, Terminal
+  Activity, Shield, MousePointer2, ChevronRight, BarChart3, Terminal, Server
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
