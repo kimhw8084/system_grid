@@ -11,7 +11,8 @@ import ReactFlow, {
   Position,
   MarkerType,
   Connection,
-  Edge
+  Edge,
+  ReactFlowProvider
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { 
