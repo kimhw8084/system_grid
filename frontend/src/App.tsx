@@ -17,6 +17,7 @@ import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Troubleshooting from "./components/Troubleshooting"
+import DataFlowDesigner from "./components/DataFlowDesigner"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
@@ -223,6 +224,7 @@ function MainLayout() {
               <Route path="/incidents" element={<Troubleshooting />} />
               <Route path="/network" element={<NetworkFabric />} />
               <Route path="/monitoring" element={<MonitoringGrid />} />
+              <Route path="/flows" element={<DataFlowDesigner />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />

@@ -98,6 +98,14 @@ const nodeTypes = {
 // --- Main Designer Component ---
 
 export default function DataFlowDesigner() {
+  return (
+    <ReactFlowProvider>
+      <DataFlowDesignerInner />
+    </ReactFlowProvider>
+  )
+}
+
+function DataFlowDesignerInner() {
   const queryClient = useQueryClient()
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])

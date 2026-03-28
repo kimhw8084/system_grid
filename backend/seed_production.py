@@ -230,6 +230,27 @@ async def seed():
             if inc_res.status_code != 200:
                 print(f"BUG FOUND in POST /incidents/: {inc_res.text}")
 
+        # 8. Create Data Flows
+        print("Creating data flows...")
+        flows = [
+            {
+                "name": "Global SAP ERP Transaction Matrix",
+                "description": "Primary data vector for core financial and logistics transactions.",
+                "category": "System",
+                "nodes": [
+                    {"id": "node-1", "type": "assetNode", "position": {"x": 100, "y": 100}, "data": {"label": "SAP-PROD-APP-01", "type": "Physical", "system": "SAP-ERP"}},
+                    {"id": "node-2", "type": "serviceNode", "position": {"x": 400, "y": 150}, "data": {"label": "SAP-PRIMARY-DB", "service_type": "Database", "status": "Active"}},
+                    {"id": "node-3", "type": "processNode", "position": {"x": 250, "y": 250}, "data": {"label": "AUTH_VALIDATION"}}
+                ],
+                "edges": [
+                    {"id": "edge-1", "source": "node-1", "target": "node-3", "animated": True},
+                    {"id": "edge-2", "source": "node-3", "target": "node-2", "animated": True}
+                ]
+            }
+        ]
+        for flow in flows:
+            await ac.post("/api/v1/data-flows/", json=flow)
+
     print("Seeding complete.")
 
 if __name__ == "__main__":
