@@ -5,7 +5,8 @@ import {
   Plus, Trash2, Search, MapPin, X, ArrowRightLeft, Server, 
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Zap, Network, Layout, Calendar, User, Eye, Cable, Clock,
-  ArrowUpRight, Info, Shield, ShieldCheck
+  ArrowUpRight, Info, Shield, ShieldCheck, Table as TableIcon, List,
+  LayoutGrid
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -432,5 +433,50 @@ export default function RackSandbox() {
         </AnimatePresence>
       </div>
     </DndContext>
+  )
+}
+
+function AssetQuickDetailModal({ asset, onClose, onGoToMatrix }: any) {
+  return (
+    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
+       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-2xl p-12 rounded-[50px] border-blue-500/30 shadow-2xl space-y-10 text-left">
+          <div className="flex items-center justify-between border-b border-white/5 pb-8">
+             <div className="flex items-center space-x-6">
+                <div className="p-5 bg-blue-600/10 rounded-[2.5rem] text-blue-400 shadow-inner"><Monitor size={32}/></div>
+                <div>
+                   <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{asset.name}</h2>
+                   <p className="text-[11px] font-black text-slate-500 uppercase mt-3 tracking-[0.3em]">{asset.system} // Physical Node Forensics</p>
+                </div>
+             </div>
+             <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={28}/></button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-10">
+             <div className="space-y-6">
+                <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] border-l-4 border-blue-600 pl-4 italic">Core Matrix Specs</h3>
+                <div className="bg-white/[0.02] p-6 rounded-3xl border border-white/5 space-y-4 shadow-inner">
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">Mgmt IP</span><span className="text-xs font-mono font-bold text-white uppercase italic">{asset.management_ip || 'VOID'}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">OS Distro</span><span className="text-xs font-bold text-white uppercase italic">{asset.os_name} {asset.os_version}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">Phy Model</span><span className="text-[10px] font-bold text-slate-400 uppercase">{asset.manufacturer} {asset.model}</span></div>
+                </div>
+             </div>
+             <div className="space-y-6">
+                <h3 className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.2em] border-l-4 border-emerald-600 pl-4 italic">Spatial Context</h3>
+                <div className="bg-white/[0.02] p-6 rounded-3xl border border-white/5 space-y-4 shadow-inner">
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">Host Site</span><span className="text-xs font-bold text-white uppercase italic">{asset.site_name || 'PRIMARY'}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">Rack Matrix</span><span className="text-xs font-bold text-white uppercase italic">{asset.rack_name}</span></div>
+                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-slate-500 uppercase">Unit Vector</span><span className="text-xs font-bold text-white uppercase italic">U{asset.u_start}</span></div>
+                </div>
+             </div>
+          </div>
+
+          <div className="flex space-x-6 pt-10 border-t border-white/5">
+             <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors bg-white/5 rounded-2xl">Close HUD</button>
+             <button onClick={() => onGoToMatrix(asset.id)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3">
+                <LayoutGrid size={16} /> <span>Open in Asset Matrix</span>
+             </button>
+          </div>
+       </motion.div>
+    </div>
   )
 }
