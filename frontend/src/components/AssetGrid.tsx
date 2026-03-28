@@ -469,7 +469,7 @@ export default function AssetGrid() {
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "name", 
-      headerName: "Hostname", 
+      headerName: "Node", 
       flex: 1.2, 
       pinned: 'left',
       cellClass: 'text-center',
@@ -478,11 +478,11 @@ export default function AssetGrid() {
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", width: 120, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "type", 
       headerName: "Type", 
-      width: 90,
+      width: 80,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -500,7 +500,7 @@ export default function AssetGrid() {
     { 
       field: "status", 
       headerName: "Status", 
-      width: 100,
+      width: 90,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -515,16 +515,16 @@ export default function AssetGrid() {
         return <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${colors[p.value] || 'text-slate-400 border-slate-500/20 bg-slate-500/5'}`}>{p.value}</span>
       }
     },
-    { field: "environment", headerName: "Environment", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "owner", headerName: "Owner", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "manufacturer", headerName: "Vendor", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "model", headerName: "Model", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "os_name", headerName: "OS", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "os_version", headerName: "OS Ver", width: 70, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "license_type", 
-      headerName: "License", 
-      width: 120, 
+      headerName: "Auth", 
+      width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? (
@@ -533,8 +533,8 @@ export default function AssetGrid() {
     },
     { 
       field: "expiry_date", 
-      headerName: "License Expiry", 
-      width: 120, 
+      headerName: "Expiry", 
+      width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -543,15 +543,15 @@ export default function AssetGrid() {
         return <span className="text-[9px] font-mono text-slate-400">{d.toLocaleDateString()}</span>
       }
     },
-    { field: "site_name", headerName: "Site", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "rack_name", headerName: "Rack", width: 90, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
-    { field: "size_u", headerName: "U Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
-    { field: "power_typical_w", headerName: "Avg Power (W)", width: 100, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
-    { field: "power_max_w", headerName: "Max Power (W)", width: 100, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center' },
+    { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "power_max_w", headerName: "Max W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     {
-      headerName: "Actions",
-      width: 120,
+      headerName: "Ops",
+      width: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
