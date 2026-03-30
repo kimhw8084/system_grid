@@ -9,6 +9,7 @@ import { apiFetch } from "./api/apiClient"
 import Dashboard from "./components/Dashboard"
 import RackElevations from "./components/RackElevations"
 import AssetGrid from "./components/AssetGrid"
+import AssetTemp from "./components/AssetTemp"
 import NetworkFabric from "./components/NetworkFabric"
 import Intelligence from "./components/Intelligence"
 import AuditLogs from "./components/AuditLogs"
@@ -218,6 +219,7 @@ function MainLayout() {
           <SidebarItem icon={Package} label="Rack Temp" path="/rack-temp" active={location.pathname === "/rack-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Server} label="Assets (Temp)" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={AlertTriangle} label="Troubleshooting" path="/troubleshooting" active={location.pathname === "/troubleshooting"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
@@ -261,6 +263,7 @@ function MainLayout() {
               <Route path="/rack-temp" element={<RackTemp />} />
               <Route path="/racks" element={<RackElevations />} />
               <Route path="/assets" element={<AssetGrid />} />
+              <Route path="/asset-temp" element={<AssetTemp />} />
               <Route path="/services" element={<ServiceRegistry />} />
               <Route path="/troubleshooting" element={<Troubleshooting />} />
               <Route path="/network" element={<NetworkFabric />} />
