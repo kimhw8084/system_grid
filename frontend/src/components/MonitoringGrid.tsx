@@ -130,7 +130,7 @@ export default function MonitoringGrid() {
         <div className="flex items-center space-x-6">
            <div>
               <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center">
-                <span>Monitoring Matrix</span>
+                <span>Monitoring</span>
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Observability Infrastructure & Logic Registry</p>
            </div>
@@ -157,7 +157,7 @@ export default function MonitoringGrid() {
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
-            + Deploy Logic
+            + Add Monitoring
           </button>
         </div>
       </div>
@@ -368,7 +368,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
              className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
            >
              {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
-             <span>{item ? 'Save Logic' : 'Deploy Logic'}</span>
+             <span>{item ? 'Save Logic' : 'Add Monitoring'}</span>
            </button>
         </div>
       </motion.div>

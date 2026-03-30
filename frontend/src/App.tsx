@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
 
@@ -18,8 +18,8 @@ import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Troubleshooting from "./components/Troubleshooting"
 import DataFlowDesigner from "./components/DataFlowDesigner"
-import RackSandbox from "./components/RackSandbox"
-import AssetSandbox from "./components/AssetSandbox"
+import Temp1 from "./components/Temp1"
+import RackTemp from "./components/RackTemp"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
@@ -119,6 +119,26 @@ function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [globalError, setGlobalError] = useState<any>(null);
+  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
+
+  const THEMES = [
+    { id: 'nordic-frost-v1', label: 'Nordic Frost (Default)', color: 'bg-[#1a1b26]' },
+    { id: 'industrial-slate', label: 'Industrial Slate', color: 'bg-[#1e293b]' },
+    { id: 'ocean-deep', label: 'Ocean Deep', color: 'bg-[#0f172a]' },
+    { id: 'solarized-light', label: 'Solarized Light', color: 'bg-[#fdf6e3]' },
+    { id: 'cyber-emerald', label: 'Cyber Emerald', color: 'bg-[#050505]' },
+    { id: 'pure-clarity', label: 'Pure Clarity', color: 'bg-[#ffffff]' }
+  ]
+
+  const changeTheme = (themeId: string) => {
+    setCurrentTheme(themeId);
+    document.documentElement.setAttribute('data-theme', themeId);
+    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1'].includes(themeId);
+    if (isLight) document.documentElement.classList.remove('dark');
+    else document.documentElement.classList.add('dark');
+    localStorage.setItem('sysgrid-theme', themeId);
+    toast.success(`Matrix UI: ${THEMES.find(t => t.id === themeId)?.label}`);
+  }
 
   const { data: healthData, isError: isHealthError } = useQuery({
     queryKey: ['health'],
@@ -161,8 +181,10 @@ function MainLayout() {
   }, []);
 
   useEffect(() => { 
-    const savedTheme = localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1';
-    document.documentElement.setAttribute('data-theme', savedTheme);
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1'].includes(currentTheme);
+    if (isLight) document.documentElement.classList.remove('dark');
+    else document.documentElement.classList.add('dark');
     apiFetch("/api/v1/settings/initialize").catch(() => {}) 
   }, [])
 
@@ -192,17 +214,18 @@ function MainLayout() {
         )}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Activity} label="Temp 1" path="/temp1" active={location.pathname === "/temp1"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Package} label="Rack Temp" path="/rack-temp" active={location.pathname === "/rack-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={AlertTriangle} label="Incidents" path="/incidents" active={location.pathname === "/incidents"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={AlertTriangle} label="Troubleshooting" path="/troubleshooting" active={location.pathname === "/troubleshooting"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Workflow} label="Flows" path="/flows" active={location.pathname === "/flows"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Package} label="Asset Sandbox" path="/asset-sandbox" active={location.pathname === "/asset-sandbox"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Clock} label="Schedule" path="/maintenance" active={location.pathname === "/maintenance"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Clock} label="CP" path="/cp" active={location.pathname === "/cp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Terminal} label="Audit" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
         <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
            {isSidebarOpen ? <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_VERSION}</p> : <div className="w-2 h-2 rounded-full bg-blue-500 mx-auto"/>}
@@ -210,7 +233,20 @@ function MainLayout() {
       </motion.aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-10">
-          <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
+          <div className="flex items-center space-x-4">
+            <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
+            <div className="h-4 w-px bg-white/10" />
+            <div className="flex items-center space-x-2">
+               {THEMES.map(t => (
+                 <button 
+                   key={t.id} 
+                   onClick={() => changeTheme(t.id)}
+                   title={t.label}
+                   className={`w-4 h-4 rounded-full border transition-all ${t.color} ${currentTheme === t.id ? 'border-blue-500 scale-125 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'border-white/10 hover:scale-110'}`}
+                 />
+               ))}
+            </div>
+          </div>
           <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
             SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
               {isOnline ? 'ONLINE' : 'OFFLINE'}
@@ -221,15 +257,16 @@ function MainLayout() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
+              <Route path="/temp1" element={<Temp1 />} />
+              <Route path="/rack-temp" element={<RackTemp />} />
               <Route path="/racks" element={<RackElevations />} />
               <Route path="/assets" element={<AssetGrid />} />
               <Route path="/services" element={<ServiceRegistry />} />
-              <Route path="/incidents" element={<Troubleshooting />} />
+              <Route path="/troubleshooting" element={<Troubleshooting />} />
               <Route path="/network" element={<NetworkFabric />} />
               <Route path="/monitoring" element={<MonitoringGrid />} />
-              <Route path="/flows" element={<DataFlowDesigner />} />
-              <Route path="/asset-sandbox" element={<AssetSandbox />} />
-              <Route path="/maintenance" element={<Maintenance />} />
+              <Route path="/architecture" element={<DataFlowDesigner />} />
+              <Route path="/cp" element={<Maintenance />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />
               <Route path="*" element={<Navigate to="/" replace />} />

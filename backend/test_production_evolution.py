@@ -1,5 +1,6 @@
 import asyncio
 import random
+import pytest
 from httpx import AsyncClient, ASGITransport
 import sys
 import os
@@ -7,6 +8,7 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.main import app
 
+@pytest.mark.asyncio
 async def test_evolution():
     print("Starting production evolution tests (CRUD + Relationships)...")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test", timeout=30.0) as ac:

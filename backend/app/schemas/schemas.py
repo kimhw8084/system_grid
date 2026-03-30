@@ -54,6 +54,7 @@ class DeviceBase(BaseModel):
     os_name: Optional[str] = None
     os_version: Optional[str] = None
     management_ip: Optional[str] = None
+    primary_ip: Optional[str] = None
     management_url: Optional[str] = None
     
     owner: Optional[str] = None
@@ -86,6 +87,11 @@ class DeviceResponse(DeviceBase, BaseSchema):
     site_name: Optional[str] = None
     u_size: Optional[int] = None
     u_start: Optional[int] = None
+    
+    # Enriched Fields
+    hardware_summary: Optional[str] = "No Components"
+    hardware_age: Optional[str] = "N/A"
+    open_incident_count: Optional[int] = 0
 
 class MaintenanceWindowBase(BaseModel):
     title: str
@@ -114,3 +120,62 @@ class MonitoringItemBase(BaseModel):
 class MonitoringItemCreate(MonitoringItemBase): pass
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     device_name: Optional[str] = None
+
+class ServiceSecretBase(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    note: Optional[str] = None
+
+class ServiceSecretCreate(ServiceSecretBase):
+    service_id: int
+
+class ServiceSecretResponse(ServiceSecretBase, BaseSchema):
+    service_id: int
+
+class LogicalServiceBase(BaseModel):
+    device_id: Optional[int] = None
+    name: str
+    service_type: str
+    status: Optional[str] = "Active"
+    version: Optional[str] = None
+    environment: Optional[str] = "Production"
+    config_json: Optional[Dict[str, Any]] = None
+    custom_attributes: Optional[Dict[str, Any]] = None
+    purchase_type: Optional[str] = "One-time"
+    purchase_date: Optional[str] = None
+    expiry_date: Optional[str] = None
+    cost: Optional[float] = 0.0
+    currency: Optional[str] = "USD"
+    vendor: Optional[str] = None
+
+class LogicalServiceCreate(LogicalServiceBase): pass
+class LogicalServiceResponse(LogicalServiceBase, BaseSchema):
+    device_name: Optional[str] = None
+    is_deleted: bool = False
+    secrets: List[ServiceSecretResponse] = []
+
+class IncidentLogBase(BaseModel):
+    systems: Optional[List[str]] = []
+    impacted_device_ids: Optional[List[int]] = []
+    title: str
+    severity: Optional[str] = "Major"
+    status: Optional[str] = "Investigating"
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    reporter: Optional[str] = None
+    initial_symptoms: Optional[str] = None
+    impacts: Optional[List[str]] = []
+    impact_analysis: Optional[str] = None
+    trigger_event: Optional[str] = None
+    log_evidence: Optional[str] = None
+    mitigation_steps: Optional[str] = None
+    root_cause: Optional[str] = None
+    resolution_steps: Optional[str] = None
+    lessons_learned: Optional[str] = None
+    prevention_strategy: Optional[str] = None
+    timeline: Optional[List[Any]] = []
+    todos: Optional[List[Any]] = []
+
+class IncidentLogCreate(IncidentLogBase): pass
+class IncidentLogResponse(IncidentLogBase, BaseSchema):
+    device_names: Optional[List[str]] = []

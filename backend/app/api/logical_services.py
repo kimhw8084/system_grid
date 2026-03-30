@@ -14,7 +14,8 @@ def filter_valid_columns(model, data):
 
 @router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.LogicalService)
+    from sqlalchemy.orm import selectinload
+    query = select(models.LogicalService).options(selectinload(models.LogicalService.secrets))
     if device_id:
         query = query.filter(models.LogicalService.device_id == device_id)
     if not include_deleted:
@@ -51,10 +52,45 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "config_json": s.config_json,
             "custom_attributes": s.custom_attributes,
             "is_deleted": s.is_deleted,
-            "purchase_date": s.purchase_date,
-            "expiry_date": s.expiry_date
+            "purchase_type": s.purchase_type,
+            "purchase_date": s.purchase_date.isoformat() if s.purchase_date else None,
+            "expiry_date": s.expiry_date.isoformat() if s.expiry_date else None,
+            "vendor": s.vendor,
+            "cost": s.cost,
+            "currency": s.currency,
+            "secrets": [{"id": sc.id, "username": sc.username, "password": sc.password, "note": sc.note} for sc in s.secrets]
         })
     return final_result
+
+@router.post("/{service_id}/secrets")
+async def add_service_secret(service_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    svc_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))
+    svc = svc_res.scalar_one_or_none()
+    if not svc: raise HTTPException(404, "Service not found")
+    
+    secret = models.ServiceSecret(
+        service_id=service_id,
+        username=data.get("username"),
+        password=data.get("password"),
+        note=data.get("note")
+    )
+    db.add(secret)
+    await db.commit()
+    await db.refresh(secret)
+    return secret
+
+@router.delete("/{service_id}/secrets/{secret_id}")
+async def delete_service_secret(service_id: int, secret_id: int, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.ServiceSecret).filter(
+        models.ServiceSecret.id == secret_id,
+        models.ServiceSecret.service_id == service_id
+    ))
+    secret = res.scalar_one_or_none()
+    if not secret: raise HTTPException(404, "Secret not found")
+    
+    await db.delete(secret)
+    await db.commit()
+    return {"status": "success"}
 
 async def sync_service_to_device(service, db: AsyncSession):
     if service.service_type == "OS" and service.device_id:

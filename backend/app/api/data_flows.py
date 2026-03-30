@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from typing import List
 from ..database import get_db
 from ..models import models
@@ -17,12 +17,20 @@ def format_flow(flow: models.DataFlow):
         "edges": flow.edges_json,
         "viewport": flow.viewport_json,
         "is_template": flow.is_template,
-        "created_at": flow.created_at.isoformat() if flow.created_at else None
+        "is_deleted": flow.is_deleted,
+        "created_at": flow.created_at.isoformat() if flow.created_at else None,
+        "updated_at": flow.updated_at.isoformat() if flow.updated_at else None
     }
 
 @router.get("/")
-async def get_flows(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.DataFlow).order_by(models.DataFlow.updated_at.desc()))
+async def get_flows(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+    query = select(models.DataFlow)
+    if not include_deleted:
+        query = query.filter(models.DataFlow.is_deleted == False)
+    else:
+        query = query.filter(models.DataFlow.is_deleted == True)
+        
+    result = await db.execute(query.order_by(models.DataFlow.updated_at.desc()))
     flows = result.scalars().all()
     return [format_flow(f) for f in flows]
 
@@ -61,16 +69,31 @@ async def update_flow(flow_id: int, data: dict, db: AsyncSession = Depends(get_d
     if "nodes" in data: flow.nodes_json = data["nodes"]
     if "edges" in data: flow.edges_json = data["edges"]
     if "viewport" in data: flow.viewport_json = data["viewport"]
+    if "is_deleted" in data: flow.is_deleted = data["is_deleted"]
     
     await db.commit()
     return format_flow(flow)
 
-@router.delete("/{flow_id}")
-async def delete_flow(flow_id: int, db: AsyncSession = Depends(get_db)):
+@router.post("/{flow_id}/restore")
+async def restore_flow(flow_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.DataFlow).filter(models.DataFlow.id == flow_id))
     flow = result.scalar_one_or_none()
     if not flow: raise HTTPException(404, "Flow not found")
     
-    await db.delete(flow)
+    flow.is_deleted = False
+    await db.commit()
+    return format_flow(flow)
+
+@router.delete("/{flow_id}")
+async def delete_flow(flow_id: int, permanent: bool = False, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.DataFlow).filter(models.DataFlow.id == flow_id))
+    flow = result.scalar_one_or_none()
+    if not flow: raise HTTPException(404, "Flow not found")
+    
+    if permanent:
+        await db.delete(flow)
+    else:
+        flow.is_deleted = True
+        
     await db.commit()
     return {"status": "success"}

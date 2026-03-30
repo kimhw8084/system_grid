@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check } from "lucide-react"
+import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
@@ -268,6 +268,303 @@ const HostBulkUpdateModal = ({ isOpen, onClose, onApply, devices, count }: { isO
   )
 }
 
+const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: services } = useQuery({ queryKey: ['logical-services'] })
+  const service = services?.find((s: any) => s.id === serviceId)
+  const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
+
+  const addMutation = useMutation({
+    mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${serviceId}/secrets`, { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); setNewSecret({ username: '', password: '', note: '' }); toast.success('Credential Added') }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (secretId: number) => apiFetch(`/api/v1/logical-services/${serviceId}/secrets/${secretId}`, { method: 'DELETE' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Credential Revoked') }
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
+        <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Register Access Credential</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="Username / ID" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+          <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="Access Password" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+          <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Purpose / Note" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+        </div>
+        <button 
+          disabled={!newSecret.username || !newSecret.password}
+          onClick={() => addMutation.mutate(newSecret)}
+          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30"
+        >
+          Inject Secret into Vault
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {service?.secrets?.map((s: any) => (
+          <div key={s.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl group">
+            <div className="flex items-center space-x-6">
+              <div className="bg-blue-600/20 p-2 rounded-lg text-blue-400"><Tag size={16}/></div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase">{s.username}</p>
+                <p className="text-[9px] font-mono text-slate-500">••••••••••••</p>
+              </div>
+              <div className="border-l border-white/10 pl-6">
+                <p className="text-[8px] font-black text-slate-600 uppercase mb-0.5">Application Note</p>
+                <p className="text-[10px] text-slate-400 font-medium italic">{s.note || 'No contextual notes provided'}</p>
+              </div>
+            </div>
+            <button onClick={() => deleteMutation.mutate(s.id)} className="p-2 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+          </div>
+        ))}
+        {!service?.secrets?.length && <div className="py-12 text-center text-slate-600 italic text-[10px] font-black uppercase tracking-widest">No vault entries for this service</div>}
+      </div>
+    </div>
+  )
+}
+
+export const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
+    const queryClient = useQueryClient()
+    const [tab, setTab] = useState('metadata')
+    const [metadataError, setMetadataError] = useState<string | null>(null)
+    const [formData, setFormData] = useState({ ...service })
+    const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+
+    const updateMutation = useMutation({
+        mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${service.id}`, { 
+            method: 'PUT', body: JSON.stringify(data) 
+        }),
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Configuration Updated') }
+    })
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+                    {[
+                      {id: 'metadata', label: 'Metadata View', icon: List}, 
+                      {id: 'editor', label: 'Metadata Editor', icon: Edit2}, 
+                      {id: 'secrets', label: 'Credentials', icon: Tag}
+                    ].map(t => (
+                        <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                            <t.icon size={12}/> <span>{t.label}</span>
+                        </button>
+                    ))}
+                </div>
+                {tab === 'editor' && (
+                  <button 
+                    onClick={() => {
+                      if (metadataError) {
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Metadata Integrity Warning',
+                          message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
+                          onConfirm: () => updateMutation.mutate(formData),
+                          variant: 'warning'
+                        })
+                        return;
+                      }
+                      updateMutation.mutate(formData);
+                    }} 
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                  >
+                    Save Changes
+                  </button>
+                )}
+            </div>
+            
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
+                {tab === 'metadata' && <MetadataViewer data={formData.config_json} />}
+                {tab === 'editor' && (
+                  <MetadataEditor 
+                    value={formData.config_json} 
+                    onChange={v => setFormData({...formData, config_json: v})} 
+                    onError={setMetadataError}
+                  />
+                )}
+                {tab === 'secrets' && <ServiceSecretsTab serviceId={service.id} />}
+            </div>
+
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant={confirmModal.variant}
+            />
+        </div>
+    )
+}
+
+export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+  const [formData, setFormData] = useState({ 
+    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
+    device_id: null, config_json: {}, 
+    license_key: "", purchase_type: "One-time", 
+    purchase_date: "", expiry_date: "", cost: 0, currency: "USD", vendor: "",
+    ...initialData 
+  })
+
+  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+
+  useEffect(() => {
+    if (!initialData.id) { // Only for new services
+      const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
+      if (selectedType?.metadata_keys) {
+        const newConfig: any = {};
+        selectedType.metadata_keys.forEach((key: string) => {
+          newConfig[key] = "";
+        });
+        setFormData(prev => ({ ...prev, config_json: newConfig }));
+      } else {
+        setFormData(prev => ({ ...prev, config_json: {} }));
+      }
+    }
+  }, [formData.service_type, options, initialData.id]);
+
+  return (
+    <div className="space-y-8 py-6">
+      <div className="grid grid-cols-2 gap-8">
+        <div className="space-y-4">
+           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Deployment</h3>
+           <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">
+                {formData.service_type === 'OS' ? 'Operating System Name *' : 'Service Instance Name *'}
+              </label>
+              <input 
+                value={formData.name} 
+                onChange={e => setFormData({...formData, name: e.target.value})} 
+                className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
+                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"} 
+              />
+           </div>
+           <StyledSelect
+                label="Target Host Node"
+                value={formData.device_id || ""}
+                onChange={e => setFormData({...formData, device_id: e.target.value || null})}
+                options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                placeholder="Unassigned (Floating)"
+           />
+           <StyledSelect
+                label="Service Metadata Type"
+                value={formData.service_type}
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData(prev => ({...prev, service_type: val}));
+                }}
+                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App"].map(t => ({ value: t, label: t }))}
+           />
+        </div>
+
+        <div className="space-y-4">
+           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Operational Status</h3>
+           <StyledSelect
+                label="Runtime Status"
+                value={formData.status}
+                onChange={e => setFormData({...formData, status: e.target.value})}
+                options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
+           />
+           <StyledSelect
+                label="Environment"
+                value={formData.environment}
+                onChange={e => setFormData({...formData, environment: e.target.value})}
+                options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'Staging', label: 'Staging'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
+           />
+           <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Kernel / Version' : 'Software Version'}</label>
+              <input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
+           </div>
+        </div>
+
+        <div className="col-span-2 space-y-4">
+           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3">Licensing & Procurement</h3>
+           <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Model</label>
+                <select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500">
+                  <option value="One-time">One-time Purchase</option>
+                  <option value="Subscription">Subscription / SaaS</option>
+                  <option value="Volume">Volume Licensing</option>
+                  <option value="OEM">OEM / Embedded</option>
+                  <option value="Free">Free / Open Source</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Vendor / Provider</label>
+                <input value={formData.vendor || ""} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft / AWS" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License / Activation Key</label>
+                <input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="XXXXX-XXXXX..." />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Date</label>
+                <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Expiry / Renewal Date</label>
+                <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
+                <div className="flex space-x-2">
+                  <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value)})} className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+                  <select value={formData.currency || "USD"} onChange={e => setFormData({...formData, currency: e.target.value})} className="w-24 bg-slate-900 border border-white/10 rounded-xl px-2 py-2 text-xs outline-none focus:border-blue-500">
+                    <option value="USD">USD</option>
+                    <option value="KRW">KRW</option>
+                  </select>
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <div className="col-span-2">
+           <MetadataEditor 
+             value={formData.config_json} 
+             onChange={v => setFormData({...formData, config_json: v})} 
+             onError={setMetadataError}
+           />
+        </div>
+      </div>
+
+      <div className="flex space-x-4 pt-4 border-t border-white/5">
+        <button 
+          onClick={() => { 
+            if (metadataError) {
+              setConfirmModal({
+                isOpen: true,
+                title: 'Metadata Integrity Warning',
+                message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
+                onConfirm: () => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) },
+                variant: 'warning'
+              })
+              return;
+            }
+            if(!formData.name) return toast.error("Instance name required"); 
+            onSave(formData) 
+          }} 
+          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+        >
+           {formData.id ? 'Update Service Matrix' : 'Register Service Instance'}
+        </button>
+      </div>
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
+    </div>
+  )
+}
+
 export default function ServiceRegistry() {
   const queryClient = useQueryClient()
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -346,7 +643,13 @@ export default function ServiceRegistry() {
         <div className="flex items-center justify-center space-x-2 h-full">
            {p.data.service_type === 'Database' && <Database size={12} className="text-amber-400" />}
            {p.data.service_type === 'Web Server' && <Globe size={12} className="text-blue-400" />}
+           {p.data.service_type === 'Middleware' && <Workflow size={12} className="text-indigo-400" />}
            {p.data.service_type === 'Container' && <Box size={12} className="text-emerald-400" />}
+           {p.data.service_type === 'OS' && <Shield size={12} className="text-slate-400" />}
+           {p.data.service_type === 'Vendor Software' && <Package size={12} className="text-orange-400" />}
+           {p.data.service_type === 'Internal App' && <LayoutGrid size={12} className="text-pink-400" />}
+           {p.data.service_type === 'External App' && <ExternalLink size={12} className="text-cyan-400" />}
+           {['Database', 'Web Server', 'Middleware', 'Container', 'OS', 'Vendor Software', 'Internal App', 'External App'].indexOf(p.data.service_type) === -1 && <Layers size={12} className="text-slate-500" />}
            <span className="font-bold text-blue-100">{p.value}</span>
         </div>
       )
@@ -367,14 +670,26 @@ export default function ServiceRegistry() {
     { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
     { 
-      field: "license_type", 
-      headerName: "Auth", 
-      width: 100, 
+      field: "purchase_type", 
+      headerName: "Purchase Model", 
+      width: 120, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? (
         <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{p.value}</span>
       ) : <span className="text-slate-700 italic text-[8px]">N/A</span>
+    },
+    { 
+      field: "cost", 
+      headerName: "Cost", 
+      width: 100, 
+      cellClass: 'text-center font-mono',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        if (!p.value && p.value !== 0) return <span className="text-slate-700 italic text-[8px]">N/A</span>
+        const symbol = p.data.currency === 'KRW' ? '₩' : '$'
+        return <span className="text-[9px] font-black text-emerald-400">{symbol}{p.value.toLocaleString()}</span>
+      }
     },
     {
       field: "expiry_date",
@@ -417,12 +732,12 @@ export default function ServiceRegistry() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Service Registry</h1>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Services</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Application Layer & Service Dependency Mapping</p>
            </div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
-              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Active Services</button>
-              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged Records</button>
+              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Existing</button>
+              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged</button>
            </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -537,7 +852,9 @@ export default function ServiceRegistry() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
-                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <div className="flex items-center space-x-4">
+                       <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    </div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
                   </div>
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -576,235 +893,6 @@ export default function ServiceRegistry() {
         .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
         .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
       `}</style>
-    </div>
-  )
-}
-
-export const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
-    const queryClient = useQueryClient()
-    const [tab, setTab] = useState('payload')
-    const [metadataError, setMetadataError] = useState<string | null>(null)
-    const [formData, setFormData] = useState({ ...service })
-    const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
-
-    const updateMutation = useMutation({
-        mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${service.id}`, { 
-            method: 'PUT', body: JSON.stringify(data) 
-        }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Configuration Updated') }
-    })
-
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['metadata', 'editor'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                            {t === 'metadata' ? 'Metadata View' : 'Metadata Editor'}
-                        </button>
-                    ))}
-                </div>
-                {tab === 'editor' && (
-                  <button 
-                    onClick={() => {
-                      if (metadataError) {
-                        setConfirmModal({
-                          isOpen: true,
-                          title: 'Metadata Integrity Warning',
-                          message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
-                          onConfirm: () => updateMutation.mutate(formData),
-                          variant: 'warning'
-                        })
-                        return;
-                      }
-                      updateMutation.mutate(formData);
-                    }} 
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-                  >
-                    Save Changes
-                  </button>
-                )}
-            </div>
-            
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
-                {tab === 'metadata' ? (
-                  <MetadataViewer data={formData.config_json} />
-                ) : (
-                  <MetadataEditor 
-                    value={formData.config_json} 
-                    onChange={v => setFormData({...formData, config_json: v})} 
-                    onError={setMetadataError}
-                  />
-                )}
-            </div>
-
-            <ConfirmationModal 
-                isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                variant={confirmModal.variant}
-            />
-        </div>
-    )
-}
-
-export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
-  const [metadataError, setMetadataError] = useState<string | null>(null)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
-  const [formData, setFormData] = useState({ 
-    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
-    device_id: null, config_json: {}, 
-    license_type: "", license_key: "", purchase_type: "One-time", 
-    purchase_date: "", expiry_date: "", cost: 0, vendor: "",
-    ...initialData 
-  })
-
-  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-
-  useEffect(() => {
-    if (!initialData.id) { // Only for new services
-      const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
-      if (selectedType?.metadata_keys) {
-        // Reset to ONLY the keys for the selected type to prevent appending
-        const newConfig: any = {};
-        selectedType.metadata_keys.forEach((key: string) => {
-          newConfig[key] = "";
-        });
-        setFormData(prev => ({ ...prev, config_json: newConfig }));
-      } else {
-        // If no predefined keys, just reset to empty object for new service
-        setFormData(prev => ({ ...prev, config_json: {} }));
-      }
-    }
-  }, [formData.service_type, options, initialData.id]);
-
-  return (
-    <div className="space-y-8 py-6">
-      <div className="grid grid-cols-2 gap-8">
-        <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Deployment</h3>
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Operating System Name *' : 'Service Instance Name *'}</label>
-              <input 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-                className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
-                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"} 
-              />
-           </div>
-           <StyledSelect
-                label="Target Host Node"
-                value={formData.device_id || ""}
-                onChange={e => setFormData({...formData, device_id: e.target.value || null})}
-                options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                placeholder="Unassigned (Floating)"
-           />
-           <StyledSelect
-                label="Service Metadata Type"
-                value={formData.service_type}
-                onChange={e => {
-                  const val = e.target.value;
-                  setFormData(prev => ({...prev, service_type: val}));
-                }}
-                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Software"].map(t => ({ value: t, label: t }))}
-           />
-        </div>
-
-        <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Operational Status</h3>
-           <StyledSelect
-                label="Runtime Status"
-                value={formData.status}
-                onChange={e => setFormData({...formData, status: e.target.value})}
-                options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
-           />
-           <StyledSelect
-                label="Environment"
-                value={formData.environment}
-                onChange={e => setFormData({...formData, environment: e.target.value})}
-                options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
-           />
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Kernel / Version' : 'Software Version'}</label>
-              <input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
-           </div>
-        </div>
-
-        <div className="col-span-2 space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3">Licensing & Procurement</h3>
-           <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License Type</label>
-                <input value={formData.license_type || ""} onChange={e => setFormData({...formData, license_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="e.g. Proprietary / GPL" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Model</label>
-                <select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500">
-                  <option value="One-time">One-time Purchase</option>
-                  <option value="Subscription">Subscription / SaaS</option>
-                  <option value="Volume">Volume Licensing</option>
-                  <option value="OEM">OEM / Embedded</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Vendor / Provider</label>
-                <input value={formData.vendor || ""} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft / AWS" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License / Activation Key</label>
-                <input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="XXXXX-XXXXX..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Expiry / Renewal Date</label>
-                <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
-                <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-              </div>
-           </div>
-        </div>
-
-        <div className="col-span-2">
-           <MetadataEditor 
-             value={formData.config_json} 
-             onChange={v => setFormData({...formData, config_json: v})} 
-             onError={setMetadataError}
-           />
-        </div>
-      </div>
-
-      <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button 
-          onClick={() => { 
-            if (metadataError) {
-              setConfirmModal({
-                isOpen: true,
-                title: 'Metadata Integrity Warning',
-                message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
-                onConfirm: () => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) },
-                variant: 'warning'
-              })
-              return;
-            }
-            if(!formData.name) return toast.error("Instance name required"); 
-            onSave(formData) 
-          }} 
-          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
-        >
-           Save Service
-        </button>
-      </div>
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-      />
     </div>
   )
 }

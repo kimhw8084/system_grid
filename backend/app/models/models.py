@@ -64,6 +64,7 @@ class Device(Base, BaseMixin):
     os_name = Column(String)
     os_version = Column(String)
     management_ip = Column(String)
+    primary_ip = Column(String)
     management_url = Column(String)
     
     owner = Column(String)
@@ -115,12 +116,11 @@ class LogicalService(Base, BaseMixin):
     config_json = Column(JSON, default=dict)
     
     # License & Procurement
-    license_type = Column(String) # Proprietary, Open Source, etc.
-    license_key = Column(String)
     purchase_type = Column(String) # One-time, Subscription
     purchase_date = Column(DateTime)
     expiry_date = Column(DateTime)
     cost = Column(Float, default=0.0)
+    currency = Column(String, default="USD") # USD, KRW
     vendor = Column(String)
     
     # Smart Expandability: Unlimited custom key-values
@@ -128,6 +128,15 @@ class LogicalService(Base, BaseMixin):
     is_deleted = Column(Boolean, default=False)
     
     device = relationship("Device", back_populates="logical_services")
+    secrets = relationship("ServiceSecret", back_populates="service", cascade="all, delete-orphan")
+
+class ServiceSecret(Base, BaseMixin):
+    __tablename__ = "service_secrets"
+    service_id = Column(Integer, ForeignKey("logical_services.id", ondelete="CASCADE"))
+    username = Column(String)
+    password = Column(String)
+    note = Column(Text)
+    service = relationship("LogicalService", back_populates="secrets")
 
 class DeviceRelationship(Base, BaseMixin):
     __tablename__ = "device_relationships"
@@ -248,22 +257,33 @@ class MonitoringItem(Base, BaseMixin):
 
 class IncidentLog(Base, BaseMixin):
     __tablename__ = "incident_logs"
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    systems = Column(JSON, default=list) # Multi-select systems
+    impacted_device_ids = Column(JSON, default=list) # Multi-select assets
+
     title = Column(String, index=True)
     severity = Column(String, default="Major") # Critical, Major, Minor
     status = Column(String, default="Investigating") # Investigating, Identified, Monitoring, Resolved, Prevented
     start_time = Column(DateTime)
     end_time = Column(DateTime, nullable=True)
+    reporter = Column(String)
+
+    # Forensic / Progressive disclosure fields
+    initial_symptoms = Column(Text) # "Day zero" info
+    impacts_json = Column(JSON, default=list) # Multi-select categories (Wafer loss, Blockage, etc.)
     impact_analysis = Column(Text)
-    root_cause = Column(Text)
-    resolution_steps = Column(Text)
+    # Deep Forensics (For engineers)
+    trigger_event = Column(Text) # Change, load spike, etc.
+    log_evidence = Column(Text) # Error log snippets
+    mitigation_steps = Column(Text) # Temporary stability
+    root_cause = Column(Text) # Final finding
+    resolution_steps = Column(Text) # Permanent fix
+
+    # Post-Mortem / Reliability
     lessons_learned = Column(Text)
     prevention_strategy = Column(Text)
+
     timeline_json = Column(JSON, default=list) # [{time, event, type}]
     todos_json = Column(JSON, default=list) # [{task, status, owner}]
-    
-    device = relationship("Device")
-
 class DataFlow(Base, BaseMixin):
     __tablename__ = "data_flows"
     name = Column(String, index=True)
@@ -273,6 +293,7 @@ class DataFlow(Base, BaseMixin):
     edges_json = Column(JSON, default=list)
     viewport_json = Column(JSON, default=dict)
     is_template = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

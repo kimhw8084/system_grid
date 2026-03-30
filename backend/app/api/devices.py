@@ -46,8 +46,6 @@ async def sync_device_to_os(device, db: AsyncSession):
 @router.get("/")
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
-    # Using joinedload or selectinload for relationships if they were defined in models.
-    # But here we seem to have manual join logic. Let's optimize it.
     
     query = select(models.Device)
     if not include_deleted:
@@ -64,6 +62,28 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
     # Batch fetch locations
     loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id.in_(device_ids)))
     locations = {l.device_id: l for l in loc_res.scalars().all()}
+    
+    # Batch fetch hardware components for summary
+    hw_res = await db.execute(select(models.HardwareComponent).filter(models.HardwareComponent.device_id.in_(device_ids)))
+    hw_all = hw_res.scalars().all()
+    hw_map = {}
+    for h in hw_all:
+        if h.device_id not in hw_map: hw_map[h.device_id] = []
+        hw_map[h.device_id].append(h)
+
+    # Batch fetch open incidents
+    inc_res = await db.execute(select(models.IncidentLog).filter(
+        models.IncidentLog.status != "Resolved",
+        models.IncidentLog.status != "Prevented"
+    ))
+    inc_all = inc_res.scalars().all()
+    inc_map = {}
+    target_device_ids_set = set(device_ids)
+    for inc in inc_all:
+        impacted = inc.impacted_device_ids or []
+        for did in impacted:
+            if did in target_device_ids_set:
+                inc_map[did] = inc_map.get(did, 0) + 1
     
     rack_ids = {l.rack_id for l in locations.values() if l.rack_id}
     racks = {}
@@ -86,6 +106,39 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
     final_devices = []
     for d in devices:
         device_dict = {c.name: getattr(d, c.name) for c in d.__table__.columns}
+        
+        # Format dates for JSON
+        for date_field in ["purchase_date", "install_date", "warranty_end", "eol_date"]:
+            val = getattr(d, date_field)
+            if val: device_dict[date_field] = val.isoformat()
+
+        # Hardware Summary (Resource Snapshot)
+        comps = hw_map.get(d.id, [])
+        hw_summary = []
+        cpu = sum(c.count for c in comps if c.category == 'CPU')
+        mem = sum(c.count for c in comps if c.category == 'Memory')
+        disk = sum(c.count for c in comps if c.category == 'Disk')
+        # Clever summary: check specs too if possible? 
+        # Actually count is most straightforward for now.
+        if cpu: hw_summary.append(f"{cpu}x CPU")
+        if mem: hw_summary.append(f"{mem}x MEM")
+        if disk: hw_summary.append(f"{disk}x DSK")
+        device_dict["hardware_summary"] = " / ".join(hw_summary) if hw_summary else "No Components"
+
+        # Hardware Age
+        age_str = "N/A"
+        ref_date = d.install_date or d.purchase_date
+        if ref_date:
+            delta = datetime.now() - ref_date
+            years = delta.days // 365
+            months = (delta.days % 365) // 30
+            if years > 0: age_str = f"{years}y {months}m"
+            else: age_str = f"{months}m"
+        device_dict["hardware_age"] = age_str
+
+        # Incidents Indicator
+        device_dict["open_incident_count"] = inc_map.get(d.id, 0)
+
         loc = locations.get(d.id)
         rack_name, site_name, u_start = None, "Unplaced", None
         
@@ -133,26 +186,10 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(db_device)
 
-    # Return full object with joins like get_devices
-    loc_res = await db.execute(select(models.DeviceLocation).filter(models.DeviceLocation.device_id == db_device.id))
-    loc = loc_res.scalars().first()
-    rack_name, site_name, u_start = None, "Unplaced", None
-    if loc:
-        rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == loc.rack_id))
-        rack = rack_res.scalar_one_or_none()
-        if rack:
-            rack_name = rack.name; u_start = loc.start_unit
-            if rack.room_id:
-                room_res = await db.execute(select(models.Room).filter(models.Room.id == rack.room_id))
-                room = room_res.scalar_one_or_none()
-                if room:
-                    site_res = await db.execute(select(models.Site).filter(models.Site.id == room.site_id))
-                    site = site_res.scalar_one_or_none()
-                    if site: site_name = site.name
+    # Re-fetch for full response consistency (all enriched fields)
+    res_list = await get_devices(include_deleted=True, db=db)
+    return next((x for x in res_list if x["id"] == db_device.id), None)
 
-    device_dict = {c.name: getattr(db_device, c.name) for c in db_device.__table__.columns}
-    device_dict.update({"rack_name": rack_name, "site_name": site_name, "u_start": u_start, "size_u": db_device.size_u})
-    return device_dict
 
 @router.put("/{device_id}")
 async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
@@ -253,6 +290,11 @@ async def add_secret(device_id: int, data: dict, db: AsyncSession = Depends(get_
     sec = models.SecretVault(device_id=device_id, **clean)
     db.add(sec); await db.commit(); return sec
 
+@router.get("/relationships/all")
+async def get_all_relationships(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.DeviceRelationship))
+    return res.scalars().all()
+
 @router.get("/{device_id}/relationships")
 async def get_relationships(device_id: int, db: AsyncSession = Depends(get_db)):
     from sqlalchemy import or_
@@ -273,6 +315,15 @@ async def add_relationship(device_id: int, data: dict, db: AsyncSession = Depend
     rel = models.DeviceRelationship(source_device_id=device_id, **clean)
     db.add(rel); await db.commit(); return rel
 
+@router.delete("/{device_id}")
+async def delete_device(device_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Device).filter(models.Device.id == device_id))
+    db_device = result.scalar_one_or_none()
+    if not db_device: raise HTTPException(404)
+    db_device.is_deleted = True
+    await db.commit()
+    return {"status": "success"}
+
 @router.delete("/{resource}/{id}")
 async def delete_resource(resource: str, id: int, db: AsyncSession = Depends(get_db)):
     model_map = {"hardware": models.HardwareComponent, "software": models.DeviceSoftware, "secrets": models.SecretVault, "relationships": models.DeviceRelationship}
@@ -280,7 +331,7 @@ async def delete_resource(resource: str, id: int, db: AsyncSession = Depends(get
     await db.execute(delete(model_map[resource]).where(model_map[resource].id == id))
     await db.commit(); return {"status": "success"}
 
-@router.post("/{resource}/{id}")
+@router.put("/{resource}/{id}")
 async def update_resource(resource: str, id: int, data: dict, db: AsyncSession = Depends(get_db)):
     model_map = {"hardware": models.HardwareComponent, "software": models.DeviceSoftware, "secrets": models.SecretVault, "relationships": models.DeviceRelationship}
     if resource not in model_map: raise HTTPException(400)

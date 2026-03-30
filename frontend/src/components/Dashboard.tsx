@@ -140,7 +140,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
         {/* Assets Card */}
         <BentoCard 
-          title="Asset Inventory"
+          title="Assets"
           subtitle="Hardware Composition"
           icon={Server}
           color="from-emerald-600 to-teal-700"

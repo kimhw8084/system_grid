@@ -54,7 +54,29 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
     opt.value = new_value
     opt.label = new_label
     opt.description = data.get('description', opt.description)
-    opt.metadata_keys = data.get('metadata_keys', opt.metadata_keys)
+    
+    # Template Protection: If category is ServiceType, check if removing keys that are in use
+    if opt.category == "ServiceType" and 'metadata_keys' in data:
+        new_keys = set(data.get('metadata_keys', []))
+        old_keys = set(opt.metadata_keys or [])
+        removed_keys = old_keys - new_keys
+        
+        if removed_keys:
+            # Check if any LogicalService of this type uses these keys
+            from sqlalchemy import and_
+            usage_query = select(models.LogicalService).filter(models.LogicalService.service_type == opt.value)
+            usage_res = await db.execute(usage_query)
+            in_use_services = usage_res.scalars().all()
+            
+            for svc in in_use_services:
+                config = svc.config_json or {}
+                for rk in removed_keys:
+                    if rk in config and config[rk]: # If key exists and has a value
+                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key '{rk}' because it is in use by service '{svc.name}'")
+        
+        opt.metadata_keys = list(new_keys)
+    elif 'metadata_keys' in data:
+        opt.metadata_keys = data.get('metadata_keys')
     
     await db.commit()
     await db.refresh(opt)
@@ -235,6 +257,17 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("BusinessUnit", "HR", "Human Resources"),
         ("BusinessUnit", "Sales", "Sales & Business Development"),
         ("BusinessUnit", "Security", "Information Security"),
+        # Semiconductor Impact Categories
+        ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
+        ("ImpactCategory", "Yield Degradation", "Reduced output quality"),
+        ("ImpactCategory", "Tool Blockage (Down)", "Manufacturing equipment stop"),
+        ("ImpactCategory", "Throughput Slow-down", "Bottleneck in production flow"),
+        ("ImpactCategory", "MES Connectivity Gap", "Data loss between factory and server"),
+        ("ImpactCategory", "Recipe Desync", "Incorrect process parameters"),
+        ("ImpactCategory", "SPC Violation", "Statistical Process Control outlier"),
+        ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
+        ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
+        ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
     ]
     for cat, val, desc in defaults:
         db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
@@ -262,7 +295,11 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
         ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
         ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
-        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"])
+        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
+        ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
+        ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"]),
+        ("Internal App", ["Repository", "Framework", "Primary Dev", "CI/CD Pipeline", "Build Version"]),
+        ("External App", ["Vendor Support URL", "Account Manager", "Support Tier", "Installation Manual", "Update Frequency"])
     ]
     for val, keys in service_types:
         db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
