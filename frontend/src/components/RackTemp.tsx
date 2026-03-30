@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
-  Package, BarChart3, ExternalLink,
+  Package, BarChart3, ExternalLink, Settings,
   Network, HardDrive, TrendingUp, Layers
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -1171,9 +1171,213 @@ export default function RackTemp() {
   return (
     <div className="h-full flex flex-col gap-5 min-h-0">
       
-      {/* ... (Header) ... */}
+      {/* Header */}
+      <div className="flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tight italic">Rack Sandbox</h1>
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Infrastructure · Rack Elevation View</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+            <button onClick={() => setActiveTab('active')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active</button>
+            <button onClick={() => setActiveTab('deleted')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Deleted</button>
+          </div>
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+            <button onClick={() => setViewMode('normal')} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'normal' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Full</button>
+            <button onClick={() => setViewMode('compact')} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'compact' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Compact</button>
+          </div>
+          {activeTab === 'active' && (
+            <>
+              <button onClick={() => setIsAddingRack(true)} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 transition-all">
+                <Plus size={13} /> Rack
+              </button>
+              <button onClick={() => setIsAddingSite(true)} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 transition-all">
+                <Plus size={13} /> Site
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
-        {/* Mount Asset Modal */}
+      {/* Search */}
+      <div className="relative shrink-0">
+        <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+        <input
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Filter racks by name or site..."
+          className="w-full bg-white/5 border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors placeholder:text-slate-700"
+        />
+      </div>
+
+      {/* Rack Grid */}
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full text-slate-500 text-[10px] font-black uppercase tracking-widest">Loading racks...</div>
+        ) : (
+          <>
+            {/* Group by site */}
+            {Array.from(new Set(racks.map((r: any) => r.site_name || 'Unassigned'))).map((siteName: any) => {
+              const siteRacks = racks.filter((r: any) => (r.site_name || 'Unassigned') === siteName && r.name.toLowerCase().includes(searchTerm.toLowerCase()))
+              if (!siteRacks.length) return null
+              const siteId = siteRacks[0]?.site_id
+              return (
+                <div key={siteName} className="mb-8">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{siteName}</span>
+                    </div>
+                    <SiteCapacityBar racks={siteRacks} />
+                    {activeTab === 'active' && (
+                      <button
+                        onClick={() => {
+                          const site = sites?.find((s: any) => s.id === siteId)
+                          if (site) setIsEditingSite(site)
+                        }}
+                        className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-slate-400 transition-colors"
+                      >
+                        <Settings size={11} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    {siteRacks.map((rack: any) => (
+                      <div key={rack.id} className="relative">
+                        <RackElevation
+                          rack={rack}
+                          searchTerm={searchTerm}
+                          isSelected={selectedRacks.includes(rack.id)}
+                          isDeleted={activeTab === 'deleted'}
+                          viewMode={viewMode}
+                          focusedDeviceId={focusedConnection?.sourceId ?? null}
+                          connectedDeviceIds={focusedConnection?.targetIds}
+                          onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                          onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                          onManageDevice={(device, loc, e) => {
+                            setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack })
+                          }}
+                          onEdit={(r) => setIsEditingRack(r)}
+                          onDelete={(id) => openConfirm('Delete Rack', `Delete rack ${rack.name}?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))}
+                          onRestore={(id) => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {racks.filter((r: any) => r.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+              <div className="flex items-center justify-center h-40 text-slate-600 text-[10px] font-black uppercase tracking-widest">
+                {activeTab === 'deleted' ? 'No deleted racks' : 'No racks found'}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Bulk Toolbar */}
+      <AnimatePresence>
+        {selectedRacks.length > 0 && (
+          <BulkToolbar
+            count={selectedRacks.length}
+            isDeleted={activeTab === 'deleted'}
+            onClear={() => setSelectedRacks([])}
+            onCompare={() => setShowCompareOnly(true)}
+            onRelocate={() => setShowRelocateModal(true)}
+            onDelete={() => openConfirm(
+              activeTab === 'deleted' ? 'Purge Racks' : 'Delete Racks',
+              activeTab === 'deleted' ? `Permanently delete ${selectedRacks.length} rack(s)?` : `Soft-delete ${selectedRacks.length} rack(s)?`,
+              () => bulkActionMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete', ids: selectedRacks })
+            )}
+            onRestore={() => setRestoreWizard({ step: 'site-select', ids: selectedRacks, nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Device Detail Modal */}
+      {managingDevice && (
+        <DeviceDetailModal
+          device={managingDevice.device}
+          loc={managingDevice.loc}
+          rack={managingDevice.rack}
+          onClose={() => setManagingDevice(null)}
+          onUnmount={async (deviceId) => {
+            await apiFetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
+            queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+            queryClient.invalidateQueries({ queryKey: ['devices'] })
+            setManagingDevice(null)
+            toast.success('Unmounted')
+          }}
+          onUpdateMount={(data) => updateMountMutation.mutate(data)}
+          onUpdateDevice={async (data) => {
+            await apiFetch(`/api/v1/devices/${managingDevice.device.id}`, { method: 'PUT', body: JSON.stringify(data) })
+            queryClient.invalidateQueries({ queryKey: ['devices'] })
+            queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+            toast.success('Device updated')
+          }}
+        />
+      )}
+
+      {/* Options Context Menu */}
+      {optionsMenu && (
+        <DeviceOptionsMenu
+          x={optionsMenu.x}
+          y={optionsMenu.y}
+          deviceName={optionsMenu.device?.name}
+          onClose={() => setOptionsMenu(null)}
+          onShowConnections={() => {
+            const conns = connections || []
+            const targetIds = conns
+              .filter((c: any) => c.source_device_id === optionsMenu.device?.id || c.target_device_id === optionsMenu.device?.id)
+              .map((c: any) => c.source_device_id === optionsMenu.device?.id ? c.target_device_id : c.source_device_id)
+            setFocusedConnection({ sourceId: optionsMenu.device?.id, targetIds })
+            setOptionsMenu(null)
+          }}
+          onEdit={() => { setManagingDevice({ device: optionsMenu.device, loc: optionsMenu.loc, rack: optionsMenu.rack }); setOptionsMenu(null) }}
+          onDelete={() => {
+            openConfirm('Unmount Device', `Unmount ${optionsMenu.device?.name}?`, async () => {
+              await apiFetch(`/api/v1/racks/mount/${optionsMenu.device?.id}`, { method: 'DELETE' })
+              queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+              queryClient.invalidateQueries({ queryKey: ['devices'] })
+              toast.success('Unmounted')
+            })
+            setOptionsMenu(null)
+          }}
+        />
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-96 space-y-4 shadow-2xl">
+            <h3 className="text-sm font-black uppercase text-white">{confirmModal.title}</h3>
+            <p className="text-xs text-slate-400">{confirmModal.message}</p>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })} className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-xs font-semibold transition-colors">Cancel</button>
+              <button onClick={() => { confirmModal.onConfirm(); setConfirmModal({ ...confirmModal, isOpen: false }) }} className={`flex-1 px-4 py-2 rounded-lg text-xs font-black uppercase transition-colors ${confirmModal.variant === 'danger' ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>{confirmModal.title}</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Connection Lines overlay */}
+      {focusedConnection && (
+        <ConnectionLines
+          sourceDeviceId={focusedConnection.sourceId}
+          targetDeviceIds={focusedConnection.targetIds}
+          racks={racks}
+          connections={connections}
+        />
+      )}
+      {focusedConnection && (
+        <button onClick={() => setFocusedConnection(null)} className="fixed top-6 right-6 z-50 flex items-center gap-2 px-3 py-2 bg-slate-900/90 border border-white/10 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-white transition-colors">
+          <X size={11} /> Clear connections
+        </button>
+      )}
+
+      {/* Mount Asset Modal */}
         {isProvisioning && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -1324,7 +1528,6 @@ export default function RackTemp() {
           </div>
         )}
 
-      {/* ... (Site / Rack / Bulk modals) ... */}
         {(isAddingSite || isEditingSite) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}

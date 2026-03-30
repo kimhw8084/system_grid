@@ -765,7 +765,7 @@ export default function AssetTemp() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
+    { field: "id", headerName: "", maxWidth: 48, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4', suppressSizeToFit: true },
     { 
       field: "name", 
       headerName: "name", 
@@ -924,7 +924,7 @@ export default function AssetTemp() {
   ], [activeTab]) as any
 
   const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents'
+    type: 'fitCellContents' as const
   }), []);
 
   return (
