@@ -157,7 +157,9 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
             "rack_name": rack_name, 
             "site_name": site_name, 
             "u_start": u_start, 
-            "size_u": d.size_u
+            "size_u": d.size_u,
+            "mount_orientation": loc.orientation if loc else None,
+            "mount_depth": loc.depth if loc else None
         })
         final_devices.append(device_dict)
     return final_devices

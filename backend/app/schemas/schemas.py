@@ -72,12 +72,15 @@ class DeviceBase(BaseModel):
     power_max_w: Optional[float] = 0.0
     power_typical_w: Optional[float] = 0.0
     btu_hr: Optional[float] = 0.0
+    depth: Optional[str] = "Full" # Full, Half
     
     tool_group: Optional[str] = None
     fab_area: Optional[str] = None
     recipe_critical: Optional[bool] = False
     
     metadata_json: Optional[Dict[str, Any]] = None
+    is_reservation: Optional[bool] = False
+    reservation_info: Optional[Dict[str, Any]] = None
 
 class DeviceCreate(DeviceBase): pass
 
@@ -87,6 +90,8 @@ class DeviceResponse(DeviceBase, BaseSchema):
     site_name: Optional[str] = None
     u_size: Optional[int] = None
     u_start: Optional[int] = None
+    mount_orientation: Optional[str] = "Front"
+    mount_depth: Optional[str] = "Full"
     
     # Enriched Fields
     hardware_summary: Optional[str] = "No Components"

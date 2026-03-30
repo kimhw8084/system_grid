@@ -41,6 +41,8 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
                     "rack_id": rack.id,
                     "start_unit": loc.start_unit,
                     "size_u": loc.size_u,
+                    "orientation": loc.orientation or "Front",
+                    "depth": loc.depth or "Full",
                     "device": {
                         "id": d.id,
                         "name": d.name,
@@ -49,7 +51,10 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
                         "system": d.system,
                         "owner": d.owner,
                         "power_typical_w": d.power_typical_w or 0,
-                        "power_max_w": d.power_max_w or 0
+                        "power_max_w": d.power_max_w or 0,
+                        "is_reservation": d.is_reservation or False,
+                        "reservation_info": d.reservation_info or {},
+                        "depth": d.depth or "Full"
                     }
                 })
         
@@ -267,7 +272,9 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
         rack_id=rack_id,
         device_id=device_id,
         start_unit=new_start,
-        size_u=int(data['size_u'])
+        size_u=int(data['size_u']),
+        orientation=data.get('orientation', 'Front'),
+        depth=data.get('depth', 'Full')
     )
     db.add(loc)
 

@@ -81,6 +81,7 @@ class Device(Base, BaseMixin):
     power_max_w = Column(Float, default=0.0)
     power_typical_w = Column(Float, default=0.0)
     btu_hr = Column(Float, default=0.0)
+    depth = Column(String, default="Full") # Full, Half
     
     tool_group = Column(String)
     fab_area = Column(String)
@@ -153,7 +154,8 @@ class DeviceLocation(Base, BaseMixin):
     rack_id = Column(Integer, ForeignKey("racks.id", ondelete="CASCADE"))
     start_unit = Column(Integer)
     size_u = Column(Integer)
-    orientation = Column(String, default="Front")
+    orientation = Column(String, default="Front") # Front, Back
+    depth = Column(String, default="Full") # Full, Half
     device = relationship("Device", back_populates="locations")
     rack = relationship("Rack", back_populates="device_locations")
 

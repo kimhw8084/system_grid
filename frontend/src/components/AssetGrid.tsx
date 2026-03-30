@@ -885,6 +885,24 @@ export default function AssetGrid() {
 
     { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { 
+      field: "depth", 
+      headerName: "Depth", 
+      width: 70,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[8px]">{p.value || 'Full'}</span>
+    },
+    { 
+      field: "mount_orientation", 
+      headerName: "Mount", 
+      width: 70, 
+      cellClass: 'text-center', 
+      headerClass: 'text-center', 
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>
+    },
     { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
     { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
     { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
@@ -1919,10 +1937,22 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                     onChange={e => setFormData({...formData, type: e.target.value})}
                     options={ASSET_TYPES}
                 />
+                <StyledSelect
+                    label="Physical Depth"
+                    value={formData.depth || 'Full'}
+                    onChange={e => setFormData({...formData, depth: e.target.value})}
+                    options={[
+                        { value: 'Full', label: 'Full Depth' },
+                        { value: 'Half', label: 'Half Depth' }
+                    ]}
+                />
+             </div>
+             <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
                     <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
+                <div />
              </div>
              <StyledSelect
                 label="Operational Status"
