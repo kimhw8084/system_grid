@@ -1057,7 +1057,97 @@ export default function RackTemp() {
     }
   })
 
-  // ... (rest of mutations)
+  const siteMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = data.id
+        ? await apiFetch(`/api/v1/sites/${data.id}`, { method: 'PUT', body: JSON.stringify(data) })
+        : await apiFetch('/api/v1/sites/', { method: 'POST', body: JSON.stringify(data) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      setIsAddingSite(false)
+      setIsEditingSite(null)
+      setNewSite({ name: '', address: '' })
+      toast.success('Site saved')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const rackMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = data.id
+        ? await apiFetch(`/api/v1/racks/${data.id}`, { method: 'PUT', body: JSON.stringify(data) })
+        : await apiFetch('/api/v1/racks/', { method: 'POST', body: JSON.stringify(data) })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || 'Failed to save rack')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      setIsAddingRack(false)
+      setIsEditingRack(null)
+      setNewRack({ name: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
+      toast.success('Rack saved')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const bulkActionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/racks/bulk-action', { method: 'POST', body: JSON.stringify(data) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      setSelectedRacks([])
+      setShowRelocateModal(false)
+      setRestoreWizard(null)
+      toast.success('Action completed')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const availableDevices: any[] = devices || []
+
+  const proceedRestoreWizard = (targetSiteId?: number) => {
+    if (!restoreWizard) return
+    const ids = restoreWizard.ids
+    const activeRackNames = new Set(activeRacks.map((r: any) => r.name))
+    const nameConflicts = deletedRacks
+      .filter((r: any) => ids.includes(r.id) && activeRackNames.has(r.name))
+      .map((r: any) => ({ rackId: r.id, rackName: r.name, newName: r.name }))
+    const assetWarnings = deletedRacks
+      .filter((r: any) => ids.includes(r.id) && r.device_locations?.length > 0)
+      .map((r: any) => ({ rackName: r.name, devices: r.device_locations.map((l: any) => l.device?.name).filter(Boolean) }))
+
+    if (nameConflicts.length > 0 && restoreWizard.step === 'site-select') {
+      setRestoreWizard({ ...restoreWizard, step: 'name-conflict', targetSiteId, nameConflicts, assetWarnings, generalAssetWarning: assetWarnings.length > 0 })
+    } else if (assetWarnings.length > 0 && restoreWizard.step !== 'asset-warning') {
+      setRestoreWizard({ ...restoreWizard, step: 'asset-warning', targetSiteId, nameConflicts: restoreWizard.nameConflicts, assetWarnings, generalAssetWarning: true })
+    } else {
+      executeRestore(ids, targetSiteId)
+    }
+  }
+
+  const executeRestore = (ids: number[], targetSiteId?: number) => {
+    const renames: Record<string, string> = {}
+    if (restoreWizard?.nameConflicts) {
+      for (const nc of restoreWizard.nameConflicts) {
+        if (nc.newName !== nc.rackName) renames[String(nc.rackId)] = nc.newName
+      }
+    }
+    bulkActionMutation.mutate({
+      action: 'restore',
+      ids,
+      payload: { new_site_id: targetSiteId, renames }
+    })
+  }
 
   const updateMountMutation = useMutation({
     mutationFn: async ({ rackId, device_id, start_u, size_u, orientation, depth }: any) => {
@@ -1075,8 +1165,6 @@ export default function RackTemp() {
     },
     onError: (e: any) => toast.error(e.message)
   })
-
-  // ... (rest of derived data and logic)
 
   // ── Render ────────────────────────────────────────────────────────────────────
 

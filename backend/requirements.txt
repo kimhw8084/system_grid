@@ -8,6 +8,7 @@ python-multipart
 pandas
 openpyxl
 aiosqlite
+alembic
 greenlet
 pytest
 pytest-asyncio
