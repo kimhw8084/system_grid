@@ -1449,7 +1449,6 @@ export default function RackTemp() {
           </motion.div>
         )}
 
-      </AnimatePresence>
     </div>
   )
 }
