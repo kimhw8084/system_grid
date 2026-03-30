@@ -1135,8 +1135,6 @@ export default function RackTemp() {
     onError: (e: any) => toast.error(e.message)
   })
 
-  const availableDevices: any[] = devices || []
-
   const proceedRestoreWizard = (targetSiteId?: number) => {
     if (!restoreWizard) return
     const ids = restoreWizard.ids

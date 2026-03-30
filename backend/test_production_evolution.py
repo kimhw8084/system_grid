@@ -101,17 +101,27 @@ async def test_evolution():
         # 5. Test Relationship Cascade (Delete Device -> Check Locations)
         print("Testing cascade delete...")
         # Create a temp device to delete
-        tmp_dev_res = await ac.post("/api/v1/devices/", json={"name": "TMP-DEL-01", "system": "TEMP", "type": "Physical"})
+        rand_name = f"TMP-DEL-{random.randint(1000, 9999)}"
+        tmp_dev_res = await ac.post("/api/v1/devices/", json={"name": rand_name, "system": "TEMP", "type": "Physical"})
+        if tmp_dev_res.status_code != 200:
+            print(f"BUG in POST /devices/ for temp device: {tmp_dev_res.text}")
+            return
+            
         tmp_dev_id = tmp_dev_res.json()["id"]
         
         # Mount it
         rack_id = racks[0]["id"]
-        await ac.post(f"/api/v1/racks/{rack_id}/mount", json={"device_id": tmp_dev_id, "start_u": 40, "size_u": 1})
+        mount_res = await ac.post(f"/api/v1/racks/{rack_id}/mount", json={"device_id": tmp_dev_id, "start_u": 40, "size_u": 1})
+        if mount_res.status_code != 200:
+            print(f"BUG in mount for temp device: {mount_res.text}")
         
-        # Delete it (Hard delete is not implemented in route, it's soft delete in route)
-        # Wait, devices.py delete route? Let's check.
-        # I need to see if delete_device exists in devices.py
-        
+        # Soft Delete it
+        del_res = await ac.delete(f"/api/v1/devices/{tmp_dev_id}")
+        if del_res.status_code != 200:
+            print(f"BUG in DELETE /devices/{tmp_dev_id}: {del_res.text}")
+        else:
+            print("Soft delete verified.")
+            
     print("Evolution tests completed.")
 
 if __name__ == "__main__":

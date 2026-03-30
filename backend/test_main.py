@@ -33,6 +33,7 @@ async def setup_db():
         await conn.run_sync(Base.metadata.create_all)
     yield
     if os.path.exists("./test_system_grid.db"): os.remove("./test_system_grid.db")
+    app.dependency_overrides.clear()
 
 @pytest.mark.anyio
 async def test_read_main():
