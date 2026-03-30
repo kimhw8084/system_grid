@@ -25,10 +25,16 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
+def _get_db_url() -> str:
+    from app.core.config import settings
+    # Use sync driver for Alembic (strip async driver prefix)
+    return settings.DATABASE_URL.replace("sqlite+aiosqlite", "sqlite")
+
+
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     if not url or url == "driver://user:pass@localhost/dbname":
-        url = "sqlite:///system_grid.db"
+        url = _get_db_url()
     
     context.configure(
         url=url,
@@ -43,7 +49,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     alembic_config = config.get_section(config.config_ini_section, {})
     if not alembic_config.get("sqlalchemy.url") or alembic_config.get("sqlalchemy.url") == "driver://user:pass@localhost/dbname":
-        alembic_config["sqlalchemy.url"] = "sqlite:///system_grid.db"
+        alembic_config["sqlalchemy.url"] = _get_db_url()
 
     connectable = engine_from_config(
         alembic_config,
