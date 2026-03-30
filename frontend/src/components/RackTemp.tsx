@@ -17,7 +17,7 @@ import { StyledSelect } from './shared/StyledSelect'
 const STATUS_CONFIG: Record<string, { color: string; dot: string; badge: string }> = {
   Active:        { color: 'text-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
   Maintenance:   { color: 'text-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
-  Deleted:{ color: 'text-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-500/15 text-rose-400 border-rose-500/25' },
+  Decommissioned:{ color: 'text-rose-400',    dot: 'bg-rose-400',    badge: 'bg-rose-500/15 text-rose-400 border-rose-500/25' },
   Offline:       { color: 'text-slate-400',   dot: 'bg-slate-500',   badge: 'bg-slate-500/15 text-slate-400 border-slate-500/25' },
   Standby:       { color: 'text-sky-400',     dot: 'bg-sky-400',     badge: 'bg-sky-500/15 text-sky-400 border-sky-500/25' },
   Reserved:      { color: 'text-violet-400',  dot: 'bg-violet-400',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/25' },
@@ -324,7 +324,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
             ? 'bg-violet-500/20 border-violet-500/30'
             : device.status === 'Maintenance'
               ? 'bg-amber-500/15'
-              : device.status === 'Deleted'
+              : (device.status === 'Decommissioned' || device.status === 'Deleted')
                 ? 'bg-rose-500/15'
                 : 'bg-blue-600/30'
     : 'hover:bg-white/[0.04]'
@@ -533,7 +533,7 @@ const RackElevation = ({
                         </button>
                         <div className="h-px bg-white/5 my-1" />
                         <button onClick={() => { onDelete(rack.id); setMenuOpen(false) }} className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors">
-                          <Trash2 size={9} /> Delete
+                          <Trash2 size={9} /> Decommission
                         </button>
                       </motion.div>
                     </>
@@ -993,6 +993,28 @@ export default function RackTemp() {
 
   const racks = activeTab === 'active' ? activeRacks : deletedRacks
 
+  const displayedRacks = useMemo(() => {
+    let filtered = racks
+    if (activeSite && activeTab === 'active' && !showCompareOnly) {
+      filtered = filtered.filter((r: any) => r.site_id === activeSite)
+    }
+    if (showCompareOnly) {
+      filtered = filtered.filter((r: any) => selectedRacks.includes(r.id))
+    }
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter((r: any) =>
+        r.name.toLowerCase().includes(term) ||
+        r.device_locations?.some((l: any) => l.device?.name?.toLowerCase().includes(term))
+      )
+    }
+    return filtered
+  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab])
+
+  const availableDevices = useMemo(() =>
+    devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned'),
+  [devices])
+
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
   const mountMutation = useMutation({
@@ -1166,113 +1188,264 @@ export default function RackTemp() {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const siteReorderMutation = useMutation({
+    mutationFn: async (ids: number[]) => apiFetch('/api/v1/sites/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sites'] })
+  })
+
+  const rackReorderMutation = useMutation({
+    mutationFn: async ({ siteId, ids }: { siteId: number; ids: number[] }) => 
+      apiFetch(`/api/v1/sites/${siteId}/racks/reorder`, { method: 'POST', body: JSON.stringify({ ids }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+  })
+
+  const moveSite = (id: number, direction: 'left' | 'right') => {
+    if (!sites) return
+    const index = sites.findIndex((s: any) => s.id === id)
+    if (index === -1) return
+    const arr = [...sites]
+    const ni = direction === 'left' ? index - 1 : index + 1
+    if (ni < 0 || ni >= arr.length) return
+    ;[arr[index], arr[ni]] = [arr[ni], arr[index]]
+    siteReorderMutation.mutate(arr.map((s: any) => s.id))
+  }
+
+  const moveRack = (id: number, direction: 'left' | 'right') => {
+    const rack = activeRacks?.find((r: any) => r.id === id)
+    if (!rack || !rack.site_id) return
+    const siteRacks = activeRacks?.filter((r: any) => r.site_id === rack.site_id) || []
+    const index = siteRacks.findIndex((r: any) => r.id === id)
+    if (index === -1) return
+    const arr = [...siteRacks]
+    const ni = direction === 'left' ? index - 1 : index + 1
+    if (ni < 0 || ni >= arr.length) return
+    ;[arr[index], arr[ni]] = [arr[ni], arr[index]]
+    rackReorderMutation.mutate({ siteId: rack.site_id, ids: arr.map((r: any) => r.id) })
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="h-full flex flex-col gap-5 min-h-0">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight italic">Rack Sandbox</h1>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Physical Infrastructure · Rack Elevation View</p>
+
+      {/* ── Page Header ── */}
+      <div className="flex items-start justify-between gap-4 shrink-0">
+        <div className="flex items-center gap-6">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tight italic leading-none">Racks</h1>
+            <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
+          </div>
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06] self-start">
+            <button
+              onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
+              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >Active</button>
+            <button
+              onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }}
+              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >Purged</button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-            <button onClick={() => setActiveTab('active')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Active</button>
-            <button onClick={() => setActiveTab('deleted')} className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Deleted</button>
+
+        <div className="flex items-center gap-3">
+          {/* View mode toggle */}
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+            <button onClick={() => setViewMode('normal')} title="Normal"
+              className={`p-1.5 rounded-lg transition-all ${viewMode === 'normal' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Server size={13} />
+            </button>
+            <button onClick={() => setViewMode('compact')} title="Compact"
+              className={`p-1.5 rounded-lg transition-all ${viewMode === 'compact' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Layers size={13} />
+            </button>
           </div>
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
-            <button onClick={() => setViewMode('normal')} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'normal' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Full</button>
-            <button onClick={() => setViewMode('compact')} className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewMode === 'compact' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Compact</button>
+
+          {/* Site View / Compare */}
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+            <button onClick={() => setShowCompareOnly(false)}
+              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+              All
+            </button>
+            <button onClick={() => setShowCompareOnly(true)}
+              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+              Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
+            </button>
           </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+            <input
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search racks & devices..."
+              className="bg-white/5 border border-white/[0.06] rounded-xl pl-9 pr-8 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
+                <X size={11} />
+              </button>
+            )}
+          </div>
+
+          {/* Add Actions */}
           {activeTab === 'active' && (
-            <>
-              <button onClick={() => setIsAddingRack(true)} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 transition-all">
-                <Plus size={13} /> Rack
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
+                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+              >
+                <Plus size={13} /> Add Rack
               </button>
-              <button onClick={() => setIsAddingSite(true)} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 transition-all">
-                <Plus size={13} /> Site
+              <button
+                onClick={() => { setNewSite({ name: '', address: '' }); setIsAddingSite(true) }}
+                className="px-4 py-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
+              >
+                <Plus size={13} /> Add Site
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative shrink-0">
-        <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
-        <input
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          placeholder="Filter racks by name or site..."
-          className="w-full bg-white/5 border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors placeholder:text-slate-700"
-        />
-      </div>
+      {/* ── Capacity Summary Bar ── */}
+      {activeRacks && activeRacks.length > 0 && !showCompareOnly && (
+        <div className="shrink-0">
+          <SiteCapacityBar racks={activeRacks} />
+        </div>
+      )}
 
-      {/* Rack Grid */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full text-slate-500 text-[10px] font-black uppercase tracking-widest">Loading racks...</div>
-        ) : (
-          <>
-            {/* Group by site */}
-            {Array.from(new Set(racks.map((r: any) => r.site_name || 'Unassigned'))).map((siteName: any) => {
-              const siteRacks = racks.filter((r: any) => (r.site_name || 'Unassigned') === siteName && r.name.toLowerCase().includes(searchTerm.toLowerCase()))
-              if (!siteRacks.length) return null
-              const siteId = siteRacks[0]?.site_id
-              return (
-                <div key={siteName} className="mb-8">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{siteName}</span>
-                    </div>
-                    <SiteCapacityBar racks={siteRacks} />
-                    {activeTab === 'active' && (
-                      <button
-                        onClick={() => {
-                          const site = sites?.find((s: any) => s.id === siteId)
-                          if (site) setIsEditingSite(site)
+      {/* ── Site Tabs ── */}
+      {!showCompareOnly && activeTab !== 'deleted' && (
+        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center shrink-0">
+          <button
+            onClick={() => setActiveSite(null)}
+            className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+          >
+            All
+            {activeRacks && <span className="opacity-60 font-mono">{activeRacks.length}</span>}
+          </button>
+
+          {sites?.map((s: any) => {
+            const siteRacks = activeRacks?.filter((r: any) => r.site_id === s.id) || []
+            const siteUsed = siteRacks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
+            const siteTotal = siteRacks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
+            const siteFill = siteTotal > 0 ? Math.round((siteUsed / siteTotal) * 100) : 0
+            const isMenuOpen = activeSiteMenu === s.id
+            const isActive = activeSite === s.id
+
+            return (
+              <div key={s.id} className="relative group/site shrink-0">
+                <button
+                  onClick={() => setActiveSite(s.id)}
+                  className={`pl-3 pr-9 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+                >
+                  {s.name}
+                  <span className={`text-[7px] font-black px-1 py-0.5 rounded-md tabular-nums ${
+                    siteFill >= 90 ? 'bg-rose-500/30 text-rose-300' :
+                    siteFill >= 70 ? 'bg-amber-500/30 text-amber-300' :
+                    isActive ? 'bg-white/20 text-white/70' : 'bg-white/5 text-slate-500'
+                  }`}>{siteFill}%</span>
+                </button>
+
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (!isMenuOpen) {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const style = document.documentElement.style
+                      style.setProperty('--site-menu-x', `${rect.left}px`)
+                      style.setProperty('--site-menu-y', `${rect.bottom + 8}px`)
+                    }
+                    setActiveSiteMenu(isMenuOpen ? null : s.id)
+                  }}
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors opacity-0 group-hover/site:opacity-100 ${isActive ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-400'}`}
+                >
+                  <MoreVertical size={12} />
+                </button>
+
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-[60]" onClick={() => setActiveSiteMenu(null)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                        style={{
+                          left: 'var(--site-menu-x, auto)',
+                          top: 'var(--site-menu-y, auto)',
                         }}
-                        className="p-1.5 hover:bg-white/5 rounded-lg text-slate-600 hover:text-slate-400 transition-colors"
                       >
-                        <Settings size={11} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    {siteRacks.map((rack: any) => (
-                      <div key={rack.id} className="relative">
-                        <RackElevation
-                          rack={rack}
-                          searchTerm={searchTerm}
-                          isSelected={selectedRacks.includes(rack.id)}
-                          isDeleted={activeTab === 'deleted'}
-                          viewMode={viewMode}
-                          focusedDeviceId={focusedConnection?.sourceId ?? null}
-                          connectedDeviceIds={focusedConnection?.targetIds}
-                          onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                          onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
-                          onManageDevice={(device, loc, e) => {
-                            setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack })
-                          }}
-                          onEdit={(r) => setIsEditingRack(r)}
-                          onDelete={(id) => openConfirm('Delete Rack', `Delete rack ${rack.name}?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))}
-                          onRestore={(id) => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-            {racks.filter((r: any) => r.name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-              <div className="flex items-center justify-center h-40 text-slate-600 text-[10px] font-black uppercase tracking-widest">
-                {activeTab === 'deleted' ? 'No deleted racks' : 'No racks found'}
+                        <button onClick={e => { e.stopPropagation(); setIsEditingSite(s); setActiveSiteMenu(null) }}
+                          className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg flex items-center gap-2 transition-colors">
+                          <Edit2 size={9} /> Edit Site
+                        </button>
+                        <div className="h-px bg-white/5 my-1" />
+                        <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone.`, () => siteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
+                          className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors">
+                          <Trash2 size={9} /> Decommission
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
-          </>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Rack Grid ── */}
+      <div id="rack-temp-grid" className="flex-1 flex gap-4 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
+        
+        {/* Connection Lines overlay */}
+        {focusedConnection && (
+          <ConnectionLines
+            sourceDeviceId={focusedConnection.sourceId}
+            targetDeviceIds={focusedConnection.targetIds}
+            racks={racks}
+            connections={connections}
+          />
+        )}
+
+        {displayedRacks.map((r: any) => (
+          <RackElevation
+            key={r.id}
+            rack={r}
+            searchTerm={searchTerm}
+            isSelected={selectedRacks.includes(r.id)}
+            onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+            onDelete={id => {
+              if (activeTab === 'deleted') {
+                openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+              } else {
+                openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+              }
+            }}
+            onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+            onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+            onManageDevice={(device, loc, e) => {
+              setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
+            }}
+            isDeleted={activeTab === 'deleted'}
+            onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+            viewMode={viewMode}
+            focusedDeviceId={focusedConnection?.sourceId ?? null}
+            connectedDeviceIds={focusedConnection?.targetIds}
+          />
+        ))}
+
+        {displayedRacks.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+              <Server size={40} className="text-slate-700 mx-auto" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">
+                {activeTab === 'deleted' ? 'No Purged Records' :
+                 searchTerm ? `No results for "${searchTerm}"` :
+                 'No Racks in Scope'}
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
