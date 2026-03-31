@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
 
@@ -257,26 +257,24 @@ function MainLayout() {
           </div>
         </header>
         <div className="flex-1 p-8 overflow-hidden relative">
-          <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
-              <Route path="/temp1" element={<Temp1 />} />
-              <Route path="/rack-temp" element={<RackTemp />} />
-              <Route path="/racks" element={<RackElevations />} />
-              <Route path="/assets" element={<AssetGrid />} />
-              <Route path="/asset-temp" element={<AssetTemp />} />
-              <Route path="/services" element={<ServiceRegistry />} />
-              <Route path="/troubleshooting" element={<Troubleshooting />} />
-              <Route path="/network" element={<NetworkFabric />} />
-              <Route path="/monitoring" element={<MonitoringGrid />} />
-              <Route path="/architecture" element={<DataFlowDesigner />} />
-              <Route path="/partner-iq" element={<ExternalIntelligence />} />
-              <Route path="/cp" element={<Maintenance />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/logs" element={<AuditLogs />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
+            <Route path="/temp1" element={<Temp1 />} />
+            <Route path="/rack-temp" element={<RackTemp />} />
+            <Route path="/racks" element={<RackElevations />} />
+            <Route path="/assets" element={<AssetGrid />} />
+            <Route path="/asset-temp" element={<AssetTemp />} />
+            <Route path="/services" element={<ServiceRegistry />} />
+            <Route path="/troubleshooting" element={<Troubleshooting />} />
+            <Route path="/network" element={<NetworkFabric />} />
+            <Route path="/monitoring" element={<MonitoringGrid />} />
+            <Route path="/architecture" element={<DataFlowDesigner />} />
+            <Route path="/partner-iq" element={<ExternalIntelligence />} />
+            <Route path="/cp" element={<Maintenance />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/logs" element={<AuditLogs />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </div>
         <footer className="h-8 border-t border-[var(--glass-border)] px-8 flex items-center justify-between text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-primary)]/20">
            <span>SYSGRID INFRASTRUCTURE COMMAND</span>
@@ -292,5 +290,13 @@ function MainLayout() {
 }
 
 export default function App() {
-  return (<QueryClientProvider client={queryClient}><BrowserRouter><MainLayout /></BrowserRouter></QueryClientProvider>)
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <MainLayout />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
 }
