@@ -447,7 +447,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <StyledSelect
                 label="Target Host Node"
                 value={formData.device_id || ""}
-                onChange={e => setFormData({...formData, device_id: e.target.value || null})}
+                onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})}
                 options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
                 placeholder="Unassigned (Floating)"
            />
@@ -459,7 +459,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                     const val = e.target.value;
                     setFormData(prev => ({...prev, service_type: val}));
                   }}
-                  options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App"].map(t => ({ value: t, label: t }))}
+                  options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App", "ToolStack"].map(t => ({ value: t, label: t }))}
              />
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
@@ -531,7 +531,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
                 <div className="flex space-x-2">
-                  <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value)})} className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+                  <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value) || 0})} className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
                   <select value={formData.currency || "USD"} onChange={e => setFormData({...formData, currency: e.target.value})} className="w-24 bg-slate-900 border border-white/10 rounded-xl px-2 py-2 text-xs outline-none focus:border-blue-500">
                     <option value="USD">USD</option>
                     <option value="KRW">KRW</option>
@@ -649,13 +649,26 @@ export default function ServiceRegistry() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
+    { 
+      field: "id", 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      suppressSizeToFit: true,
+      resizable: false
+    },
     { 
       field: "name", 
       headerName: "Instance", 
       flex: 1, 
       pinned: 'left',
-      cellClass: 'text-center',
+      cellClass: 'text-center font-bold text-blue-100',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-2 h-full">
@@ -663,16 +676,16 @@ export default function ServiceRegistry() {
            {p.data.service_type === 'Web Server' && <Globe size={12} className="text-blue-400" />}
            {p.data.service_type === 'Middleware' && <Workflow size={12} className="text-indigo-400" />}
            {p.data.service_type === 'Container' && <Box size={12} className="text-emerald-400" />}
-           {p.data.service_type === 'OS' && <Shield size={12} className="text-slate-400" />}
+           {p.data.service_type === 'OS' && <Cpu size={12} className="text-rose-400" />}
            {p.data.service_type === 'Vendor Software' && <Package size={12} className="text-orange-400" />}
            {p.data.service_type === 'Internal App' && <LayoutGrid size={12} className="text-pink-400" />}
            {p.data.service_type === 'External App' && <ExternalLink size={12} className="text-cyan-400" />}
            {['Database', 'Web Server', 'Middleware', 'Container', 'OS', 'Vendor Software', 'Internal App', 'External App'].indexOf(p.data.service_type) === -1 && <Layers size={12} className="text-slate-500" />}
-           <span className="font-bold text-blue-100">{p.value}</span>
+           <span>{p.value}</span>
         </div>
       )
     },
-    { field: "service_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "service_type", headerName: "Type", width: 110, cellClass: 'text-center uppercase font-black text-[9px] tracking-widest text-slate-500', headerClass: 'text-center' },
     { 
       field: "status", 
       headerName: "Status", 
@@ -680,56 +693,25 @@ export default function ServiceRegistry() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = { Active: 'text-emerald-400 border-emerald-500/30', Degraded: 'text-amber-400 border-amber-500/30', Critical: 'text-rose-400 border-rose-500/30', Stopped: 'text-slate-400 border-slate-500/30' }
+        const colors: any = { 
+          Active: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5', 
+          Degraded: 'text-amber-400 border-amber-500/30 bg-amber-500/5', 
+          Critical: 'text-rose-400 border-rose-500/30 bg-rose-500/5', 
+          Stopped: 'text-slate-400 border-slate-500/30 bg-slate-500/5',
+          Maintenance: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5'
+        }
         return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
       }
     },
-    { field: "device_name", headerName: "Host", width: 130, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { field: "device_name", headerName: "Host Node", width: 140, cellClass: "text-blue-400 font-black uppercase text-[10px] text-center", headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 90, cellClass: 'text-center font-bold text-slate-400 uppercase text-[9px]', headerClass: 'text-center' },
+    { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center text-[10px]", headerClass: 'text-center' },
     { 
-      field: "purpose", 
-      headerName: "Purpose", 
-      flex: 1.5, 
-      cellClass: 'text-center italic text-slate-400 truncate',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? (
-        <span title={p.value} className="text-[9px]">{p.value}</span>
-      ) : <span className="text-slate-700">-</span>
-    },
-    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
-    {
-      field: "installation_date",
-      headerName: "Installed",
-      width: 100,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
-        const d = new Date(p.value)
-        return <span className="text-[9px] font-mono text-blue-400">{d.toLocaleDateString()}</span>
-      }
-    },
-    { 
-      field: "documentation_link", 
-      headerName: "Link", 
-      width: 60, 
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? (
-        <a href={p.value} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all inline-block">
-          <ExternalLink size={12} />
-        </a>
-      ) : <span className="text-slate-700">-</span>
-    },
-    { 
-      field: "purchase_type", 
-      headerName: "Purchase Model", 
+      field: "vendor", 
+      headerName: "Vendor", 
       width: 120, 
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? (
-        <span className="text-[9px] font-black text-amber-400 uppercase tracking-tighter bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{p.value}</span>
-      ) : <span className="text-slate-700 italic text-[8px]">N/A</span>
+      cellClass: 'text-center text-slate-400 font-medium',
+      headerClass: 'text-center'
     },
     { 
       field: "cost", 
@@ -740,24 +722,12 @@ export default function ServiceRegistry() {
       cellRenderer: (p: any) => {
         if (!p.value && p.value !== 0) return <span className="text-slate-700 italic text-[8px]">N/A</span>
         const symbol = p.data.currency === 'KRW' ? '₩' : '$'
-        return <span className="text-[9px] font-black text-emerald-400">{symbol}{p.value.toLocaleString()}</span>
-      }
-    },
-    {
-      field: "expiry_date",
-      headerName: "Expiry",
-      width: 100,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
-        const d = new Date(p.value)
-        return <span className="text-[9px] font-mono text-slate-400">{d.toLocaleDateString()}</span>
+        return <span className="text-[10px] font-black text-emerald-400">{symbol}{p.value.toLocaleString()}</span>
       }
     },
     {
       headerName: "Ops",
-      width: 100,
+      width: 110,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -841,8 +811,8 @@ export default function ServiceRegistry() {
           rowData={services || []} 
           columnDefs={columnDefs} 
           rowSelection="multiple"
-          headerHeight={28}
-          rowHeight={28}
+          headerHeight={32}
+          rowHeight={32}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
         />
@@ -904,10 +874,14 @@ export default function ServiceRegistry() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
-                    <div className="flex items-center space-x-4">
-                       <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <div className="flex items-center space-x-3 mt-1">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} · {activeDetails.environment}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">HOST: {activeDetails.device_name || 'UNASSIGNED'}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">VERSION: {activeDetails.version || 'UNKNOWN'}</p>
                     </div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
                   </div>
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>

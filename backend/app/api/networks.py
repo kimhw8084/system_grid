@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, or_
+from sqlalchemy import select, delete, update, or_, and_
 from typing import List
 from ..database import get_db
 from ..models import models
@@ -89,7 +89,21 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
     target_device_id = data.get('device_b_id')
     target_port = data.get('target_port') or data.get('port_b')
 
-    # ... (duplicate check logic remains same)
+    if not all([source_device_id, source_port, target_device_id, target_port]):
+        raise HTTPException(400, "Incomplete mapping data")
+
+    # Duplicate check: port on a device can only have one physical connection
+    dup_query = select(models.PortConnection).filter(
+        or_(
+            and_(models.PortConnection.source_device_id == source_device_id, models.PortConnection.source_port == source_port),
+            and_(models.PortConnection.target_device_id == source_device_id, models.PortConnection.target_port == source_port),
+            and_(models.PortConnection.source_device_id == target_device_id, models.PortConnection.source_port == target_port),
+            and_(models.PortConnection.target_device_id == target_device_id, models.PortConnection.target_port == target_port)
+        )
+    )
+    dup_res = await db.execute(dup_query)
+    if dup_res.scalars().first():
+        raise HTTPException(400, "One of the selected ports is already physically cross-connected")
 
     conn = models.PortConnection(
         source_device_id=source_device_id,
@@ -102,15 +116,19 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
         target_ip=data.get('target_ip'),
         target_mac=data.get('target_mac'),
         target_vlan=data.get('target_vlan'),
-        link_type=data.get('link_type') or data.get('purpose'), 
-        purpose=data.get('purpose_desc') or data.get('purpose') if 'purpose_desc' in data else None,
+        link_type=data.get('link_type'), 
+        purpose=data.get('purpose'),
         speed_gbps=data.get('speed_gbps'),
         unit=data.get('unit', 'Gbps'),
         direction=data.get('direction'),
         cable_type=data.get('cable_type')
     )
-    # ...
-    # (rest of create_connection)
+    db.add(conn)
+    log = models.AuditLog(user_id="admin", action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
+    db.add(log)
+    await db.commit()
+    await db.refresh(conn)
+    return conn
 
 @router.put("/connections/{conn_id}")
 async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends(get_db)):

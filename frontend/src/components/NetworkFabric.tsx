@@ -58,52 +58,77 @@ export default function NetworkFabric() {
 
   const columnDefs = useMemo(() => [
     { 
-      headerName: "Src", 
+      field: "id", 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      suppressSizeToFit: true,
+      resizable: false
+    },
+    { 
+      headerName: "Src Node", 
       field: "server_a", 
       flex: 1,
-      cellClass: 'text-center font-bold text-blue-400',
+      cellClass: 'text-center font-black text-blue-400 uppercase text-[10px]',
       headerClass: 'text-center'
     },
     { 
-      headerName: "Src Port", 
+      headerName: "Local Port", 
       field: "source_port", 
-      width: 100,
-      cellClass: 'text-center font-mono text-slate-400',
+      width: 110,
+      cellClass: 'text-center font-bold text-slate-300 uppercase text-[9px]',
       headerClass: 'text-center'
     },
     { 
       headerName: "Src IP", 
       field: "source_ip", 
-      width: 120,
-      cellClass: 'text-center font-mono text-blue-400',
+      width: 130,
+      cellClass: 'text-center font-mono text-blue-400/80 text-[10px]',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic">-</span>
+      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px]">Unassigned</span>
     },
     { 
-      headerName: "Peer", 
+      headerName: "Peer Node", 
       field: "server_b", 
       flex: 1,
-      cellClass: 'text-center font-bold text-emerald-400',
+      cellClass: 'text-center font-black text-emerald-400 uppercase text-[10px]',
       headerClass: 'text-center'
     },
     { 
       headerName: "Peer Port", 
       field: "target_port", 
-      width: 100,
-      cellClass: 'text-center font-mono text-slate-400',
+      width: 110,
+      cellClass: 'text-center font-bold text-slate-300 uppercase text-[9px]',
       headerClass: 'text-center'
     },
     { 
       headerName: "Peer IP", 
       field: "target_ip", 
-      width: 120,
-      cellClass: 'text-center font-mono text-emerald-400',
+      width: 130,
+      cellClass: 'text-center font-mono text-emerald-400/80 text-[10px]',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic">-</span>
+      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px]">Unassigned</span>
     },
-    { field: "link_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "purpose", headerName: "Purpose", flex: 1.5, cellClass: 'text-xs text-slate-400 italic', headerClass: 'text-left', cellRenderer: (p: any) => p.value || <span className="text-slate-700">-</span> },
-    { field: "speed", headerName: "Gbps", width: 80, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
+    { 
+      field: "link_type", 
+      headerName: "Type", 
+      width: 120, 
+      cellClass: 'text-center uppercase font-black text-[9px] tracking-widest text-slate-500', 
+      headerClass: 'text-center' 
+    },
+    { 
+      field: "speed", 
+      headerName: "Fabric Metric", 
+      width: 110, 
+      cellClass: "font-black text-indigo-400 text-center text-[10px]", 
+      headerClass: 'text-center' 
+    },
     {
       headerName: "Ops",
       width: 110,
@@ -112,19 +137,21 @@ export default function NetworkFabric() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => setViewingLink(p.data)} className="p-1.5 hover:bg-emerald-500/10 text-slate-500 hover:text-emerald-400 rounded transition-colors" title="View Details"><Info size={14}/></button>
-           <button onClick={() => { 
-             setEditingLink(p.data); 
-             setConnData({
-               ...p.data,
-               device_a_id: p.data.source_device_id,
-               device_b_id: p.data.target_device_id,
-               port_a: p.data.source_port,
-               port_b: p.data.target_port
-             }); 
-             setShowConnectModal(true) 
-           }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors" title="Edit Link"><Edit2 size={14}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this physical connection?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors" title="Delete Link"><Trash2 size={14}/></button>
+           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+              <button onClick={() => setViewingLink(p.data)} className="p-1.5 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 rounded-md transition-all" title="Link Forensics"><Info size={14}/></button>
+              <button onClick={() => { 
+                setEditingLink(p.data); 
+                setConnData({
+                  ...p.data,
+                  device_a_id: String(p.data.source_device_id),
+                  device_b_id: String(p.data.target_device_id),
+                  port_a: p.data.source_port,
+                  port_b: p.data.target_port
+                }); 
+                setShowConnectModal(true) 
+              }} className="p-1.5 hover:bg-blue-600/20 text-slate-500 hover:text-blue-400 rounded-md transition-all" title="Edit Link"><Edit2 size={14}/></button>
+              <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Physical Link', message: 'Sever this physical connection? This will impact data flows.', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-600/20 text-slate-500 hover:text-rose-400 rounded-md transition-all" title="Sever Link"><Trash2 size={14}/></button>
+           </div>
         </div>
       )
     }
@@ -175,8 +202,8 @@ export default function NetworkFabric() {
         <AgGridReact 
           rowData={connections || []} 
           columnDefs={columnDefs}
-          headerHeight={28}
-          rowHeight={28}
+          headerHeight={32}
+          rowHeight={32}
           quickFilterText={searchTerm}
         />
       </div>
@@ -292,25 +319,26 @@ export default function NetworkFabric() {
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
-                  <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                </div>
-                <StyledSelect
+                  <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  </div>
+                  <StyledSelect
                     label="Unit"
                     value={connData.unit}
                     onChange={e => setConnData({...connData, unit: e.target.value})}
                     options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
-                />
-              </div>
-              <div className="flex space-x-3 pt-4 border-t border-white/5">
-                <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500">Abort</button>
-                <button onClick={() => {
+                  />
+                  </div>
+                  <div className="flex space-x-3 pt-4 border-t border-white/5">
+                  <button onClick={() => setShowConnectModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500">Abort</button>
+                  <button onClick={() => {
                   if(!connData.device_a_id || (!connData.source_port && !connData.port_a) || !connData.device_b_id || (!connData.target_port && !connData.port_b)) {
                     return toast.error("Entity and Port mapping required")
                   }
                   mutation.mutate(connData)
-                }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Link</button>
-              </div>
-            </motion.div>
+                  }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                  {editingLink ? 'Update Link Matrix' : 'Establish Link'}
+                  </button>
+                  </div>            </motion.div>
           </div>
         )}
       </AnimatePresence>
