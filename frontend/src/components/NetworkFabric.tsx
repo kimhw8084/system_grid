@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, ArrowRightLeft, RefreshCcw, Trash2, Edit2, X, Check, MoreVertical, Settings, Search, Info } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ import { apiFetch } from "../api/apiClient"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
+import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
@@ -127,9 +128,7 @@ export default function NetworkFabric() {
         </div>
       )
     }
-  ], []) as any
-
-  const purposes = ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"]
+  ], [deleteMutation]) as any
 
   const resetForm = () => {
     setConnData({
@@ -191,100 +190,23 @@ export default function NetworkFabric() {
         variant="danger"
       />
 
-      <AnimatePresence>
-        {viewingLink && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[550px] p-10 rounded-[40px] border border-emerald-500/30 space-y-8">
-               <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-emerald-400">
-                     <Network size={28} />
-                     <span>Connection Forensics</span>
-                  </h2>
-                  <button onClick={() => setViewingLink(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-
-               <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                     <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-blue-500/30">SOURCE ENTITY</div>
-                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
-                        <p className="text-lg font-black text-white truncate">{viewingLink.server_a}</p>
-                        <div className="mt-4 space-y-2">
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
-                              <span className="text-[10px] font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">{viewingLink.source_port}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
-                              <span className="text-[10px] font-mono text-white">{viewingLink.source_ip || '-'}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
-                              <span className="text-[10px] font-mono text-slate-400">{viewingLink.source_mac || '-'}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
-                              <span className="text-[10px] font-black text-indigo-400">{viewingLink.source_vlan || '-'}</span>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="space-y-4">
-                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-emerald-500/30">PEER ENTITY</div>
-                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
-                        <p className="text-lg font-black text-white truncate">{viewingLink.server_b}</p>
-                        <div className="mt-4 space-y-2">
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
-                              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">{viewingLink.target_port}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
-                              <span className="text-[10px] font-mono text-white">{viewingLink.target_ip || '-'}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
-                              <span className="text-[10px] font-mono text-slate-400">{viewingLink.target_mac || '-'}</span>
-                           </div>
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
-                              <span className="text-[10px] font-black text-indigo-400">{viewingLink.target_vlan || '-'}</span>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="col-span-2 p-6 bg-white/5 border border-white/5 rounded-[30px] space-y-4">
-                     <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center">
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Fabric Speed</p>
-                           <p className="text-sm font-black text-indigo-400">{viewingLink.speed || '-'}</p>
-                        </div>
-                        <div className="text-center">
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Topology</p>
-                           <p className="text-sm font-black text-white">{viewingLink.link_type || '-'}</p>
-                        </div>
-                        <div className="text-center">
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Traffic Mode</p>
-                           <p className="text-sm font-black text-amber-400">{viewingLink.direction || '-'}</p>
-                        </div>
-                     </div>
-                     <div className="pt-4 border-t border-white/5">
-                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
-                        <p className="text-xs text-slate-300 italic">{viewingLink.purpose || 'No description provided for this interconnect.'}</p>
-                     </div>
-                  </div>
-               </div>
-
-               <button onClick={() => setViewingLink(null)} className="w-full py-4 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95">
-                  Dismiss Forensics
-               </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConnectionForensicsModal
+        isOpen={!!viewingLink}
+        onClose={() => setViewingLink(null)}
+        connection={viewingLink}
+        onEdit={(conn) => {
+          setViewingLink(null);
+          setEditingLink(conn); 
+          setConnData({
+            ...conn,
+            device_a_id: conn.source_device_id,
+            device_b_id: conn.target_device_id,
+            port_a: conn.source_port,
+            port_b: conn.target_port
+          }); 
+          setShowConnectModal(true)
+        }}
+      />
 
       <AnimatePresence>
         {showConnectModal && (

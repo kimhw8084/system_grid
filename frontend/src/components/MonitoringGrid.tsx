@@ -90,6 +90,31 @@ export default function MonitoringGrid() {
       }
     },
     { field: "device_name", headerName: "Target", flex: 1, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { 
+      field: "monitored_service_names", 
+      headerName: "Services", 
+      flex: 1, 
+      cellClass: "text-center", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const names = p.value || []
+        if (names.length === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
+        return (
+          <div className="flex items-center justify-center -space-x-1 overflow-hidden h-full" title={names.join(', ')}>
+            {names.slice(0, 2).map((n: string, i: number) => (
+              <div key={i} className="px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-[8px] font-bold text-blue-300 truncate max-w-[60px]">
+                {n}
+              </div>
+            ))}
+            {names.length > 2 && (
+              <div className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[8px] font-bold text-slate-400">
+                +{names.length - 2}
+              </div>
+            )}
+          </div>
+        )
+      }
+    },
     { field: "title", headerName: "Intent", flex: 1.5, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
     { 
       field: "platform", 
@@ -223,7 +248,18 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     purpose: '',
     notification_method: 'Email',
     logic: '',
-    device_id: null
+    device_id: null,
+    monitored_services: []
+  })
+
+  // Fetch services for selected device
+  const { data: deviceServices } = useQuery({
+    queryKey: ['device-services', formData.device_id],
+    queryFn: async () => {
+      if (!formData.device_id) return []
+      return (await apiFetch(`/api/v1/logical-services/?device_id=${formData.device_id}`)).json()
+    },
+    enabled: !!formData.device_id
   })
 
   const mutation = useMutation({
@@ -238,17 +274,28 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     }
   })
 
+  const toggleService = (id: number) => {
+    const current = [...(formData.monitored_services || [])]
+    const idx = current.indexOf(id)
+    if (idx > -1) {
+      current.splice(idx, 1)
+    } else {
+      current.push(id)
+    }
+    setFormData({ ...formData, monitored_services: current })
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30"
+        className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-8 mb-8">
            <div className="flex items-center space-x-4">
-              <div className="p-4 bg-blue-600/10 rounded-3xl text-blue-400">
+              <div className="p-4 bg-blue-600/10 rounded-3xl text-blue-400 border border-blue-500/20">
                 <Zap size={24} />
               </div>
               <div>
@@ -268,10 +315,45 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
               <StyledSelect 
                 label="Target Resource"
                 value={formData.device_id}
-                onChange={(e: any) => setFormData({...formData, device_id: e.target.value})}
+                onChange={(e: any) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value);
+                    setFormData({...formData, device_id: val, monitored_services: []});
+                }}
                 options={devices?.map((d: any) => ({ value: d.id, label: `${d.name} (${d.system})` })) || []}
                 placeholder="Select Device..."
               />
+
+              {formData.device_id && (
+                <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Monitored Services</label>
+                    <span className="text-[9px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                      {formData.monitored_services?.length || 0} Selected
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {deviceServices?.length > 0 ? (
+                      deviceServices.map((svc: any) => (
+                        <button
+                          key={svc.id}
+                          onClick={() => toggleService(svc.id)}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center space-x-2 border ${
+                            formData.monitored_services?.includes(svc.id)
+                              ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/30 scale-105'
+                              : 'bg-black/40 border-white/10 text-slate-500 hover:border-white/30 hover:text-slate-300'
+                          }`}
+                        >
+                          {formData.monitored_services?.includes(svc.id) ? <Check size={10} strokeWidth={4} /> : <div className="w-1 h-1 rounded-full bg-slate-700" />}
+                          <span>{svc.name}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-[10px] text-slate-600 uppercase italic px-1">No services registered to this device</p>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-4">
                 <StyledSelect 
@@ -294,7 +376,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
                   placeholder="e.g., CPU Thermal Threshold / Error log parsing"
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
                 />
               </div>
 
@@ -304,8 +386,8 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                   value={formData.spec}
                   onChange={e => setFormData({...formData, spec: e.target.value})}
                   placeholder="Metrics, thresholds, intervals..."
-                  rows={4}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
+                  rows={3}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
                 />
               </div>
            </div>

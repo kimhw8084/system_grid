@@ -122,10 +122,12 @@ class MonitoringItemBase(BaseModel):
     notification_method: Optional[str] = None # Email, Slack, PagerDuty
     logic: Optional[str] = None # For log-based: regex or query
     owner: Optional[str] = None
+    monitored_services: List[int] = []
 
 class MonitoringItemCreate(MonitoringItemBase): pass
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     device_name: Optional[str] = None
+    monitored_service_names: List[str] = [] # Optional, for UI convenience
 
 class ServiceSecretBase(BaseModel):
     username: Optional[str] = None
@@ -185,3 +187,32 @@ class IncidentLogBase(BaseModel):
 class IncidentLogCreate(IncidentLogBase): pass
 class IncidentLogResponse(IncidentLogBase, BaseSchema):
     device_names: Optional[List[str]] = []
+
+# External Intelligence
+class ExternalEntityBase(BaseModel):
+    name: str
+    type: Optional[str] = "Server"
+    hostname: Optional[str] = None
+    ip_address: Optional[str] = None
+    owner_organization: Optional[str] = None
+    description: Optional[str] = None
+    contact_info: Optional[str] = None
+
+class ExternalEntityCreate(ExternalEntityBase): pass
+class ExternalEntityResponse(ExternalEntityBase, BaseSchema): pass
+
+class ExternalLinkBase(BaseModel):
+    external_entity_id: int
+    device_id: int
+    service_id: Optional[int] = None
+    direction: str = "Upstream"
+    purpose: Optional[str] = None
+    protocol: Optional[str] = "TCP"
+    port: Optional[str] = None
+    credentials: Optional[Dict[str, Any]] = None
+
+class ExternalLinkCreate(ExternalLinkBase): pass
+class ExternalLinkResponse(ExternalLinkBase, BaseSchema):
+    external_entity_name: Optional[str] = None
+    device_name: Optional[str] = None
+    service_name: Optional[str] = None

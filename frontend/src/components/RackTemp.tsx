@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
+import { ConnectionForensicsModal } from './shared/ConnectionForensicsModal'
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
 
 // ─── Connection Lines Overlay ──────────────────────────────────────────────────
 
-const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, devices }: { sourceDeviceId: number; targetDeviceIds: number[]; racks: any[]; connections?: any[]; devices?: any[] }) => {
+const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, devices, onLineClick }: { sourceDeviceId: number; targetDeviceIds: number[]; racks: any[]; connections?: any[]; devices?: any[]; onLineClick?: (conn: any) => void }) => {
   const [lines, setLines] = React.useState<any[]>([])
   const [hoveredLine, setHoveredLine] = React.useState<any>(null)
   const [containerStyle, setContainerStyle] = React.useState({ width: '100%', height: '100%' })
@@ -221,13 +222,14 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
             : `M ${l.x1} ${l.y1} L ${l.x2} ${l.y2}`
 
           return (
-            <g key={l.id || i} className="pointer-events-auto cursor-help group" 
+            <g key={l.id || i} className="pointer-events-auto cursor-pointer group" 
                onMouseEnter={(e) => setHoveredLine({ ...l, mouseX: e.clientX, mouseY: e.clientY })}
-               onMouseLeave={() => setHoveredLine(null)}>
-              <path d={path} fill="none" stroke="#3b82f6" strokeWidth="6" strokeOpacity="0" />
+               onMouseLeave={() => setHoveredLine(null)}
+               onClick={() => l.connection && onLineClick?.(l.connection)}>
+              <path d={path} fill="none" stroke="#3b82f6" strokeWidth="8" strokeOpacity="0" />
               <path
                 d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" filter="url(#lineGlow)"
-                strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-blue-400 transition-all"
+                strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-blue-400 group-hover:stroke-[4px] transition-all"
               />
               <path
                 d={path} fill="none" stroke="#60a5fa" strokeWidth="1" strokeOpacity="0.8"
@@ -978,6 +980,7 @@ export default function RackTemp() {
   
   const [optionsMenu, setOptionsMenu] = useState<{ x: number; y: number; device: any; loc: any; rack: any } | null>(null)
   const [focusedConnection, setFocusedConnection] = useState<{ sourceId: number; targetIds: number[] } | null>(null)
+  const [viewingConnection, setViewingConnection] = useState<any>(null)
 
   const [restoreWizard, setRestoreWizard] = useState<{
     step: 'site-select' | 'name-conflict' | 'asset-warning' | null
@@ -1452,6 +1455,7 @@ export default function RackTemp() {
             racks={racks}
             connections={connections}
             devices={devices}
+            onLineClick={(conn) => setViewingConnection(conn)}
           />
         )}
 
@@ -1514,6 +1518,12 @@ export default function RackTemp() {
           />
         )}
       </AnimatePresence>
+
+      <ConnectionForensicsModal
+        isOpen={!!viewingConnection}
+        onClose={() => setViewingConnection(null)}
+        connection={viewingConnection}
+      />
 
       {/* Device Detail Modal */}
       {managingDevice && (

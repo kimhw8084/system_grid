@@ -266,6 +266,7 @@ class MonitoringItem(Base, BaseMixin):
     notification_method = Column(String) # Email, Slack, PagerDuty
     logic = Column(Text) # For log-based: regex or query
     owner = Column(String)
+    monitored_services = Column(JSON, default=list) # List of LogicalService IDs
     
     device = relationship("Device", back_populates="monitoring_items")
 
@@ -339,6 +340,31 @@ class DataFlow(Base, BaseMixin):
     viewport_json = Column(JSON, default=dict)
     is_template = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
+
+class ExternalEntity(Base, BaseMixin):
+    __tablename__ = "external_entities"
+    name = Column(String, index=True)
+    type = Column(String) # Server, DB, PC, Network, Cloud Service
+    hostname = Column(String)
+    ip_address = Column(String)
+    owner_organization = Column(String)
+    description = Column(Text)
+    contact_info = Column(String)
+
+class ExternalLink(Base, BaseMixin):
+    __tablename__ = "external_links"
+    external_entity_id = Column(Integer, ForeignKey("external_entities.id"))
+    device_id = Column(Integer, ForeignKey("devices.id"))
+    service_id = Column(Integer, ForeignKey("logical_services.id"), nullable=True)
+    direction = Column(String) # Upstream, Downstream
+    purpose = Column(String)
+    protocol = Column(String) # TCP, UDP, HTTPS, etc.
+    port = Column(String)
+    credentials = Column(JSON) # Store as { "username": "...", "password": "...", "note": "..." }
+    
+    external_entity = relationship("ExternalEntity")
+    device = relationship("Device")
+    service = relationship("LogicalService")
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

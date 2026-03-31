@@ -19,6 +19,7 @@ import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Troubleshooting from "./components/Troubleshooting"
 import DataFlowDesigner from "./components/DataFlowDesigner"
+import ExternalIntelligence from "./components/ExternalIntelligence"
 import Temp1 from "./components/Temp1"
 import RackTemp from "./components/RackTemp"
 import metadata from "./metadata.json"
@@ -225,6 +226,7 @@ function MainLayout() {
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Globe} label="Partner IQ" path="/partner-iq" active={location.pathname === "/partner-iq"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Clock} label="CP" path="/cp" active={location.pathname === "/cp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
@@ -269,6 +271,7 @@ function MainLayout() {
               <Route path="/network" element={<NetworkFabric />} />
               <Route path="/monitoring" element={<MonitoringGrid />} />
               <Route path="/architecture" element={<DataFlowDesigner />} />
+              <Route path="/partner-iq" element={<ExternalIntelligence />} />
               <Route path="/cp" element={<Maintenance />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/logs" element={<AuditLogs />} />
