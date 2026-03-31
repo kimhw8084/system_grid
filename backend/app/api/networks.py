@@ -30,6 +30,20 @@ async def create_interface(data: dict, db: AsyncSession = Depends(get_db)):
     await db.refresh(db_obj)
     return {"status": "success", "id": db_obj.id}
 
+@router.put("/interfaces/{interface_id}")
+async def update_interface(interface_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.NetworkInterface).filter(models.NetworkInterface.id == interface_id))
+    item = res.scalar_one_or_none()
+    if not item: raise HTTPException(404)
+    
+    clean = filter_valid_columns(models.NetworkInterface, data)
+    for k, v in clean.items():
+        if k != "id": setattr(item, k, v)
+    
+    await db.commit()
+    await db.refresh(item)
+    return item
+
 @router.get("/connections")
 async def get_connections(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.PortConnection))

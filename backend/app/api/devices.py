@@ -47,7 +47,7 @@ async def sync_device_to_os(device, db: AsyncSession):
 async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     
-    query = select(models.Device)
+    query = select(models.Device).options(selectinload(models.Device.network_interfaces))
     if not include_deleted:
         query = query.filter(models.Device.is_deleted == False)
         
@@ -139,6 +139,10 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
         # Incidents Indicator
         device_dict["open_incident_count"] = inc_map.get(d.id, 0)
 
+        # Multi-IP Summary
+        ips = [i.ip_address for i in d.network_interfaces if i.ip_address]
+        device_dict["all_ips"] = ips
+
         loc = locations.get(d.id)
         rack_name, site_name, u_start = None, "Unplaced", None
         
@@ -163,6 +167,11 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
         })
         final_devices.append(device_dict)
     return final_devices
+
+@router.get("/{device_id}/interfaces")
+async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.NetworkInterface).filter(models.NetworkInterface.device_id == device_id))
+    return res.scalars().all()
 
 @router.post("/")
 async def create_device(data: dict, db: AsyncSession = Depends(get_db)):

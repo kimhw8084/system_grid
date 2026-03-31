@@ -98,10 +98,10 @@ class Device(Base, BaseMixin):
     software = relationship("DeviceSoftware", back_populates="device", cascade="all, delete-orphan")
     secrets = relationship("SecretVault", back_populates="device", cascade="all, delete-orphan")
     relationships = relationship("DeviceRelationship", primaryjoin="Device.id==DeviceRelationship.source_device_id", cascade="all, delete-orphan")
-    interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
     maintenance_windows = relationship("MaintenanceWindow", back_populates="device", cascade="all, delete-orphan")
     logical_services = relationship("LogicalService", back_populates="device")
     monitoring_items = relationship("MonitoringItem", back_populates="device", cascade="all, delete-orphan")
+    network_interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
 
 class LogicalService(Base, BaseMixin):
     __tablename__ = "logical_services"
@@ -190,7 +190,7 @@ class NetworkInterface(Base, BaseMixin):
     ip_address = Column(String, index=True)
     vlan_id = Column(Integer, nullable=True)
     link_speed_gbps = Column(Integer)
-    device = relationship("Device", back_populates="interfaces")
+    device = relationship("Device", back_populates="network_interfaces")
 
 class PortConnection(Base, BaseMixin):
     __tablename__ = "port_connections"

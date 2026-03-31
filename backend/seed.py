@@ -701,12 +701,21 @@ def seed():
         # ── NetworkInterfaces ─────────────────────────────────────────────────
         print("Seeding NetworkInterfaces...")
         nics = [
-            NetworkInterface(device_id=dev1.id,  name="eth0", mac_address="00:11:22:33:44:01", ip_address="10.0.1.10",  vlan_id=10,  link_speed_gbps=10),
-            NetworkInterface(device_id=dev1.id,  name="eth1", mac_address="00:11:22:33:44:02", ip_address="10.0.0.10",  vlan_id=1,   link_speed_gbps=1),
+            # dev1 (hq-web-01): Multi-homed Office & Private L2
+            NetworkInterface(device_id=dev1.id,  name="eth0", mac_address="00:11:22:33:44:01", ip_address="10.0.1.10",  vlan_id=10,  link_speed_gbps=10), # Office
+            NetworkInterface(device_id=dev1.id,  name="eth1", mac_address="00:11:22:33:44:02", ip_address="192.168.1.10", vlan_id=100, link_speed_gbps=1),  # Private L2
+            NetworkInterface(device_id=dev1.id,  name="mgmt", mac_address="00:11:22:33:44:33", ip_address="10.0.0.10",  vlan_id=1,   link_speed_gbps=1),  # OOB
+            
+            # dev2 (hq-web-02)
             NetworkInterface(device_id=dev2.id,  name="eth0", mac_address="00:11:22:33:44:03", ip_address="10.0.1.11",  vlan_id=10,  link_speed_gbps=10),
-            NetworkInterface(device_id=dev3.id,  name="bond0", mac_address="00:11:22:33:44:05", ip_address="10.0.2.10", vlan_id=20,  link_speed_gbps=25),
+            NetworkInterface(device_id=dev2.id,  name="eth1", mac_address="00:11:22:33:44:04", ip_address="192.168.1.11", vlan_id=100, link_speed_gbps=1),
+            
+            # dev3 (hq-db-01): Multi-homed DB with Storage segment
+            NetworkInterface(device_id=dev3.id,  name="bond0", mac_address="00:11:22:33:44:05", ip_address="10.0.2.10", vlan_id=20,  link_speed_gbps=25), # Prod
             NetworkInterface(device_id=dev3.id,  name="eth-mgmt", mac_address="00:11:22:33:44:06", ip_address="10.0.0.20", vlan_id=1, link_speed_gbps=1),
-            NetworkInterface(device_id=dev3.id,  name="eth-iscsi", mac_address="00:11:22:33:44:99", ip_address="10.0.3.100", vlan_id=30, link_speed_gbps=25), # Extra for DB
+            NetworkInterface(device_id=dev3.id,  name="eth-iscsi", mac_address="00:11:22:33:44:99", ip_address="10.0.3.100", vlan_id=30, link_speed_gbps=25), # Storage
+            NetworkInterface(device_id=dev3.id,  name="eth-repl", mac_address="00:11:22:33:44:88", ip_address="192.168.1.20", vlan_id=100, link_speed_gbps=10), # DB Replication
+            
             NetworkInterface(device_id=dev4.id,  name="bond0", mac_address="00:11:22:33:44:07", ip_address="10.0.2.11", vlan_id=20,  link_speed_gbps=25),
             NetworkInterface(device_id=dev5.id,  name="mgmt0", mac_address="00:11:22:33:44:09", ip_address="10.0.0.1",  vlan_id=1,   link_speed_gbps=1),
             NetworkInterface(device_id=dev6.id,  name="mgmt",  mac_address="00:11:22:33:44:11", ip_address="10.0.0.254",vlan_id=1,   link_speed_gbps=1),
@@ -720,7 +729,7 @@ def seed():
             NetworkInterface(device_id=dev17.id, name="mgmt0", mac_address="00:11:22:33:44:27", ip_address="10.0.0.5",  vlan_id=1,   link_speed_gbps=1),
             NetworkInterface(device_id=dev19.id, name="eth0",  mac_address="00:11:22:33:44:29", ip_address="192.168.2.10",vlan_id=None,link_speed_gbps=1),
             NetworkInterface(device_id=dev20.id, name="eth0",  mac_address="00:11:22:33:44:31", ip_address="10.0.6.10", vlan_id=60,  link_speed_gbps=1),
-            NetworkInterface(device_id=dev15.id, name="eth0",  mac_address="00:11:22:33:44:33", ip_address="10.0.3.20", vlan_id=30,  link_speed_gbps=10),
+            NetworkInterface(device_id=dev15.id, name="eth0",  mac_address="00:11:22:33:44:90", ip_address="10.0.3.20", vlan_id=30,  link_speed_gbps=10),
             NetworkInterface(device_id=dev14.id, name="vmnic0",mac_address="00:11:22:33:44:35", ip_address="10.0.4.11", vlan_id=40,  link_speed_gbps=25),
         ]
         db.add_all(nics)
