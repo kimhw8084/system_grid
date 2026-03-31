@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import ReactFlow, { 
   addEdge, 
   Background, 
@@ -229,42 +229,7 @@ const edgeTypes = {
   labeled: LabeledEdge
 };
 
-// --- DAGRE Layout Engine ---
-
-const dagreGraph = new (dagre as any).graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-const getLayoutedElements = (nodes: any[], edges: any[], direction = 'LR') => {
-  const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({ rankdir: direction });
-
-  nodes.forEach((node: any) => {
-    dagreGraph.setNode(node.id, { width: 300, height: 150 });
-  });
-
-  edges.forEach((edge: any) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  (dagre as any).layout(dagreGraph);
-
-  const newNodes = nodes.map((node: any) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      targetPosition: isHorizontal ? Position.Left : Position.Top,
-      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
-      position: {
-        x: nodeWithPosition.x - 150,
-        y: nodeWithPosition.y - 75,
-      },
-    };
-  });
-
-  return { nodes: newNodes, edges };
-};
-
-// --- Sidebar ---
+// --- Main Designer Component ---
 
 const SidebarPalette = ({ onAddNode }: { onAddNode: (type: string, data: any) => void }) => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -329,7 +294,7 @@ const SidebarPalette = ({ onAddNode }: { onAddNode: (type: string, data: any) =>
 }
 
 function ArchDesignerInner() {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { fitView } = useReactFlow();
   const queryClient = useQueryClient();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -411,9 +376,35 @@ function ArchDesignerInner() {
   };
 
   const onLayout = useCallback(() => {
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges);
-    setNodes([...layoutedNodes]);
-    setEdges([...layoutedEdges]);
+    const dagreGraph = new (dagre as any).graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({ rankdir: 'LR' });
+
+    nodes.forEach((node: any) => {
+      dagreGraph.setNode(node.id, { width: 300, height: 150 });
+    });
+
+    edges.forEach((edge: any) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    (dagre as any).layout(dagreGraph);
+
+    const newNodes = nodes.map((node: any) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
+      return {
+        ...node,
+        targetPosition: Position.Left,
+        sourcePosition: Position.Right,
+        position: {
+          x: nodeWithPosition.x - 150,
+          y: nodeWithPosition.y - 75,
+        },
+      };
+    });
+
+    setNodes([...newNodes]);
+    setEdges([...edges]);
     setTimeout(() => fitView(), 200);
   }, [nodes, edges, setNodes, setEdges, fitView]);
 
@@ -458,7 +449,7 @@ function ArchDesignerInner() {
                   </button>
                </div>
                
-               <div className="flex space-x-2">
+               <div className="flex space-x-2 overflow-x-auto pb-2 custom-scrollbar max-w-[60vw]">
                   <AnimatePresence>
                      {savedFlows?.map((f: any) => (
                         <motion.button
@@ -466,7 +457,7 @@ function ArchDesignerInner() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           onClick={() => handleLoad(f)}
-                          className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border ${activeFlowId === f.id ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-white/5 text-slate-500 border-white/10 hover:text-white'}`}
+                          className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border whitespace-nowrap ${activeFlowId === f.id ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-white/5 text-slate-500 border-white/10 hover:text-white hover:bg-white/10'}`}
                         >
                            {f.name}
                         </motion.button>

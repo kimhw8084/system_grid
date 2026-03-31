@@ -116,6 +116,7 @@ const PatchNotesModal = ({ onClose }: any) => {
 }
 
 function MainLayout() {
+  console.log("SYSGRID: MainLayout Mounting");
   const location = useLocation(); 
   const navigate = useNavigate(); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
