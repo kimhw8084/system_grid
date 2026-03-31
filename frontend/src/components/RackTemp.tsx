@@ -118,9 +118,21 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
       }
 
       const getPoint = (deviceId: number) => {
-        const el = document.querySelector(`[data-device-id="${deviceId}"]`)
+        const el = document.querySelector(`[data-device-id="${deviceId}"]`) as HTMLElement
         if (!el) return null
         
+        // Ensure the element is visible in its own rack scroll area
+        const rackScrollEl = el.closest('.overflow-y-auto')
+        if (rackScrollEl) {
+          const elRect = el.getBoundingClientRect()
+          const scrollRect = rackScrollEl.getBoundingClientRect()
+          
+          // Check visibility with some buffer (5px)
+          if (elRect.bottom < (scrollRect.top + 5) || elRect.top > (scrollRect.bottom - 5)) {
+            return null 
+          }
+        }
+
         const elRect = el.getBoundingClientRect()
         // Coordinates relative to the scrollable content start
         const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
@@ -976,10 +988,19 @@ export default function RackTemp() {
 
   const displayedRacks = useMemo(() => {
     let filtered = racks
-    if (activeSite && activeTab === 'active' && !showCompareOnly) {
+    
+    // 1. Connection-specific filtering: If focusing a connection, only show involved racks
+    if (focusedConnection) {
+      const involvedIds = [focusedConnection.sourceId, ...focusedConnection.targetIds]
+      filtered = filtered.filter((r: any) => 
+        r.device_locations?.some((l: any) => involvedIds.includes(l.device_id))
+      )
+    }
+
+    if (activeSite && activeTab === 'active' && !showCompareOnly && !focusedConnection) {
       filtered = filtered.filter((r: any) => r.site_id === activeSite)
     }
-    if (showCompareOnly) {
+    if (showCompareOnly && !focusedConnection) {
       filtered = filtered.filter((r: any) => selectedRacks.includes(r.id))
     }
     if (searchTerm) {
@@ -990,7 +1011,7 @@ export default function RackTemp() {
       )
     }
     return filtered
-  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab])
+  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab, focusedConnection])
 
   const availableDevices = useMemo(() =>
     devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned'),
