@@ -452,10 +452,10 @@ function ArchDesignerInner() {
   }, [nodes, edges, setNodes, setEdges, fitView]);
 
   return (
-    <div className="flex-1 relative flex">
+    <div className="flex-1 relative flex h-full">
        <SidebarPalette onAddNode={onAddResource} />
        
-       <div className="flex-1 bg-black/40 relative">
+       <div className="flex-1 bg-black/40 relative h-full">
           <ReactFlow
             nodes={nodes}
             edges={edges}

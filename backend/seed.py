@@ -40,7 +40,7 @@ from app.models.models import (
     DeviceSoftware, NetworkInterface, Subnet, PortConnection,
     DeviceRelationship, LogicalService, ServiceSecret, SecretVault,
     MaintenanceWindow, MonitoringItem, IncidentLog, DataFlow,
-    AuditLog, SettingOption, FirewallRule,
+    AuditLog, SettingOption, FirewallRule, ExternalEntity, ExternalLink,
 )
 
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
@@ -1086,68 +1086,95 @@ def seed():
         db.add_all(incidents)
         db.flush()
 
+        # ── ExternalEntities (Partner IQ) ─────────────────────────────────────
+        print("Seeding External Entities (Partner IQ)...")
+        ext1 = ExternalEntity(
+            name="AWS Public Cloud (US-EAST-1)",
+            type="Cloud Provider",
+            hostname="aws-us-east-1.amazonaws.com",
+            ip_address="3.218.0.0/16",
+            owner_organization="Amazon Web Services",
+            description="Global AWS North Virginia Region",
+            contact_info="aws-support@example.com"
+        )
+        ext2 = ExternalEntity(
+            name="Global Payments Gateway",
+            type="FinTech API",
+            hostname="api.globalpay.com",
+            ip_address="52.12.33.44",
+            owner_organization="GlobalPay Inc",
+            description="Main payment processing endpoint",
+            contact_info="noc@globalpay.com"
+        )
+        ext3 = ExternalEntity(
+            name="Partner-Logistics-Node",
+            type="External Server",
+            hostname="logistics.partner-x.com",
+            ip_address="192.168.50.100",
+            owner_organization="Partner Logistics Ltd",
+            description="B2B Logistics data exchange node",
+            contact_info="tech-lead@partner-x.com"
+        )
+        db.add_all([ext1, ext2, ext3])
+        db.flush()
+
+        # ── ExternalLinks (Partner IQ Connectivity) ───────────────────────────
+        print("Seeding External Links...")
+        ext_links = [
+            ExternalLink(
+                external_entity_id=ext1.id,
+                device_id=dev6.id, # hq-fw-01
+                service_id=None,
+                direction="Bidirectional",
+                purpose="Direct Connect to AWS VPC",
+                protocol="BGP/IPsec",
+                port="443, 500, 4500",
+                credentials={"tunnel_id": "T-990-AX", "psk": "SECURE_TUNNEL_KEY"}
+            ),
+            ExternalLink(
+                external_entity_id=ext2.id,
+                device_id=dev1.id, # hq-web-01
+                service_id=svc2.id, # Nginx-WebFront
+                direction="Upstream",
+                purpose="Payment API Integration",
+                protocol="HTTPS",
+                port="443",
+                credentials={"api_key": "GP_LIVE_KEY_8821"}
+            ),
+            ExternalLink(
+                external_entity_id=ext3.id,
+                device_id=dev3.id, # hq-db-01
+                service_id=svc1.id, # PostgreSQL-PROD
+                direction="Downstream",
+                purpose="Daily Sales Sync",
+                protocol="SFTP",
+                port="22",
+                credentials={"username": "sysgrid_sync", "password": "PARTNER_PASS_X"}
+            )
+        ]
+        db.add_all(ext_links)
+        db.flush()
+
         # ── DataFlows ─────────────────────────────────────────────────────────
         print("Seeding DataFlows...")
         flows = [
             DataFlow(
-                name="SAP ERP - Web to DB Flow",
-                description="Request path from web tier through load balancer to database cluster",
+                name="CORPORATE_ERP_ECOSYSTEM",
+                description="High-fidelity map of ERP traffic from Web to DB including Partner Sync",
                 category="System",
                 nodes_json=[
-                    {"id": "n1", "type": "device", "data": {"label": "User Browser"}, "position": {"x": 50, "y": 200}},
-                    {"id": "n2", "type": "device", "data": {"label": "hq-fw-01"}, "position": {"x": 250, "y": 200}},
-                    {"id": "n3", "type": "device", "data": {"label": "hq-lb-01"}, "position": {"x": 450, "y": 200}},
-                    {"id": "n4", "type": "device", "data": {"label": "hq-web-01"}, "position": {"x": 650, "y": 100}},
-                    {"id": "n5", "type": "device", "data": {"label": "hq-web-02"}, "position": {"x": 650, "y": 300}},
-                    {"id": "n6", "type": "device", "data": {"label": "hq-db-01"}, "position": {"x": 900, "y": 200}},
+                    {"id": "node-device-1", "type": "device", "data": {"name": "hq-web-01", "type": "Physical", "environment": "Production", "status": "Active"}, "position": {"x": 400, "y": 200}},
+                    {"id": "node-service-2", "type": "service", "parentNode": "node-device-1", "data": {"name": "Nginx-WebFront", "service_type": "Web Server"}, "position": {"x": 20, "y": 60}},
+                    {"id": "node-device-3", "type": "device", "data": {"name": "hq-db-01", "type": "Physical", "environment": "Production", "status": "Active"}, "position": {"x": 800, "y": 200}},
+                    {"id": "node-service-1", "type": "service", "parentNode": "node-device-3", "data": {"name": "PostgreSQL-PROD", "service_type": "Database"}, "position": {"x": 20, "y": 60}},
+                    {"id": "node-external-2", "type": "external", "data": {"name": "Global Payments Gateway", "owner_organization": "GlobalPay Inc"}, "position": {"x": 50, "y": 200}},
                 ],
                 edges_json=[
-                    {"id": "e1", "source": "n1", "target": "n2", "label": "HTTPS 443"},
-                    {"id": "e2", "source": "n2", "target": "n3", "label": "HTTPS 443"},
-                    {"id": "e3", "source": "n3", "target": "n4", "label": "HTTP 80"},
-                    {"id": "e4", "source": "n3", "target": "n5", "label": "HTTP 80"},
-                    {"id": "e5", "source": "n4", "target": "n6", "label": "PostgreSQL 5432"},
-                    {"id": "e6", "source": "n5", "target": "n6", "label": "PostgreSQL 5432"},
+                    {"id": "e1", "source": "node-external-2", "target": "node-service-2", "type": "labeled", "animated": True, "data": {"label": "PAYMENT_API", "type": "DATA"}},
+                    {"id": "e2", "source": "node-service-2", "target": "node-service-1", "type": "labeled", "animated": True, "data": {"label": "SQL_QUERY", "type": "DATA"}},
                 ],
                 viewport_json={"x": 0, "y": 0, "zoom": 1.0},
                 is_template=False,
-            ),
-            DataFlow(
-                name="Backup Data Path",
-                description="Nightly backup flow from servers to DD appliance",
-                category="Operations",
-                nodes_json=[
-                    {"id": "n1", "type": "device", "data": {"label": "hq-web-01"}, "position": {"x": 100, "y": 100}},
-                    {"id": "n2", "type": "device", "data": {"label": "hq-db-01"}, "position": {"x": 100, "y": 300}},
-                    {"id": "n3", "type": "device", "data": {"label": "hq-vm-host-01"}, "position": {"x": 100, "y": 500}},
-                    {"id": "n4", "type": "device", "data": {"label": "hq-backup-01"}, "position": {"x": 500, "y": 300}},
-                ],
-                edges_json=[
-                    {"id": "e1", "source": "n1", "target": "n4", "label": "Veeam Agent"},
-                    {"id": "e2", "source": "n2", "target": "n4", "label": "pg_dump + Veeam"},
-                    {"id": "e3", "source": "n3", "target": "n4", "label": "Veeam vSphere"},
-                ],
-                viewport_json={"x": 0, "y": 0, "zoom": 0.9},
-                is_template=False,
-            ),
-            DataFlow(
-                name="Generic 3-Tier Template",
-                description="Reusable template for 3-tier application architectures",
-                category="System",
-                nodes_json=[
-                    {"id": "n1", "type": "template", "data": {"label": "Load Balancer"}, "position": {"x": 200, "y": 200}},
-                    {"id": "n2", "type": "template", "data": {"label": "App Server A"}, "position": {"x": 450, "y": 100}},
-                    {"id": "n3", "type": "template", "data": {"label": "App Server B"}, "position": {"x": 450, "y": 300}},
-                    {"id": "n4", "type": "template", "data": {"label": "Database"}, "position": {"x": 700, "y": 200}},
-                ],
-                edges_json=[
-                    {"id": "e1", "source": "n1", "target": "n2", "label": ""},
-                    {"id": "e2", "source": "n1", "target": "n3", "label": ""},
-                    {"id": "e3", "source": "n2", "target": "n4", "label": ""},
-                    {"id": "e4", "source": "n3", "target": "n4", "label": ""},
-                ],
-                viewport_json={"x": 0, "y": 0, "zoom": 1.0},
-                is_template=True,
             ),
         ]
         db.add_all(flows)
@@ -1279,11 +1306,12 @@ def seed():
         db.commit()
         print("Seed complete.")
         print(f"  Sites: 3 | Rooms: 6 | Racks: 9 | Devices: 29")
+        print(f"  ExternalEntities: 3 | ExternalLinks: 3")
         print(f"  DeviceLocations: 23 | HardwareComponents: 15 | DeviceSoftware: 15")
         print(f"  NetworkInterfaces: 20 | Subnets: 5 | PortConnections: 19")
         print(f"  DeviceRelationships: 11 | LogicalServices: 10 | ServiceSecrets: 10")
         print(f"  SecretVaults: 10 | MaintenanceWindows: 8 | MonitoringItems: 10")
-        print(f"  IncidentLogs: 5 | DataFlows: 3 | AuditLogs: 10 | SettingOptions: 36")
+        print(f"  IncidentLogs: 5 | DataFlows: 1 | AuditLogs: 10 | SettingOptions: 36")
 
 
 if __name__ == "__main__":
