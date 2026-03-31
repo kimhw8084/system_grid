@@ -1226,12 +1226,15 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
     )
 }
 
+import { createPortal } from 'react-dom'
+
 const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [editingInterface, setEditingInterface] = useState<any>(null)
   const [formData, setFormData] = useState({ name: '', ip_address: '', mac_address: '', vlan_id: '', link_speed_gbps: 10 })
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
+  const [selectedConnection, setSelectedConnection] = useState<any>(null)
 
   const { data: interfaces, isLoading } = useQuery({ 
     queryKey: ['device-interfaces', deviceId], 
@@ -1312,6 +1315,7 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                 <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">MAC Address</th>
                 <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">VLAN</th>
                 <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Speed</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Connection</th>
                 <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
               </tr>
             </thead>
@@ -1326,6 +1330,18 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                   </td>
                   <td className="px-4 py-3 text-center text-slate-400 font-mono">{i.link_speed_gbps}G</td>
                   <td className="px-4 py-3 text-center">
+                    {i.connection ? (
+                      <button 
+                        onClick={() => setSelectedConnection(i.connection)}
+                        className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
+                      >
+                        <Network size={10} /> {i.connection.peer_device_name}
+                      </button>
+                    ) : (
+                      <span className="text-slate-600 italic">No Link</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center space-x-1">
                       <button onClick={() => openModal(i)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
                         <Edit2 size={12}/>
@@ -1338,7 +1354,7 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                 </tr>
               ))}
               {!interfaces?.length && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-[0.2em] bg-black/5">Zero NIC interfaces registered for this asset</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-[0.2em] bg-black/5">Zero NIC interfaces registered for this asset</td></tr>
               )}
             </tbody>
           </table>
@@ -1346,8 +1362,117 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
       </div>
 
       <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+        {showModal && createPortal(
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border border-white/10 rounded-[30px] p-8 w-[420px] shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
+                  <Network size={18} /> {editingInterface ? 'Update Interface' : 'Add New Interface'}
+                </h3>
+                <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-white transition-colors"><X size={18}/></button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Interface Name</label>
+                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. eth0 or GigabitEthernet1/0/1" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">IP Address</label>
+                    <input value={formData.ip_address} onChange={e => setFormData({...formData, ip_address: e.target.value})} placeholder="10.0.0.1" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">MAC Address</label>
+                    <input value={formData.mac_address} onChange={e => setFormData({...formData, mac_address: e.target.value})} placeholder="00:11:22..." className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">VLAN ID</label>
+                    <input type="number" value={formData.vlan_id} onChange={e => setFormData({...formData, vlan_id: e.target.value})} placeholder="100" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Speed (Gbps)</label>
+                    <input type="number" value={formData.link_speed_gbps} onChange={e => setFormData({...formData, link_speed_gbps: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button onClick={() => setShowModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
+                <button 
+                  onClick={() => { if(!formData.name) return toast.error("Interface name is required"); mutation.mutate(formData) }}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  {editingInterface ? 'Update Config' : 'Register NIC'}
+                </button>
+              </div>
+            </motion.div>
+          </div>,
+          document.body
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedConnection && createPortal(
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border border-white/10 rounded-[30px] p-8 w-[400px] shadow-2xl space-y-6"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black uppercase text-emerald-400 flex items-center gap-2">
+                  <LinkIcon size={18} /> Link Established
+                </h3>
+                <button onClick={() => setSelectedConnection(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18}/></button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col items-center text-center">
+                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Peer Entity</span>
+                  <span className="text-lg font-black text-white uppercase">{selectedConnection.peer_device_name}</span>
+                  <span className="text-[10px] text-blue-400 font-mono mt-1">{selectedConnection.peer_ip || 'No IP Assigned'}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                    <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Peer Port</span>
+                    <span className="text-[10px] font-bold text-white uppercase">{selectedConnection.peer_port}</span>
+                  </div>
+                  <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                    <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Link Speed</span>
+                    <span className="text-[10px] font-bold text-indigo-400">{selectedConnection.speed_gbps} Gbps</span>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
+                  <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Link Type / Purpose</span>
+                  <span className="text-[10px] font-bold text-amber-400 uppercase">{selectedConnection.link_type || 'Data Fabric'}</span>
+                </div>
+              </div>
+
+              <button onClick={() => setSelectedConnection(null)} className="w-full py-3 bg-white/5 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase hover:bg-white/10 transition-all">
+                Dismiss
+              </button>
+            </motion.div>
+          </div>,
+          document.body
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
+        title="Remove Interface"
+        message="Are you sure you want to purge this network interface? This may affect dependency vectors."
+        variant="danger"
+      />
+    </div>
+  )
+}
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[450px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
               <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                 <Network size={24}/>

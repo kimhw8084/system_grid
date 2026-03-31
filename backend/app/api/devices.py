@@ -170,8 +170,53 @@ async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(
 
 @router.get("/{device_id}/interfaces")
 async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_db)):
+    # Fetch interfaces for the device
     res = await db.execute(select(models.NetworkInterface).filter(models.NetworkInterface.device_id == device_id))
-    return res.scalars().all()
+    interfaces = res.scalars().all()
+    
+    # Fetch all connections involving this device to map to interfaces
+    conn_res = await db.execute(select(models.PortConnection).filter(
+        or_(
+            models.PortConnection.source_device_id == device_id,
+            models.PortConnection.target_device_id == device_id
+        )
+    ))
+    connections = conn_res.scalars().all()
+    
+    result = []
+    for i in interfaces:
+        iface_dict = {c.name: getattr(i, c.name) for c in i.__table__.columns}
+        
+        # Find connection matching this interface name (port)
+        conn = next((c for c in connections if 
+            (c.source_device_id == device_id and c.source_port == i.name) or
+            (c.target_device_id == device_id and c.target_port == i.name)
+        ), None)
+        
+        if conn:
+            peer_device_id = conn.target_device_id if conn.source_device_id == device_id else conn.source_device_id
+            peer_port = conn.target_port if conn.source_device_id == device_id else conn.source_port
+            peer_ip = conn.target_ip if conn.source_device_id == device_id else conn.source_ip
+            
+            peer_res = await db.execute(select(models.Device).filter(models.Device.id == peer_device_id))
+            peer_dev = peer_res.scalar_one_or_none()
+            
+            iface_dict["connection"] = {
+                "id": conn.id,
+                "peer_device_id": peer_device_id,
+                "peer_device_name": peer_dev.name if peer_dev else "Unknown",
+                "peer_port": peer_port,
+                "peer_ip": peer_ip,
+                "link_type": conn.link_type,
+                "speed_gbps": conn.speed_gbps,
+                "status": "Connected"
+            }
+        else:
+            iface_dict["connection"] = None
+            
+        result.append(iface_dict)
+        
+    return result
 
 @router.post("/")
 async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
