@@ -197,7 +197,14 @@ async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_d
             peer_device_id = conn.target_device_id if conn.source_device_id == device_id else conn.source_device_id
             peer_port = conn.target_port if conn.source_device_id == device_id else conn.source_port
             peer_ip = conn.target_ip if conn.source_device_id == device_id else conn.source_ip
+            peer_mac = conn.target_mac if conn.source_device_id == device_id else conn.source_mac
+            peer_vlan = conn.target_vlan if conn.source_device_id == device_id else conn.source_vlan
             
+            # Local side info from the connection record
+            local_mac = conn.source_mac if conn.source_device_id == device_id else conn.target_mac
+            local_vlan = conn.source_vlan if conn.source_device_id == device_id else conn.target_vlan
+            local_ip = conn.source_ip if conn.source_device_id == device_id else conn.target_ip
+
             peer_res = await db.execute(select(models.Device).filter(models.Device.id == peer_device_id))
             peer_dev = peer_res.scalar_one_or_none()
             
@@ -207,7 +214,13 @@ async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_d
                 "peer_device_name": peer_dev.name if peer_dev else "Unknown",
                 "peer_port": peer_port,
                 "peer_ip": peer_ip,
+                "peer_mac": peer_mac,
+                "peer_vlan": peer_vlan,
+                "local_ip": local_ip,
+                "local_mac": local_mac,
+                "local_vlan": local_vlan,
                 "link_type": conn.link_type,
+                "purpose": conn.purpose,
                 "speed_gbps": conn.speed_gbps,
                 "status": "Connected"
             }

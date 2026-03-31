@@ -65,12 +65,15 @@ export default function NetworkFabric() {
     { 
       headerName: "Src Port", 
       field: "source_port", 
-      width: 100,
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex flex-col items-center justify-center">
-          <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none mb-0.5">{p.value}</span>
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none">{p.value}</span>
+            {p.data.source_vlan && <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-1 rounded font-black">V{p.data.source_vlan}</span>}
+          </div>
           {p.data.source_ip && <span className="text-[8px] text-blue-400 font-mono leading-none">{p.data.source_ip}</span>}
         </div>
       )
@@ -85,12 +88,15 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer Port", 
       field: "target_port", 
-      width: 100,
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex flex-col items-center justify-center">
-          <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none mb-0.5">{p.value}</span>
+          <div className="flex items-center gap-1 mb-0.5">
+            <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none">{p.value}</span>
+            {p.data.target_vlan && <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-1 rounded font-black">V{p.data.target_vlan}</span>}
+          </div>
           {p.data.target_ip && <span className="text-[8px] text-emerald-400 font-mono leading-none">{p.data.target_ip}</span>}
         </div>
       )
@@ -208,9 +214,19 @@ export default function NetworkFabric() {
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
                   <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
                 </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source IP</label>
-                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
+                    <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
+                    <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
+                  <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
                 </div>
                 <StyledSelect
                     label="Direction"
@@ -231,9 +247,19 @@ export default function NetworkFabric() {
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
                   <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
                 </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
-                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
+                    <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
+                    <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
+                  <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
                 </div>
                 <StyledSelect
                     label="Link Type *"

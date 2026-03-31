@@ -671,6 +671,7 @@ export default function AssetTemp() {
   // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
+  const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
   const { data: devices } = useQuery({ 
     queryKey: ["devices-list-all"], 
     queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
@@ -1128,14 +1129,14 @@ export default function AssetTemp() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                 <AssetDetailsView 
-                   device={activeDetails} 
-                   options={options} 
+                 <AssetDetailsView
+                   device={activeDetails}
+                   options={options}
                    onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
                    onEditService={(s:any) => setActiveServiceEdit(s)}
+                   onEditLink={(l:any) => setActiveNetworkEdit(l)}
                  />
-               </div>
-               </motion.div>
+               </div>               </motion.div>
                </div>
                )}
                </AnimatePresence>
@@ -1150,6 +1151,17 @@ export default function AssetTemp() {
                onServiceUpdate={() => {
                queryClient.invalidateQueries({ queryKey: ['device-services'] })
                }}
+               />
+
+               <SharedNetworkModals 
+                 activeEdit={activeNetworkEdit}
+                 setActiveEdit={setActiveNetworkEdit}
+                 options={options}
+                 devices={devices}
+                 onUpdate={() => {
+                   queryClient.invalidateQueries({ queryKey: ['device-interfaces'] })
+                   queryClient.invalidateQueries({ queryKey: ['connections'] })
+                 }}
                />
       <ConfigRegistryModal
         isOpen={showConfig}
@@ -1228,12 +1240,166 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
 
 import { createPortal } from 'react-dom'
 
-const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
+const SharedNetworkModals = ({
+  activeEdit,
+  setActiveEdit,
+  options,
+  devices,
+  onUpdate
+}: {
+  activeEdit: any,
+  setActiveEdit: (l: any) => void,
+  options: any,
+  devices: any,
+  onUpdate: () => void
+}) => {
   const queryClient = useQueryClient()
-  const [showModal, setShowModal] = useState(false)
-  const [editingInterface, setEditingInterface] = useState<any>(null)
-  const [formData, setFormData] = useState({ name: '', ip_address: '', mac_address: '', vlan_id: '', link_speed_gbps: 10 })
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
+  const [connData, setConnData] = useState<any>({})
+
+  useEffect(() => {
+    if (activeEdit) {
+      setConnData({
+        ...activeEdit,
+        device_a_id: activeEdit.source_device_id,
+        device_b_id: activeEdit.target_device_id,
+        port_a: activeEdit.source_port,
+        port_b: activeEdit.target_port
+      })
+    }
+  }, [activeEdit])
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch(`/api/v1/networks/connections/${activeEdit.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      onUpdate()
+      setActiveEdit(null)
+      toast.success('Link Matrix Updated')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  return (
+    <AnimatePresence>
+      {activeEdit && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} 
+            className="glass-panel w-[500px] p-10 rounded-[40px] space-y-6"
+          >
+            <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-blue-400">
+               <LinkIcon size={24} />
+               <span>Modify Connectivity</span>
+            </h2>
+            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+              <div className="col-span-2">
+                <StyledSelect
+                  label="Source Entity *"
+                  value={connData.device_a_id}
+                  onChange={e => setConnData({...connData, device_a_id: e.target.value})}
+                  options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                  placeholder="Select Registry Asset..."
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
+                <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
+                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
+                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
+                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
+              </div>
+              <StyledSelect
+                  label="Direction"
+                  value={connData.direction}
+                  onChange={e => setConnData({...connData, direction: e.target.value})}
+                  options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
+              />
+              <div className="col-span-2 border-t border-white/5 pt-4">
+                <StyledSelect
+                  label="Peer Entity *"
+                  value={connData.device_b_id}
+                  onChange={e => setConnData({...connData, device_b_id: e.target.value})}
+                  options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                  placeholder="Select Registry Asset..."
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
+                <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
+                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
+                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
+                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
+              </div>
+              <StyledSelect
+                  label="Link Type *"
+                  value={connData.link_type}
+                  onChange={e => setConnData({...connData, link_type: e.target.value})}
+                  options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
+                      ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
+                      : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
+                  }
+              />
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
+                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
+                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+              </div>
+              <StyledSelect
+                  label="Unit"
+                  value={connData.unit}
+                  onChange={e => setConnData({...connData, unit: e.target.value})}
+                  options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
+              />
+            </div>
+            <div className="flex space-x-3 pt-4 border-t border-white/5">
+              <button onClick={() => setActiveEdit(null)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500">Abort</button>
+              <button onClick={() => {
+                if(!connData.device_a_id || (!connData.source_port && !connData.port_a) || !connData.device_b_id || (!connData.target_port && !connData.port_b)) {
+                  return toast.error("Entity and Port mapping required")
+                }
+                mutation.mutate(connData)
+              }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
+            </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+    </AnimatePresence>
+  )
+}
+
+const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink: (l: any) => void }) => {
+  const queryClient = useQueryClient()
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
 
   const { data: interfaces, isLoading } = useQuery({ 
@@ -1241,65 +1407,8 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
   })
 
-  const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      const url = editingInterface ? `/api/v1/networks/interfaces/${editingInterface.id}` : '/api/v1/networks/interfaces'
-      const method = editingInterface ? 'PUT' : 'POST'
-      const payload = editingInterface ? data : { ...data, device_id: deviceId }
-      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device-interfaces', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      setShowModal(false)
-      setEditingInterface(null)
-      toast.success(editingInterface ? 'Interface Updated' : 'Interface Added')
-    },
-    onError: (e: any) => toast.error(e.message || 'Failed to save interface')
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiFetch(`/api/v1/networks/interfaces/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device-interfaces', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      setConfirmModal({ isOpen: false, id: null })
-      toast.success('Interface Removed')
-    },
-    onError: (e: any) => toast.error(e.message || 'Failed to remove interface')
-  })
-
-  const openModal = (iface: any = null) => {
-    if (iface) {
-      setEditingInterface(iface)
-      setFormData({ 
-        name: iface.name || '', 
-        ip_address: iface.ip_address || '', 
-        mac_address: iface.mac_address || '', 
-        vlan_id: iface.vlan_id || '', 
-        link_speed_gbps: iface.link_speed_gbps || 10 
-      })
-    } else {
-      setEditingInterface(null)
-      setFormData({ name: '', ip_address: '', mac_address: '', vlan_id: '', link_speed_gbps: 10 })
-    }
-    setShowModal(true)
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <button onClick={() => openModal()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20">
-          + Add Interface
-        </button>
-      </div>
-
       <div className="p-0 overflow-hidden border border-white/5 rounded-2xl">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
@@ -1323,10 +1432,10 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
               {interfaces?.map((i: any) => (
                 <tr key={i.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight">{i.name}</td>
-                  <td className="px-4 py-3 font-mono text-slate-200">{i.ip_address || <span className="text-slate-700 italic">Unassigned</span>}</td>
-                  <td className="px-4 py-3 font-mono text-slate-500">{i.mac_address || 'N/A'}</td>
+                  <td className="px-4 py-3 font-mono text-slate-200">{(i.connection ? (i.connection.local_ip || i.ip_address) : i.ip_address) || <span className="text-slate-700 italic">Unassigned</span>}</td>
+                  <td className="px-4 py-3 font-mono text-slate-500">{(i.connection ? (i.connection.local_mac || i.mac_address) : i.mac_address) || 'N/A'}</td>
                   <td className="px-4 py-3 text-center">
-                    {i.vlan_id ? <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-black">{i.vlan_id}</span> : <span className="text-slate-700">-</span>}
+                    { (i.connection ? (i.connection.local_vlan || i.vlan_id) : i.vlan_id) ? <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-black">{i.connection ? (i.connection.local_vlan || i.vlan_id) : i.vlan_id}</span> : <span className="text-slate-700">-</span>}
                   </td>
                   <td className="px-4 py-3 text-center text-slate-400 font-mono">{i.link_speed_gbps}G</td>
                   <td className="px-4 py-3 text-center">
@@ -1343,12 +1452,11 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center space-x-1">
-                      <button onClick={() => openModal(i)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
-                        <Edit2 size={12}/>
-                      </button>
-                      <button onClick={() => setConfirmModal({ isOpen: true, id: i.id })} className="p-1.5 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg hover:bg-rose-600/20 transition-all">
-                        <Trash2 size={12}/>
-                      </button>
+                      {i.connection && (
+                        <button onClick={() => onEditLink(i.connection)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
+                          <Edit2 size={12}/>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1360,61 +1468,6 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
           </table>
         )}
       </div>
-
-      <AnimatePresence>
-        {showModal && createPortal(
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 border border-white/10 rounded-[30px] p-8 w-[420px] shadow-2xl space-y-5"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
-                  <Network size={18} /> {editingInterface ? 'Update Interface' : 'Add New Interface'}
-                </h3>
-                <button onClick={() => setShowModal(false)} className="text-slate-500 hover:text-white transition-colors"><X size={18}/></button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Interface Name</label>
-                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. eth0 or GigabitEthernet1/0/1" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">IP Address</label>
-                    <input value={formData.ip_address} onChange={e => setFormData({...formData, ip_address: e.target.value})} placeholder="10.0.0.1" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">MAC Address</label>
-                    <input value={formData.mac_address} onChange={e => setFormData({...formData, mac_address: e.target.value})} placeholder="00:11:22..." className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">VLAN ID</label>
-                    <input type="number" value={formData.vlan_id} onChange={e => setFormData({...formData, vlan_id: e.target.value})} placeholder="100" className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Speed (Gbps)</label>
-                    <input type="number" value={formData.link_speed_gbps} onChange={e => setFormData({...formData, link_speed_gbps: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex space-x-3 pt-2">
-                <button onClick={() => setShowModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
-                <button 
-                  onClick={() => { if(!formData.name) return toast.error("Interface name is required"); mutation.mutate(formData) }}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-                >
-                  {editingInterface ? 'Update Config' : 'Register NIC'}
-                </button>
-              </div>
-            </motion.div>
-          </div>,
-          document.body
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {selectedConnection && createPortal(
@@ -1434,6 +1487,8 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                   <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Peer Entity</span>
                   <span className="text-lg font-black text-white uppercase">{selectedConnection.peer_device_name}</span>
                   <span className="text-[10px] text-blue-400 font-mono mt-1">{selectedConnection.peer_ip || 'No IP Assigned'}</span>
+                  {selectedConnection.peer_mac && <span className="text-[8px] text-slate-500 font-mono mt-0.5">{selectedConnection.peer_mac}</span>}
+                  {selectedConnection.peer_vlan && <span className="mt-1 bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">VLAN {selectedConnection.peer_vlan}</span>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1450,6 +1505,7 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
                 <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
                   <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Link Type / Purpose</span>
                   <span className="text-[10px] font-bold text-amber-400 uppercase">{selectedConnection.link_type || 'Data Fabric'}</span>
+                  {selectedConnection.purpose && <p className="text-[8px] text-slate-500 mt-1 italic">{selectedConnection.purpose}</p>}
                 </div>
               </div>
 
@@ -1461,15 +1517,6 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
           document.body
         )}
       </AnimatePresence>
-
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null })}
-        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
-        title="Remove Interface"
-        message="Are you sure you want to purge this network interface? This may affect dependency vectors."
-        variant="danger"
-      />
     </div>
   )
 }
@@ -1666,7 +1713,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
+const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
 
@@ -1709,7 +1756,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     onEdit={onEditService}
                   />
                 )}
-                {tab === 'network' && <NetworkingTab deviceId={device.id} />}
+                {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} />}
                 {tab === 'security' && <SecurityTab deviceId={device.id} />}
             </div>
         </div>

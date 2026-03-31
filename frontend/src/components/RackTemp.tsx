@@ -277,6 +277,12 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
                   </div>
                 )
               })()}
+              {hoveredLine.connection.purpose && (
+                <div className="bg-black/20 rounded-md px-2 py-1 border border-white/5 mb-1.5">
+                  <p className="text-[7px] text-slate-500 font-black uppercase mb-0.5">PURPOSE</p>
+                  <p className="text-[8px] text-slate-300 italic">{hoveredLine.connection.purpose}</p>
+                </div>
+              )}
               <div className="flex justify-between items-center gap-4">
                 <span className="text-[7px] text-slate-500 font-bold uppercase">Source Port</span>
                 <span className="text-[9px] text-blue-300 font-mono">{hoveredLine.connection.source_port || 'Auto'}</span>
