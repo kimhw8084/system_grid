@@ -1158,7 +1158,7 @@ def seed():
         fw_rules = [
             FirewallRule(
                 name="Allow HTTPS to Web Tier",
-                description="Allow incoming web traffic from any source",
+                risk="Loss of public website access and revenue",
                 source_type="Any",
                 dest_type="Subnet",
                 dest_subnet_id=subnets[1].id, # HQ-WEB
@@ -1170,7 +1170,7 @@ def seed():
             ),
             FirewallRule(
                 name="Web to DB Access",
-                description="Allow web servers to access PostgreSQL",
+                risk="Application layer database connection failure",
                 source_type="Subnet",
                 source_subnet_id=subnets[1].id, # HQ-WEB
                 dest_type="Subnet",
@@ -1183,7 +1183,7 @@ def seed():
             ),
             FirewallRule(
                 name="Management SSH Access",
-                description="Allow SSH from Jump server to all devices",
+                risk="Total loss of administrative control over infrastructure",
                 source_type="Device",
                 source_device_id=dev24.id, # hq-jump-01
                 dest_type="Any",
@@ -1195,7 +1195,7 @@ def seed():
             ),
             FirewallRule(
                 name="Block Malicious External IP",
-                description="Explicit deny for known bad actor",
+                risk="Potential security breach from known threat actor",
                 source_type="Custom IP",
                 source_custom_ip="185.123.45.67",
                 dest_type="Any",
@@ -1206,7 +1206,7 @@ def seed():
             ),
             FirewallRule(
                 name="Backup Replication to DR",
-                description="Allow backup replication to DR subnet",
+                risk="Violation of DR policy and data loss during site failure",
                 source_type="Device",
                 source_device_id=dev15.id, # hq-backup-01
                 dest_type="Subnet",
@@ -1219,7 +1219,7 @@ def seed():
             ),
             FirewallRule(
                 name="External Monitoring to DB",
-                description="Allow specific external monitoring IP to DB-01",
+                risk="Loss of visibility into database performance metrics",
                 source_type="Custom IP",
                 source_custom_ip="203.0.113.42",
                 dest_type="Device",
@@ -1232,7 +1232,7 @@ def seed():
             ),
             FirewallRule(
                 name="Any to NTP Subnet",
-                description="Allow NTP traffic from any source to MGMT subnet",
+                risk="System clock drift causing authentication failures",
                 source_type="Any",
                 dest_type="Subnet",
                 dest_subnet_id=subnets[0].id, # HQ-MGMT
@@ -1244,7 +1244,7 @@ def seed():
             ),
             FirewallRule(
                 name="Device to Custom IP",
-                description="Allow web-01 to reach external API",
+                risk="Failure of external API dependency integrations",
                 source_type="Device",
                 source_device_id=dev1.id,
                 dest_type="Custom IP",

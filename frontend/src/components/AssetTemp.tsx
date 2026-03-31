@@ -1549,6 +1549,8 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
             <input value={newRule.risk} onChange={e => setNewRule({...newRule, risk: e.target.value})} placeholder="e.g. Critical service outage for production grid" className="w-full bg-slate-900 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-rose-500" />
           </div>
         </div>
+        
+        <div className="grid grid-cols-4 gap-4 items-end">
           <div>
             <StyledSelect
               label="Protocol"
@@ -1561,9 +1563,6 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
             <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Port(s)</label>
             <input value={newRule.port_range} onChange={e => setNewRule({...newRule, port_range: e.target.value})} placeholder="e.g. 443, 1433" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
           </div>
-        </div>
-        
-        <div className="grid grid-cols-4 gap-4 items-end">
           <div className="col-span-1">
             <StyledSelect
               label="Source Type"
@@ -1572,7 +1571,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
               options={[{value: 'Device', label: 'Device'}, {value: 'Custom IP', label: 'Custom IP/CIDR'}, {value: 'Description', label: 'Description'}]}
             />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1">
              {newRule.source_type === 'Device' ? (
                 <StyledSelect
                   label="Source Device"
@@ -1587,9 +1586,12 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                 </>
              )}
           </div>
+        </div>
+        
+        <div className="flex justify-end pt-2">
           <button 
             onClick={() => { if(!newRule.name || !newRule.port_range) return toast.error("Name and Ports required"); mutation.mutate(newRule) }} 
-            className="h-[38px] bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             Authorize Exception
           </button>
