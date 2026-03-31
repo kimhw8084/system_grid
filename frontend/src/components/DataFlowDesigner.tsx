@@ -116,7 +116,7 @@ const LabeledEdge = ({
           ...style, 
           stroke: currentPurpose.color, 
           strokeWidth: currentPurpose.weight + 1,
-          strokeDasharray: currentPurpose.dash ? currentPurpose.dash.join(' ') : 'none',
+          strokeDasharray: Array.isArray(currentPurpose.dash) ? currentPurpose.dash.join(' ') : 'none',
           transition: 'all 0.3s ease',
           filter: `drop-shadow(0 0 5px ${currentPurpose.color}40)`,
           opacity: selected ? 1 : 0.8
@@ -934,7 +934,7 @@ function DataFlowDesignerInner() {
                autoAdjustLayout(nodes, edges, setter);
              }}
            >
-             <Background color={drillLevel === 'TOP' ? "#334155" : "#065f46"} gap={40} size={1.5} opacity={0.4} />
+             <Background color={drillLevel === 'TOP' ? "#334155" : "#065f46"} gap={40} size={1.5} />
              <Controls className="bg-slate-900 border-2 border-white/20 rounded-3xl overflow-hidden shadow-2xl p-1" />
              <Panel position="top-left" className="bg-slate-900/95 backdrop-blur-xl px-10 py-5 rounded-[28px] border-2 border-white/10 text-[12px] font-black uppercase tracking-[0.3em] shadow-[0_10px_40px_rgba(0,0,0,0.5)] text-white">
                 {drillLevel === 'TOP' ? (

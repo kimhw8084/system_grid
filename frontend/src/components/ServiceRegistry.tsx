@@ -271,7 +271,7 @@ const HostBulkUpdateModal = ({ isOpen, onClose, onApply, devices, count }: { isO
 const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: services } = useQuery({ queryKey: ['logical-services'] })
-  const service = services?.find((s: any) => s.id === serviceId)
+  const service = (services as any[])?.find((s: any) => s.id === serviceId)
   const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
 
   const addMutation = useMutation({

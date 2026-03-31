@@ -99,6 +99,7 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
 const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }: { sourceDeviceId: number; targetDeviceIds: number[]; racks: any[]; connections?: any[] }) => {
   const [lines, setLines] = React.useState<any[]>([])
   const [hoveredLine, setHoveredLine] = React.useState<any>(null)
+  const [containerStyle, setContainerStyle] = React.useState({ width: '100%', height: '100%' })
 
   React.useEffect(() => {
     const gridEl = document.getElementById('rack-temp-grid')
@@ -108,37 +109,38 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
       const newLines: any[] = []
       const gridRect = gridEl.getBoundingClientRect()
       
+      // Sync overlay dimensions with scroll area
+      if (gridEl.scrollWidth !== 0) {
+        setContainerStyle({
+          width: `${gridEl.scrollWidth}px`,
+          height: `${gridEl.scrollHeight}px`
+        })
+      }
+
       const getPoint = (deviceId: number) => {
         const el = document.querySelector(`[data-device-id="${deviceId}"]`)
         if (!el) return null
         
-        const scrollParent = el.closest('.overflow-y-auto')
-        if (!scrollParent) return null
-
         const elRect = el.getBoundingClientRect()
-        const scrollRect = scrollParent.getBoundingClientRect()
-
-        const visibleTop = Math.max(elRect.top, scrollRect.top)
-        const visibleBottom = Math.min(elRect.bottom, scrollRect.bottom)
-
-        if (visibleTop >= visibleBottom) return null
-
+        // Coordinates relative to the scrollable content start
         const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
-        const y = visibleTop + (visibleBottom - visibleTop) / 2 - gridRect.top + gridEl.scrollTop
+        const y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
 
         return { x, y, elRect }
       }
 
       const sourcePoint = getPoint(sourceDeviceId)
       if (!sourcePoint) {
-        setLines([])
+        // If source device isn't in DOM, we can't draw lines from it.
+        // We don't clear lines immediately to avoid flickering during minor layout shifts,
+        // but if it stays gone, the lines state will eventually reflect that.
         return
       }
 
       targetDeviceIds.forEach((tid, index) => {
         const targetPoint = getPoint(tid)
         if (targetPoint) {
-          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 5
+          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 10
           
           const conn = connections?.find((c: any) => 
             (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
@@ -146,14 +148,11 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
           )
 
           if (isSameRack) {
-            const offsetWidth = sourcePoint.elRect.width / 3
-            const offset = ((index % 2 === 0 ? 1 : -1) * (10 + Math.floor(index / 2) * 8))
-            
+            // Offset logic for multiple connections in same rack to prevent overlapping
+            const offset = ((index % 2 === 0 ? 1 : -1) * (15 + Math.floor(index / 2) * 10))
             newLines.push({ 
-              x1: sourcePoint.x, 
-              y1: sourcePoint.y, 
-              x2: targetPoint.x, 
-              y2: targetPoint.y, 
+              x1: sourcePoint.x, y1: sourcePoint.y, 
+              x2: targetPoint.x, y2: targetPoint.y, 
               isInternal: true,
               offset,
               id: `${sourceDeviceId}-${tid}`,
@@ -161,10 +160,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
             })
           } else {
             newLines.push({ 
-              x1: sourcePoint.x, 
-              y1: sourcePoint.y, 
-              x2: targetPoint.x, 
-              y2: targetPoint.y, 
+              x1: sourcePoint.x, y1: sourcePoint.y, 
+              x2: targetPoint.x, y2: targetPoint.y, 
               isInternal: false,
               id: `${sourceDeviceId}-${tid}`,
               connection: conn
@@ -175,28 +172,30 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
       setLines(newLines)
     }
 
+    // Capture initial positions
     updateLines()
-    window.addEventListener('resize', updateLines)
-    gridEl.addEventListener('scroll', updateLines)
-    
-    const elevations = document.querySelectorAll('.overflow-y-auto')
-    elevations.forEach(el => el.addEventListener('scroll', updateLines))
 
-    const interval = setInterval(updateLines, 100) 
+    const handleUpdate = () => updateLines()
+    window.addEventListener('resize', handleUpdate)
+    gridEl.addEventListener('scroll', handleUpdate)
+    
+    // Also listen to individual rack scrolls
+    const elevations = document.querySelectorAll('.overflow-y-auto')
+    elevations.forEach(el => el.addEventListener('scroll', handleUpdate))
+
+    // Catch animations/layout shifts
+    const interval = setInterval(updateLines, 100)
     
     return () => {
-      window.removeEventListener('resize', updateLines)
-      gridEl.removeEventListener('scroll', updateLines)
-      elevations.forEach(el => el.removeEventListener('scroll', updateLines))
+      window.removeEventListener('resize', handleUpdate)
+      gridEl.removeEventListener('scroll', handleUpdate)
+      elevations.forEach(el => el.removeEventListener('scroll', handleUpdate))
       clearInterval(interval)
     }
-  }, [sourceDeviceId, targetDeviceIds, racks, connections])
+  }, [sourceDeviceId, targetDeviceIds, connections, racks])
 
   return (
-    <div className="absolute top-0 left-0 pointer-events-none z-[30]" style={{ 
-      width: document.getElementById('rack-temp-grid')?.scrollWidth || '100%', 
-      height: document.getElementById('rack-temp-grid')?.scrollHeight || '100%' 
-    }}>
+    <div className="absolute top-0 left-0 pointer-events-none z-[30]" style={containerStyle}>
       <svg className="w-full h-full">
         <defs>
           <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -210,35 +209,17 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
             : `M ${l.x1} ${l.y1} L ${l.x2} ${l.y2}`
 
           return (
-            <g key={i} className="pointer-events-auto cursor-help group" 
+            <g key={l.id || i} className="pointer-events-auto cursor-help group" 
                onMouseEnter={(e) => setHoveredLine({ ...l, mouseX: e.clientX, mouseY: e.clientY })}
                onMouseLeave={() => setHoveredLine(null)}>
+              <path d={path} fill="none" stroke="#3b82f6" strokeWidth="6" strokeOpacity="0" />
               <path
-                d={path}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="4"
-                strokeOpacity="0"
-                className="transition-all"
+                d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" filter="url(#lineGlow)"
+                strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-blue-400 transition-all"
               />
               <path
-                d={path}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2.5"
-                filter="url(#lineGlow)"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="group-hover:stroke-blue-400 transition-all"
-              />
-              <path
-                d={path}
-                fill="none"
-                stroke="#60a5fa"
-                strokeWidth="1"
-                strokeOpacity="0.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                d={path} fill="none" stroke="#60a5fa" strokeWidth="1" strokeOpacity="0.8"
+                strokeLinecap="round" strokeLinejoin="round"
               />
               <circle cx={l.x1} cy={l.y1} r="4" fill="#ffffff" filter="url(#lineGlow)" />
               <circle cx={l.x2} cy={l.y2} r="4" fill="#ffffff" filter="url(#lineGlow)" />
@@ -255,8 +236,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
             exit={{ opacity: 0, scale: 0.9, y: 10 }}
             style={{ 
               position: 'fixed',
-              left: hoveredLine.mouseX + 20,
-              top: hoveredLine.mouseY - 40,
+              left: Math.min(window.innerWidth - 220, Math.max(20, hoveredLine.mouseX + 20)),
+              top: Math.min(window.innerHeight - 150, Math.max(20, hoveredLine.mouseY - 40)),
               zIndex: 100
             }}
             className="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 p-3 rounded-xl shadow-2xl pointer-events-none min-w-[180px]"
@@ -1533,15 +1514,6 @@ export default function RackTemp() {
         </div>
       )}
 
-      {/* Connection Lines overlay */}
-      {focusedConnection && (
-        <ConnectionLines
-          sourceDeviceId={focusedConnection.sourceId}
-          targetDeviceIds={focusedConnection.targetIds}
-          racks={racks}
-          connections={connections}
-        />
-      )}
       {focusedConnection && (
         <button onClick={() => setFocusedConnection(null)} className="fixed top-6 right-6 z-50 flex items-center gap-2 px-3 py-2 bg-slate-900/90 border border-white/10 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-white transition-colors">
           <X size={11} /> Clear connections

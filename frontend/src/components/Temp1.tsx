@@ -348,7 +348,6 @@ export default function Temp1() {
             }}
             
             enableNodeDrag={true}
-            enableNavigationControls={true}
             cooldownTicks={100}
             d3AlphaDecay={0.02}
             d3VelocityDecay={0.3}
