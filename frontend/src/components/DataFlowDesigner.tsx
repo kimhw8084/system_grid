@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import ReactFlow, { 
   addEdge, 
   Background, 
@@ -10,7 +10,6 @@ import ReactFlow, {
   Position,
   MarkerType,
   Connection,
-  Edge,
   ReactFlowProvider,
   useReactFlow,
   BaseEdge,
@@ -19,37 +18,17 @@ import ReactFlow, {
   MiniMap
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import dagre from 'dagre'
+import * as dagre from 'dagre'
 import { 
   Save, 
   Plus, 
-  Trash2, 
   Server, 
-  Layers, 
-  Workflow,
   Search,
-  Settings,
-  RefreshCcw,
-  Box,
   Database,
   Globe,
-  ArrowRight,
-  Activity,
-  Shield,
   Layout,
-  Type,
-  ExternalLink,
-  Cpu,
-  Eye,
   Edit3,
-  RotateCcw,
-  Zap,
-  Terminal,
-  Network,
-  Lock,
-  Check,
-  X,
-  Maximize2
+  Network
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -85,11 +64,9 @@ const DeviceNode = ({ data, selected }: any) => {
       </div>
       
       <div className="p-6">
-         {/* Container for Nested Services */}
          <div className="min-h-[40px] border border-dashed border-white/5 rounded-2xl bg-black/20 flex flex-col items-center justify-center relative">
             <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest absolute top-2">Resident Services Matrix</span>
             <div className="pt-6 w-full flex flex-col space-y-2 px-2 pb-2">
-               {/* Children will be rendered here by React Flow using node.parentNode */}
             </div>
          </div>
       </div>
@@ -134,8 +111,6 @@ const ExternalNode = ({ data, selected }: any) => {
     </div>
   )
 }
-
-// --- Custom Edge ---
 
 const LabeledEdge = ({
   id,
@@ -256,24 +231,24 @@ const edgeTypes = {
 
 // --- DAGRE Layout Engine ---
 
-const dagreGraph = new dagre.graphlib.Graph();
+const dagreGraph = new (dagre as any).graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const getLayoutedElements = (nodes: any[], edges: any[], direction = 'LR') => {
   const isHorizontal = direction === 'LR';
   dagreGraph.setGraph({ rankdir: direction });
 
-  nodes.forEach((node) => {
+  nodes.forEach((node: any) => {
     dagreGraph.setNode(node.id, { width: 300, height: 150 });
   });
 
-  edges.forEach((edge) => {
+  edges.forEach((edge: any) => {
     dagreGraph.setEdge(edge.source, edge.target);
   });
 
-  dagre.layout(dagreGraph);
+  (dagre as any).layout(dagreGraph);
 
-  const newNodes = nodes.map((node) => {
+  const newNodes = nodes.map((node: any) => {
     const nodeWithPosition = dagreGraph.node(node.id);
     return {
       ...node,
@@ -289,7 +264,7 @@ const getLayoutedElements = (nodes: any[], edges: any[], direction = 'LR') => {
   return { nodes: newNodes, edges };
 };
 
-// --- Main Designer Component ---
+// --- Sidebar ---
 
 const SidebarPalette = ({ onAddNode }: { onAddNode: (type: string, data: any) => void }) => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -348,22 +323,13 @@ const SidebarPalette = ({ onAddNode }: { onAddNode: (type: string, data: any) =>
                 </div>
              </div>
           ))}
-          {filteredResources.length === 0 && (
-             <div className="py-20 text-center opacity-30 italic text-[10px] font-black uppercase tracking-widest">No resources found</div>
-          )}
-       </div>
-
-       <div className="pt-6 border-t border-white/5">
-          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-loose">
-            Tip: Click (+) to inject assets into the design matrix. Nested services are automatically mapped to host assets.
-          </p>
        </div>
     </div>
   )
 }
 
 function ArchDesignerInner() {
-  const { setViewport, zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
   const queryClient = useQueryClient();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
