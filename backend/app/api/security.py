@@ -56,7 +56,13 @@ async def get_firewall_rules(
     include_deleted: bool = False, 
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(models.FirewallRule)
+    from sqlalchemy.orm import selectinload
+    query = select(models.FirewallRule).options(
+        selectinload(models.FirewallRule.source_device),
+        selectinload(models.FirewallRule.source_subnet),
+        selectinload(models.FirewallRule.dest_device),
+        selectinload(models.FirewallRule.dest_subnet)
+    )
     
     if not include_deleted:
         query = query.filter(models.FirewallRule.is_deleted == False)

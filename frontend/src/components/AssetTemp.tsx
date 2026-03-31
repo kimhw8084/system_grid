@@ -1228,95 +1228,179 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
 
 const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
+  const [showModal, setShowModal] = useState(false)
+  const [editingInterface, setEditingInterface] = useState<any>(null)
+  const [formData, setFormData] = useState({ name: '', ip_address: '', mac_address: '', vlan_id: '', link_speed_gbps: 10 })
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
+
   const { data: interfaces, isLoading } = useQuery({ 
     queryKey: ['device-interfaces', deviceId], 
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
   })
 
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [editData, setEditData] = useState<any>(null)
-
-  const updateMutation = useMutation({
+  const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiFetch(`/api/v1/networks/interfaces/${data.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      })
+      const url = editingInterface ? `/api/v1/networks/interfaces/${editingInterface.id}` : '/api/v1/networks/interfaces'
+      const method = editingInterface ? 'PUT' : 'POST'
+      const payload = editingInterface ? data : { ...data, device_id: deviceId }
+      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-interfaces', deviceId] })
-      setEditingId(null)
-      toast.success('Interface Updated')
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      setShowModal(false)
+      setEditingInterface(null)
+      toast.success(editingInterface ? 'Interface Updated' : 'Interface Added')
     },
-    onError: (e: any) => toast.error(e.message || 'Failed to update interface')
+    onError: (e: any) => toast.error(e.message || 'Failed to save interface')
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/api/v1/networks/interfaces/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-interfaces', deviceId] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      setConfirmModal({ isOpen: false, id: null })
+      toast.success('Interface Removed')
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to remove interface')
+  })
+
+  const openModal = (iface: any = null) => {
+    if (iface) {
+      setEditingInterface(iface)
+      setFormData({ 
+        name: iface.name || '', 
+        ip_address: iface.ip_address || '', 
+        mac_address: iface.mac_address || '', 
+        vlan_id: iface.vlan_id || '', 
+        link_speed_gbps: iface.link_speed_gbps || 10 
+      })
+    } else {
+      setEditingInterface(null)
+      setFormData({ name: '', ip_address: '', mac_address: '', vlan_id: '', link_speed_gbps: 10 })
+    }
+    setShowModal(true)
+  }
+
   return (
-    <div className="p-0 overflow-hidden">
-      {isLoading && (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-          <RefreshCcw size={20} className="animate-spin mb-2" />
-          <p className="text-[10px] font-black uppercase">Loading interfaces...</p>
-        </div>
-      )}
-      {!isLoading && (
-        <table className="w-full text-[10px]">
-          <thead className="bg-white/5 border-b border-white/5">
-            <tr>
-              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Name</th>
-              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">IP Address</th>
-              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">MAC Address</th>
-              <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Speed (Gbps)</th>
-              <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {interfaces?.map((i: any) => (
-              <tr key={i.id} className="hover:bg-white/5 transition-colors">
-                <td className="px-4 py-3 font-bold text-blue-400">
-                  {editingId === i.id ? (
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
-                  ) : i.name}
-                </td>
-                <td className="px-4 py-3 font-mono text-slate-200">
-                  {editingId === i.id ? (
-                    <input value={editData.ip_address} onChange={e => setEditData({...editData, ip_address: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
-                  ) : (i.ip_address || 'Unassigned')}
-                </td>
-                <td className="px-4 py-3 font-mono text-slate-500">
-                  {editingId === i.id ? (
-                    <input value={editData.mac_address} onChange={e => setEditData({...editData, mac_address: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
-                  ) : (i.mac_address || 'N/A')}
-                </td>
-                <td className="px-4 py-3 text-center text-slate-400 font-mono">
-                  {editingId === i.id ? (
-                    <input type="number" value={editData.link_speed_gbps} onChange={e => setEditData({...editData, link_speed_gbps: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-16 outline-none focus:border-blue-500" />
-                  ) : (i.link_speed_gbps ? `${i.link_speed_gbps} Gbps` : 'Auto')}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex items-center justify-center space-x-1">
-                    {editingId === i.id ? (
-                      <>
-                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
-                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
-                      </>
-                    ) : (
-                      <button onClick={() => { setEditingId(i.id); setEditData({...i}); }} className="p-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-600/20 transition-all flex items-center justify-center" title="Edit Interface">
-                        <Edit2 size={14}/>
-                      </button>
-                    )}
-                  </div>
-                </td>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={() => openModal()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20">
+          + Add Interface
+        </button>
+      </div>
+
+      <div className="p-0 overflow-hidden border border-white/5 rounded-2xl">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <RefreshCcw size={20} className="animate-spin mb-2" />
+            <p className="text-[10px] font-black uppercase tracking-widest">Scanning NIC Registry...</p>
+          </div>
+        ) : (
+          <table className="w-full text-[10px]">
+            <thead className="bg-white/5 border-b border-white/5">
+              <tr>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Name</th>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">IP Address</th>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">MAC Address</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">VLAN</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Speed</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
               </tr>
-            ))}
-            {!interfaces?.length && !isLoading && (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No network interfaces mapped</td></tr>
-            )}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {interfaces?.map((i: any) => (
+                <tr key={i.id} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight">{i.name}</td>
+                  <td className="px-4 py-3 font-mono text-slate-200">{i.ip_address || <span className="text-slate-700 italic">Unassigned</span>}</td>
+                  <td className="px-4 py-3 font-mono text-slate-500">{i.mac_address || 'N/A'}</td>
+                  <td className="px-4 py-3 text-center">
+                    {i.vlan_id ? <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded font-black">{i.vlan_id}</span> : <span className="text-slate-700">-</span>}
+                  </td>
+                  <td className="px-4 py-3 text-center text-slate-400 font-mono">{i.link_speed_gbps}G</td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center space-x-1">
+                      <button onClick={() => openModal(i)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
+                        <Edit2 size={12}/>
+                      </button>
+                      <button onClick={() => setConfirmModal({ isOpen: true, id: i.id })} className="p-1.5 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg hover:bg-rose-600/20 transition-all">
+                        <Trash2 size={12}/>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!interfaces?.length && (
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-[0.2em] bg-black/5">Zero NIC interfaces registered for this asset</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[450px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+              <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+                <Network size={24}/>
+                <span>{editingInterface ? 'Modify Interface' : 'New NIC Registration'}</span>
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Interface Name *</label>
+                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. eth0, bond0, mgmt" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">IP Address</label>
+                    <input value={formData.ip_address} onChange={e => setFormData({...formData, ip_address: e.target.value})} placeholder="10.0.0.1" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">MAC Address</label>
+                    <input value={formData.mac_address} onChange={e => setFormData({...formData, mac_address: e.target.value})} placeholder="00:11:22:33:44:55" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">VLAN ID</label>
+                    <input type="number" value={formData.vlan_id} onChange={e => setFormData({...formData, vlan_id: e.target.value})} placeholder="e.g. 100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Speed (Gbps)</label>
+                    <input type="number" value={formData.link_speed_gbps} onChange={e => setFormData({...formData, link_speed_gbps: parseInt(e.target.value)})} placeholder="10" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button onClick={() => setShowModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+                <button onClick={() => {
+                  if(!formData.name) return toast.error("Interface name is required")
+                  mutation.mutate(formData)
+                }} className="flex-2 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                  Commit Change
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
+        title="Remove Interface"
+        message="Are you sure you want to purge this network interface? This may affect dependency vectors."
+        variant="danger"
+      />
     </div>
   )
 }
@@ -1335,6 +1419,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     direction: 'Inbound', 
     action: 'Allow' 
   })
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
 
   const { data: rules, isLoading } = useQuery({ 
     queryKey: ['device-firewall', deviceId], 
@@ -1363,6 +1448,20 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
         direction: 'Inbound', action: 'Allow' 
       })
       toast.success('Firewall Exception Recorded')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/api/v1/security/firewall/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-firewall', deviceId] })
+      setConfirmModal({ isOpen: false, id: null })
+      toast.success('Security Policy Revoked')
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -1423,7 +1522,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
         </div>
       </div>
 
-      <div className="p-0 overflow-hidden">
+      <div className="p-0 overflow-hidden border border-white/5 rounded-2xl">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
             <RefreshCcw size={20} className="animate-spin mb-2" />
@@ -1433,16 +1532,17 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
           <table className="w-full text-[10px]">
             <thead className="bg-white/5 border-b border-white/5">
               <tr>
-                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Rule Name</th>
-                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Source</th>
-                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Destination</th>
-                <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Protocol/Ports</th>
-                <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Action</th>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Rule Name</th>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Source</th>
+                <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Destination</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Protocol/Ports</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Action</th>
+                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {rules?.map((r: any) => (
-                <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                <tr key={r.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className="font-bold text-white uppercase">{r.name}</span>
@@ -1471,15 +1571,29 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                       {r.action}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <button onClick={() => setConfirmModal({ isOpen: true, id: r.id })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                      <Trash2 size={14}/>
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!rules?.length && (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No active firewall exceptions for this asset</td></tr>
+                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest bg-black/5">No active firewall exceptions for this asset</td></tr>
               )}
             </tbody>
           </table>
         )}
       </div>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
+        title="Revoke Security Policy"
+        message="Are you sure you want to revoke this firewall exception? This may cause immediate service disruption."
+        variant="danger"
+      />
     </div>
   )
 }
