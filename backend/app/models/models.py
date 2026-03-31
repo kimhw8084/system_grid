@@ -259,6 +259,37 @@ class MonitoringItem(Base, BaseMixin):
     
     device = relationship("Device", back_populates="monitoring_items")
 
+class FirewallRule(Base, BaseMixin):
+    __tablename__ = "firewall_rules"
+    name = Column(String, index=True)
+    description = Column(Text)
+    
+    # Source Configuration
+    source_type = Column(String) # Device, Subnet, Custom IP, Any
+    source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    source_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
+    source_custom_ip = Column(String) # For external or one-off IPs
+    
+    # Destination Configuration
+    dest_type = Column(String) # Device, Subnet, Custom IP, Any
+    dest_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    dest_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
+    dest_custom_ip = Column(String)
+    
+    # Protocol & Ports
+    protocol = Column(String, default="TCP") # TCP, UDP, ICMP, Any
+    port_range = Column(String) # e.g. "443", "1433,1434", "1024-2048"
+    direction = Column(String, default="Inbound") # Inbound, Outbound
+    action = Column(String, default="Allow") # Allow, Deny
+    
+    status = Column(String, default="Active") # Active, Requested, Decommissioned
+    is_deleted = Column(Boolean, default=False)
+
+    source_device = relationship("Device", foreign_keys=[source_device_id])
+    dest_device = relationship("Device", foreign_keys=[dest_device_id])
+    source_subnet = relationship("Subnet", foreign_keys=[source_subnet_id])
+    dest_subnet = relationship("Subnet", foreign_keys=[dest_subnet_id])
+
 class IncidentLog(Base, BaseMixin):
     __tablename__ = "incident_logs"
     systems = Column(JSON, default=list) # Multi-select systems

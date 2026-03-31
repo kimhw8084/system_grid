@@ -1321,6 +1321,169 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
+const SecurityTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const [newRule, setNewRule] = useState({ 
+    name: '', 
+    description: '', 
+    source_type: 'Custom IP', 
+    source_custom_ip: '', 
+    dest_type: 'Device', 
+    dest_device_id: deviceId, 
+    protocol: 'TCP', 
+    port_range: '', 
+    direction: 'Inbound', 
+    action: 'Allow' 
+  })
+
+  const { data: rules, isLoading } = useQuery({ 
+    queryKey: ['device-firewall', deviceId], 
+    queryFn: async () => (await (await apiFetch(`/api/v1/security/firewall?device_id=${deviceId}`)).json()) 
+  })
+
+  const { data: devices } = useQuery({ 
+    queryKey: ['devices-list-simple'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
+  })
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/security/firewall', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-firewall', deviceId] })
+      setNewRule({ 
+        name: '', description: '', source_type: 'Custom IP', source_custom_ip: '', 
+        dest_type: 'Device', dest_device_id: deviceId, protocol: 'TCP', port_range: '', 
+        direction: 'Inbound', action: 'Allow' 
+      })
+      toast.success('Firewall Exception Recorded')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-4">
+        <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-4">Request Firewall Exception</h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div className="col-span-2">
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Rule Purpose / Name</label>
+            <input value={newRule.name} onChange={e => setNewRule({...newRule, name: e.target.value})} placeholder="e.g. DB Access for Client X" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <StyledSelect
+              label="Protocol"
+              value={newRule.protocol}
+              onChange={e => setNewRule({...newRule, protocol: e.target.value})}
+              options={[{value: 'TCP', label: 'TCP'}, {value: 'UDP', label: 'UDP'}, {value: 'ICMP', label: 'ICMP'}, {value: 'Any', label: 'Any'}]}
+            />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Port(s)</label>
+            <input value={newRule.port_range} onChange={e => setNewRule({...newRule, port_range: e.target.value})} placeholder="e.g. 443, 1433" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-4 gap-4 items-end">
+          <div className="col-span-1">
+            <StyledSelect
+              label="Source Type"
+              value={newRule.source_type}
+              onChange={e => setNewRule({...newRule, source_type: e.target.value})}
+              options={[{value: 'Device', label: 'Device'}, {value: 'Custom IP', label: 'Custom IP/CIDR'}, {value: 'Any', label: 'Any'}]}
+            />
+          </div>
+          <div className="col-span-2">
+             {newRule.source_type === 'Device' ? (
+                <StyledSelect
+                  label="Source Device"
+                  value={newRule.source_device_id || ''}
+                  onChange={e => setNewRule({...newRule, source_device_id: parseInt(e.target.value)})}
+                  options={devices?.map((d:any) => ({ value: String(d.id), label: d.name })) || []}
+                />
+             ) : (
+                <>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Source IP / CIDR</label>
+                  <input value={newRule.source_custom_ip} onChange={e => setNewRule({...newRule, source_custom_ip: e.target.value})} placeholder="e.g. 10.0.0.1 or 0.0.0.0/0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                </>
+             )}
+          </div>
+          <button 
+            onClick={() => { if(!newRule.name || !newRule.port_range) return toast.error("Name and Ports required"); mutation.mutate(newRule) }} 
+            className="h-[38px] bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+          >
+            Authorize Exception
+          </button>
+        </div>
+      </div>
+
+      <div className="p-0 overflow-hidden">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <RefreshCcw size={20} className="animate-spin mb-2" />
+            <p className="text-[10px] font-black uppercase">Retrieving Security Policies...</p>
+          </div>
+        ) : (
+          <table className="w-full text-[10px]">
+            <thead className="bg-white/5 border-b border-white/5">
+              <tr>
+                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Rule Name</th>
+                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Source</th>
+                <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Destination</th>
+                <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Protocol/Ports</th>
+                <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {rules?.map((r: any) => (
+                <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-white uppercase">{r.name}</span>
+                      <span className="text-[8px] text-slate-500">{r.description || 'No additional details'}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-slate-400">
+                    {r.source_type === 'Device' ? (
+                      <span className="text-blue-400 font-bold">{r.source_device_name}</span>
+                    ) : (r.source_custom_ip || 'ANY')}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-slate-400">
+                    {r.dest_type === 'Device' ? (
+                      <span className="text-emerald-400 font-bold">{r.dest_device_name}</span>
+                    ) : (r.dest_custom_ip || 'ANY')}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-indigo-400 font-bold">
+                      {r.protocol} // {r.port_range}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                      r.action === 'Allow' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'
+                    }`}>
+                      {r.action}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {!rules?.length && (
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No active firewall exceptions for this asset</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
@@ -1341,7 +1504,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'network', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
@@ -1365,6 +1528,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                   />
                 )}
                 {tab === 'network' && <NetworkingTab deviceId={device.id} />}
+                {tab === 'security' && <SecurityTab deviceId={device.id} />}
             </div>
         </div>
     )
