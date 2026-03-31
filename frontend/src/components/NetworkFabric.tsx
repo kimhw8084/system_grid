@@ -14,6 +14,7 @@ import { StyledSelect } from "./shared/StyledSelect"
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const [showConnectModal, setShowConnectModal] = useState(false)
+  const [viewingLink, setViewingLink] = useState<any>(null)
   const [editingLink, setEditingLink] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showConfig, setShowConfig] = useState(false)
@@ -65,18 +66,17 @@ export default function NetworkFabric() {
     { 
       headerName: "Src Port", 
       field: "source_port", 
+      width: 100,
+      cellClass: 'text-center font-mono text-slate-400',
+      headerClass: 'text-center'
+    },
+    { 
+      headerName: "Src IP", 
+      field: "source_ip", 
       width: 120,
-      cellClass: 'text-center',
+      cellClass: 'text-center font-mono text-blue-400',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex flex-col items-center justify-center">
-          <div className="flex items-center gap-1 mb-0.5">
-            <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none">{p.value}</span>
-            {p.data.source_vlan && <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-1 rounded font-black">V{p.data.source_vlan}</span>}
-          </div>
-          {p.data.source_ip && <span className="text-[8px] text-blue-400 font-mono leading-none">{p.data.source_ip}</span>}
-        </div>
-      )
+      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic">-</span>
     },
     { 
       headerName: "Peer", 
@@ -88,31 +88,29 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer Port", 
       field: "target_port", 
+      width: 100,
+      cellClass: 'text-center font-mono text-slate-400',
+      headerClass: 'text-center'
+    },
+    { 
+      headerName: "Peer IP", 
+      field: "target_ip", 
       width: 120,
-      cellClass: 'text-center',
+      cellClass: 'text-center font-mono text-emerald-400',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex flex-col items-center justify-center">
-          <div className="flex items-center gap-1 mb-0.5">
-            <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none">{p.value}</span>
-            {p.data.target_vlan && <span className="text-[8px] bg-indigo-500/20 text-indigo-400 px-1 rounded font-black">V{p.data.target_vlan}</span>}
-          </div>
-          {p.data.target_ip && <span className="text-[8px] text-emerald-400 font-mono leading-none">{p.data.target_ip}</span>}
-        </div>
-      )
+      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic">-</span>
     },
     { field: "link_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: "purpose", headerName: "Purpose", flex: 1.5, cellClass: 'text-center text-slate-400', headerClass: 'text-center' },
     { field: "speed", headerName: "Gbps", width: 80, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
-    { field: "direction", headerName: "Mode", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     {
       headerName: "Ops",
-      width: 80,
+      width: 110,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
+           <button onClick={() => setViewingLink(p.data)} className="p-1.5 hover:bg-emerald-500/10 text-slate-500 hover:text-emerald-400 rounded transition-colors" title="View Details"><Info size={14}/></button>
            <button onClick={() => { 
              setEditingLink(p.data); 
              setConnData({
@@ -123,8 +121,8 @@ export default function NetworkFabric() {
                port_b: p.data.target_port
              }); 
              setShowConnectModal(true) 
-           }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={14}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this physical connection?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={14}/></button>
+           }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors" title="Edit Link"><Edit2 size={14}/></button>
+           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this physical connection?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors" title="Delete Link"><Trash2 size={14}/></button>
         </div>
       )
     }
@@ -191,6 +189,101 @@ export default function NetworkFabric() {
         message={confirmModal.message}
         variant="danger"
       />
+
+      <AnimatePresence>
+        {viewingLink && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[550px] p-10 rounded-[40px] border border-emerald-500/30 space-y-8">
+               <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-emerald-400">
+                     <Network size={28} />
+                     <span>Connection Forensics</span>
+                  </h2>
+                  <button onClick={() => setViewingLink(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
+
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                     <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-blue-500/30">SOURCE ENTITY</div>
+                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
+                        <p className="text-lg font-black text-white truncate">{viewingLink.server_a}</p>
+                        <div className="mt-4 space-y-2">
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
+                              <span className="text-[10px] font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">{viewingLink.source_port}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
+                              <span className="text-[10px] font-mono text-white">{viewingLink.source_ip || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
+                              <span className="text-[10px] font-mono text-slate-400">{viewingLink.source_mac || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
+                              <span className="text-[10px] font-black text-indigo-400">{viewingLink.source_vlan || '-'}</span>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="space-y-4">
+                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-emerald-500/30">PEER ENTITY</div>
+                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
+                        <p className="text-lg font-black text-white truncate">{viewingLink.server_b}</p>
+                        <div className="mt-4 space-y-2">
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
+                              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">{viewingLink.target_port}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
+                              <span className="text-[10px] font-mono text-white">{viewingLink.target_ip || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
+                              <span className="text-[10px] font-mono text-slate-400">{viewingLink.target_mac || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
+                              <span className="text-[10px] font-black text-indigo-400">{viewingLink.target_vlan || '-'}</span>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="col-span-2 p-6 bg-white/5 border border-white/5 rounded-[30px] space-y-4">
+                     <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Fabric Speed</p>
+                           <p className="text-sm font-black text-indigo-400">{viewingLink.speed || '-'}</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Topology</p>
+                           <p className="text-sm font-black text-white">{viewingLink.link_type || '-'}</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Traffic Mode</p>
+                           <p className="text-sm font-black text-amber-400">{viewingLink.direction || '-'}</p>
+                        </div>
+                     </div>
+                     <div className="pt-4 border-t border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
+                        <p className="text-xs text-slate-300 italic">{viewingLink.purpose || 'No description provided for this interconnect.'}</p>
+                     </div>
+                  </div>
+               </div>
+
+               <button onClick={() => setViewingLink(null)} className="w-full py-4 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95">
+                  Dismiss Forensics
+               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showConnectModal && (
