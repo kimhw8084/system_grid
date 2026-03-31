@@ -40,7 +40,7 @@ from app.models.models import (
     DeviceSoftware, NetworkInterface, Subnet, PortConnection,
     DeviceRelationship, LogicalService, ServiceSecret, SecretVault,
     MaintenanceWindow, MonitoringItem, IncidentLog, DataFlow,
-    AuditLog, SettingOption,
+    AuditLog, SettingOption, FirewallRule,
 )
 
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
@@ -175,8 +175,13 @@ def seed():
         rack_lab3 = Rack(room_id=room_lab_b.id, name="LAB-Z2-R01", total_u_height=36,
                          max_power_kw=6.0, typical_power_kw=3.5, max_weight_kg=900.0,
                          cooling_type="Air", pdu_a_id="PDU-LAB-B01", pdu_b_id="PDU-LAB-B02", order_index=2)
+        
+        # Historical Rack Scenario: Rack from a decommissioned site
+        rack_hist1 = Rack(room_id=None, name="OLD-ZONE-R99", total_u_height=42,
+                          last_site_name="Legacy Warehouse DC", is_deleted=False)
+        
         db.add_all([rack_hq1, rack_hq2, rack_hq3, rack_hq4, rack_dr1, rack_dr2,
-                    rack_lab1, rack_lab2, rack_lab3])
+                    rack_lab1, rack_lab2, rack_lab3, rack_hist1])
         db.flush()
 
         # ── Devices ───────────────────────────────────────────────────────────
@@ -701,6 +706,7 @@ def seed():
             NetworkInterface(device_id=dev2.id,  name="eth0", mac_address="00:11:22:33:44:03", ip_address="10.0.1.11",  vlan_id=10,  link_speed_gbps=10),
             NetworkInterface(device_id=dev3.id,  name="bond0", mac_address="00:11:22:33:44:05", ip_address="10.0.2.10", vlan_id=20,  link_speed_gbps=25),
             NetworkInterface(device_id=dev3.id,  name="eth-mgmt", mac_address="00:11:22:33:44:06", ip_address="10.0.0.20", vlan_id=1, link_speed_gbps=1),
+            NetworkInterface(device_id=dev3.id,  name="eth-iscsi", mac_address="00:11:22:33:44:99", ip_address="10.0.3.100", vlan_id=30, link_speed_gbps=25), # Extra for DB
             NetworkInterface(device_id=dev4.id,  name="bond0", mac_address="00:11:22:33:44:07", ip_address="10.0.2.11", vlan_id=20,  link_speed_gbps=25),
             NetworkInterface(device_id=dev5.id,  name="mgmt0", mac_address="00:11:22:33:44:09", ip_address="10.0.0.1",  vlan_id=1,   link_speed_gbps=1),
             NetworkInterface(device_id=dev6.id,  name="mgmt",  mac_address="00:11:22:33:44:11", ip_address="10.0.0.254",vlan_id=1,   link_speed_gbps=1),
@@ -1136,6 +1142,112 @@ def seed():
             ),
         ]
         db.add_all(flows)
+        db.flush()
+
+        # ── FirewallRules ─────────────────────────────────────────────────────
+        print("Seeding FirewallRules...")
+        fw_rules = [
+            FirewallRule(
+                name="Allow HTTPS to Web Tier",
+                description="Allow incoming web traffic from any source",
+                source_type="Any",
+                dest_type="Subnet",
+                dest_subnet_id=subnets[1].id, # HQ-WEB
+                protocol="TCP",
+                port_range="443",
+                direction="Inbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Web to DB Access",
+                description="Allow web servers to access PostgreSQL",
+                source_type="Subnet",
+                source_subnet_id=subnets[1].id, # HQ-WEB
+                dest_type="Subnet",
+                dest_subnet_id=subnets[2].id, # HQ-DB
+                protocol="TCP",
+                port_range="5432",
+                direction="Inbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Management SSH Access",
+                description="Allow SSH from Jump server to all devices",
+                source_type="Device",
+                source_device_id=dev24.id, # hq-jump-01
+                dest_type="Any",
+                protocol="TCP",
+                port_range="22",
+                direction="Inbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Block Malicious External IP",
+                description="Explicit deny for known bad actor",
+                source_type="Custom IP",
+                source_custom_ip="185.123.45.67",
+                dest_type="Any",
+                protocol="Any",
+                direction="Inbound",
+                action="Deny",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Backup Replication to DR",
+                description="Allow backup replication to DR subnet",
+                source_type="Device",
+                source_device_id=dev15.id, # hq-backup-01
+                dest_type="Subnet",
+                dest_subnet_id=subnets[4].id, # DR-SITE
+                protocol="TCP",
+                port_range="10000-11000",
+                direction="Outbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="External Monitoring to DB",
+                description="Allow specific external monitoring IP to DB-01",
+                source_type="Custom IP",
+                source_custom_ip="203.0.113.42",
+                dest_type="Device",
+                dest_device_id=dev3.id, # hq-db-01
+                protocol="TCP",
+                port_range="9100",
+                direction="Inbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Any to NTP Subnet",
+                description="Allow NTP traffic from any source to MGMT subnet",
+                source_type="Any",
+                dest_type="Subnet",
+                dest_subnet_id=subnets[0].id, # HQ-MGMT
+                protocol="UDP",
+                port_range="123",
+                direction="Inbound",
+                action="Allow",
+                status="Active"
+            ),
+            FirewallRule(
+                name="Device to Custom IP",
+                description="Allow web-01 to reach external API",
+                source_type="Device",
+                source_device_id=dev1.id,
+                dest_type="Custom IP",
+                dest_custom_ip="1.1.1.1",
+                protocol="TCP",
+                port_range="443",
+                direction="Outbound",
+                action="Allow",
+                status="Active"
+            )
+        ]
+        db.add_all(fw_rules)
         db.flush()
 
         # ── AuditLogs ─────────────────────────────────────────────────────────
