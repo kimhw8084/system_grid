@@ -15,7 +15,6 @@ import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 
 export default function ExternalIntelligence() {
-  console.log("SYSGRID: ExternalIntelligence Mounting");
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'Registry' | 'Connectivity'>('Registry')
   const [searchTerm, setSearchTerm] = useState('')

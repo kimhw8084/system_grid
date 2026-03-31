@@ -18,7 +18,7 @@ import ReactFlow, {
   MiniMap
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import * as dagre from 'dagre'
+// import * as dagre from 'dagre'
 import { 
   Save, 
   Plus, 
@@ -376,6 +376,7 @@ function ArchDesignerInner() {
   };
 
   const onLayout = useCallback(() => {
+    /*
     const dagreGraph = new (dagre as any).graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: 'LR' });
@@ -405,6 +406,7 @@ function ArchDesignerInner() {
 
     setNodes([...newNodes]);
     setEdges([...edges]);
+    */
     setTimeout(() => fitView(), 200);
   }, [nodes, edges, setNodes, setEdges, fitView]);
 

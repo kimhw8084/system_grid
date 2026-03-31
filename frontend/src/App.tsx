@@ -116,7 +116,6 @@ const PatchNotesModal = ({ onClose }: any) => {
 }
 
 function MainLayout() {
-  console.log("SYSGRID: MainLayout Mounting");
   const location = useLocation(); 
   const navigate = useNavigate(); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
@@ -159,7 +158,6 @@ function MainLayout() {
   useEffect(() => {
     const handleError = (event: PromiseRejectionEvent) => {
       const error = event.reason;
-      // Only handle errors that have our custom traceback or status from apiFetch
       if (error && (error.traceback || error.status || error.data)) {
         setGlobalError(error);
         toast.error((t) => (
