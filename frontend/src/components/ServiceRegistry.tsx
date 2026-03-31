@@ -406,7 +406,8 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
     name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
     device_id: null, config_json: {}, 
     license_key: "", purchase_type: "One-time", 
-    purchase_date: "", expiry_date: "", cost: 0, currency: "USD", vendor: "",
+    purchase_date: "", expiry_date: "", installation_date: "", 
+    purpose: "", documentation_link: "", cost: 0, currency: "USD", vendor: "",
     ...initialData 
   })
 
@@ -450,15 +451,32 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
                 placeholder="Unassigned (Floating)"
            />
-           <StyledSelect
-                label="Service Metadata Type"
-                value={formData.service_type}
-                onChange={e => {
-                  const val = e.target.value;
-                  setFormData(prev => ({...prev, service_type: val}));
-                }}
-                options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App"].map(t => ({ value: t, label: t }))}
-           />
+           <div className="grid grid-cols-2 gap-4">
+             <StyledSelect
+                  label="Service Metadata Type"
+                  value={formData.service_type}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData(prev => ({...prev, service_type: val}));
+                  }}
+                  options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App"].map(t => ({ value: t, label: t }))}
+             />
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
+                <input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
+             </div>
+           </div>
+           <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Service Purpose / Mission</label>
+              <textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="e.g. Primary ERP Database for Financial Auditing..." />
+           </div>
+           <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Documentation / Source Link</label>
+              <div className="relative">
+                <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                <input value={formData.documentation_link || ""} onChange={e => setFormData({...formData, documentation_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="https://github.com/repo..." />
+              </div>
+           </div>
         </div>
 
         <div className="space-y-4">
@@ -667,8 +685,42 @@ export default function ServiceRegistry() {
       }
     },
     { field: "device_name", headerName: "Host", width: 130, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { 
+      field: "purpose", 
+      headerName: "Purpose", 
+      flex: 1.5, 
+      cellClass: 'text-center italic text-slate-400 truncate',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <span title={p.value} className="text-[9px]">{p.value}</span>
+      ) : <span className="text-slate-700">-</span>
+    },
     { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center", headerClass: 'text-center' },
+    {
+      field: "installation_date",
+      headerName: "Installed",
+      width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        if (!p.value) return <span className="text-slate-700 italic text-[8px]">N/A</span>
+        const d = new Date(p.value)
+        return <span className="text-[9px] font-mono text-blue-400">{d.toLocaleDateString()}</span>
+      }
+    },
+    { 
+      field: "documentation_link", 
+      headerName: "Link", 
+      width: 60, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <a href={p.value} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all inline-block">
+          <ExternalLink size={12} />
+        </a>
+      ) : <span className="text-slate-700">-</span>
+    },
     { 
       field: "purchase_type", 
       headerName: "Purchase Model", 

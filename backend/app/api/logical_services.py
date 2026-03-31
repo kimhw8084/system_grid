@@ -55,6 +55,9 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "purchase_type": s.purchase_type,
             "purchase_date": s.purchase_date.isoformat() if s.purchase_date else None,
             "expiry_date": s.expiry_date.isoformat() if s.expiry_date else None,
+            "installation_date": s.installation_date.isoformat() if s.installation_date else None,
+            "purpose": s.purpose,
+            "documentation_link": s.documentation_link,
             "vendor": s.vendor,
             "cost": s.cost,
             "currency": s.currency,
@@ -109,8 +112,8 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
 
     clean_data = filter_valid_columns(models.LogicalService, data)
     
-    # Handle date fields for license
-    for date_f in ["purchase_date", "expiry_date"]:
+    # Handle date fields for license and installation
+    for date_f in ["purchase_date", "expiry_date", "installation_date"]:
         if date_f in clean_data:
             val = clean_data[date_f]
             if not val:
@@ -150,7 +153,7 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     
     clean_data = filter_valid_columns(models.LogicalService, data)
     for k, v in clean_data.items():
-        if k in ["purchase_date", "expiry_date"]:
+        if k in ["purchase_date", "expiry_date", "installation_date"]:
             if not v:
                 setattr(svc, k, None)
             elif isinstance(v, str):

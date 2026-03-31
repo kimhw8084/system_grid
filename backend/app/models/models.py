@@ -111,6 +111,9 @@ class LogicalService(Base, BaseMixin):
     status = Column(String, default="Active") # Active, Stopped, Critical, Maintenance
     version = Column(String)
     environment = Column(String, default="Production")
+    purpose = Column(Text) # Purpose description
+    documentation_link = Column(String) # Link to source, installation, app, etc.
+    installation_date = Column(DateTime) # Date of installation or planned installation
     
     # Exaustive Predefined Schemas stored in JSON for maximum flexibility + strict UI enforcement
     # For Database: { engine, instance_name, port, sid, collation, always_on, data_path, backup_policy }
