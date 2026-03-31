@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, or_
 from typing import List
 from ..database import get_db
 from ..models import models
@@ -63,11 +63,35 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
 
 @router.post("/connections")
 async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
+    source_device_id = data.get('device_a_id')
+    source_port = data.get('source_port') or data.get('port_a')
+    target_device_id = data.get('device_b_id')
+    target_port = data.get('target_port') or data.get('port_b')
+
+    # Check for existing connection in either direction (bidirectional logic)
+    # A -> B or B -> A with same ports
+    dup_query = select(models.PortConnection).filter(
+        or_(
+            (models.PortConnection.source_device_id == source_device_id) & 
+            (models.PortConnection.source_port == source_port) & 
+            (models.PortConnection.target_device_id == target_device_id) & 
+            (models.PortConnection.target_port == target_port),
+            
+            (models.PortConnection.source_device_id == target_device_id) & 
+            (models.PortConnection.source_port == target_port) & 
+            (models.PortConnection.target_device_id == source_device_id) & 
+            (models.PortConnection.target_port == source_port)
+        )
+    )
+    dup_res = await db.execute(dup_query)
+    if dup_res.scalars().first():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="DUPLICATE_CONNECTION")
+
     conn = models.PortConnection(
-        source_device_id=data.get('device_a_id'),
-        source_port=data.get('source_port') or data.get('port_a'),
-        target_device_id=data.get('device_b_id'),
-        target_port=data.get('target_port') or data.get('port_b'),
+        source_device_id=source_device_id,
+        source_port=source_port,
+        target_device_id=target_device_id,
+        target_port=target_port,
         purpose=data.get('purpose'),
         speed_gbps=data.get('speed_gbps'),
         unit=data.get('unit', 'Gbps'),

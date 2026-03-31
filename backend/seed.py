@@ -481,8 +481,144 @@ def seed():
             metadata_json={"vcpu": 4, "ram_gb": 16, "stack": "Prometheus+Grafana"},
             is_reservation=False, reservation_info={},
         )
+        dev21 = Device(
+            name="hq-db-03", system="SAP ERP", type="Physical", status="Planned",
+            environment="Production", size_u=4, manufacturer="HPE", model="ProLiant DL380 Gen10",
+            serial_number="SN-DB-003", asset_tag="AT-021", part_number="PN-DL380-G10",
+            os_name="RHEL", os_version="8.6",
+            primary_ip="10.0.2.12", management_ip="10.0.0.22", management_url="https://ilo-hq-db-03.internal",
+            owner="dba-team", business_unit="Engineering", vendor="HPE",
+            purchase_order="PO-2024-088", cost_center="CC-ENG-002",
+            purchase_date=datetime(2024, 3, 1), install_date=None,
+            warranty_end=datetime(2027, 3, 1), eol_date=datetime(2030, 3, 1),
+            power_supply_count=2, power_max_w=1600.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="DBTier", fab_area="HQ", recipe_critical=True,
+            metadata_json={"cluster_role": "secondary-replica"},
+            is_reservation=False, reservation_info={},
+        )
+        dev22 = Device(
+            name="hq-sw-core-02", system="IT-Infra", type="Switch", status="Active",
+            environment="Production", size_u=2, manufacturer="Cisco", model="Nexus 9300",
+            serial_number="SN-SW-003", asset_tag="AT-022", part_number="N9K-C9336C-FX2",
+            os_name="NX-OS", os_version="9.3.10",
+            primary_ip="10.0.0.2", management_ip="10.0.0.2", management_url="https://hq-sw-core-02.internal",
+            owner="netops", business_unit="Operations", vendor="Cisco",
+            purchase_order="PO-2023-020", cost_center="CC-OPS-003",
+            purchase_date=datetime(2023, 3, 1), install_date=datetime(2023, 4, 1),
+            warranty_end=datetime(2026, 3, 1), eol_date=datetime(2028, 3, 1),
+            power_supply_count=2, power_max_w=1100.0, power_typical_w=600.0, btu_hr=2048.0,
+            depth="Full", tool_group="Network", fab_area="HQ", recipe_critical=True,
+            metadata_json={"vlan_count": 48, "vpc_domain": 10},
+            is_reservation=False, reservation_info={},
+        )
+        dev23 = Device(
+            name="hq-stor-02", system="IT-Infra", type="Storage", status="Active",
+            environment="Production", size_u=4, manufacturer="NetApp", model="AFF A400",
+            serial_number="SN-STOR-002", asset_tag="AT-023", part_number="AFF-A400",
+            os_name="ONTAP", os_version="9.12.1",
+            primary_ip="10.0.3.11", management_ip="10.0.0.32", management_url="https://hq-stor-02.internal",
+            owner="storage-team", business_unit="Operations", vendor="NetApp",
+            purchase_order="PO-2022-008", cost_center="CC-OPS-002",
+            purchase_date=datetime(2022, 9, 1), install_date=datetime(2022, 10, 1),
+            warranty_end=datetime(2025, 9, 1), eol_date=datetime(2028, 9, 1),
+            power_supply_count=4, power_max_w=2000.0, power_typical_w=1200.0, btu_hr=4096.0,
+            depth="Full", tool_group="Storage", fab_area="HQ", recipe_critical=True,
+            metadata_json={"usable_tb": 200, "ha_pair": "hq-stor-01"},
+            is_reservation=False, reservation_info={},
+        )
+        dev24 = Device(
+            name="hq-jump-01", system="IT-Infra", type="Virtual", status="Active",
+            environment="Production", size_u=1, manufacturer="VMware", model="vSphere VM",
+            serial_number="SN-VM-JUMP-01", asset_tag="AT-024", part_number=None,
+            os_name="Windows Server", os_version="2019",
+            primary_ip="10.0.0.100", management_ip=None, management_url=None,
+            owner="ops-team", business_unit="Operations", vendor="Microsoft",
+            purchase_order=None, cost_center="CC-OPS-001",
+            purchase_date=None, install_date=datetime(2023, 1, 15),
+            warranty_end=None, eol_date=datetime(2029, 1, 1),
+            power_supply_count=0, power_max_w=0.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="Admin", fab_area="HQ", recipe_critical=False,
+            metadata_json={"rdp_enabled": True},
+            is_reservation=False, reservation_info={},
+        )
+        dev25 = Device(
+            name="hq-log-01", system="IT-Infra", type="Virtual", status="Active",
+            environment="Production", size_u=1, manufacturer="VMware", model="vSphere VM",
+            serial_number="SN-VM-LOG-01", asset_tag="AT-025", part_number=None,
+            os_name="Ubuntu", os_version="22.04 LTS",
+            primary_ip="10.0.6.20", management_ip=None, management_url="https://elk.internal",
+            owner="security-team", business_unit="Security", vendor="Elastic",
+            purchase_order=None, cost_center="CC-SEC-001",
+            purchase_date=None, install_date=datetime(2023, 11, 1),
+            warranty_end=None, eol_date=None,
+            power_supply_count=0, power_max_w=0.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="Observability", fab_area="HQ", recipe_critical=False,
+            metadata_json={"stack": "Elasticsearch+Kibana", "retention": "90d"},
+            is_reservation=False, reservation_info={},
+        )
+        dev26 = Device(
+            name="hq-vcenter-01", system="DevOps", type="Virtual", status="Active",
+            environment="Production", size_u=1, manufacturer="VMware", model="VCSA",
+            serial_number="SN-VM-VC-01", asset_tag="AT-026", part_number=None,
+            os_name="Photon OS", os_version="4.0",
+            primary_ip="10.0.0.10", management_ip=None, management_url="https://vcenter.internal",
+            owner="vmware-team", business_unit="Engineering", vendor="VMware",
+            purchase_order=None, cost_center="CC-ENG-001",
+            purchase_date=None, install_date=datetime(2024, 3, 1),
+            warranty_end=None, eol_date=None,
+            power_supply_count=0, power_max_w=0.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="Virtualization", fab_area="HQ", recipe_critical=True,
+            metadata_json={"managed_hosts": 12},
+            is_reservation=False, reservation_info={},
+        )
+        dev27 = Device(
+            name="hq-dns-01", system="IT-Infra", type="Virtual", status="Active",
+            environment="Production", size_u=1, manufacturer="VMware", model="vSphere VM",
+            serial_number="SN-VM-DNS-01", asset_tag="AT-027", part_number=None,
+            os_name="RHEL", os_version="9.2",
+            primary_ip="10.0.0.53", management_ip=None, management_url=None,
+            owner="ops-team", business_unit="Operations", vendor="Red Hat",
+            purchase_order=None, cost_center="CC-OPS-001",
+            purchase_date=None, install_date=datetime(2023, 1, 10),
+            warranty_end=None, eol_date=None,
+            power_supply_count=0, power_max_w=0.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="CoreServices", fab_area="HQ", recipe_critical=True,
+            metadata_json={"role": "primary-dns"},
+            is_reservation=False, reservation_info={},
+        )
+        dev28 = Device(
+            name="hq-dns-02", system="IT-Infra", type="Virtual", status="Active",
+            environment="Production", size_u=1, manufacturer="VMware", model="vSphere VM",
+            serial_number="SN-VM-DNS-02", asset_tag="AT-028", part_number=None,
+            os_name="RHEL", os_version="9.2",
+            primary_ip="10.0.0.54", management_ip=None, management_url=None,
+            owner="ops-team", business_unit="Operations", vendor="Red Hat",
+            purchase_order=None, cost_center="CC-OPS-001",
+            purchase_date=None, install_date=datetime(2023, 1, 10),
+            warranty_end=None, eol_date=None,
+            power_supply_count=0, power_max_w=0.0, power_typical_w=0.0, btu_hr=0.0,
+            depth="Full", tool_group="CoreServices", fab_area="HQ", recipe_critical=True,
+            metadata_json={"role": "secondary-dns"},
+            is_reservation=False, reservation_info={},
+        )
+        dev29 = Device(
+            name="hq-ntp-01", system="IT-Infra", type="Physical", status="Active",
+            environment="Production", size_u=1, manufacturer="Meinberg", model="LANTIME M3000",
+            serial_number="SN-NTP-01", asset_tag="AT-029", part_number="M3000-S",
+            os_name="LTOS", os_version="7.0",
+            primary_ip="10.0.0.123", management_ip="10.0.0.124", management_url="https://hq-ntp-01.internal",
+            owner="ops-team", business_unit="Operations", vendor="Meinberg",
+            purchase_order="PO-2022-099", cost_center="CC-OPS-001",
+            purchase_date=datetime(2022, 5, 1), install_date=datetime(2022, 6, 1),
+            warranty_end=datetime(2025, 5, 1), eol_date=datetime(2032, 5, 1),
+            power_supply_count=2, power_max_w=100.0, power_typical_w=45.0, btu_hr=153.0,
+            depth="Half", tool_group="CoreServices", fab_area="HQ", recipe_critical=True,
+            metadata_json={"source": "GPS", "stratum": 1},
+            is_reservation=False, reservation_info={},
+        )
         devices = [dev1, dev2, dev3, dev4, dev5, dev6, dev7, dev8, dev9, dev10,
-                   dev11, dev12, dev13, dev14, dev15, dev16, dev17, dev18, dev19, dev20]
+                   dev11, dev12, dev13, dev14, dev15, dev16, dev17, dev18, dev19, dev20,
+                   dev21, dev22, dev23, dev24, dev25, dev26, dev27, dev28, dev29]
         db.add_all(devices)
         db.flush()
 
@@ -506,6 +642,9 @@ def seed():
             DeviceLocation(device_id=dev15.id, rack_id=rack_hq4.id, start_unit=40, size_u=4, orientation="Front", depth="Full"),
             DeviceLocation(device_id=dev17.id, rack_id=rack_hq3.id, start_unit=35, size_u=1, orientation="Front", depth="Full"),
             DeviceLocation(device_id=dev19.id, rack_id=rack_lab3.id, start_unit=34, size_u=2, orientation="Front", depth="Half"),
+            DeviceLocation(device_id=dev22.id, rack_id=rack_hq3.id, start_unit=33, size_u=2, orientation="Front", depth="Full"),
+            DeviceLocation(device_id=dev23.id, rack_id=rack_hq4.id, start_unit=36, size_u=4, orientation="Front", depth="Full"),
+            DeviceLocation(device_id=dev29.id, rack_id=rack_hq1.id, start_unit=35, size_u=1, orientation="Front", depth="Half"),
         ]
         db.add_all(locations)
         db.flush()
@@ -611,6 +750,9 @@ def seed():
             PortConnection(source_device_id=dev13.id, source_port="eth0",   target_device_id=dev17.id, target_port="Gi1/0/2", purpose="Lab access",   speed_gbps=1,   unit="Gbps", direction="bidirectional", cable_type="Cat6A"),
             PortConnection(source_device_id=dev17.id, source_port="Gi1/0/48",target_device_id=dev5.id, target_port="Eth1/9",  purpose="Access uplink",speed_gbps=1,   unit="Gbps", direction="bidirectional", cable_type="Cat6A"),
             PortConnection(source_device_id=dev20.id, source_port="eth0",   target_device_id=dev5.id,  target_port="Eth1/10", purpose="Monitoring",   speed_gbps=1,   unit="Gbps", direction="bidirectional", cable_type="Cat6"),
+            PortConnection(source_device_id=dev22.id, source_port="Eth1/36",target_device_id=dev5.id,  target_port="Eth1/36", purpose="vPC Peer Link",speed_gbps=100, unit="Gbps", direction="bidirectional", cable_type="QSFP28 DAC"),
+            PortConnection(source_device_id=dev23.id, source_port="e0a",    target_device_id=dev22.id, target_port="Eth1/5",  purpose="NFS Storage",  speed_gbps=25,  unit="Gbps", direction="bidirectional", cable_type="SFP28 MMF"),
+            PortConnection(source_device_id=dev29.id, source_port="eth0",   target_device_id=dev5.id,  target_port="Eth1/11", purpose="NTP Sync",      speed_gbps=1,   unit="Gbps", direction="bidirectional", cable_type="Cat6"),
         ]
         db.add_all(conns)
         db.flush()
@@ -628,6 +770,7 @@ def seed():
             DeviceRelationship(source_device_id=dev3.id,  target_device_id=dev11.id, relationship_type="DR Pair",  source_role="Primary", target_role="DR",     notes="Cross-site DB DR"),
             DeviceRelationship(source_device_id=dev9.id,  target_device_id=dev1.id,  relationship_type="Manages",  source_role="LB",    target_role="Backend",  notes="LB -> web pool"),
             DeviceRelationship(source_device_id=dev9.id,  target_device_id=dev2.id,  relationship_type="Manages",  source_role="LB",    target_role="Backend",  notes="LB -> web pool"),
+            DeviceRelationship(source_device_id=dev22.id, target_device_id=dev5.id,  relationship_type="VPC Peer", source_role="Secondary", target_role="Primary", notes="Cisco VPC core pair"),
         ]
         db.add_all(rels)
         db.flush()
@@ -1014,10 +1157,10 @@ def seed():
 
         db.commit()
         print("Seed complete.")
-        print(f"  Sites: 3 | Rooms: 6 | Racks: 9 | Devices: 20")
-        print(f"  DeviceLocations: 17 | HardwareComponents: 15 | DeviceSoftware: 15")
-        print(f"  NetworkInterfaces: 20 | Subnets: 5 | PortConnections: 15")
-        print(f"  DeviceRelationships: 10 | LogicalServices: 10 | ServiceSecrets: 10")
+        print(f"  Sites: 3 | Rooms: 6 | Racks: 9 | Devices: 29")
+        print(f"  DeviceLocations: 23 | HardwareComponents: 15 | DeviceSoftware: 15")
+        print(f"  NetworkInterfaces: 20 | Subnets: 5 | PortConnections: 19")
+        print(f"  DeviceRelationships: 11 | LogicalServices: 10 | ServiceSecrets: 10")
         print(f"  SecretVaults: 10 | MaintenanceWindows: 8 | MonitoringItems: 10")
         print(f"  IncidentLogs: 5 | DataFlows: 3 | AuditLogs: 10 | SettingOptions: 36")
 
