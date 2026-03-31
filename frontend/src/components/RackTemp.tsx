@@ -1288,6 +1288,16 @@ export default function RackTemp() {
             )}
           </div>
 
+          {/* Connection Clear */}
+          {focusedConnection && (
+            <button
+              onClick={() => setFocusedConnection(null)}
+              className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
+            >
+              <X size={13} /> Clear Connections
+            </button>
+          )}
+
           {/* Add Actions */}
           {activeTab === 'active' && (
             <div className="flex items-center gap-2">
@@ -1533,16 +1543,10 @@ export default function RackTemp() {
             </div>
           </motion.div>
         </div>
-      )}
+        )}
 
-      {focusedConnection && (
-        <button onClick={() => setFocusedConnection(null)} className="fixed top-6 right-6 z-50 flex items-center gap-2 px-3 py-2 bg-slate-900/90 border border-white/10 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-white transition-colors">
-          <X size={11} /> Clear connections
-        </button>
-      )}
-
-      {/* Mount Asset Modal */}
-        {isProvisioning && (
+        {/* Options Context Menu */}
+        {optionsMenu && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               className="glass-panel w-[520px] p-8 rounded-3xl space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
