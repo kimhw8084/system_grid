@@ -1226,6 +1226,101 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
     )
 }
 
+const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: interfaces, isLoading } = useQuery({ 
+    queryKey: ['device-interfaces', deviceId], 
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
+  })
+
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editData, setEditData] = useState<any>(null)
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch(`/api/v1/networks/interfaces/${data.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device-interfaces', deviceId] })
+      setEditingId(null)
+      toast.success('Interface Updated')
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to update interface')
+  })
+
+  return (
+    <div className="p-0 overflow-hidden">
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+          <RefreshCcw size={20} className="animate-spin mb-2" />
+          <p className="text-[10px] font-black uppercase">Loading interfaces...</p>
+        </div>
+      )}
+      {!isLoading && (
+        <table className="w-full text-[10px]">
+          <thead className="bg-white/5 border-b border-white/5">
+            <tr>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Name</th>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">IP Address</th>
+              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">MAC Address</th>
+              <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Speed (Gbps)</th>
+              <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {interfaces?.map((i: any) => (
+              <tr key={i.id} className="hover:bg-white/5 transition-colors">
+                <td className="px-4 py-3 font-bold text-blue-400">
+                  {editingId === i.id ? (
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                  ) : i.name}
+                </td>
+                <td className="px-4 py-3 font-mono text-slate-200">
+                  {editingId === i.id ? (
+                    <input value={editData.ip_address} onChange={e => setEditData({...editData, ip_address: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                  ) : (i.ip_address || 'Unassigned')}
+                </td>
+                <td className="px-4 py-3 font-mono text-slate-500">
+                  {editingId === i.id ? (
+                    <input value={editData.mac_address} onChange={e => setEditData({...editData, mac_address: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                  ) : (i.mac_address || 'N/A')}
+                </td>
+                <td className="px-4 py-3 text-center text-slate-400 font-mono">
+                  {editingId === i.id ? (
+                    <input type="number" value={editData.link_speed_gbps} onChange={e => setEditData({...editData, link_speed_gbps: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-16 outline-none focus:border-blue-500" />
+                  ) : (i.link_speed_gbps ? `${i.link_speed_gbps} Gbps` : 'Auto')}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <div className="flex items-center justify-center space-x-1">
+                    {editingId === i.id ? (
+                      <>
+                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 hover:bg-rose-500/20 text-rose-400 rounded-lg"><X size={14}/></button>
+                      </>
+                    ) : (
+                      <button onClick={() => { setEditingId(i.id); setEditData({...i}); }} className="p-1.5 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-600/20 transition-all flex items-center justify-center" title="Edit Interface">
+                        <Edit2 size={14}/>
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!interfaces?.length && !isLoading && (
+              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No network interfaces mapped</td></tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
@@ -1246,7 +1341,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'network', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
@@ -1269,6 +1364,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     onEdit={onEditService}
                   />
                 )}
+                {tab === 'network' && <NetworkingTab deviceId={device.id} />}
             </div>
         </div>
     )

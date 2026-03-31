@@ -92,6 +92,18 @@ async def delete_site(site_id: int, db: AsyncSession = Depends(get_db)):
     site = result.scalar_one_or_none()
     if not site: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
 
+    # Before deleting the site, find all racks associated with it and update their last_site_name
+    # Racks are linked to Site via Room. Room has cascade delete, which sets Rack.room_id to NULL.
+    # We want to keep the name of this site in the Rack before that happens.
+    rack_result = await db.execute(
+        select(models.Rack)
+        .join(models.Room)
+        .filter(models.Room.site_id == site_id)
+    )
+    racks = rack_result.scalars().all()
+    for rack in racks:
+        rack.last_site_name = site.name
+
     await db.delete(site)
     log = models.AuditLog(
         user_id="admin", action="DELETE", target_table="sites", 

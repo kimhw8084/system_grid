@@ -59,6 +59,9 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
                 })
         
         site_name = "Unassigned"
+        if rack.last_site_name:
+            site_name = f"Prev: {rack.last_site_name}"
+        
         room = None
         if rack.room_id:
             room_res = await db.execute(select(models.Room).filter(models.Room.id == rack.room_id))

@@ -55,6 +55,7 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
             "speed": f"{c.speed_gbps} {c.unit}" if c.speed_gbps else "Unknown",
             "speed_gbps": c.speed_gbps,
             "unit": c.unit,
+            "link_type": c.link_type,
             "purpose": c.purpose,
             "direction": c.direction,
             "cable_type": c.cable_type
@@ -92,12 +93,17 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
         source_port=source_port,
         target_device_id=target_device_id,
         target_port=target_port,
-        purpose=data.get('purpose'),
+        link_type=data.get('link_type') or data.get('purpose'), # Support migration
+        purpose=data.get('purpose_desc') or data.get('purpose') if 'purpose_desc' in data else None,
         speed_gbps=data.get('speed_gbps'),
         unit=data.get('unit', 'Gbps'),
         direction=data.get('direction'),
         cable_type=data.get('cable_type')
     )
+    # If both link_type and purpose are sent, prioritize them correctly
+    if 'link_type' in data: conn.link_type = data['link_type']
+    if 'purpose' in data: conn.purpose = data['purpose']
+
     db.add(conn)
     try:
         await db.commit()
@@ -127,6 +133,7 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     if 'port_a' in data: conn.source_port = data['port_a']
     if 'device_b_id' in data: conn.target_device_id = data['device_b_id']
     if 'port_b' in data: conn.target_port = data['port_b']
+    if 'link_type' in data: conn.link_type = data['link_type']
     if 'purpose' in data: conn.purpose = data['purpose']
     if 'speed_gbps' in data: conn.speed_gbps = data['speed_gbps']
     if 'direction' in data: conn.direction = data['direction']

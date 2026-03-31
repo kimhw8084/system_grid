@@ -20,7 +20,7 @@ export default function NetworkFabric() {
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [connData, setConnData] = useState<any>({
     device_a_id: '', source_port: '', device_b_id: '', target_port: '',
-    purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
+    link_type: 'Data', purpose: '', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
   })
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
@@ -71,13 +71,6 @@ export default function NetworkFabric() {
       cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
     { 
-      headerName: "Vector", 
-      width: 80, 
-      cellClass: "justify-center text-center",
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <div className="flex items-center justify-center text-slate-600"><ArrowRightLeft size={14}/></div> 
-    },
-    { 
       headerName: "Peer", 
       field: "server_b", 
       flex: 1,
@@ -92,7 +85,8 @@ export default function NetworkFabric() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
     },
-    { field: "purpose", headerName: "Purpose", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "link_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "purpose", headerName: "Purpose", flex: 1.5, cellClass: 'text-center text-slate-400', headerClass: 'text-center' },
     { field: "speed", headerName: "Gbps", width: 80, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
     { field: "direction", headerName: "Mode", width: 100, cellClass: 'text-center', headerClass: 'text-center' },
     {
@@ -125,7 +119,7 @@ export default function NetworkFabric() {
   const resetForm = () => {
     setConnData({
       device_a_id: '', source_port: '', device_b_id: '', target_port: '',
-      purpose: 'Data', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
+      link_type: 'Data', purpose: '', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
     })
     setEditingLink(null)
   }
@@ -224,14 +218,18 @@ export default function NetworkFabric() {
                   <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
                 </div>
                 <StyledSelect
-                    label="Link Purpose *"
-                    value={connData.purpose}
-                    onChange={e => setConnData({...connData, purpose: e.target.value})}
+                    label="Link Type *"
+                    value={connData.link_type}
+                    onChange={e => setConnData({...connData, link_type: e.target.value})}
                     options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
                         ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
                         : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
                     }
                 />
+                <div className="col-span-2">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
+                  <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
+                </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
                   <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />

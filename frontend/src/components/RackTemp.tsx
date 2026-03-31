@@ -96,7 +96,7 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
 
 // ─── Connection Lines Overlay ──────────────────────────────────────────────────
 
-const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }: { sourceDeviceId: number; targetDeviceIds: number[]; racks: any[]; connections?: any[] }) => {
+const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, devices }: { sourceDeviceId: number; targetDeviceIds: number[]; racks: any[]; connections?: any[]; devices?: any[] }) => {
   const [lines, setLines] = React.useState<any[]>([])
   const [hoveredLine, setHoveredLine] = React.useState<any>(null)
   const [containerStyle, setContainerStyle] = React.useState({ width: '100%', height: '100%' })
@@ -252,7 +252,7 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
               top: Math.min(window.innerHeight - 150, Math.max(20, hoveredLine.mouseY - 40)),
               zIndex: 100
             }}
-            className="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 p-3 rounded-xl shadow-2xl pointer-events-none min-w-[180px]"
+            className="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 p-3 rounded-xl shadow-2xl pointer-events-none min-w-[200px]"
           >
             <div className="flex items-center gap-2 mb-2">
               <div className="p-1.5 bg-blue-500/20 rounded-lg">
@@ -261,6 +261,22 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
               <span className="text-[10px] font-black text-white uppercase tracking-tight">Connection Detail</span>
             </div>
             <div className="space-y-1.5">
+              {(() => {
+                const sDev = devices?.find(d => d.id === hoveredLine.connection.source_device_id)
+                const tDev = devices?.find(d => d.id === hoveredLine.connection.target_device_id)
+                return (
+                  <div className="flex flex-col gap-1 border-b border-white/5 pb-1.5 mb-1.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[8px] text-blue-400 font-bold uppercase truncate max-w-[90px]">{sDev?.name}</span>
+                      <span className="text-[8px] text-slate-500 font-mono">{sDev?.management_ip || 'No IP'}</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-[8px] text-emerald-400 font-bold uppercase truncate max-w-[90px]">{tDev?.name}</span>
+                      <span className="text-[8px] text-slate-500 font-mono">{tDev?.management_ip || 'No IP'}</span>
+                    </div>
+                  </div>
+                )
+              })()}
               <div className="flex justify-between items-center gap-4">
                 <span className="text-[7px] text-slate-500 font-bold uppercase">Source Port</span>
                 <span className="text-[9px] text-blue-300 font-mono">{hoveredLine.connection.source_port || 'Auto'}</span>
@@ -274,8 +290,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections }
                 <span className="text-[9px] text-emerald-400 font-bold">{hoveredLine.connection.speed_gbps || '10'} Gbps</span>
               </div>
               <div className="flex justify-between items-center gap-4">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">Cable</span>
-                <span className="text-[9px] text-amber-400 font-bold uppercase">{hoveredLine.connection.cable_type || 'DAC'}</span>
+                <span className="text-[7px] text-slate-500 font-bold uppercase">Type</span>
+                <span className="text-[9px] text-amber-400 font-bold uppercase">{hoveredLine.connection.link_type || hoveredLine.connection.purpose || 'Data'}</span>
               </div>
             </div>
           </motion.div>
@@ -1100,6 +1116,20 @@ export default function RackTemp() {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const deleteSiteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/api/v1/sites/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sites'] })
+      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+      toast.success('Site decommissioned')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
   const rackMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = data.id
@@ -1391,7 +1421,7 @@ export default function RackTemp() {
                           <Edit2 size={9} /> Edit Site
                         </button>
                         <div className="h-px bg-white/5 my-1" />
-                        <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone.`, () => siteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
+                        <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone. All racks will be unassigned but keep historical site name.`, () => deleteSiteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
                           className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors">
                           <Trash2 size={9} /> Decommission
                         </button>
@@ -1415,6 +1445,7 @@ export default function RackTemp() {
             targetDeviceIds={focusedConnection.targetIds}
             racks={racks}
             connections={connections}
+            devices={devices}
           />
         )}
 
@@ -1543,13 +1574,13 @@ export default function RackTemp() {
             </div>
           </motion.div>
         </div>
-        )}
+      )}
 
-        {/* Options Context Menu */}
-        {optionsMenu && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[520px] p-8 rounded-3xl space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
+      {/* Provision Modal */}
+      {isProvisioning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="glass-panel w-[520px] p-8 rounded-3xl space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
               
               {/* Modal Header */}
               <div className="flex items-center justify-between">

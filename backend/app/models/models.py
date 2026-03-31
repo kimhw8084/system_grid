@@ -43,6 +43,7 @@ class Rack(Base, BaseMixin):
     pdu_b_id = Column(String)
     is_deleted = Column(Boolean, default=False)
     order_index = Column(Integer, default=0)
+    last_site_name = Column(String, nullable=True) # Historical record for unassigned racks
     room = relationship("Room", back_populates="racks")
     device_locations = relationship("DeviceLocation", back_populates="rack", cascade="all, delete-orphan")
 
@@ -197,7 +198,8 @@ class PortConnection(Base, BaseMixin):
     source_port = Column(String)
     target_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
     target_port = Column(String)
-    purpose = Column(String)
+    link_type = Column(String)  # Renamed from purpose
+    purpose = Column(Text)     # New description field
     speed_gbps = Column(Float)
     unit = Column(String)
     direction = Column(String)
