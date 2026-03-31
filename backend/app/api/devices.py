@@ -210,6 +210,18 @@ async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_d
             
             iface_dict["connection"] = {
                 "id": conn.id,
+                "source_device_id": conn.source_device_id,
+                "target_device_id": conn.target_device_id,
+                "source_port": conn.source_port,
+                "target_port": conn.target_port,
+                "source_ip": conn.source_ip,
+                "target_ip": conn.target_ip,
+                "source_mac": conn.source_mac,
+                "target_mac": conn.target_mac,
+                "source_vlan": conn.source_vlan,
+                "target_vlan": conn.target_vlan,
+                "direction": conn.direction,
+                "unit": conn.unit,
                 "peer_device_id": peer_device_id,
                 "peer_device_name": peer_dev.name if peer_dev else "Unknown",
                 "peer_port": peer_port,

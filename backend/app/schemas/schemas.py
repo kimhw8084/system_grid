@@ -62,6 +62,7 @@ class DeviceBase(BaseModel):
     vendor: Optional[str] = None
     purchase_order: Optional[str] = None
     cost_center: Optional[str] = None
+    role: Optional[str] = None
     
     purchase_date: Optional[str] = None
     install_date: Optional[str] = None

@@ -77,6 +77,7 @@ class Device(Base, BaseMixin):
     install_date = Column(DateTime, nullable=True)
     warranty_end = Column(DateTime, nullable=True)
     eol_date = Column(DateTime, nullable=True)
+    role = Column(String) # Role description of the asset
     
     power_supply_count = Column(Integer, default=2)
     power_max_w = Column(Float, default=0.0)

@@ -501,6 +501,12 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         <span className="text-blue-400 font-black uppercase tracking-[0.2em] text-[12px]">{selectedAsset.system}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
                         <span className="text-slate-500 font-black uppercase tracking-[0.1em] text-[10px]">{selectedAsset.type} // {selectedAsset.environment}</span>
+                        {selectedAsset.role && (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                            <span className="text-indigo-400 font-black uppercase tracking-[0.1em] text-[10px] italic">Role: {selectedAsset.role}</span>
+                          </>
+                        )}
                       </div>
                    </div>
                 </div>
@@ -789,8 +795,8 @@ export default function AssetTemp() {
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'text-center pl-2', 
-      headerClass: 'text-center pl-2', 
+      cellClass: 'flex items-center justify-center pl-0', 
+      headerClass: 'flex items-center justify-center pl-0', 
       suppressSizeToFit: true,
       resizable: false
     },
@@ -1183,7 +1189,14 @@ export default function AssetTemp() {
         title="Asset Registry Enumerations"
         sections={[
             { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
+            { title: "Device Types", category: "DeviceType", icon: Box },
             { title: "Business Units", category: "BusinessUnit", icon: Sliders },
+            { title: "Manufacturers", category: "Manufacturer", icon: Cpu },
+            { title: "Models", category: "Model", icon: Server },
+            { title: "Owners / Admins", category: "Owner", icon: Database },
+            { title: "Vendors", category: "Vendor", icon: Globe },
+            { title: "Service Types", category: "ServiceType", icon: Layers },
+            { title: "Link Purposes", category: "LinkPurpose", icon: Network },
         ]}
       />
 
@@ -1486,46 +1499,95 @@ const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink:
       <AnimatePresence>
         {selectedConnection && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-slate-900 border border-white/10 rounded-[30px] p-8 w-[400px] shadow-2xl space-y-6"
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} 
+              className="glass-panel w-[550px] p-10 rounded-[40px] border border-emerald-500/30 space-y-8"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase text-emerald-400 flex items-center gap-2">
-                  <LinkIcon size={18} /> Link Established
-                </h3>
-                <button onClick={() => setSelectedConnection(null)} className="text-slate-500 hover:text-white transition-colors"><X size={18}/></button>
-              </div>
+               <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-emerald-400">
+                     <Network size={28} />
+                     <span>Connection Forensics</span>
+                  </h2>
+                  <button onClick={() => setSelectedConnection(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+               </div>
 
-              <div className="space-y-4">
-                <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex flex-col items-center text-center">
-                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Peer Entity</span>
-                  <span className="text-lg font-black text-white uppercase">{selectedConnection.peer_device_name}</span>
-                  <span className="text-[10px] text-blue-400 font-mono mt-1">{selectedConnection.peer_ip || 'No IP Assigned'}</span>
-                  {selectedConnection.peer_mac && <span className="text-[8px] text-slate-500 font-mono mt-0.5">{selectedConnection.peer_mac}</span>}
-                  {selectedConnection.peer_vlan && <span className="mt-1 bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest">VLAN {selectedConnection.peer_vlan}</span>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                    <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Peer Port</span>
-                    <span className="text-[10px] font-bold text-white uppercase">{selectedConnection.peer_port}</span>
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                     <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-blue-500/30">SOURCE ENTITY</div>
+                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
+                        <p className="text-lg font-black text-white truncate">{selectedConnection.source_device_name || selectedConnection.server_a}</p>
+                        <div className="mt-4 space-y-2">
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
+                              <span className="text-[10px] font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">{selectedConnection.source_port}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
+                              <span className="text-[10px] font-mono text-white">{selectedConnection.source_ip || selectedConnection.local_ip || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
+                              <span className="text-[10px] font-mono text-slate-400">{selectedConnection.source_mac || selectedConnection.local_mac || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
+                              <span className="text-[10px] font-black text-indigo-400">{selectedConnection.source_vlan || selectedConnection.local_vlan || '-'}</span>
+                           </div>
+                        </div>
+                     </div>
                   </div>
-                  <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                    <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Link Speed</span>
-                    <span className="text-[10px] font-bold text-indigo-400">{selectedConnection.speed_gbps} Gbps</span>
+
+                  <div className="space-y-4">
+                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-emerald-500/30">PEER ENTITY</div>
+                        <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
+                        <p className="text-lg font-black text-white truncate">{selectedConnection.peer_device_name || selectedConnection.server_b}</p>
+                        <div className="mt-4 space-y-2">
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Port</span>
+                              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">{selectedConnection.peer_port || selectedConnection.target_port}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">IP Address</span>
+                              <span className="text-[10px] font-mono text-white">{selectedConnection.peer_ip || selectedConnection.target_ip || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">MAC Address</span>
+                              <span className="text-[10px] font-mono text-slate-400">{selectedConnection.peer_mac || selectedConnection.target_mac || '-'}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
+                              <span className="text-[10px] font-black text-indigo-400">{selectedConnection.peer_vlan || selectedConnection.target_vlan || '-'}</span>
+                           </div>
+                        </div>
+                     </div>
                   </div>
-                </div>
 
-                <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-center">
-                  <span className="text-[7px] font-black text-slate-500 uppercase block mb-1">Link Type / Purpose</span>
-                  <span className="text-[10px] font-bold text-amber-400 uppercase">{selectedConnection.link_type || 'Data Fabric'}</span>
-                  {selectedConnection.purpose && <p className="text-[8px] text-slate-500 mt-1 italic">{selectedConnection.purpose}</p>}
-                </div>
-              </div>
+                  <div className="col-span-2 p-6 bg-white/5 border border-white/5 rounded-[30px] space-y-4">
+                     <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Fabric Speed</p>
+                           <p className="text-sm font-black text-indigo-400">{selectedConnection.speed_gbps || selectedConnection.speed || '-'}</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Topology</p>
+                           <p className="text-sm font-black text-white">{selectedConnection.link_type || '-'}</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Traffic Mode</p>
+                           <p className="text-sm font-black text-amber-400">{selectedConnection.direction || '-'}</p>
+                        </div>
+                     </div>
+                     <div className="pt-4 border-t border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
+                        <p className="text-xs text-slate-300 italic">{selectedConnection.purpose || 'No description provided for this interconnect.'}</p>
+                     </div>
+                  </div>
+               </div>
 
-              <button onClick={() => setSelectedConnection(null)} className="w-full py-3 bg-white/5 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase hover:bg-white/10 transition-all">
-                Dismiss
-              </button>
+               <button onClick={() => setSelectedConnection(null)} className="w-full py-4 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95">
+                  Dismiss Forensics
+               </button>
             </motion.div>
           </div>,
           document.body
@@ -1556,13 +1618,35 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     queryFn: async () => (await (await apiFetch(`/api/v1/security/firewall?device_id=${deviceId}`)).json()) 
   })
 
-  const { data: devices } = useQuery({ 
-    queryKey: ['devices-list-simple'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
+  const { data: interfaces } = useQuery({ 
+    queryKey: ['device-interfaces', deviceId], 
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
   })
 
-  const mutation = useMutation({
-    mutationFn: async (data: any) => {
+  const { data: selectedDevice } = useQuery({
+    queryKey: ['device-detail', deviceId],
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
+  })
+
+  const { data: devices } = useQuery({
+    queryKey: ['devices-list-simple'],
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json())
+  })
+
+  const availableIPs = useMemo(() => {
+    const ips: any[] = []
+    if (selectedDevice?.primary_ip) ips.push({ value: selectedDevice.primary_ip, label: `Primary: ${selectedDevice.primary_ip}` })
+    if (selectedDevice?.management_ip) ips.push({ value: selectedDevice.management_ip, label: `Mgmt: ${selectedDevice.management_ip}` })
+    interfaces?.forEach((i: any) => {
+      const portIP = i.connection?.local_ip || i.ip_address
+      if (portIP && portIP !== selectedDevice?.primary_ip && portIP !== selectedDevice?.management_ip) {
+        ips.push({ value: portIP, label: `Port ${i.name}: ${portIP}` })
+      }
+    })
+    return ips
+  }, [selectedDevice, interfaces])
+
+  const mutation = useMutation({    mutationFn: async (data: any) => {
       const res = await apiFetch('/api/v1/security/firewall', {
         method: 'POST',
         body: JSON.stringify(data)
@@ -1574,7 +1658,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
       queryClient.invalidateQueries({ queryKey: ['device-firewall', deviceId] })
       setNewRule({ 
         name: '', risk: '', source_type: 'Custom IP', source_custom_ip: '', 
-        dest_type: 'Device', dest_device_id: deviceId, protocol: 'TCP', port_range: '', 
+        dest_type: 'Device', dest_device_id: deviceId, dest_custom_ip: '', protocol: 'TCP', port_range: '', 
         direction: 'Inbound', action: 'Allow' 
       })
       toast.success('Firewall Exception Recorded')
@@ -1623,6 +1707,15 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
           <div>
             <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Port(s)</label>
             <input value={newRule.port_range} onChange={e => setNewRule({...newRule, port_range: e.target.value})} placeholder="e.g. 443, 1433" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <StyledSelect
+              label="Destination IP *"
+              value={newRule.dest_custom_ip || ''}
+              onChange={e => setNewRule({...newRule, dest_custom_ip: e.target.value})}
+              options={availableIPs}
+              placeholder="Select Target IP..."
+            />
           </div>
           <div className="col-span-1">
             <StyledSelect
@@ -1691,9 +1784,10 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                     ) : (r.source_custom_ip || 'ANY')}
                   </td>
                   <td className="px-4 py-3 font-mono text-slate-400">
-                    {r.dest_type === 'Device' ? (
-                      <span className="text-emerald-400 font-bold">{r.dest_device_name}</span>
-                    ) : (r.dest_custom_ip || 'ANY')}
+                    <div className="flex flex-col">
+                      <span className="text-emerald-400 font-bold uppercase">{r.dest_device_name || 'THIS ASSET'}</span>
+                      {r.dest_custom_ip && <span className="text-[9px] text-white opacity-60 italic">{r.dest_custom_ip}</span>}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-indigo-400 font-bold">
@@ -2435,6 +2529,15 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                   onChange={e => setFormData({...formData, name: e.target.value})} 
                   className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
                   placeholder="SRV-NAME-01" 
+                />
+             </div>
+             <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Asset Role / Description</label>
+                <input 
+                  value={formData.role || ''} 
+                  onChange={e => setFormData({...formData, role: e.target.value})} 
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all" 
+                  placeholder="Primary ERP Database Node" 
                 />
              </div>
              <StyledSelect

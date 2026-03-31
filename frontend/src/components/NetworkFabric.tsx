@@ -101,6 +101,7 @@ export default function NetworkFabric() {
       cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic">-</span>
     },
     { field: "link_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
+    { field: "purpose", headerName: "Purpose", flex: 1.5, cellClass: 'text-xs text-slate-400 italic', headerClass: 'text-left', cellRenderer: (p: any) => p.value || <span className="text-slate-700">-</span> },
     { field: "speed", headerName: "Gbps", width: 80, cellClass: "font-mono text-blue-300 text-center", headerClass: 'text-center' },
     {
       headerName: "Ops",

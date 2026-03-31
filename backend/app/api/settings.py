@@ -106,6 +106,24 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     elif opt.category == "LogicalSystem":
         res = await db.execute(select(models.Device).filter(models.Device.system == opt.value))
         if res.scalars().first(): in_use = True
+    elif opt.category == "Manufacturer":
+        res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Model":
+        res = await db.execute(select(models.Device).filter(models.Device.model == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Owner":
+        res = await db.execute(select(models.Device).filter(models.Device.owner == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "BusinessUnit":
+        res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Vendor":
+        res = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "ServiceType":
+        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
+        if res.scalars().first(): in_use = True
         
     if in_use:
         raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
