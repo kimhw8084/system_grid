@@ -1473,68 +1473,12 @@ const NetworkingTab = ({ deviceId }: { deviceId: number }) => {
     </div>
   )
 }
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[450px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
-              <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-                <Network size={24}/>
-                <span>{editingInterface ? 'Modify Interface' : 'New NIC Registration'}</span>
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Interface Name *</label>
-                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. eth0, bond0, mgmt" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">IP Address</label>
-                    <input value={formData.ip_address} onChange={e => setFormData({...formData, ip_address: e.target.value})} placeholder="10.0.0.1" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">MAC Address</label>
-                    <input value={formData.mac_address} onChange={e => setFormData({...formData, mac_address: e.target.value})} placeholder="00:11:22:33:44:55" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">VLAN ID</label>
-                    <input type="number" value={formData.vlan_id} onChange={e => setFormData({...formData, vlan_id: e.target.value})} placeholder="e.g. 100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Speed (Gbps)</label>
-                    <input type="number" value={formData.link_speed_gbps} onChange={e => setFormData({...formData, link_speed_gbps: parseInt(e.target.value)})} placeholder="10" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-                  </div>
-                </div>
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <button onClick={() => setShowModal(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-                <button onClick={() => {
-                  if(!formData.name) return toast.error("Interface name is required")
-                  mutation.mutate(formData)
-                }} className="flex-2 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-                  Commit Change
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null })}
-        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
-        title="Remove Interface"
-        message="Are you sure you want to purge this network interface? This may affect dependency vectors."
-        variant="danger"
-      />
-    </div>
-  )
-}
 
 const SecurityTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const [newRule, setNewRule] = useState({ 
     name: '', 
-    description: '', 
+    risk: '', 
     source_type: 'Custom IP', 
     source_custom_ip: '', 
     dest_type: 'Device', 
@@ -1568,7 +1512,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-firewall', deviceId] })
       setNewRule({ 
-        name: '', description: '', source_type: 'Custom IP', source_custom_ip: '', 
+        name: '', risk: '', source_type: 'Custom IP', source_custom_ip: '', 
         dest_type: 'Device', dest_device_id: deviceId, protocol: 'TCP', port_range: '', 
         direction: 'Inbound', action: 'Allow' 
       })
@@ -1597,9 +1541,14 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
         <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-4">Request Firewall Exception</h3>
         <div className="grid grid-cols-4 gap-4">
           <div className="col-span-2">
-            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Rule Purpose / Name</label>
+            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Rule Name</label>
             <input value={newRule.name} onChange={e => setNewRule({...newRule, name: e.target.value})} placeholder="e.g. DB Access for Client X" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
           </div>
+          <div className="col-span-2">
+            <label className="text-[9px] font-black text-rose-400 uppercase block mb-1 px-1">Risk / Impact if Missing</label>
+            <input value={newRule.risk} onChange={e => setNewRule({...newRule, risk: e.target.value})} placeholder="e.g. Critical service outage for production grid" className="w-full bg-slate-900 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-rose-500" />
+          </div>
+        </div>
           <div>
             <StyledSelect
               label="Protocol"
@@ -1670,7 +1619,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className="font-bold text-white uppercase">{r.name}</span>
-                      <span className="text-[8px] text-slate-500">{r.description || 'No additional details'}</span>
+                      <span className="text-[8px] text-rose-400 font-bold uppercase tracking-tight">{r.risk || 'Risk not assessed'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-slate-400">

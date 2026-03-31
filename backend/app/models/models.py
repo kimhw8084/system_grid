@@ -264,7 +264,7 @@ class MonitoringItem(Base, BaseMixin):
 class FirewallRule(Base, BaseMixin):
     __tablename__ = "firewall_rules"
     name = Column(String, index=True)
-    description = Column(Text)
+    risk = Column(Text) # Business impact if rule is missing
     
     # Source Configuration
     source_type = Column(String) # Device, Subnet, Custom IP, Any

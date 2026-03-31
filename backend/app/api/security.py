@@ -28,7 +28,7 @@ def format_rule(rule: models.FirewallRule):
     return {
         "id": rule.id,
         "name": rule.name,
-        "description": rule.description,
+        "risk": rule.risk,
         "source_type": rule.source_type,
         "source_device_id": rule.source_device_id,
         "source_device_name": rule.source_device.name if rule.source_device else None,
@@ -83,7 +83,7 @@ async def create_firewall_rule(data: dict, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     rule = models.FirewallRule(
         name=data.get("name"),
-        description=data.get("description"),
+        risk=data.get("risk"),
         source_type=data.get("source_type", "Custom IP"),
         source_device_id=data.get("source_device_id"),
         source_subnet_id=data.get("source_subnet_id"),
