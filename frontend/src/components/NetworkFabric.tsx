@@ -68,7 +68,12 @@ export default function NetworkFabric() {
       width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
+      cellRenderer: (p: any) => (
+        <div className="flex flex-col items-center justify-center">
+          <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none mb-0.5">{p.value}</span>
+          {p.data.source_ip && <span className="text-[8px] text-blue-400 font-mono leading-none">{p.data.source_ip}</span>}
+        </div>
+      )
     },
     { 
       headerName: "Peer", 
@@ -83,7 +88,12 @@ export default function NetworkFabric() {
       width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono">{p.value}</span>
+      cellRenderer: (p: any) => (
+        <div className="flex flex-col items-center justify-center">
+          <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 rounded font-mono leading-none mb-0.5">{p.value}</span>
+          {p.data.target_ip && <span className="text-[8px] text-emerald-400 font-mono leading-none">{p.data.target_ip}</span>}
+        </div>
+      )
     },
     { field: "link_type", headerName: "Type", width: 110, cellClass: 'text-center', headerClass: 'text-center' },
     { field: "purpose", headerName: "Purpose", flex: 1.5, cellClass: 'text-center text-slate-400', headerClass: 'text-center' },
@@ -198,6 +208,10 @@ export default function NetworkFabric() {
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
                   <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
                 </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source IP</label>
+                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                </div>
                 <StyledSelect
                     label="Direction"
                     value={connData.direction}
@@ -216,6 +230,10 @@ export default function NetworkFabric() {
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
                   <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
+                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
                 </div>
                 <StyledSelect
                     label="Link Type *"

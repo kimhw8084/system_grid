@@ -268,11 +268,11 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
                   <div className="flex flex-col gap-1 border-b border-white/5 pb-1.5 mb-1.5">
                     <div className="flex justify-between items-center gap-2">
                       <span className="text-[8px] text-blue-400 font-bold uppercase truncate max-w-[90px]">{sDev?.name}</span>
-                      <span className="text-[8px] text-slate-500 font-mono">{sDev?.management_ip || 'No IP'}</span>
+                      <span className="text-[8px] text-slate-500 font-mono">{hoveredLine.connection.source_ip || 'No IP'}</span>
                     </div>
                     <div className="flex justify-between items-center gap-2">
                       <span className="text-[8px] text-emerald-400 font-bold uppercase truncate max-w-[90px]">{tDev?.name}</span>
-                      <span className="text-[8px] text-slate-500 font-mono">{tDev?.management_ip || 'No IP'}</span>
+                      <span className="text-[8px] text-slate-500 font-mono">{hoveredLine.connection.target_ip || 'No IP'}</span>
                     </div>
                   </div>
                 )

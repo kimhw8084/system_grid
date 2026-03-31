@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -1495,7 +1495,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
               label="Source Type"
               value={newRule.source_type}
               onChange={e => setNewRule({...newRule, source_type: e.target.value})}
-              options={[{value: 'Device', label: 'Device'}, {value: 'Custom IP', label: 'Custom IP/CIDR'}, {value: 'Any', label: 'Any'}]}
+              options={[{value: 'Device', label: 'Device'}, {value: 'Custom IP', label: 'Custom IP/CIDR'}, {value: 'Description', label: 'Description'}]}
             />
           </div>
           <div className="col-span-2">
@@ -1508,8 +1508,8 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                 />
              ) : (
                 <>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Source IP / CIDR</label>
-                  <input value={newRule.source_custom_ip} onChange={e => setNewRule({...newRule, source_custom_ip: e.target.value})} placeholder="e.g. 10.0.0.1 or 0.0.0.0/0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">{newRule.source_type === 'Description' ? 'Source Description' : 'Source IP / CIDR'}</label>
+                  <input value={newRule.source_custom_ip} onChange={e => setNewRule({...newRule, source_custom_ip: e.target.value})} placeholder={newRule.source_type === 'Description' ? 'e.g. External Cloud' : 'e.g. 10.0.0.1 or 0.0.0.0/0'} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </>
              )}
           </div>
@@ -1536,7 +1536,6 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                 <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Source</th>
                 <th className="px-4 py-3 text-left font-black uppercase tracking-widest text-slate-500">Destination</th>
                 <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Protocol/Ports</th>
-                <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Action</th>
                 <th className="px-4 py-3 text-center font-black uppercase tracking-widest text-slate-500">Ops</th>
               </tr>
             </thead>
@@ -1565,13 +1564,6 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
-                      r.action === 'Allow' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-rose-400 border-rose-500/20 bg-rose-500/5'
-                    }`}>
-                      {r.action}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
                     <button onClick={() => setConfirmModal({ isOpen: true, id: r.id })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all opacity-0 group-hover:opacity-100">
                       <Trash2 size={14}/>
                     </button>
@@ -1579,7 +1571,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
                 </tr>
               ))}
               {!rules?.length && (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest bg-black/5">No active firewall exceptions for this asset</td></tr>
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest bg-black/5">No active firewall exceptions for this asset</td></tr>
               )}
             </tbody>
           </table>

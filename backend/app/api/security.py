@@ -80,6 +80,7 @@ async def get_firewall_rules(
 
 @router.post("/firewall")
 async def create_firewall_rule(data: dict, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy.orm import selectinload
     rule = models.FirewallRule(
         name=data.get("name"),
         description=data.get("description"),
@@ -99,11 +100,24 @@ async def create_firewall_rule(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(rule)
     await db.commit()
-    await db.refresh(rule)
+    
+    # Refresh with selectinload to avoid MissingGreenlet
+    result = await db.execute(
+        select(models.FirewallRule)
+        .options(
+            selectinload(models.FirewallRule.source_device),
+            selectinload(models.FirewallRule.source_subnet),
+            selectinload(models.FirewallRule.dest_device),
+            selectinload(models.FirewallRule.dest_subnet)
+        )
+        .filter(models.FirewallRule.id == rule.id)
+    )
+    rule = result.scalar_one()
     return format_rule(rule)
 
 @router.put("/firewall/{rule_id}")
 async def update_firewall_rule(rule_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy.orm import selectinload
     result = await db.execute(select(models.FirewallRule).filter(models.FirewallRule.id == rule_id))
     rule = result.scalar_one_or_none()
     if not rule: raise HTTPException(404, "Rule not found")
@@ -113,7 +127,19 @@ async def update_firewall_rule(rule_id: int, data: dict, db: AsyncSession = Depe
             setattr(rule, key, value)
             
     await db.commit()
-    await db.refresh(rule)
+    
+    # Refresh with selectinload to avoid MissingGreenlet
+    result = await db.execute(
+        select(models.FirewallRule)
+        .options(
+            selectinload(models.FirewallRule.source_device),
+            selectinload(models.FirewallRule.source_subnet),
+            selectinload(models.FirewallRule.dest_device),
+            selectinload(models.FirewallRule.dest_subnet)
+        )
+        .filter(models.FirewallRule.id == rule_id)
+    )
+    rule = result.scalar_one()
     return format_rule(rule)
 
 @router.delete("/firewall/{rule_id}")

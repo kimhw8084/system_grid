@@ -196,8 +196,10 @@ class PortConnection(Base, BaseMixin):
     __tablename__ = "port_connections"
     source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
     source_port = Column(String)
+    source_ip = Column(String, nullable=True)
     target_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
     target_port = Column(String)
+    target_ip = Column(String, nullable=True)
     link_type = Column(String)  # Renamed from purpose
     purpose = Column(Text)     # New description field
     speed_gbps = Column(Float)

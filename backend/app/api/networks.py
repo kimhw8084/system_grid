@@ -62,10 +62,12 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
             "server_a": dev_a.name if dev_a else "Unknown",
             "source_port": c.source_port,
             "port_a": c.source_port,
+            "source_ip": c.source_ip,
             "target_device_id": c.target_device_id,
             "server_b": dev_b.name if dev_b else "Unknown",
             "target_port": c.target_port,
             "port_b": c.target_port,
+            "target_ip": c.target_ip,
             "speed": f"{c.speed_gbps} {c.unit}" if c.speed_gbps else "Unknown",
             "speed_gbps": c.speed_gbps,
             "unit": c.unit,
@@ -105,8 +107,10 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
     conn = models.PortConnection(
         source_device_id=source_device_id,
         source_port=source_port,
+        source_ip=data.get('source_ip'),
         target_device_id=target_device_id,
         target_port=target_port,
+        target_ip=data.get('target_ip'),
         link_type=data.get('link_type') or data.get('purpose'), # Support migration
         purpose=data.get('purpose_desc') or data.get('purpose') if 'purpose_desc' in data else None,
         speed_gbps=data.get('speed_gbps'),
@@ -145,8 +149,10 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     
     if 'device_a_id' in data: conn.source_device_id = data['device_a_id']
     if 'port_a' in data: conn.source_port = data['port_a']
+    if 'source_ip' in data: conn.source_ip = data['source_ip']
     if 'device_b_id' in data: conn.target_device_id = data['device_b_id']
     if 'port_b' in data: conn.target_port = data['port_b']
+    if 'target_ip' in data: conn.target_ip = data['target_ip']
     if 'link_type' in data: conn.link_type = data['link_type']
     if 'purpose' in data: conn.purpose = data['purpose']
     if 'speed_gbps' in data: conn.speed_gbps = data['speed_gbps']
