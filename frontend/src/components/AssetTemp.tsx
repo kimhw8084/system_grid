@@ -765,11 +765,26 @@ export default function AssetTemp() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", maxWidth: 48, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4', suppressSizeToFit: true },
+    { 
+      field: "id", 
+      headerName: "", 
+      width: 40,
+      minWidth: 40,
+      maxWidth: 40,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'text-center pl-2', 
+      headerClass: 'text-center pl-2', 
+      suppressSizeToFit: true,
+      resizable: false
+    },
     { 
       field: "name", 
       headerName: "name", 
       pinned: 'left',
+      minWidth: 120,
+      flex: 1.5,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -777,14 +792,15 @@ export default function AssetTemp() {
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { 
       field: "type", 
       headerName: "Type", 
+      width: 90,
+      minWidth: 90,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      
       cellRenderer: (p: any) => {
         const colors: any = {
           Physical: 'text-emerald-400',
@@ -800,6 +816,8 @@ export default function AssetTemp() {
     { 
       field: "status", 
       headerName: "Status", 
+      width: 100,
+      minWidth: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -824,15 +842,17 @@ export default function AssetTemp() {
       }
     },
 
-    { field: "environment", headerName: "Env", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "owner", headerName: "Owner", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "manufacturer", headerName: "Make", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "model", headerName: "Model", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_name", headerName: "OS", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_version", headerName: "Ver", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
+      width: 100,
+      minWidth: 100,
       cellClass: 'text-center font-mono text-[9px] text-blue-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter'
@@ -840,6 +860,8 @@ export default function AssetTemp() {
     { 
       field: "management_ip", 
       headerName: "Mgmt IP", 
+      width: 100,
+      minWidth: 100,
       cellClass: 'text-center font-mono text-[9px] text-indigo-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter'
@@ -847,6 +869,8 @@ export default function AssetTemp() {
     { 
       field: "hardware_summary", 
       headerName: "Resources", 
+      minWidth: 120,
+      flex: 1,
       cellClass: 'text-center font-black uppercase text-[8px] text-slate-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter'
@@ -854,6 +878,8 @@ export default function AssetTemp() {
     { 
       field: "hardware_age", 
       headerName: "Age", 
+      width: 70,
+      minWidth: 70,
       cellClass: 'text-center font-black text-[9px] text-slate-500',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter'
@@ -861,6 +887,8 @@ export default function AssetTemp() {
     { 
       field: "open_incident_count", 
       headerName: "Health", 
+      width: 60,
+      minWidth: 60,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value > 0 ? (
@@ -875,11 +903,13 @@ export default function AssetTemp() {
       )
     },
 
-    { field: "site_name", headerName: "Site", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "rack_name", headerName: "Rack", cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "site_name", headerName: "Site", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "rack_name", headerName: "Rack", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
     { 
       field: "depth", 
       headerName: "Depth", 
+      width: 70,
+      minWidth: 70,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -888,20 +918,25 @@ export default function AssetTemp() {
     { 
       field: "mount_orientation", 
       headerName: "Mount", 
+      width: 80,
+      minWidth: 80,
       cellClass: 'text-center', 
       headerClass: 'text-center', 
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>
     },
-    { field: "u_start", headerName: "U Pos", cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "size_u", headerName: "Size", cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "power_typical_w", headerName: "Avg W", cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
-    { field: "power_max_w", headerName: "Max W", cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
+    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
+    { field: "power_typical_w", headerName: "Avg W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "power_max_w", headerName: "Max W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     {
       headerName: "Action",
+      width: 120,
+      minWidth: 120,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
+      resizable: false,
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
