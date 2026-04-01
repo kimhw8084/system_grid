@@ -851,6 +851,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
 
 export default function AssetTemp() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [viewMode, setViewMode] = useState<'grid' | 'report'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
@@ -859,6 +860,8 @@ export default function AssetTemp() {
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
@@ -977,7 +980,8 @@ export default function AssetTemp() {
       suppressSizeToFit: true,
       resizable: false,
       sortable: false,
-      filter: false
+      filter: false,
+      suppressHide: true
     },
     { 
       field: "name", 
@@ -990,9 +994,10 @@ export default function AssetTemp() {
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
         <span className="text-blue-400 pl-2">{p.value}</span>
-      )
+      ),
+      hide: hiddenColumns.includes("name")
     },
-    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("system") },
     { 
       field: "type", 
       headerName: "Type", 
@@ -1011,7 +1016,8 @@ export default function AssetTemp() {
           'Load Balancer': 'text-purple-400'
         }
         return <span className={`font-black uppercase text-[9px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
-      }
+      },
+      hide: hiddenColumns.includes("type")
     },
     { 
       field: "status", 
@@ -1039,15 +1045,16 @@ export default function AssetTemp() {
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("status")
     },
 
-    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("environment") },
+    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("owner") },
+    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("manufacturer") },
+    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("model") },
+    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_name") },
+    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_version") },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
@@ -1055,7 +1062,8 @@ export default function AssetTemp() {
       minWidth: 100,
       cellClass: 'text-center font-mono text-[9px] text-blue-400',
       headerClass: 'text-center',
-      filter: 'agTextColumnFilter'
+      filter: 'agTextColumnFilter',
+      hide: hiddenColumns.includes("primary_ip")
     },
     { 
       field: "management_ip", 
@@ -1064,7 +1072,8 @@ export default function AssetTemp() {
       minWidth: 100,
       cellClass: 'text-center font-mono text-[9px] text-indigo-400',
       headerClass: 'text-center',
-      filter: 'agTextColumnFilter'
+      filter: 'agTextColumnFilter',
+      hide: hiddenColumns.includes("management_ip")
     },
     { 
       field: "hardware_summary", 
@@ -1073,7 +1082,8 @@ export default function AssetTemp() {
       flex: 1,
       cellClass: 'text-center font-black uppercase text-[8px] text-slate-400',
       headerClass: 'text-center',
-      filter: 'agTextColumnFilter'
+      filter: 'agTextColumnFilter',
+      hide: hiddenColumns.includes("hardware_summary")
     },
     { 
       field: "hardware_age", 
@@ -1082,7 +1092,8 @@ export default function AssetTemp() {
       minWidth: 70,
       cellClass: 'text-center font-black text-[9px] text-slate-500',
       headerClass: 'text-center',
-      filter: 'agTextColumnFilter'
+      filter: 'agTextColumnFilter',
+      hide: hiddenColumns.includes("hardware_age")
     },
     { 
       field: "open_incident_count", 
@@ -1100,11 +1111,12 @@ export default function AssetTemp() {
         </div>
       ) : (
         <div className="flex items-center justify-center h-full text-emerald-500/30"><Check size={12}/></div>
-      )
+      ),
+      hide: hiddenColumns.includes("open_incident_count")
     },
 
-    { field: "site_name", headerName: "Site", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "rack_name", headerName: "Rack", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "site_name", headerName: "Site", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("site_name") },
+    { field: "rack_name", headerName: "Rack", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("rack_name") },
     { 
       field: "depth", 
       headerName: "Depth", 
@@ -1113,7 +1125,8 @@ export default function AssetTemp() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[8px]">{p.value || 'Full'}</span>
+      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[8px]">{p.value || 'Full'}</span>,
+      hide: hiddenColumns.includes("depth")
     },
     { 
       field: "mount_orientation", 
@@ -1123,12 +1136,13 @@ export default function AssetTemp() {
       cellClass: 'text-center', 
       headerClass: 'text-center', 
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>
+      cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>,
+      hide: hiddenColumns.includes("mount_orientation")
     },
-    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "power_typical_w", headerName: "Avg W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
-    { field: "power_max_w", headerName: "Max W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("u_start") },
+    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
+    { field: "power_typical_w", headerName: "Avg W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
+    { field: "power_max_w", headerName: "Max W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
     {
       headerName: "Action",
       width: 120,
@@ -1154,13 +1168,36 @@ export default function AssetTemp() {
                )}
            </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
-  ], [activeTab]) as any
+  ], [activeTab, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
   }), []);
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_Assets_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false, // only currently viewed columns
+        onlySelected: false // everything in view (filtered, etc)
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      // Ag-Grid Community doesn't have a direct copy-to-clipboard API for the whole grid
+      // but we can export as CSV and put it in clipboard, or just use the built-in copy
+      // but the built-in copy is usually for selected cells.
+      // Let's implement a simple CSV string generation or use the export CSV and tell them it's downloaded.
+      // Alternatively, we can use navigator.clipboard.
+      toast.info("Exporting to CSV instead for reliability")
+      handleExportCSV()
+    }
+  }
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -1205,6 +1242,15 @@ export default function AssetTemp() {
                </button>
             </div>
 
+            <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+               <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                  <Sliders size={16} />
+               </button>
+               <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                  <FileText size={16} />
+               </button>
+            </div>
+
             <div className="relative bulk-menu-container">
               <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
               <AnimatePresence>
@@ -1244,6 +1290,7 @@ export default function AssetTemp() {
             </div>
           )}
           <AgGridReact 
+            ref={gridRef}
             rowData={assets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
@@ -1253,6 +1300,51 @@ export default function AssetTemp() {
             quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
           />
+
+          <AnimatePresence>
+            {showColumnPicker && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+              >
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                    <Sliders size={14} /> <span>Toggle Columns</span>
+                  </h3>
+                  <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                  {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                    <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                      <div className="relative flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!hiddenColumns.includes(col.field)}
+                          onChange={() => {
+                            if (hiddenColumns.includes(col.field)) {
+                              setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                            } else {
+                              setHiddenColumns([...hiddenColumns, col.field])
+                            }
+                          }}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                           {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="p-4 border-t border-white/5">
+                   <button onClick={() => setHiddenColumns([])} className="w-full py-2 text-[9px] font-black uppercase text-slate-500 hover:text-white transition-colors">Show All Columns</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       ) : (
         <AssetReportView 
