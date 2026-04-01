@@ -84,6 +84,7 @@ const DETECTION_LEVELS = [
 export default function FAR() {
   const queryClient = useQueryClient()
   const [showWizard, setShowWizard] = useState(false)
+  const [showCauseWizard, setShowCauseWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -162,6 +163,13 @@ export default function FAR() {
                <RefreshCcw size={14} /> Reset Filter
              </button>
            )}
+
+           <button 
+             onClick={() => setShowCauseWizard(true)}
+             className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
+           >
+             <Plus size={16} /> Add Root Cause
+           </button>
 
            <button 
              onClick={() => setShowWizard(true)}
@@ -380,8 +388,10 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
     occurrence: 1,
     detection: 1,
     affected_assets: [],
+    cause_ids: [],
   })
   const [assetSearch, setAssetSearch] = useState('')
+  const [causeSearch, setCauseSearch] = useState('')
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const systems = options?.filter((o: any) => o.category === 'LogicalSystem') || []
@@ -392,6 +402,11 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
     queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${encodeURIComponent(formData.system_name)}`)).json() 
   })
 
+  const { data: allCauses } = useQuery({
+    queryKey: ['far-causes-all'],
+    queryFn: async () => (await apiFetch('/api/v1/far/causes')).json()
+  })
+
   const filteredDevices = useMemo(() => {
     if (!devices) return []
     if (!assetSearch) return devices
@@ -400,6 +415,15 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
       d.model.toLowerCase().includes(assetSearch.toLowerCase())
     )
   }, [devices, assetSearch])
+
+  const filteredCauses = useMemo(() => {
+    if (!allCauses) return []
+    if (!causeSearch) return allCauses
+    return allCauses.filter((c: any) => 
+      c.cause_text.toLowerCase().includes(causeSearch.toLowerCase()) ||
+      c.responsible_team?.toLowerCase().includes(causeSearch.toLowerCase())
+    )
+  }, [allCauses, causeSearch])
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -483,6 +507,45 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
             )}
           </div>
         </section>
+
+        <section className="bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Linked Root Causes</label>
+            <div className="relative">
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <input 
+                value={causeSearch}
+                onChange={e => setCauseSearch(e.target.value)}
+                placeholder="Search causes..."
+                className="bg-black/60 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-rose-500/50 w-32 transition-all"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+            {filteredCauses.map((c: any) => (
+              <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.cause_ids.includes(c.id) ? 'bg-amber-500/20 border-amber-500 text-white shadow-lg shadow-amber-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+                <input type="checkbox" className="hidden" checked={formData.cause_ids.includes(c.id)} onChange={() => {
+                  const next = formData.cause_ids.includes(c.id) ? formData.cause_ids.filter((id: any) => id !== c.id) : [...formData.cause_ids, c.id]
+                  setFormData({ ...formData, cause_ids: next })
+                }} />
+                <Zap size={14} className={formData.cause_ids.includes(c.id) ? 'text-amber-500' : 'text-slate-600'} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{c.cause_text}</p>
+                  <p className="text-[8px] text-slate-500 font-bold uppercase truncate">{c.responsible_team || 'General Ops'}</p>
+                </div>
+                <div className="text-right">
+                   <p className="text-[10px] font-black text-amber-500 italic">{c.occurrence_level}/10</p>
+                </div>
+              </label>
+            ))}
+            {filteredCauses.length === 0 && (
+              <div className="py-8 text-center text-[10px] font-black uppercase text-slate-600 tracking-widest italic">
+                No causes found. Add one first.
+              </div>
+            )}
+          </div>
+        </section>
       </div>
 
       {/* Right: Guided Scoring */}
@@ -530,6 +593,144 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
              {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
              Submit
            </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// --- Root Cause Wizard Component ---
+function CauseWizard({ onComplete }: { onComplete: () => void }) {
+  const [formData, setFormData] = useState<any>({
+    cause_text: '',
+    occurrence_level: 1,
+    responsible_team: '',
+    mode_ids: [],
+  })
+  const [modeSearch, setModeSearch] = useState('')
+
+  const { data: allModes } = useQuery({
+    queryKey: ['far-modes-all'],
+    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json()
+  })
+
+  const filteredModes = useMemo(() => {
+    if (!allModes) return []
+    if (!modeSearch) return allModes
+    return allModes.filter((m: any) => 
+      m.title.toLowerCase().includes(modeSearch.toLowerCase()) ||
+      m.system_name.toLowerCase().includes(modeSearch.toLowerCase())
+    )
+  }, [allModes, modeSearch])
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/causes', { method: 'POST', body: JSON.stringify(data) })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to document root cause')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Root Cause Documented')
+      onComplete()
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  return (
+    <div className="grid grid-cols-12 gap-8">
+      {/* Left: Metadata */}
+      <div className="col-span-7 space-y-6">
+        <section className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Cause Description</label>
+            <textarea 
+              value={formData.cause_text} 
+              onChange={e => setFormData({ ...formData, cause_text: e.target.value })} 
+              placeholder="Describe the technical origin of the failure..." 
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold tracking-tight outline-none focus:border-amber-500/50 transition-all min-h-[120px] text-white custom-scrollbar" 
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Responsible Team / POC</label>
+            <input 
+              value={formData.responsible_team} 
+              onChange={e => setFormData({ ...formData, responsible_team: e.target.value })} 
+              placeholder="e.g. SRE / Network Ops / Database Team" 
+              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase tracking-tight outline-none focus:border-amber-500/50 transition-all text-white" 
+            />
+          </div>
+        </section>
+
+        <section className="bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Link Failure Modes</label>
+            <div className="relative">
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <input 
+                value={modeSearch}
+                onChange={e => setModeSearch(e.target.value)}
+                placeholder="Search modes..."
+                className="bg-black/60 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-amber-500/50 w-32 transition-all"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+            {filteredModes.map((m: any) => (
+              <label key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.mode_ids.includes(m.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+                <input type="checkbox" className="hidden" checked={formData.mode_ids.includes(m.id)} onChange={() => {
+                  const next = formData.mode_ids.includes(m.id) ? formData.mode_ids.filter((id: any) => id !== m.id) : [...formData.mode_ids, m.id]
+                  setFormData({ ...formData, mode_ids: next })
+                }} />
+                <ShieldAlert size={14} className={formData.mode_ids.includes(m.id) ? 'text-rose-500' : 'text-slate-600'} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[7px] font-black px-1 rounded bg-white/10">{m.system_name}</span>
+                    <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{m.title}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                   <p className="text-[10px] font-black text-rose-500 italic">RPN {m.rpn}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* Right: Occurrence & Submit */}
+      <div className="col-span-5 space-y-6">
+        <div className="bg-amber-500/5 p-6 rounded-2xl border border-amber-500/10">
+          <ScoreSelector 
+            label="Occurrence Level (O)" 
+            value={formData.occurrence_level} 
+            onChange={(v) => setFormData({ ...formData, occurrence_level: v })} 
+            levels={OCCURRENCE_LEVELS}
+            color="text-amber-500"
+          />
+        </div>
+
+        <div className="bg-slate-900 rounded-2xl p-6 border border-white/10 space-y-4 shadow-2xl overflow-hidden relative group">
+           <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-transparent pointer-events-none" />
+           <div className="relative z-10 space-y-4">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Summary</p>
+                 <p className="text-[11px] font-bold text-white uppercase leading-tight">Linking to {formData.mode_ids.length} Failure Mode{formData.mode_ids.length !== 1 ? 's' : ''}</p>
+              </div>
+              
+              <button 
+                disabled={!formData.cause_text || !formData.responsible_team || mutation.isPending}
+                onClick={() => mutation.mutate(formData)} 
+                className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:grayscale text-white px-6 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
+                Commit Root Cause
+              </button>
+           </div>
         </div>
       </div>
     </div>

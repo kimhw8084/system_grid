@@ -51,6 +51,13 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         assets = result.scalars().all()
         mode.affected_assets = list(assets)
 
+    # Link Causes
+    if data.get('cause_ids'):
+        stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(data['cause_ids']))
+        result = await db.execute(stmt)
+        causes = result.scalars().all()
+        mode.causes = list(causes)
+
     await db.commit()
     
     # Reload with all relationships to avoid MissingGreenlet during serialization
