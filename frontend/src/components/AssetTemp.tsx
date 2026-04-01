@@ -799,7 +799,9 @@ export default function AssetTemp() {
       cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
       headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
       suppressSizeToFit: true,
-      resizable: false
+      resizable: false,
+      sortable: false,
+      filter: false
     },
     { 
       field: "name", 
@@ -1193,13 +1195,9 @@ export default function AssetTemp() {
         onClose={() => setShowConfig(false)}
         title="Asset Registry Enumerations"
         sections={[
+            { title: "Asset Types", category: "DeviceType", icon: Box },
             { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
-            { title: "Device Types", category: "DeviceType", icon: Box },
-            { title: "Business Units", category: "BusinessUnit", icon: Sliders },
-            { title: "Manufacturers", category: "Manufacturer", icon: Cpu },
-            { title: "Models", category: "Model", icon: Server },
-            { title: "Owners / Admins", category: "Owner", icon: Database },
-            { title: "Vendors", category: "Vendor", icon: Globe }
+            { title: "Business Units", category: "BusinessUnit", icon: Sliders }
         ]}
       />
 
@@ -1553,22 +1551,37 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json())
   })
 
+  const { data: allConnections } = useQuery({ 
+    queryKey: ['all-connections'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+  })
+
   const availableIPs = useMemo(() => {
     const ips: any[] = []
     if (selectedDevice?.primary_ip) ips.push({ value: selectedDevice.primary_ip, label: `Primary: ${selectedDevice.primary_ip}` })
     if (selectedDevice?.management_ip) ips.push({ value: selectedDevice.management_ip, label: `Mgmt: ${selectedDevice.management_ip}` })
     
-    // Add all interface IPs too
-    interfaces?.forEach((i: any) => {
-      const portIP = i.connection?.local_ip || i.ip_address
-      if (portIP) {
-        ips.push({ value: portIP, label: `Port ${i.name}: ${portIP}` })
+    // Add those network entries where the asset is source or peer
+    const relatedConns = allConnections?.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
+    relatedConns.forEach((c: any) => {
+      const isSrc = c.source_device_id === deviceId
+      const ip = isSrc ? c.source_ip : c.target_ip
+      const port = isSrc ? c.source_port : c.target_port
+      if (ip) {
+        ips.push({ value: ip, label: `${ip} [${port}]` })
       }
     })
     
-    // De-duplicate by value if necessary, but keep the labels as they are technically independent entries
-    return ips
-  }, [selectedDevice, interfaces])
+    // Deduplicate IPs
+    const uniqueIPsMap = new Map()
+    ips.forEach(item => {
+      if (!uniqueIPsMap.has(item.value)) {
+        uniqueIPsMap.set(item.value, item)
+      }
+    })
+    
+    return Array.from(uniqueIPsMap.values())
+  }, [selectedDevice, allConnections, deviceId])
 
   const mutation = useMutation({    mutationFn: async (data: any) => {
       const res = await apiFetch('/api/v1/security/firewall', {

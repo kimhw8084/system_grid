@@ -91,15 +91,13 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     # Check usage
     in_use = False
     if opt.category == "Status":
-        res = await db.execute(select(models.Device).filter(models.Device.status == opt.value))
-        if res.scalars().first(): in_use = True
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value))
-        if res.scalars().first(): in_use = True
+        res_dev = await db.execute(select(models.Device).filter(models.Device.status == opt.value))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value))
+        if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "Environment":
-        res = await db.execute(select(models.Device).filter(models.Device.environment == opt.value))
-        if res.scalars().first(): in_use = True
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value))
-        if res.scalars().first(): in_use = True
+        res_dev = await db.execute(select(models.Device).filter(models.Device.environment == opt.value))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value))
+        if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "DeviceType":
         res = await db.execute(select(models.Device).filter(models.Device.type == opt.value))
         if res.scalars().first(): in_use = True
@@ -119,16 +117,17 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value))
         if res.scalars().first(): in_use = True
     elif opt.category == "Vendor":
-        res = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
-        if res.scalars().first(): in_use = True
+        res_dev = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.vendor == opt.value))
+        if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "ServiceType":
         res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
         if res.scalars().first(): in_use = True
         
     if in_use:
-        raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
+        raise HTTPException(status_code=400, detail=f"Cannot delete '{opt.label}' because it is currently assigned to one or more assets or services.")
         
-    db.delete(opt)
+    await db.delete(opt)
     await db.commit()
     return {"status": "success"}
 
