@@ -91,37 +91,37 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     # Check usage
     in_use = False
     if opt.category == "Status":
-        res_dev = await db.execute(select(models.Device).filter(models.Device.status == opt.value))
-        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value))
+        res_dev = await db.execute(select(models.Device).filter(models.Device.status == opt.value, models.Device.is_deleted == False))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value, models.LogicalService.is_deleted == False))
         if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "Environment":
-        res_dev = await db.execute(select(models.Device).filter(models.Device.environment == opt.value))
-        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value))
+        res_dev = await db.execute(select(models.Device).filter(models.Device.environment == opt.value, models.Device.is_deleted == False))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value, models.LogicalService.is_deleted == False))
         if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "DeviceType":
-        res = await db.execute(select(models.Device).filter(models.Device.type == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.type == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "LogicalSystem":
-        res = await db.execute(select(models.Device).filter(models.Device.system == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.system == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "Manufacturer":
-        res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "Model":
-        res = await db.execute(select(models.Device).filter(models.Device.model == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.model == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "Owner":
-        res = await db.execute(select(models.Device).filter(models.Device.owner == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.owner == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "BusinessUnit":
-        res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value))
+        res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "Vendor":
-        res_dev = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
-        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.vendor == opt.value))
+        res_dev = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value, models.Device.is_deleted == False))
+        res_svc = await db.execute(select(models.LogicalService).filter(models.LogicalService.vendor == opt.value, models.LogicalService.is_deleted == False))
         if res_dev.scalars().first() or res_svc.scalars().first(): in_use = True
     elif opt.category == "ServiceType":
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
+        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value, models.LogicalService.is_deleted == False))
         if res.scalars().first(): in_use = True
         
     if in_use:

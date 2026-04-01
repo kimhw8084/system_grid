@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Network, X, Edit2 } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 interface ConnectionForensicsModalProps {
   isOpen: boolean
@@ -12,7 +13,7 @@ interface ConnectionForensicsModalProps {
 export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> = ({ isOpen, onClose, connection, onEdit }) => {
   if (!connection) return null
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
@@ -124,6 +125,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

@@ -440,7 +440,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </select>
             <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-slate-400 outline-none">
               <option value="">All Types</option>
-              {ASSET_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {getOptions('DeviceType').map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -790,14 +790,14 @@ export default function AssetTemp() {
     { 
       field: "id", 
       headerName: "", 
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      width: 40,
+      minWidth: 40,
+      maxWidth: 40,
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
-      headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      cellClass: 'flex items-center justify-center border-r border-white/5', 
+      headerClass: 'flex items-center justify-center border-r border-white/5', 
       suppressSizeToFit: true,
       resizable: false,
       sortable: false,
@@ -805,15 +805,15 @@ export default function AssetTemp() {
     },
     { 
       field: "name", 
-      headerName: "name", 
+      headerName: "Name", 
       pinned: 'left',
-      minWidth: 120,
-      flex: 1.5,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      width: 180,
+      minWidth: 180,
+      cellClass: 'text-left font-bold',
+      headerClass: 'text-left',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
-        <span className="font-bold text-blue-400">{p.value}</span>
+        <span className="text-blue-400 pl-2">{p.value}</span>
       )
     },
     { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
@@ -1432,7 +1432,7 @@ const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink:
 
   // Source all network info from the connections table (network view's source)
   const { data: allConnections, isLoading: isConnsLoading } = useQuery({ 
-    queryKey: ['all-connections'], 
+    queryKey: ['connections'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
   })
 
@@ -1552,7 +1552,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
   })
 
   const { data: allConnections } = useQuery({ 
-    queryKey: ['all-connections'], 
+    queryKey: ['connections'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
   })
 
@@ -2507,7 +2507,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                     label="Asset Type"
                     value={formData.type}
                     onChange={e => setFormData({...formData, type: e.target.value})}
-                    options={ASSET_TYPES}
+                    options={getOptions('DeviceType')}
                 />
                 <StyledSelect
                     label="Physical Depth"
