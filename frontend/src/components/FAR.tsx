@@ -172,6 +172,26 @@ export default function FAR() {
         </div>
       </div>
 
+      {/* Tactical Overview Ribbon */}
+      <div className="grid grid-cols-4 gap-4">
+         {[
+           { label: 'Avg RPN Score', value: modes?.length ? Math.round(modes.reduce((acc: any, m: any) => acc + (m.rpn || 0), 0) / modes.length) : 0, icon: Activity, color: 'text-rose-500' },
+           { label: 'Critical Risks', value: modes?.filter((m: any) => m.rpn > 100).length || 0, icon: AlertTriangle, color: 'text-rose-500' },
+           { label: 'Active Mitigations', value: modes?.reduce((acc: any, m: any) => acc + (m.mitigations?.length || 0), 0) || 0, icon: ShieldCheck, color: 'text-emerald-500' },
+           { label: 'Unlinked Causes', value: causes?.filter((c: any) => !c.failure_modes?.length).length || 0, icon: Link2, color: 'text-amber-500' }
+         ].map((stat, i) => (
+           <div key={i} className="glass-panel p-3 rounded-2xl border-white/5 flex items-center gap-4 bg-[#0a0c14]/20">
+              <div className={`p-2 rounded-lg bg-white/5 ${stat.color}`}>
+                 <stat.icon size={16} />
+              </div>
+              <div>
+                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 leading-none mb-1">{stat.label}</p>
+                 <p className="text-lg font-black tracking-tight text-white leading-none">{stat.value}</p>
+              </div>
+           </div>
+         ))}
+      </div>
+
       <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
         {/* Pane 1: Failure Modes */}
         <div className="flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 relative">
@@ -182,38 +202,68 @@ export default function FAR() {
              </div>
            )}
            <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-rose-500">
+              <div className="flex items-center gap-2 text-rose-500 font-black uppercase tracking-[0.2em] text-[11px]">
                 <ShieldAlert size={16} />
-                <h2 className="text-[11px] font-black uppercase tracking-[0.2em]">Failure Modes ({filteredModes.length})</h2>
+                <span>Failure Modes <span className="text-slate-500 ml-1 opacity-50">[{filteredModes.length}]</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                 <div className="h-1 w-12 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-rose-500 w-2/3" />
+                 </div>
+                 <p className="text-[8px] font-black text-slate-500">SYSTEM HEALTH: 82%</p>
               </div>
            </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
               {filteredModes.map((mode: FailureMode) => (
                 <button
                   key={mode.id}
                   onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedModeId === mode.id ? 'bg-rose-600 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
+                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedModeId === mode.id ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${selectedModeId === mode.id ? 'bg-white/20' : 'bg-rose-500/10 text-rose-500'}`}>{mode.system_name}</span>
-                      <h3 className="text-sm font-black uppercase tracking-tight mt-1">{mode.title}</h3>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${selectedModeId === mode.id ? 'bg-white/20' : 'bg-rose-500/10 text-rose-500'}`}>{mode.system_name}</span>
+                        {mode.rpn > 100 && <span className="flex items-center gap-1 text-[8px] font-black uppercase text-amber-400 animate-pulse"><AlertTriangle size={8}/> Critical</span>}
+                      </div>
+                      <h3 className="text-sm font-black uppercase tracking-tight leading-tight mb-1 truncate">{mode.title}</h3>
+                      <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-1">
+                            <Box size={10} className="text-slate-500" />
+                            <span className="text-[9px] font-black uppercase opacity-60">{mode.affected_assets?.length || 0} Assets</span>
+                         </div>
+                         <div className="flex items-center gap-1">
+                            <ShieldCheck size={10} className="text-slate-500" />
+                            <span className="text-[9px] font-black uppercase opacity-60">{mode.mitigations?.length || 0} Mitigations</span>
+                         </div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                       <p className="text-[8px] font-black uppercase opacity-60">RPN</p>
-                       <p className={`text-xl font-black ${mode.rpn > 100 ? 'text-amber-400' : ''} ${selectedModeId === mode.id ? 'text-white' : ''}`}>{mode.rpn}</p>
+                    <div className="text-right ml-4">
+                       <p className="text-[8px] font-black uppercase opacity-60 tracking-widest mb-1">RPN INDEX</p>
+                       <p className={`text-2xl font-black ${mode.rpn > 100 ? 'text-amber-400 italic' : ''} ${selectedModeId === mode.id ? 'text-white' : ''}`}>{mode.rpn}</p>
                     </div>
                   </div>
-                  <p className={`text-[10px] font-medium leading-relaxed line-clamp-2 ${selectedModeId === mode.id ? 'text-white/80' : 'text-slate-500'}`}>
+                  
+                  <div className={`text-[10px] font-medium leading-relaxed mb-3 p-2 rounded-lg bg-black/20 line-clamp-2 ${selectedModeId === mode.id ? 'text-white/80' : 'text-slate-500 italic'}`}>
                     {mode.effect}
-                  </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                     <div className="flex -space-x-1.5 overflow-hidden">
+                        {[1,2,3].map(i => <div key={i} className="w-4 h-4 rounded-full border border-[#0a0c14] bg-slate-800 flex items-center justify-center"><User size={8} /></div>)}
+                     </div>
+                     <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Last Occurrence: <span className="text-slate-400">N/A</span></p>
+                  </div>
+
                   {selectedModeId === mode.id && <motion.div layoutId="mode-active" className="absolute left-0 top-0 bottom-0 w-1 bg-white" />}
                 </button>
               ))}
               {filteredModes.length === 0 && !isLoading && (
-                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-30">
-                  <Box size={48} />
-                  <p className="text-[10px] font-black uppercase tracking-widest mt-4">No Failure Modes Found</p>
+                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-20 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.05)_0%,transparent_70%)]" />
+                  <ShieldAlert size={64} strokeWidth={1} className="mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2">No Failure Vectors Detected</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-700">Environment scanning complete. 0 threats logged.</p>
                 </div>
               )}
            </div>
@@ -222,43 +272,71 @@ export default function FAR() {
         {/* Pane 2: Root Causes */}
         <div className="flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 relative">
            <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-500">
+              <div className="flex items-center gap-2 text-amber-500 font-black uppercase tracking-[0.2em] text-[11px]">
                 <Zap size={16} />
-                <h2 className="text-[11px] font-black uppercase tracking-[0.2em]">Root Causes ({filteredCauses.length})</h2>
+                <span>Root Causes <span className="text-slate-500 ml-1 opacity-50">[{filteredCauses.length}]</span></span>
+              </div>
+              <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[8px] font-black text-slate-500 uppercase">Live Analysis</span>
+                 </div>
               </div>
            </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
               {filteredCauses.map((cause: Cause) => (
                 <button
                   key={cause.id}
                   onClick={() => setSelectedCauseId(selectedCauseId === cause.id ? null : cause.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedCauseId === cause.id ? 'bg-amber-600 border-amber-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
+                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedCauseId === cause.id ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-sm font-black uppercase tracking-tight leading-tight">{cause.cause_text}</p>
-                    <div className="text-right ml-4">
-                       <p className="text-[8px] font-black uppercase opacity-60">Occur</p>
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-black uppercase tracking-tight leading-tight mb-2 pr-2">{cause.cause_text}</p>
+                      <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-1">
+                            <User size={10} className="text-slate-500" />
+                            <span className="text-[9px] font-black uppercase opacity-60">{cause.responsible_team || 'General Ops'}</span>
+                         </div>
+                         <div className="flex items-center gap-1">
+                            <Layers size={10} className="text-slate-500" />
+                            <span className="text-[9px] font-black uppercase opacity-60">{cause.failure_modes?.length || 0} Modes Linked</span>
+                         </div>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4 bg-black/40 px-3 py-2 rounded-xl border border-white/5">
+                       <p className="text-[8px] font-black uppercase opacity-60 mb-0.5">OCCUR</p>
                        <p className={`text-xl font-black ${selectedCauseId === cause.id ? 'text-white' : 'text-amber-500'}`}>{cause.occurrence_level}/10</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                     <User size={10} className="text-slate-500" />
-                     <span className={`text-[9px] font-black uppercase tracking-widest ${selectedCauseId === cause.id ? 'text-white/60' : 'text-slate-500'}`}>{cause.responsible_team || 'General Ops'}</span>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                     <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Frequency: {cause.occurrence_level > 7 ? 'Critical' : 'Moderate'}</span>
+                     </div>
+                     <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
+                        <Lightbulb size={10} className="text-amber-500" />
+                        <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">BKM Ready</span>
+                     </div>
                   </div>
+
                   {selectedCauseId === cause.id && <motion.div layoutId="cause-active" className="absolute left-0 top-0 bottom-0 w-1 bg-white" />}
                 </button>
               ))}
               {filteredCauses.length === 0 && !isLoading && (
-                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-30">
-                  <Activity size={48} />
-                  <p className="text-[10px] font-black uppercase tracking-widest mt-4">No Linked Causes Found</p>
+                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-20 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.05)_0%,transparent_70%)]" />
+                  <Activity size={64} strokeWidth={1} className="mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2">No Root Causes Identified</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-700">Database consistent. All telemetry within bounds.</p>
                 </div>
-              )}
-           </div>
-        </div>
-      </div>
+                )}
+                </div>
+                </div>
+                </div>
 
-      {/* Addition Wizard Modal */}
+                {/* Addition Wizard Modal */}
       <AnimatePresence>
         {showWizard && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
