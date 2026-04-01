@@ -153,6 +153,29 @@ export default function FAR() {
     // System Reliability Index: 100 is perfect, 0 is critical
     const sri = Math.max(0, Math.round(100 * (1 - avgRPN / 500))) 
     
+    // Maturity Calculation
+    const getMaturity = (mode: any) => {
+      if (['Eliminated', 'Prevented'].includes(mode.status)) return 8;
+      const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
+      const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
+      const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
+
+      if (hasM && hasR && hasW) return 7;
+      if (hasM && hasR) return 6;
+      if (hasR && hasW) return 5;
+      if (hasR) return 4;
+      if (hasM && hasW) return 3;
+      if (hasW) return 2;
+      if (hasM) return 1;
+      return 0;
+    }
+
+    const maturityDist = activeModes.reduce((acc: any, mode: any) => {
+      const lv = getMaturity(mode);
+      acc[lv] = (acc[lv] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
     // Mitigation Ratio
     const mitigated = activeModes.filter((m: any) => (m.mitigations?.length || 0) > 0).length
     const mitRatio = activeModes.length ? Math.round((mitigated / activeModes.length) * 100) : 0
@@ -161,8 +184,20 @@ export default function FAR() {
     const totalAssets = activeModes.reduce((acc: number, m: any) => acc + (m.affected_assets?.length || 0), 0)
     const riskDensity = totalAssets ? (totalRPN / totalAssets).toFixed(1) : '0.0'
 
-    return { sri, mitRatio, riskDensity, avgRPN: Math.round(avgRPN) }
+    return { sri, mitRatio, riskDensity, avgRPN: Math.round(avgRPN), maturityDist }
   }, [filteredModes])
+
+  const maturityLevels = [
+    { lv: 8, label: 'Prevented', desc: 'Eliminated / Design Proofed', color: 'bg-emerald-500' },
+    { lv: 7, label: 'Triple Shield', desc: 'Monitoring + Resolution + Workaround', color: 'bg-emerald-400' },
+    { lv: 6, label: 'Automated Fix', desc: 'Monitoring + Resolution', color: 'bg-sky-500' },
+    { lv: 5, label: 'Hybrid Patch', desc: 'Resolution + Workaround', color: 'bg-sky-400' },
+    { lv: 4, label: 'Resolved Only', desc: 'Manual Permanent Fix', color: 'bg-blue-500' },
+    { lv: 3, label: 'Detect & Patch', desc: 'Monitoring + Workaround', color: 'bg-amber-500' },
+    { lv: 2, label: 'Workaround Only', desc: 'Temporary Patch Only', color: 'bg-amber-400' },
+    { lv: 1, label: 'Visibility Only', desc: 'Monitoring Without Action', color: 'bg-rose-400' },
+    { lv: 0, label: 'Exposed', desc: 'No Monitoring / No Action', color: 'bg-rose-600' }
+  ]
 
   const toggleSystem = (sys: string) => {
     setSelectedSystems(prev => 
@@ -304,77 +339,110 @@ export default function FAR() {
       </div>
 
       <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
-        {/* Pane 1: Failure Modes */}
+        {/* Pane 1: Failure Modes (with Maturity Staircase) */}
         <div className="flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 relative">
            {isLoading && (
              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/60 backdrop-blur-sm space-y-4 text-rose-500">
-                <RefreshCcw size={32} className="animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing FAR Knowledge...</p>
+                <div className="relative">
+                   <Target size={40} className="animate-ping absolute inset-0 opacity-20" />
+                   <Target size={40} className="relative animate-pulse" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Reliability Matrix...</p>
              </div>
            )}
-           <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-rose-500 font-black uppercase tracking-[0.2em] text-[11px]">
-                <ShieldAlert size={16} />
-                <span>Failure Modes <span className="text-slate-500 ml-1 opacity-50">[{filteredModes.length}]</span></span>
-              </div>
-              <div className="flex items-center gap-2">
-                 <div className="h-1 w-12 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-rose-500 w-2/3" />
+
+           {/* Maturity Staircase Header */}
+           <div className="p-4 border-b border-white/5 bg-white/[0.02]">
+              <div className="flex items-center justify-between mb-4">
+                 <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reliability Maturity Distribution</h3>
+                    <p className="text-[8px] text-slate-600 uppercase font-bold tracking-widest mt-0.5">Fleet-wide Mitigation Effectiveness</p>
                  </div>
-                 <p className="text-[8px] font-black text-slate-500">SYSTEM HEALTH: 82%</p>
+                 <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[8px] font-black text-slate-500 uppercase">Target: Level 8</span>
+                 </div>
+              </div>
+              
+              <div className="flex items-end gap-1 h-20">
+                 {maturityLevels.slice().reverse().map((ml: any) => {
+                   const count = (metrics as any).maturityDist[ml.lv] || 0
+                   const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
+                   return (
+                     <div key={ml.lv} className="flex-1 group relative flex flex-col items-center justify-end h-full">
+                        <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
+                           <div className="bg-slate-900 border border-white/10 px-2 py-1 rounded text-[8px] font-black text-white uppercase">
+                              LV.{ml.lv} {ml.label}: {count} MODES
+                           </div>
+                        </div>
+                        <motion.div 
+                          initial={{ height: 0 }}
+                          animate={{ height: `${Math.max(4, pct)}%` }}
+                          className={`w-full rounded-t-lg transition-all cursor-help ${ml.color} ${count === 0 ? 'opacity-10 grayscale' : 'opacity-80 group-hover:opacity-100 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
+                        />
+                        <div className={`mt-1 text-[7px] font-black uppercase ${count > 0 ? 'text-slate-300' : 'text-slate-700'}`}>L{ml.lv}</div>
+                     </div>
+                   )
+                 })}
               </div>
            </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {filteredModes.map((mode: FailureMode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedModeId === mode.id ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${selectedModeId === mode.id ? 'bg-white/20' : 'bg-rose-500/10 text-rose-500'}`}>{mode.system_name}</span>
-                        {mode.rpn > 100 && <span className="flex items-center gap-1 text-[8px] font-black uppercase text-amber-400 animate-pulse"><AlertTriangle size={8}/> Critical</span>}
-                      </div>
-                      <h3 className="text-sm font-black uppercase tracking-tight leading-tight mb-1 truncate">{mode.title}</h3>
-                      <div className="flex items-center gap-3">
-                         <div className="flex items-center gap-1">
-                            <Box size={10} className="text-slate-500" />
-                            <span className="text-[9px] font-black uppercase opacity-60">{mode.affected_assets?.length || 0} Assets</span>
-                         </div>
-                         <div className="flex items-center gap-1">
-                            <ShieldCheck size={10} className="text-slate-500" />
-                            <span className="text-[9px] font-black uppercase opacity-60">{mode.mitigations?.length || 0} Mitigations</span>
-                         </div>
-                      </div>
-                    </div>
-                    <div className="text-right ml-4">
-                       <p className="text-[8px] font-black uppercase opacity-60 tracking-widest mb-1">RPN INDEX</p>
-                       <p className={`text-2xl font-black ${mode.rpn > 100 ? 'text-amber-400 italic' : ''} ${selectedModeId === mode.id ? 'text-white' : ''}`}>{mode.rpn}</p>
-                    </div>
-                  </div>
-                  
-                  <div className={`text-[10px] font-medium leading-relaxed mb-3 p-2 rounded-lg bg-black/20 line-clamp-2 ${selectedModeId === mode.id ? 'text-white/80' : 'text-slate-500 italic'}`}>
-                    {mode.effect}
-                  </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                     <div className="flex -space-x-1.5 overflow-hidden">
-                        {[1,2,3].map(i => <div key={i} className="w-4 h-4 rounded-full border border-[#0a0c14] bg-slate-800 flex items-center justify-center"><User size={8} /></div>)}
-                     </div>
-                     <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Last Occurrence: <span className="text-slate-400">N/A</span></p>
-                  </div>
+           <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+              {filteredModes?.length === 0 && !isLoading ? (
+                 <div className="h-full flex flex-col items-center justify-center opacity-30">
+                    <AlertTriangle size={48} className="mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">No Failure Modes Found</p>
+                 </div>
+              ) : (
+                <div className="space-y-2">
+                   {filteredModes?.map((mode: any) => {
+                     const rpnColor = mode.rpn > 200 ? 'text-rose-500' : mode.rpn > 100 ? 'text-amber-500' : 'text-emerald-500'
+                     
+                     // Calculate local maturity for this item
+                     const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
+                     const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
+                     const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
+                     let lv = 0;
+                     if (['Eliminated', 'Prevented'].includes(mode.status)) lv = 8;
+                     else if (hasM && hasR && hasW) lv = 7;
+                     else if (hasM && hasR) lv = 6;
+                     else if (hasR && hasW) lv = 5;
+                     else if (hasR) lv = 4;
+                     else if (hasM && hasW) lv = 3;
+                     else if (hasW) lv = 2;
+                     else if (hasM) lv = 1;
+                     const ml = maturityLevels.find(l => l.lv === lv)!
 
-                  {selectedModeId === mode.id && <motion.div layoutId="mode-active" className="absolute left-0 top-0 bottom-0 w-1 bg-white" />}
-                </button>
-              ))}
-              {filteredModes.length === 0 && !isLoading && (
-                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.05)_0%,transparent_70%)]" />
-                  <ShieldAlert size={64} strokeWidth={1} className="mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2">No Failure Vectors Detected</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-700">Environment scanning complete. 0 threats logged.</p>
+                     return (
+                       <div 
+                         key={mode.id} 
+                         onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
+                         className={`group glass-panel p-3 rounded-2xl border-white/5 hover:border-white/20 cursor-pointer transition-all ${selectedModeId === mode.id ? 'bg-white/10 ring-1 ring-rose-500/50' : 'bg-[#0a0c14]/40'}`}
+                       >
+                          <div className="flex items-start justify-between">
+                             <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                   <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 uppercase tracking-widest">
+                                      {mode.system_name}
+                                   </span>
+                                   <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${ml.color} bg-opacity-20 text-[8px] font-black uppercase tracking-widest`}>
+                                      <Shield size={8} /> LV.{lv} {ml.label}
+                                   </div>
+                                </div>
+                                <h4 className="text-sm font-black text-white group-hover:text-rose-400 transition-colors truncate">{mode.title}</h4>
+                                <p className="text-[10px] text-slate-500 line-clamp-1 mt-1 font-medium">{mode.effect}</p>
+                             </div>
+                             
+                             <div className="flex flex-col items-end gap-2 ml-4">
+                                <div className="text-right">
+                                   <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">RPN SCORE</p>
+                                   <p className={`text-lg font-black leading-none ${rpnColor}`}>{mode.rpn}</p>
+                                </div>
+                             </div>
+                          </div>
+                       </div>
+                     )
+                   })}
                 </div>
               )}
            </div>

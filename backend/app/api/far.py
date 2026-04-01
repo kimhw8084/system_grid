@@ -14,7 +14,7 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 @router.get("/modes")
 async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes),
+        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.prevention_actions)
