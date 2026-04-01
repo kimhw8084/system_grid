@@ -17,7 +17,9 @@ import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
-import Troubleshooting from "./components/Troubleshooting"
+import Investigation from "./components/Investigation"
+import Vendor from "./components/Vendor"
+import Knowledge from "./components/Knowledge"
 import DataFlowDesigner from "./components/DataFlowDesigner"
 import ExternalIntelligence from "./components/ExternalIntelligence"
 import Temp1 from "./components/Temp1"
@@ -218,15 +220,14 @@ function MainLayout() {
           <SidebarItem icon={Activity} label="Temp 1" path="/temp1" active={location.pathname === "/temp1"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Package} label="Rack Temp" path="/rack-temp" active={location.pathname === "/rack-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Server} label="Assets" path="/assets" active={location.pathname === "/assets"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Server} label="Assets (Temp)" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Server} label="Assets" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={AlertTriangle} label="Troubleshooting" path="/troubleshooting" active={location.pathname === "/troubleshooting"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Shield} label="Investigations" path="/investigations" active={location.pathname === "/investigations"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Info} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Globe} label="Partner IQ" path="/partner-iq" active={location.pathname === "/partner-iq"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Clock} label="CP" path="/cp" active={location.pathname === "/cp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
@@ -262,15 +263,14 @@ function MainLayout() {
             <Route path="/temp1" element={<Temp1 />} />
             <Route path="/rack-temp" element={<RackTemp />} />
             <Route path="/racks" element={<RackElevations />} />
-            <Route path="/assets" element={<AssetGrid />} />
             <Route path="/asset-temp" element={<AssetTemp />} />
             <Route path="/services" element={<ServiceRegistry />} />
-            <Route path="/troubleshooting" element={<Troubleshooting />} />
+            <Route path="/investigations" element={<Investigation />} />
+            <Route path="/vendors" element={<Vendor />} />
+            <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/network" element={<NetworkFabric />} />
             <Route path="/monitoring" element={<MonitoringGrid />} />
             <Route path="/architecture" element={<DataFlowDesigner />} />
-            <Route path="/partner-iq" element={<ExternalIntelligence />} />
-            <Route path="/cp" element={<Maintenance />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/logs" element={<AuditLogs />} />
             <Route path="*" element={<Navigate to="/" replace />} />

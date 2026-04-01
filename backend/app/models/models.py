@@ -376,3 +376,119 @@ class AuditLog(Base):
     target_id = Column(String)
     changes = Column(JSON)
     description = Column(Text)
+
+# --- NEW VENDOR & CONTRACT MODULES ---
+
+class Vendor(Base, BaseMixin):
+    __tablename__ = "vendors"
+    name = Column(String, index=True)
+    organization = Column(String, index=True)
+    contact_email = Column(String)
+    contact_phone = Column(String)
+    
+    # Vendor-specific resources (Work PC, Account, Access)
+    pc_info = Column(JSON, default=dict) # {hostname, ip, mac, serial, os}
+    account_info = Column(JSON, default=dict) # {username, access_type, permissions}
+    access_details = Column(Text)
+    
+    # Scheduling & Logistics
+    work_schedule = Column(Text) # e.g. "Mon-Fri 09:00-18:00"
+    on_call_info = Column(JSON, default=dict) # {is_on_call: bool, rotation_notes: str}
+    
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+    
+    contracts = relationship("VendorContract", back_populates="vendor_ref", cascade="all, delete-orphan")
+
+class VendorContract(Base, BaseMixin):
+    __tablename__ = "vendor_contracts"
+    vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
+    title = Column(String, index=True)
+    contract_number = Column(String, index=True)
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    status = Column(String, default="Active") # Active, Expiring, Renewed, Terminated
+    
+    # Scope of Work (SOW) & Content
+    sow_summary = Column(Text)
+    sow_details_json = Column(JSON, default=list) # [{item, description, status}]
+    
+    # Financials
+    total_value = Column(Float, default=0.0)
+    currency = Column(String, default="USD")
+    
+    metadata_json = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)
+    
+    vendor_ref = relationship("Vendor", back_populates="contracts")
+    coverage_links = relationship("ContractCoverage", back_populates="contract", cascade="all, delete-orphan")
+
+class ContractCoverage(Base, BaseMixin):
+    __tablename__ = "contract_coverage"
+    contract_id = Column(Integer, ForeignKey("vendor_contracts.id", ondelete="CASCADE"))
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+    support_tier = Column(String) # NBD, 4-Hour, Software-Only, etc.
+    is_active = Column(Boolean, default=True)
+    
+    contract = relationship("VendorContract", back_populates="coverage_links")
+    device = relationship("Device")
+
+# --- NEW KNOWLEDGE BASE MODULE ---
+
+class KnowledgeEntry(Base, BaseMixin):
+    __tablename__ = "knowledge_entries"
+    category = Column(String, index=True) # Q&A, Manual, Instruction, FAQ, Best Practice
+    title = Column(String, index=True)
+    content = Column(Text) # Markdown or Rich Text
+    
+    # Q&A specific fields
+    question_context = Column(Text) # Original problem description
+    is_answered = Column(Boolean, default=False)
+    verified_by = Column(String)
+    
+    # Relations & Metadata
+    tags = Column(JSON, default=list) # ["Network", "Database", "Vendor:Dell"]
+    impacted_systems = Column(JSON, default=list) # List of system names
+    linked_device_ids = Column(JSON, default=list) # Multi-select assets
+    
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+
+# --- NEW INVESTIGATION MODULE (Renamed/Expanded Troubleshooting) ---
+
+class Investigation(Base, BaseMixin):
+    __tablename__ = "investigations"
+    title = Column(String, index=True)
+    problem_statement = Column(Text)
+    
+    status = Column(String, default="Analyzing") # Analyzing, Escallated, Monitoring, Resolved, Closed
+    priority = Column(String, default="Medium") # Urgent, High, Medium, Low
+    
+    # Context
+    systems = Column(JSON, default=list)
+    impacted_device_ids = Column(JSON, default=list)
+    assigned_team = Column(String)
+    
+    # Forensics (Legacy from IncidentLog)
+    trigger_event = Column(Text)
+    root_cause = Column(Text)
+    resolution_steps = Column(Text)
+    lessons_learned = Column(Text)
+    
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+    
+    progress_logs = relationship("InvestigationProgress", back_populates="investigation", cascade="all, delete-orphan")
+
+class InvestigationProgress(Base, BaseMixin):
+    __tablename__ = "investigation_progress"
+    investigation_id = Column(Integer, ForeignKey("investigations.id", ondelete="CASCADE"))
+    entry_text = Column(Text)
+    entry_type = Column(String, default="Update") # Update, Evidence, Milestone, Escallation
+    
+    added_by = Column(String)
+    timestamp = Column(DateTime, server_default=func.now())
+    
+    metadata_json = Column(JSON, default=dict) # To store links to files/images
+    
+    investigation = relationship("Investigation", back_populates="progress_logs")
