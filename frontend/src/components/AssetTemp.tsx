@@ -692,6 +692,7 @@ export default function AssetTemp() {
   // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
+  const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
   const { data: devices } = useQuery({ 
     queryKey: ["devices-list-all"], 
@@ -790,14 +791,14 @@ export default function AssetTemp() {
     { 
       field: "id", 
       headerName: "", 
-      width: 40,
-      minWidth: 40,
-      maxWidth: 40,
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5', 
-      headerClass: 'flex items-center justify-center border-r border-white/5', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
       suppressSizeToFit: true,
       resizable: false,
       sortable: false,
@@ -1162,6 +1163,7 @@ export default function AssetTemp() {
                    onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
                    onEditService={(s:any) => setActiveServiceEdit(s)}
                    onEditLink={(l:any) => setActiveNetworkEdit(l)}
+                   onViewLink={(l:any) => setSelectedConnection(l)}
                  />
                </div>               </motion.div>
                </div>
@@ -1190,6 +1192,15 @@ export default function AssetTemp() {
                    queryClient.invalidateQueries({ queryKey: ['connections'] })
                  }}
                />
+
+               {selectedConnection && createPortal(
+                 <ConnectionForensicsModal
+                   isOpen={!!selectedConnection}
+                   onClose={() => setSelectedConnection(null)}
+                   connection={selectedConnection}
+                 />,
+                 document.body
+               )}
       <ConfigRegistryModal
         isOpen={showConfig}
         onClose={() => setShowConfig(false)}
@@ -1426,9 +1437,8 @@ const SharedNetworkModals = ({
   )
 }
 
-const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink: (l: any) => void }) => {
+const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
   const queryClient = useQueryClient()
-  const [selectedConnection, setSelectedConnection] = useState<any>(null)
 
   // Source all network info from the connections table (network view's source)
   const { data: allConnections, isLoading: isConnsLoading } = useQuery({ 
@@ -1484,7 +1494,7 @@ const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink:
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button 
-                    onClick={() => setSelectedConnection(c)}
+                    onClick={() => onViewLink(c)}
                     className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
                   >
                     <Network size={10} /> {peerName} ({peerPort})
@@ -1503,19 +1513,12 @@ const NetworkingTab = ({ deviceId, onEditLink }: { deviceId: number, onEditLink:
           {!connections?.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No active network links found in fabric</td></tr>}
         </tbody>
       </table>
-
-      {selectedConnection && (
-        <ConnectionForensicsModal
-          isOpen={!!selectedConnection}
-          onClose={() => setSelectedConnection(null)}
-          connection={selectedConnection}
-        />
-      )}
     </div>
   )
 }
 
-const SecurityTab = ({ deviceId }: { deviceId: number }) => {
+const SecurityTab = ({ device }: { device: any }) => {
+  const deviceId = device.id
   const queryClient = useQueryClient()
   const [newRule, setNewRule] = useState({ 
     name: '', 
@@ -1524,6 +1527,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     source_custom_ip: '', 
     dest_type: 'Device', 
     dest_device_id: deviceId, 
+    dest_custom_ip: device.primary_ip || '',
     protocol: 'TCP', 
     port_range: '', 
     direction: 'Inbound', 
@@ -1541,11 +1545,6 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
   })
 
-  const { data: selectedDevice } = useQuery({
-    queryKey: ['device-detail', deviceId],
-    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
-  })
-
   const { data: devices } = useQuery({
     queryKey: ['devices-list-simple'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json())
@@ -1558,8 +1557,8 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
 
   const availableIPs = useMemo(() => {
     const ips: any[] = []
-    if (selectedDevice?.primary_ip) ips.push({ value: selectedDevice.primary_ip, label: `Primary: ${selectedDevice.primary_ip}` })
-    if (selectedDevice?.management_ip) ips.push({ value: selectedDevice.management_ip, label: `Mgmt: ${selectedDevice.management_ip}` })
+    if (device?.primary_ip) ips.push({ value: device.primary_ip, label: `Primary: ${device.primary_ip}` })
+    if (device?.management_ip) ips.push({ value: device.management_ip, label: `Mgmt: ${device.management_ip}` })
     
     // Add those network entries where the asset is source or peer
     const relatedConns = allConnections?.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
@@ -1567,7 +1566,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
       const isSrc = c.source_device_id === deviceId
       const ip = isSrc ? c.source_ip : c.target_ip
       const port = isSrc ? c.source_port : c.target_port
-      if (ip) {
+      if (ip && ip !== device.primary_ip && ip !== device.management_ip) {
         ips.push({ value: ip, label: `${ip} [${port}]` })
       }
     })
@@ -1581,7 +1580,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
     })
     
     return Array.from(uniqueIPsMap.values())
-  }, [selectedDevice, allConnections, deviceId])
+  }, [device, allConnections, deviceId])
 
   const mutation = useMutation({    mutationFn: async (data: any) => {
       const res = await apiFetch('/api/v1/security/firewall', {
@@ -1758,7 +1757,7 @@ const SecurityTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void }) => {
+const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
 
@@ -1801,8 +1800,8 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     onEdit={onEditService}
                   />
                 )}
-                {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} />}
-                {tab === 'security' && <SecurityTab deviceId={device.id} />}
+                {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
+                {tab === 'security' && <SecurityTab device={device} />}
             </div>
         </div>
     )
