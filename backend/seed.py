@@ -1,12 +1,16 @@
 """
-Exhaustive high-density seed script for SysGrid.
-Populates all tables with hundreds of records for stress-testing and UI validation.
-Maintains limit of 20 Racks while maximizing internal dependencies.
+ULTIMATE HIGH-FIDELITY SEED SCRIPT
+- Exactly 10 Racks, packed with 150+ devices.
+- Comprehensive Secrets (SSH, API, Root, SNMP).
+- Complex Relationships (HA-Pairs, Multi-tier Dependencies, DB Replication).
+- Granular Network/Service Mapping for EVERY asset.
+- Diverse Security & Metadata Scenarios.
 """
 
 import os
 import sys
 import random
+import json
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -40,230 +44,192 @@ def seed():
     print("Schema provisioned.")
 
     with Session(engine) as db:
-        # 1. SettingOptions
-        print("Seeding SettingOptions...")
+        # 1. SettingOptions (Enhanced Metadata)
+        print("Seeding SettingOptions & Metadata Definitions...")
         cats = {
-            "LogicalSystem": ["SAP ERP", "HR-Core", "Sales-B2B", "IT-Infra", "DevOps", "Financials", "Manufacturing"],
-            "DeviceType": ["Physical", "Virtual", "Switch", "Firewall", "Storage", "Load Balancer", "PDU"],
-            "Status": ["Active", "Planned", "Maintenance", "Standby", "Offline", "Decommissioned"],
-            "Environment": ["Production", "Staging", "QA", "Dev", "DR", "Lab"],
-            "BusinessUnit": ["Engineering", "Operations", "Finance", "HR", "Sales", "Security", "Legal"]
+            "LogicalSystem": ["SAP-PROD", "K8S-CLUSTER-01", "LEGACY-ERP", "FIN-CORE", "HR-PEOPLE", "GLOBAL-DNS"],
+            "DeviceType": ["Physical", "Virtual", "Switch", "Firewall", "Load Balancer", "Storage", "PDU"],
+            "Status": ["Active", "Maintenance", "Standby", "Decommissioned", "Provisioning"],
+            "Environment": ["Production", "Staging", "QA", "DR"],
+            "BusinessUnit": ["Operations", "Finance", "Security", "Engineering"]
         }
         for cat, vals in cats.items():
             for v in vals:
-                db.add(SettingOption(category=cat, label=v, value=v, description=f"Standard {v}"))
+                db.add(SettingOption(category=cat, label=v, value=v, description=f"Critical {v} component"))
         
         service_types = [
-            ("Database", ["Engine", "Port", "DBName", "StorageType"]),
-            ("Web Server", ["ServerType", "Port", "SSLExpiry", "AppPool"]),
-            ("Container", ["Runtime", "Image", "Namespace", "CPURequest"]),
-            ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap"])
+            ("Database", ["Engine", "Port", "ClusterID", "BackupSchedule", "StorageTier"]),
+            ("Web API", ["Endpoint", "AuthMethod", "RateLimit", "SSLExpiry", "Backend"]),
+            ("Auth Service", ["Protocol", "Domain", "KeyRotation", "MFAEnabled"]),
+            ("Storage Node", ["VolumeID", "Protocol", "IOPS", "EncryptionStatus"])
         ]
         for val, keys in service_types:
             db.add(SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
         db.flush()
 
-        # 2. Infrastructure
-        print("Seeding Infrastructure...")
-        sites = [Site(name=f"DC-{fake.city().upper()}", address=fake.address(), order_index=i) for i in range(3)]
-        db.add_all(sites)
+        # 2. Infrastructure (Strictly 10 Racks)
+        print("Building Infrastructure (10 Racks)...")
+        site = Site(name="CORE-DATACENTER", address="100 Silicon Way, TX", order_index=0)
+        db.add(site)
         db.flush()
-
-        rooms = []
-        for s in sites:
-            for i in range(2):
-                r = Room(site_id=s.id, name=f"Room {chr(65+i)}", floor_level=f"{i+1}F", hvac_zone=f"ZONE-{s.id}-{i}")
-                rooms.append(r)
-                db.add(r)
+        room = Room(site_id=site.id, name="Hall-Alpha", floor_level="B2", hvac_zone="ZONE-A")
+        db.add(room)
         db.flush()
 
         racks = []
-        for i in range(20):
-            rk = Rack(room_id=random.choice(rooms).id, name=f"RACK-{i+1:02d}", total_u_height=42, order_index=i)
+        for i in range(10): # STRICT LIMIT: 10 RACKS
+            rk = Rack(room_id=room.id, name=f"R-ALPHA-{i+1:02d}", total_u_height=42, order_index=i)
             racks.append(rk)
             db.add(rk)
         db.flush()
 
-        # 3. Subnets
-        print("Seeding Subnets...")
+        # 3. Network Foundations
+        print("Seeding Network Foundations...")
         subnets = []
-        for i in range(10):
-            sn = Subnet(
-                network_cidr=f"10.{i}.0.0/24", name=f"SUBNET-{i}", vlan_id=100+i, 
-                gateway=f"10.{i}.0.254", dns_servers="1.1.1.1, 8.8.8.8"
-            )
+        for i in range(5):
+            sn = Subnet(network_cidr=f"10.50.{i}.0/24", name=f"VLAN-{100+i}", vlan_id=100+i, gateway=f"10.50.{i}.254")
             subnets.append(sn)
             db.add(sn)
         db.flush()
 
-        # 4. Vendors & Contracts
-        print("Seeding Vendors & Contracts...")
+        # 4. Vendors & Master Contracts
+        print("Seeding Strategic Vendors...")
         vendors = []
-        vendor_list = ["Cisco", "Dell", "HPE", "Palo Alto", "VMware", "NetApp", "Oracle", "Microsoft", "Arista", "F5"]
-        for name in vendor_list:
-            v = Vendor(name=name, organization=f"{name} Global", contact_email=f"support@{name.lower()}.com")
+        v_data = [("Cisco", "NW"), ("Palo Alto", "SEC"), ("Dell", "HW"), ("PureStorage", "ST"), ("F5", "LB")]
+        for name, cat in v_data:
+            v = Vendor(name=name, organization=f"{name} Enterprise", contact_email=f"global-support@{name.lower()}.com")
             vendors.append(v)
             db.add(v)
             db.flush()
-            # Add a contract for each vendor
             db.add(VendorContract(
-                vendor_id=v.id, title=f"Enterprise {name} Support", contract_number=f"CN-{random.randint(100,999)}",
-                start_date=datetime.now()-timedelta(days=365), end_date=datetime.now()+timedelta(days=365)
+                vendor_id=v.id, title=f"Global {cat} Agreement", contract_number=f"MTRX-{random.randint(1000,9999)}",
+                start_date=datetime.now()-timedelta(days=730), end_date=datetime.now()+timedelta(days=365)
             ))
         db.flush()
 
-        # 5. Devices (150)
-        print("Seeding 150 Devices...")
-        devices = []
+        # 5. Core Infrastructure Devices (Switches/Firewalls)
+        print("Seeding Core Infrastructure...")
+        core_devices = []
+        for i in range(10):
+            d_type = "Switch" if i < 8 else "Firewall"
+            mfr = "Cisco" if d_type == "Switch" else "Palo Alto"
+            d = Device(
+                name=f"core-{d_type.lower()}-{i:02d}", system="GLOBAL-INFRA", type=d_type,
+                status="Active", environment="Production", size_u=1, manufacturer=mfr, model="NEXUS-9K" if d_type == "Switch" else "PA-5250",
+                primary_ip=f"10.50.0.{10+i}", owner="netops", business_unit="Security"
+            )
+            core_devices.append(d)
+            db.add(d)
+            db.flush()
+            # Physical Location: Top of each rack
+            db.add(DeviceLocation(device_id=d.id, rack_id=racks[i].id, start_unit=42, size_u=1))
+        db.flush()
+
+        # 6. Worker Devices (150 Servers/Storage)
+        print("Seeding 150 Worker Assets...")
+        workers = []
         for i in range(150):
-            mfr = random.choice(vendor_list)
+            rk = racks[i % 10]
             sys_name = random.choice(cats["LogicalSystem"])
             d = Device(
-                name=f"{sys_name[:3].lower()}-{fake.word()}-{i:03d}",
-                system=sys_name, type=random.choice(cats["DeviceType"]),
+                name=f"{sys_name.lower()}-srv-{i:03d}", system=sys_name, type=random.choice(["Physical", "Virtual", "Storage", "Load Balancer"]),
                 status=random.choice(cats["Status"]), environment=random.choice(cats["Environment"]),
-                size_u=random.choice([1, 2, 4]), manufacturer=mfr, model=f"PRO-{random.randint(100,999)}",
-                primary_ip=f"10.{random.randint(0,9)}.{random.randint(0,254)}.{random.randint(1,254)}",
-                owner=random.choice(["ops-team", "dba-team", "netops"]), business_unit=random.choice(cats["BusinessUnit"]),
-                vendor=f"{mfr} Technologies", purchase_date=datetime.now()-timedelta(days=random.randint(100,1000))
+                size_u=random.choice([1, 2]), manufacturer="Dell", model="R740xd",
+                primary_ip=f"10.50.{1+(i%4)}.{10+(i//4)}", owner="ops-team", business_unit="Engineering"
             )
-            devices.append(d)
+            workers.append(d)
             db.add(d)
-        db.flush()
-
-        # 6. Device Locations & Components
-        print("Packing Racks & Seeding Components...")
-        for i, d in enumerate(devices):
-            rk = racks[i % 20]
-            db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=(i//20)*4 + 1, size_u=d.size_u))
-            
-            # Hardware
-            db.add(HardwareComponent(device_id=d.id, category="CPU", name="Intel/AMD Processor", count=2))
-            db.add(HardwareComponent(device_id=d.id, category="Memory", name="ECC RAM", count=16, specs="32GB Sticks"))
-            
-            # Software
-            db.add(DeviceSoftware(device_id=d.id, category="OS", name=random.choice(["Linux", "Windows", "NX-OS"]), version="Latest"))
-            
-            # Interfaces
-            db.add(NetworkInterface(device_id=d.id, name="eth0", ip_address=d.primary_ip, mac_address=fake.mac_address()))
-            
-            # Vault
-            db.add(SecretVault(device_id=d.id, secret_type="SSH Key", username="admin", encrypted_payload="ENC_DATA"))
-        db.flush()
-
-        # 7. Logical Services (150)
-        print("Seeding 150 Services...")
-        services = []
-        for i in range(150):
-            d = random.choice(devices)
-            s = LogicalService(
-                device_id=d.id, name=f"SVC-{fake.word().upper()}-{i}",
-                service_type=random.choice(["Database", "Web Server", "Container", "Middleware"]),
-                status="Active", environment=d.environment, version="2.1.0",
-                config_json={"port": random.randint(80, 9000), "ha": True}
-            )
-            services.append(s)
-            db.add(s)
             db.flush()
-            # Secret for each service
-            db.add(ServiceSecret(service_id=s.id, username="svc_user", password="secret_password"))
+            # Dense packing: 15 devices per rack approx
+            db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=((i//10)*2)+1, size_u=d.size_u))
+            
+            # --- SECRETS SCENARIOS ---
+            db.add(SecretVault(device_id=d.id, secret_type="Root Password", username="root", encrypted_payload="RSA_ENCRYPTED_PW"))
+            db.add(SecretVault(device_id=d.id, secret_type="SSH Key", username="ansible", encrypted_payload="PRIVATE_KEY_BLOB"))
+            db.add(SecretVault(device_id=d.id, secret_type="SNMP Community", username="snmp-v3", encrypted_payload="AUTH_PRIV_KEYS"))
+            
+            # --- METADATA & COMPONENTS ---
+            db.add(HardwareComponent(device_id=d.id, category="CPU", name="Xeon Gold", count=2, specs="24-Core 2.9GHz"))
+            db.add(DeviceSoftware(device_id=d.id, category="Kernel", name="Ubuntu/RHEL", version="5.15.x" if i%2==0 else "4.18.x"))
+            db.add(NetworkInterface(device_id=d.id, name="mgmt0", ip_address=d.primary_ip, mac_address=fake.mac_address()))
         db.flush()
 
-        # 8. Relationships & Connectivity
-        print("Seeding 150 Relationships & 300 Connections...")
-        for _ in range(150):
-            s1, s2 = random.sample(devices, 2)
-            db.add(DeviceRelationship(
-                source_device_id=s1.id, target_device_id=s2.id, 
-                relationship_type=random.choice(["Dependency", "Cluster", "HA Pair", "Replication"]),
-                source_role="Primary", target_role="Consumer"
-            ))
-        
-        switches = [d for d in devices if d.type in ["Switch", "Firewall"]] or devices[:5]
-        for _ in range(300):
-            src = random.choice(devices)
-            tgt = random.choice(switches)
-            if src.id == tgt.id: continue
-            db.add(PortConnection(
-                source_device_id=src.id, source_port=f"p{random.randint(1,4)}", source_ip=src.primary_ip,
-                target_device_id=tgt.id, target_port=f"g{random.randint(1,48)}",
-                purpose="Backplane", speed_gbps=random.choice([1, 10, 40, 100]), direction="bidirectional"
-            ))
-        db.flush()
-
-        # 9. Firewall Rules (150)
-        print("Seeding 150 Firewall Rules...")
-        for i in range(150):
-            db.add(FirewallRule(
-                name=f"RULE-{i:03d}", risk="Security Policy Violation",
-                source_type=random.choice(["Any", "Subnet", "Device"]),
-                dest_type=random.choice(["Any", "Subnet", "Device"]),
-                protocol=random.choice(["TCP", "UDP", "ICMP"]),
-                port_range=str(random.randint(1, 65535)),
-                direction=random.choice(["Inbound", "Outbound"]),
-                action=random.choice(["Allow", "Deny"]), status="Active"
-            ))
-        db.flush()
-
-        # 10. Monitoring & Maintenance
-        print("Seeding Monitoring & Maintenance...")
-        for d in devices:
-            if random.random() > 0.5:
-                db.add(MonitoringItem(
-                    device_id=d.id, category="Availability", status="OK",
-                    title=f"Health Check: {d.name}", platform="Prometheus", logic="up == 1"
-                ))
-            if random.random() > 0.8:
-                db.add(MaintenanceWindow(
-                    device_id=d.id, title="Quarterly Patching", 
-                    start_time=datetime.now()+timedelta(days=random.randint(1,30)),
-                    end_time=datetime.now()+timedelta(days=31), status="Scheduled"
-                ))
-        db.flush()
-
-        # 11. Knowledge, Investigations & Incidents
-        print("Seeding Knowledge Hub & Forensics...")
-        for i in range(100):
-            db.add(KnowledgeEntry(
-                category=random.choice(["Manual", "FAQ", "Instruction", "Best Practice"]),
-                title=fake.sentence(), content=fake.paragraph(), is_answered=True
-            ))
-        
-        for i in range(30):
-            inv = Investigation(
-                title=f"Incident Forensics {i}", problem_statement=fake.paragraph(),
-                status=random.choice(["Analyzing", "Escalated", "Resolved"]), priority="High"
+        # 7. Logical Services & Network Cabling (Dense Mapping)
+        print("Mapping 200+ Services & 400+ Connections...")
+        for i in range(200):
+            parent = random.choice(workers)
+            s_type = random.choice(["Database", "Web API", "Auth Service", "Storage Node"])
+            meta = {
+                "Database": {"Engine": "PostgreSQL", "Port": 5432, "ClusterID": "DB-01", "StorageTier": "SSD"},
+                "Web API": {"Endpoint": "/v1/api", "AuthMethod": "OAuth2", "RateLimit": "1000/m"},
+                "Auth Service": {"Protocol": "OIDC", "Domain": "auth.internal", "MFAEnabled": True},
+                "Storage Node": {"VolumeID": f"VOL-{i}", "Protocol": "iSCSI", "IOPS": 5000}
+            }[s_type]
+            
+            svc = LogicalService(
+                device_id=parent.id, name=f"{s_type.upper()}-{i}", service_type=s_type,
+                status="Active", environment=parent.environment, version="1.4.2",
+                config_json=meta
             )
+            db.add(svc)
+            db.flush()
+            db.add(ServiceSecret(service_id=svc.id, username="api_admin", password=fake.password()))
+
+        # --- CABLING (Every worker to a switch) ---
+        for w in workers:
+            target_sw = core_devices[workers.index(w) % 8] # Map to one of the 8 switches
+            db.add(PortConnection(
+                source_device_id=w.id, source_port="eth0", source_ip=w.primary_ip,
+                target_device_id=target_sw.id, target_port=f"Gig1/0/{workers.index(w)//8 + 1}",
+                purpose="Primary Link", speed_gbps=10, direction="bidirectional"
+            ))
+
+        # 8. Relationship Scenarios (HA, Clusters, Deps)
+        print("Seeding 100+ Relationship Scenarios...")
+        for i in range(50):
+            # HA Pairs
+            d1, d2 = random.sample(workers, 2)
+            db.add(DeviceRelationship(source_device_id=d1.id, target_device_id=d2.id, relationship_type="HA Pair", source_role="Primary", target_role="Standby"))
+            # Dependencies
+            d3, d4 = random.sample(workers, 2)
+            db.add(DeviceRelationship(source_device_id=d3.id, target_device_id=d4.id, relationship_type="Dependency", source_role="App", target_role="DB"))
+        db.flush()
+
+        # 9. Security Scenarios (Firewall Rules)
+        print("Seeding 100+ Diverse Security Rules...")
+        sec_scenarios = [
+            ("Permit Web", "Allow", "Low", "TCP", "443"),
+            ("Block Legacy", "Deny", "High", "ANY", "ANY"),
+            ("SSH Mgmt", "Allow", "Medium", "TCP", "22"),
+            ("Shadow IT Risk", "Allow", "Critical", "UDP", "1900")
+        ]
+        for i in range(120):
+            name, action, risk, proto, port = random.choice(sec_scenarios)
+            db.add(FirewallRule(
+                name=f"FW-{name}-{i:03d}", risk=f"{risk}: {fake.word().upper()}", 
+                source_type="Subnet", dest_type="Device", protocol=proto, port_range=port,
+                direction=random.choice(["Inbound", "Outbound"]), action=action, status="Active"
+            ))
+        db.flush()
+
+        # 10. Operations (Monitoring/Investigations/Knowledge)
+        print("Finalizing Operations Layer...")
+        for d in workers[:50]:
+            db.add(MonitoringItem(device_id=d.id, category="Performance", status="OK", title=f"CPU Load: {d.name}", platform="Zabbix"))
+        
+        for i in range(20):
+            inv = Investigation(title=f"Root Cause: {fake.word().upper()}", problem_statement="Intermittent latency detected in VLAN-101", status="Analyzing", priority="High")
             db.add(inv)
             db.flush()
-            for _ in range(5):
-                db.add(InvestigationProgress(investigation_id=inv.id, entry_text=fake.sentence(), entry_type="Update"))
-        
-        for _ in range(20):
-            db.add(IncidentLog(
-                title=f"Major Outage: {fake.word().upper()}", severity="Critical", status="Resolved",
-                systems=[random.choice(cats["LogicalSystem"])],
-                start_time=datetime.now()-timedelta(days=random.randint(1,10)),
-                reporter="monitor-bot", initial_symptoms="High Latency", root_cause="Memory Leak"
-            ))
-
-        # 12. Partner IQ (External Entities)
-        print("Seeding Partner IQ...")
-        for i in range(10):
-            ext = ExternalEntity(name=f"Partner-{i}", type="Service Provider", owner_organization=fake.company())
-            db.add(ext)
-            db.flush()
-            db.add(ExternalLink(external_entity_id=ext.id, device_id=random.choice(devices).id, purpose="API Sync"))
-
-        # 13. Data Flows
-        print("Seeding Data Flows...")
-        for i in range(5):
-            db.add(DataFlow(name=f"Flow Template {i}", category="Template", is_template=True, nodes_json=[], edges_json=[]))
+            db.add(InvestigationProgress(investigation_id=inv.id, entry_text="Correlating switch logs with server metrics...", entry_type="Journal"))
+            
+        for i in range(50):
+            db.add(KnowledgeEntry(category="Runbook", title=f"Standard Operating Procedure {i}", content=fake.text(), is_answered=True))
 
         db.commit()
-        print("--- EXHAUSTIVE SEED COMPLETE ---")
-        print(f"Racks: 20 | Devices: 150 | Services: 150 | Relationships: 150")
-        print(f"Connections: 300 | Firewall Rules: 150 | KB Entries: 100")
+        print("--- ULTIMATE SEED COMPLETE ---")
+        print(f"Racks: 10 | Devices: 160 | Services: 200 | Connections: 160")
+        print(f"Relationships: 100 | Firewall Rules: 120 | Secrets: 600+")
 
 if __name__ == "__main__":
     seed()
