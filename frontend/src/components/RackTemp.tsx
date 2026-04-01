@@ -4,7 +4,7 @@ import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Package, BarChart3, ExternalLink, Settings,
-  Network, HardDrive, TrendingUp, Layers
+  Network, HardDrive, TrendingUp, Layers, List
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ import { apiFetch } from '../api/apiClient'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { ConnectionForensicsModal } from './shared/ConnectionForensicsModal'
+import { ConnectionsListModal } from './shared/ConnectionsListModal'
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
@@ -110,7 +111,6 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
       const newLines: any[] = []
       const gridRect = gridEl.getBoundingClientRect()
       
-      // Sync overlay dimensions with scroll area
       if (gridEl.scrollWidth !== 0) {
         setContainerStyle({
           width: `${gridEl.scrollWidth}px`,
@@ -122,38 +122,34 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
         const el = document.querySelector(`[data-device-id="${deviceId}"]`) as HTMLElement
         if (!el) return null
         
-        // Ensure the element is visible in its own rack scroll area
+        const elRect = el.getBoundingClientRect()
+        let x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
+        let y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
+        let isScrolledOut = false
+
         const rackScrollEl = el.closest('.overflow-y-auto')
         if (rackScrollEl) {
-          const elRect = el.getBoundingClientRect()
           const scrollRect = rackScrollEl.getBoundingClientRect()
           
-          // Check visibility with some buffer (5px)
-          if (elRect.bottom < (scrollRect.top + 5) || elRect.top > (scrollRect.bottom - 5)) {
-            return null 
+          if (elRect.bottom < (scrollRect.top + 2)) {
+            y = scrollRect.top - gridRect.top + gridEl.scrollTop
+            isScrolledOut = true
+          } else if (elRect.top > (scrollRect.bottom - 2)) {
+            y = scrollRect.bottom - gridRect.top + gridEl.scrollTop
+            isScrolledOut = true
           }
         }
 
-        const elRect = el.getBoundingClientRect()
-        // Coordinates relative to the scrollable content start
-        const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
-        const y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
-
-        return { x, y, elRect }
+        return { x, y, elRect, isScrolledOut }
       }
 
       const sourcePoint = getPoint(sourceDeviceId)
-      if (!sourcePoint) {
-        // If source device isn't in DOM, we can't draw lines from it.
-        // We don't clear lines immediately to avoid flickering during minor layout shifts,
-        // but if it stays gone, the lines state will eventually reflect that.
-        return
-      }
+      if (!sourcePoint) return
 
       targetDeviceIds.forEach((tid, index) => {
         const targetPoint = getPoint(tid)
         if (targetPoint) {
-          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 10
+          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 20
           
           const conn = connections?.find((c: any) => 
             (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
@@ -161,7 +157,6 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
           )
 
           if (isSameRack) {
-            // Offset logic for multiple connections in same rack to prevent overlapping
             const offset = ((index % 2 === 0 ? 1 : -1) * (15 + Math.floor(index / 2) * 10))
             newLines.push({ 
               x1: sourcePoint.x, y1: sourcePoint.y, 
@@ -169,7 +164,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               isInternal: true,
               offset,
               id: `${sourceDeviceId}-${tid}`,
-              connection: conn
+              connection: conn,
+              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut
             })
           } else {
             newLines.push({ 
@@ -177,7 +173,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               x2: targetPoint.x, y2: targetPoint.y, 
               isInternal: false,
               id: `${sourceDeviceId}-${tid}`,
-              connection: conn
+              connection: conn,
+              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut
             })
           }
         }
@@ -185,18 +182,16 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
       setLines(newLines)
     }
 
-    // Capture initial positions
     updateLines()
 
     const handleUpdate = () => updateLines()
     window.addEventListener('resize', handleUpdate)
     gridEl.addEventListener('scroll', handleUpdate)
     
-    // Also listen to individual rack scrolls
+    // Listen to ALL rack scrolls
     const elevations = document.querySelectorAll('.overflow-y-auto')
     elevations.forEach(el => el.addEventListener('scroll', handleUpdate))
 
-    // Catch animations/layout shifts
     const interval = setInterval(updateLines, 100)
     
     return () => {
@@ -222,21 +217,27 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
             : `M ${l.x1} ${l.y1} L ${l.x2} ${l.y2}`
 
           return (
-            <g key={l.id || i} className="pointer-events-auto cursor-pointer group" 
+            <g key={l.id || i} className={`pointer-events-auto cursor-pointer group ${l.isScrolledOut ? 'opacity-40' : 'opacity-100'}`} 
                onMouseEnter={(e) => setHoveredLine({ ...l, mouseX: e.clientX, mouseY: e.clientY })}
                onMouseLeave={() => setHoveredLine(null)}
                onClick={() => l.connection && onLineClick?.(l.connection)}>
               <path d={path} fill="none" stroke="#3b82f6" strokeWidth="8" strokeOpacity="0" />
               <path
                 d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" filter="url(#lineGlow)"
-                strokeLinecap="round" strokeLinejoin="round" className="group-hover:stroke-blue-400 group-hover:stroke-[4px] transition-all"
+                strokeLinecap="round" strokeLinejoin="round" 
+                className={`group-hover:stroke-blue-400 group-hover:stroke-[4px] transition-all ${l.isScrolledOut ? 'stroke-dash-4' : ''}`}
+                strokeDasharray={l.isScrolledOut ? "4 4" : "none"}
               />
               <path
                 d={path} fill="none" stroke="#60a5fa" strokeWidth="1" strokeOpacity="0.8"
                 strokeLinecap="round" strokeLinejoin="round"
               />
-              <circle cx={l.x1} cy={l.y1} r="4" fill="#ffffff" filter="url(#lineGlow)" />
-              <circle cx={l.x2} cy={l.y2} r="4" fill="#ffffff" filter="url(#lineGlow)" />
+              {!l.isScrolledOut && (
+                <>
+                  <circle cx={l.x1} cy={l.y1} r="4" fill="#ffffff" filter="url(#lineGlow)" />
+                  <circle cx={l.x2} cy={l.y2} r="4" fill="#ffffff" filter="url(#lineGlow)" />
+                </>
+              )}
             </g>
           )
         })}
@@ -980,6 +981,7 @@ export default function RackTemp() {
   
   const [optionsMenu, setOptionsMenu] = useState<{ x: number; y: number; device: any; loc: any; rack: any } | null>(null)
   const [focusedConnection, setFocusedConnection] = useState<{ sourceId: number; targetIds: number[] } | null>(null)
+  const [showConnectionsList, setShowConnectionsList] = useState(false)
   const [viewingConnection, setViewingConnection] = useState<any>(null)
 
   const [restoreWizard, setRestoreWizard] = useState<{
@@ -1262,6 +1264,19 @@ export default function RackTemp() {
     rackReorderMutation.mutate({ siteId: rack.site_id, ids: arr.map((r: any) => r.id) })
   }
 
+  const focusedDeviceConnections = useMemo(() => {
+    if (!focusedConnection || !connections) return []
+    return connections.filter((c: any) => 
+      c.source_device_id === focusedConnection.sourceId || 
+      c.target_device_id === focusedConnection.sourceId
+    )
+  }, [focusedConnection, connections])
+
+  const focusedDeviceName = useMemo(() => {
+    if (!focusedConnection || !devices) return ''
+    return devices.find((d: any) => d.id === focusedConnection.sourceId)?.name || ''
+  }, [focusedConnection, devices])
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
@@ -1329,12 +1344,20 @@ export default function RackTemp() {
 
           {/* Connection Clear */}
           {focusedConnection && (
-            <button
-              onClick={() => setFocusedConnection(null)}
-              className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
-            >
-              <X size={13} /> Clear Connections
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowConnectionsList(true)}
+                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+              >
+                <List size={13} /> View List
+              </button>
+              <button
+                onClick={() => setFocusedConnection(null)}
+                className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
+              >
+                <X size={13} /> Clear Connections
+              </button>
+            </div>
           )}
 
           {/* Add Actions */}
@@ -1523,6 +1546,18 @@ export default function RackTemp() {
         isOpen={!!viewingConnection}
         onClose={() => setViewingConnection(null)}
         connection={viewingConnection}
+      />
+
+      <ConnectionsListModal
+        isOpen={showConnectionsList}
+        onClose={() => setShowConnectionsList(false)}
+        connections={focusedDeviceConnections}
+        devices={devices || []}
+        deviceName={focusedDeviceName}
+        onViewForensics={(conn) => {
+          setShowConnectionsList(false)
+          setViewingConnection(conn)
+        }}
       />
 
       {/* Device Detail Modal */}
