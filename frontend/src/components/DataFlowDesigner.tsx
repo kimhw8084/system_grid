@@ -368,7 +368,7 @@ function ArchDesignerInner() {
           position: { x: 20, y: 60 + (idx * 45) },
           data: { ...s },
           extent: 'parent' as any
-        });
+        } as any);
       });
     }
 

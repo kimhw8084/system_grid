@@ -190,7 +190,7 @@ export default function ExternalIntelligence() {
         )}
         <AgGridReact 
           rowData={activeTab === 'Registry' ? entities : links} 
-          columnDefs={activeTab === 'Registry' ? entityColumns : linkColumns}
+          columnDefs={(activeTab === 'Registry' ? entityColumns : linkColumns) as any}
           headerHeight={28}
           rowHeight={28}
           quickFilterText={searchTerm}

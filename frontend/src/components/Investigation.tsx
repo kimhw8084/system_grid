@@ -168,6 +168,7 @@ export default function Investigation() {
             item={activeDetails} 
             onClose={() => setActiveDetails(null)} 
             onSave={(d: any) => mutation.mutate(d)}
+            setConfirmModal={setConfirmModal}
           />
         )}
       </AnimatePresence>
@@ -241,7 +242,7 @@ function InvestigationForm({ item, options, devices, onClose, onSave, isSaving }
   )
 }
 
-function InvestigationDetails({ item, onClose, onSave }: any) {
+function InvestigationDetails({ item, onClose, onSave, setConfirmModal }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
   const [pulseText, setPulseText] = useState('')

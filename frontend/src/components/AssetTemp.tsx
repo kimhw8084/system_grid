@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -1633,19 +1633,21 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
 const SecurityTab = ({ device }: { device: any }) => {
   const deviceId = device.id
   const queryClient = useQueryClient()
-  const [newRule, setNewRule] = useState({ 
-    name: '', 
-    risk: '', 
-    source_type: 'Custom IP', 
-    source_custom_ip: '', 
-    dest_type: 'Device', 
-    dest_device_id: deviceId, 
+  const [newRule, setNewRule] = useState({
+    name: '',
+    risk: '',
+    source_type: 'Custom IP',
+    source_device_id: null as any,
+    source_custom_ip: '',
+    dest_type: 'Device',
+    dest_device_id: deviceId,
     dest_custom_ip: device.primary_ip || '',
-    protocol: 'TCP', 
-    port_range: '', 
-    direction: 'Inbound', 
-    action: 'Allow' 
+    protocol: 'TCP',
+    port_range: '',
+    direction: 'Inbound',
+    action: 'Allow'
   })
+
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
 
   const { data: rules, isLoading } = useQuery({ 
@@ -1713,7 +1715,7 @@ const SecurityTab = ({ device }: { device: any }) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device-firewall', deviceId] })
       setNewRule({ 
-        name: '', risk: '', source_type: 'Custom IP', source_custom_ip: '', 
+        name: '', risk: '', source_type: 'Custom IP', source_device_id: null as any, source_custom_ip: '', 
         dest_type: 'Device', dest_device_id: deviceId, dest_custom_ip: '', protocol: 'TCP', port_range: '', 
         direction: 'Inbound', action: 'Allow' 
       })

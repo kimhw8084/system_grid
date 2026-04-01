@@ -461,7 +461,7 @@ class Investigation(Base, BaseMixin):
     title = Column(String, index=True)
     problem_statement = Column(Text)
     
-    status = Column(String, default="Analyzing") # Analyzing, Escallated, Monitoring, Resolved, Closed
+    status = Column(String, default="Analyzing") # Analyzing, Escalated, Monitoring, Resolved, Closed
     priority = Column(String, default="Medium") # Urgent, High, Medium, Low
     
     # Context
@@ -484,7 +484,7 @@ class InvestigationProgress(Base, BaseMixin):
     __tablename__ = "investigation_progress"
     investigation_id = Column(Integer, ForeignKey("investigations.id", ondelete="CASCADE"))
     entry_text = Column(Text)
-    entry_type = Column(String, default="Update") # Update, Evidence, Milestone, Escallation
+    entry_type = Column(String, default="Update") # Update, Evidence, Milestone, Escalation
     
     added_by = Column(String)
     timestamp = Column(DateTime, server_default=func.now())
