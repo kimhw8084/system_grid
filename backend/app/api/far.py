@@ -52,8 +52,16 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         mode.affected_assets = list(assets)
 
     await db.commit()
-    await db.refresh(mode)
-    return mode
+    
+    # Reload with all relationships to avoid MissingGreenlet during serialization
+    stmt = select(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.causes),
+        joinedload(models.FarFailureMode.mitigations),
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.prevention_actions)
+    ).filter(models.FarFailureMode.id == mode.id)
+    result = await db.execute(stmt)
+    return result.unique().scalar_one()
 
 # --- CAUSES ---
 
@@ -82,8 +90,12 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
         cause.failure_modes = list(modes)
         
     await db.commit()
-    await db.refresh(cause)
-    return cause
+    
+    stmt = select(models.FarFailureCause).options(
+        joinedload(models.FarFailureCause.failure_modes)
+    ).filter(models.FarFailureCause.id == cause.id)
+    result = await db.execute(stmt)
+    return result.unique().scalar_one()
 
 # --- RESOLUTIONS ---
 
@@ -106,8 +118,10 @@ async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
             cause.resolutions.append(res)
             
     await db.commit()
-    await db.refresh(res)
-    return res
+    
+    stmt = select(models.FarResolution).filter(models.FarResolution.id == res.id)
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 # --- MITIGATIONS ---
 
@@ -130,8 +144,10 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
             mode.mitigations.append(mit)
             
     await db.commit()
-    await db.refresh(mit)
-    return mit
+    
+    stmt = select(models.FarMitigation).filter(models.FarMitigation.id == mit.id)
+    result = await db.execute(stmt)
+    return result.scalar_one()
 
 # --- PREVENTION ---
 
@@ -145,5 +161,7 @@ async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(prev)
     await db.commit()
-    await db.refresh(prev)
-    return prev
+    
+    stmt = select(models.FarPrevention).filter(models.FarPrevention.id == prev.id)
+    result = await db.execute(stmt)
+    return result.scalar_one()
