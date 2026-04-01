@@ -245,7 +245,7 @@ const SharedNetworkModals = ({
               }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body
