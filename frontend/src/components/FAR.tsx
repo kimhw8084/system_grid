@@ -88,6 +88,7 @@ export default function FAR() {
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   
   // Queries
   const { data: modes, isLoading: modesLoading } = useQuery({ 
@@ -100,11 +101,20 @@ export default function FAR() {
     queryFn: async () => (await apiFetch('/api/v1/far/causes')).json()
   })
 
+  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+  const availableSystems = useMemo(() => {
+    const sys = options?.filter((o: any) => o.category === 'LogicalSystem').map((s: any) => s.value) || []
+    return sys
+  }, [options])
+
   const isLoading = modesLoading || causesLoading
 
   // Filtering Logic
   const filteredModes = useMemo(() => {
     let result = modes || []
+    if (selectedSystems.length > 0) {
+      result = result.filter((m: any) => selectedSystems.includes(m.system_name))
+    }
     if (searchTerm) {
       result = result.filter((m: any) => 
         m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -117,7 +127,7 @@ export default function FAR() {
       )
     }
     return result
-  }, [modes, searchTerm, selectedCauseId])
+  }, [modes, searchTerm, selectedCauseId, selectedSystems])
 
   const filteredCauses = useMemo(() => {
     let result = causes || []
@@ -133,6 +143,32 @@ export default function FAR() {
     }
     return result
   }, [causes, searchTerm, selectedModeId])
+
+  // Advanced Metrics Calculation
+  const metrics = useMemo(() => {
+    const activeModes = filteredModes || []
+    const totalRPN = activeModes.reduce((acc: number, m: any) => acc + (m.rpn || 0), 0)
+    const avgRPN = activeModes.length ? totalRPN / activeModes.length : 0
+    
+    // System Reliability Index: 100 is perfect, 0 is critical
+    const sri = Math.max(0, Math.round(100 * (1 - avgRPN / 500))) 
+    
+    // Mitigation Ratio
+    const mitigated = activeModes.filter((m: any) => (m.mitigations?.length || 0) > 0).length
+    const mitRatio = activeModes.length ? Math.round((mitigated / activeModes.length) * 100) : 0
+
+    // Risk Density (RPN per Asset)
+    const totalAssets = activeModes.reduce((acc: number, m: any) => acc + (m.affected_assets?.length || 0), 0)
+    const riskDensity = totalAssets ? (totalRPN / totalAssets).toFixed(1) : '0.0'
+
+    return { sri, mitRatio, riskDensity, avgRPN: Math.round(avgRPN) }
+  }, [filteredModes])
+
+  const toggleSystem = (sys: string) => {
+    setSelectedSystems(prev => 
+      prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys]
+    )
+  }
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -155,15 +191,6 @@ export default function FAR() {
               />
            </div>
            
-           {(selectedModeId || selectedCauseId) && (
-             <button 
-               onClick={() => { setSelectedModeId(null); setSelectedCauseId(null); }}
-               className="p-2 bg-white/5 text-slate-400 hover:text-white rounded-xl border border-white/5 transition-all flex items-center gap-2 text-[10px] font-black uppercase"
-             >
-               <RefreshCcw size={14} /> Reset Filter
-             </button>
-           )}
-
            <button 
              onClick={() => setShowCauseWizard(true)}
              className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
@@ -180,24 +207,100 @@ export default function FAR() {
         </div>
       </div>
 
-      {/* Tactical Overview Ribbon */}
-      <div className="grid grid-cols-4 gap-4">
-         {[
-           { label: 'Avg RPN Score', value: modes?.length ? Math.round(modes.reduce((acc: any, m: any) => acc + (m.rpn || 0), 0) / modes.length) : 0, icon: Activity, color: 'text-rose-500' },
-           { label: 'Critical Risks', value: modes?.filter((m: any) => m.rpn > 100).length || 0, icon: AlertTriangle, color: 'text-rose-500' },
-           { label: 'Active Mitigations', value: modes?.reduce((acc: any, m: any) => acc + (m.mitigations?.length || 0), 0) || 0, icon: ShieldCheck, color: 'text-emerald-500' },
-           { label: 'Unlinked Causes', value: causes?.filter((c: any) => !c.failure_modes?.length).length || 0, icon: Link2, color: 'text-amber-500' }
-         ].map((stat, i) => (
-           <div key={i} className="glass-panel p-3 rounded-2xl border-white/5 flex items-center gap-4 bg-[#0a0c14]/20">
-              <div className={`p-2 rounded-lg bg-white/5 ${stat.color}`}>
-                 <stat.icon size={16} />
-              </div>
-              <div>
-                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-500 leading-none mb-1">{stat.label}</p>
-                 <p className="text-lg font-black tracking-tight text-white leading-none">{stat.value}</p>
-              </div>
-           </div>
+      {/* System Command Toggles */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
+         <button 
+           onClick={() => setSelectedSystems([])}
+           className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+         >
+           Global View
+         </button>
+         <div className="h-4 w-px bg-white/10 mx-1" />
+         {availableSystems.map(sys => (
+           <button 
+             key={sys}
+             onClick={() => toggleSystem(sys)}
+             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+           >
+             {sys}
+           </button>
          ))}
+      </div>
+
+      {/* Tactical Overview Ribbon - Re-Architected */}
+      <div className="grid grid-cols-4 gap-4">
+         {/* SRI Index */}
+         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
+            <div className={`absolute top-0 right-0 w-32 h-32 blur-[40px] opacity-10 transition-colors ${metrics.sri > 70 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            <div className="flex items-center justify-between mb-2 relative z-10">
+               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reliability Index (SRI)</p>
+               <Activity size={14} className={metrics.sri > 70 ? 'text-emerald-500' : 'text-rose-500'} />
+            </div>
+            <div className="flex items-baseline gap-2 relative z-10">
+               <h4 className={`text-3xl font-black tracking-tighter ${metrics.sri > 70 ? 'text-emerald-400' : 'text-rose-400'}`}>{metrics.sri}</h4>
+               <span className="text-[10px] font-black text-slate-600 uppercase">/100</span>
+            </div>
+            <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden relative z-10">
+               <motion.div 
+                 initial={{ width: 0 }}
+                 animate={{ width: `${metrics.sri}%` }}
+                 className={`h-full ${metrics.sri > 70 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`} 
+               />
+            </div>
+         </div>
+
+         {/* Risk Density */}
+         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
+            <div className="flex items-center justify-between mb-2">
+               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Risk Density</p>
+               <Layers size={14} className="text-amber-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.riskDensity}</h4>
+               <span className="text-[10px] font-black text-slate-600 uppercase">RPN/ASSET</span>
+            </div>
+            <div className="mt-2 flex gap-0.5">
+               {Array.from({ length: 10 }).map((_, i) => (
+                 <div key={i} className={`h-1.5 flex-1 rounded-sm ${i < (parseFloat(metrics.riskDensity) / 10) ? 'bg-amber-500' : 'bg-white/5'}`} />
+               ))}
+            </div>
+         </div>
+
+         {/* Mitigation Coverage */}
+         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
+            <div className="flex items-center justify-between mb-2">
+               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mitigation Ratio</p>
+               <ShieldCheck size={14} className="text-sky-400" />
+            </div>
+            <div className="flex items-baseline gap-2">
+               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.mitRatio}%</h4>
+               <span className="text-[10px] font-black text-slate-600 uppercase">RESOLVED</span>
+            </div>
+            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-2">
+               {metrics.mitRatio > 80 ? 'Fortified' : metrics.mitRatio > 50 ? 'Stable' : 'Exposed'}
+            </p>
+         </div>
+
+         {/* Critical Modes Heatmap */}
+         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
+            <div className="flex items-center justify-between mb-2">
+               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Avg Failure Severity</p>
+               <AlertTriangle size={14} className="text-rose-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.avgRPN}</h4>
+               <span className="text-[10px] font-black text-slate-600 uppercase">AVG RPN</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+               <div className="flex-1 h-1 bg-white/5 rounded-full relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 opacity-20" />
+                  <motion.div 
+                    animate={{ left: `${Math.min(100, (metrics.avgRPN / 500) * 100)}%` }}
+                    className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_5px_white]" 
+                  />
+               </div>
+            </div>
+         </div>
       </div>
 
       <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
