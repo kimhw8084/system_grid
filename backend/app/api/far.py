@@ -1,17 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
 
-router = APIRouter()
+router = APIRouter(prefix="/far", tags=["FAR"])
 
 # --- FAILURE MODES ---
 
 @router.get("/modes")
 def get_failure_modes(system: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(models.FarFailureMode).filter(models.FarFailureMode.is_deleted == False)
+    query = db.query(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.causes),
+        joinedload(models.FarFailureMode.mitigations),
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.prevention_actions)
+    ).filter(models.FarFailureMode.is_deleted == False)
     if system:
         query = query.filter(models.FarFailureMode.system_name == system)
     return query.all()
@@ -44,6 +49,12 @@ def create_failure_mode(data: dict, db: Session = Depends(get_db)):
     return mode
 
 # --- CAUSES ---
+
+@router.get("/causes")
+def get_failure_causes(db: Session = Depends(get_db)):
+    return db.query(models.FarFailureCause).options(
+        joinedload(models.FarFailureCause.failure_modes)
+    ).all()
 
 @router.post("/causes")
 def create_cause(data: dict, db: Session = Depends(get_db)):
