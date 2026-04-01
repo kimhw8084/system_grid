@@ -311,7 +311,7 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
   const { data: devices } = useQuery({ 
     queryKey: ['devices', formData.system_name], 
     enabled: !!formData.system_name,
-    queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${formData.system_name}`)).json() 
+    queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${encodeURIComponent(formData.system_name)}`)).json() 
   })
 
   const filteredDevices = useMemo(() => {
@@ -347,12 +347,12 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
       <div className="col-span-7 space-y-6">
         <section className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Logical Context</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Logical System</label>
             <StyledSelect 
               options={systems.map((s: any) => ({ label: s.label, value: s.value }))}
               value={formData.system_name}
               onChange={(e) => setFormData({ ...formData, system_name: e.target.value })}
-              placeholder="Select System System Scope..."
+              placeholder="Select Logical System..."
             />
           </div>
 

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
 from datetime import datetime
+from typing import Optional
 from ..database import get_db
 from ..models import models
 
@@ -44,12 +45,15 @@ async def sync_device_to_os(device, db: AsyncSession):
         # No internal commit here, calling code handles it
 
 @router.get("/")
-async def get_devices(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_devices(system: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     
     query = select(models.Device).options(selectinload(models.Device.network_interfaces))
     if not include_deleted:
         query = query.filter(models.Device.is_deleted == False)
+    
+    if system:
+        query = query.filter(models.Device.system == system)
         
     result = await db.execute(query)
     devices = result.scalars().all()
