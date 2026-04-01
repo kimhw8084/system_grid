@@ -62,7 +62,7 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     
     # Reload with all relationships to avoid MissingGreenlet during serialization
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes),
+        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.prevention_actions)
@@ -75,7 +75,8 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
 @router.get("/causes")
 async def get_failure_causes(db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureCause).options(
-        joinedload(models.FarFailureCause.failure_modes)
+        joinedload(models.FarFailureCause.failure_modes),
+        joinedload(models.FarFailureCause.resolutions)
     )
     result = await db.execute(stmt)
     return result.unique().scalars().all()
@@ -99,7 +100,8 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     stmt = select(models.FarFailureCause).options(
-        joinedload(models.FarFailureCause.failure_modes)
+        joinedload(models.FarFailureCause.failure_modes),
+        joinedload(models.FarFailureCause.resolutions)
     ).filter(models.FarFailureCause.id == cause.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()

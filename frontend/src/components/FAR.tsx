@@ -206,13 +206,13 @@ export default function FAR() {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="h-full flex flex-col space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2 text-white">
             <Target size={24} className="text-rose-500" /> Failure Analysis & Resolution (FAR)
           </h1>
-          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold">Reliability Knowledge Engine & Risk Mitigation</p>
+          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold leading-none">Reliability Knowledge Engine & Risk Mitigation</p>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -221,301 +221,257 @@ export default function FAR() {
               <input 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
-                placeholder="Search modes/causes..." 
-                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500/50 w-64 transition-all" 
+                placeholder="Search..." 
+                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500/50 w-48 transition-all" 
               />
            </div>
            
            <button 
              onClick={() => setShowCauseWizard(true)}
-             className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
+             className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
-             <Plus size={16} /> Add Root Cause
+             <Zap size={14} /> Add Cause
            </button>
 
            <button 
              onClick={() => setShowWizard(true)}
-             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+             className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
-             <Plus size={16} /> Add Failure Mode
+             <ShieldAlert size={14} /> Add Mode
            </button>
         </div>
       </div>
 
       {/* System Command Toggles */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar no-scrollbar">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
          <button 
            onClick={() => setSelectedSystems([])}
-           className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+           className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
          >
-           Global View
+           Global
          </button>
-         <div className="h-4 w-px bg-white/10 mx-1" />
          {availableSystems.map(sys => (
            <button 
              key={sys}
              onClick={() => toggleSystem(sys)}
-             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+             className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
            >
              {sys}
            </button>
          ))}
       </div>
 
-      {/* Tactical Overview Ribbon - Re-Architected */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* Tactical Overview Ribbon */}
+      <div className="grid grid-cols-4 gap-3">
          {/* SRI Index */}
-         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
-            <div className={`absolute top-0 right-0 w-32 h-32 blur-[40px] opacity-10 transition-colors ${metrics.sri > 70 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-            <div className="flex items-center justify-between mb-2 relative z-10">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reliability Index (SRI)</p>
-               <Activity size={14} className={metrics.sri > 70 ? 'text-emerald-500' : 'text-rose-500'} />
+         <div className="glass-panel p-3 rounded-2xl border-white/5 bg-[#0a0c14]/60 flex flex-col justify-between group overflow-hidden relative min-h-[80px]">
+            <div className={`absolute top-0 right-0 w-24 h-24 blur-[30px] opacity-10 transition-colors ${metrics.sri > 70 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+            <div className="flex items-center justify-between mb-1 relative z-10">
+               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Reliability Index</p>
+               <Activity size={12} className={metrics.sri > 70 ? 'text-emerald-500' : 'text-rose-500'} />
             </div>
-            <div className="flex items-baseline gap-2 relative z-10">
-               <h4 className={`text-3xl font-black tracking-tighter ${metrics.sri > 70 ? 'text-emerald-400' : 'text-rose-400'}`}>{metrics.sri}</h4>
-               <span className="text-[10px] font-black text-slate-600 uppercase">/100</span>
+            <div className="flex items-baseline gap-1 relative z-10 leading-none">
+               <h4 className={`text-2xl font-black tracking-tighter ${metrics.sri > 70 ? 'text-emerald-400' : 'text-rose-400'}`}>{metrics.sri}</h4>
+               <span className="text-[9px] font-black text-slate-600 uppercase">/100</span>
             </div>
-            <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden relative z-10">
-               <motion.div 
-                 initial={{ width: 0 }}
-                 animate={{ width: `${metrics.sri}%` }}
-                 className={`h-full ${metrics.sri > 70 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`} 
-               />
+            <div className="mt-2 h-1 w-full bg-white/5 rounded-full overflow-hidden relative z-10">
+               <motion.div animate={{ width: `${metrics.sri}%` }} className={`h-full ${metrics.sri > 70 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
             </div>
          </div>
 
          {/* Risk Density */}
-         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
-            <div className="flex items-center justify-between mb-2">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Risk Density</p>
-               <Layers size={14} className="text-amber-500" />
+         <div className="glass-panel p-3 rounded-2xl border-white/5 bg-[#0a0c14]/60 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center justify-between mb-1">
+               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Risk Density</p>
+               <Layers size={12} className="text-amber-500" />
             </div>
-            <div className="flex items-baseline gap-2">
-               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.riskDensity}</h4>
-               <span className="text-[10px] font-black text-slate-600 uppercase">RPN/ASSET</span>
+            <div className="flex items-baseline gap-1 leading-none">
+               <h4 className="text-2xl font-black tracking-tighter text-white">{metrics.riskDensity}</h4>
+               <span className="text-[9px] font-black text-slate-600 uppercase">RPN/ASSET</span>
             </div>
             <div className="mt-2 flex gap-0.5">
                {Array.from({ length: 10 }).map((_, i) => (
-                 <div key={i} className={`h-1.5 flex-1 rounded-sm ${i < (parseFloat(metrics.riskDensity) / 10) ? 'bg-amber-500' : 'bg-white/5'}`} />
+                 <div key={i} className={`h-1 flex-1 rounded-sm ${i < (parseFloat(metrics.riskDensity) / 10) ? 'bg-amber-500' : 'bg-white/5'}`} />
                ))}
             </div>
          </div>
 
          {/* Mitigation Coverage */}
-         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
-            <div className="flex items-center justify-between mb-2">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mitigation Ratio</p>
-               <ShieldCheck size={14} className="text-sky-400" />
+         <div className="glass-panel p-3 rounded-2xl border-white/5 bg-[#0a0c14]/60 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center justify-between mb-1">
+               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Mitigation Ratio</p>
+               <ShieldCheck size={12} className="text-sky-400" />
             </div>
-            <div className="flex items-baseline gap-2">
-               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.mitRatio}%</h4>
-               <span className="text-[10px] font-black text-slate-600 uppercase">RESOLVED</span>
+            <div className="flex items-baseline gap-1 leading-none">
+               <h4 className="text-2xl font-black tracking-tighter text-white">{metrics.mitRatio}%</h4>
             </div>
-            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-2">
+            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-2 leading-none">
                {metrics.mitRatio > 80 ? 'Fortified' : metrics.mitRatio > 50 ? 'Stable' : 'Exposed'}
             </p>
          </div>
 
-         {/* Critical Modes Heatmap */}
-         <div className="glass-panel p-4 rounded-3xl border-white/5 bg-[#0a0c14]/40 flex flex-col justify-between group overflow-hidden relative">
-            <div className="flex items-center justify-between mb-2">
-               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Avg Failure Severity</p>
-               <AlertTriangle size={14} className="text-rose-500" />
+         {/* Avg Severity */}
+         <div className="glass-panel p-3 rounded-2xl border-white/5 bg-[#0a0c14]/60 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center justify-between mb-1">
+               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Avg Severity</p>
+               <AlertTriangle size={12} className="text-rose-500" />
             </div>
-            <div className="flex items-baseline gap-2">
-               <h4 className="text-3xl font-black tracking-tighter text-white">{metrics.avgRPN}</h4>
-               <span className="text-[10px] font-black text-slate-600 uppercase">AVG RPN</span>
+            <div className="flex items-baseline gap-1 leading-none">
+               <h4 className="text-2xl font-black tracking-tighter text-white">{metrics.avgRPN}</h4>
+               <span className="text-[9px] font-black text-slate-600 uppercase">AVG RPN</span>
             </div>
-            <div className="mt-2 flex items-center gap-2">
-               <div className="flex-1 h-1 bg-white/5 rounded-full relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 opacity-20" />
-                  <motion.div 
-                    animate={{ left: `${Math.min(100, (metrics.avgRPN / 500) * 100)}%` }}
-                    className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_5px_white]" 
-                  />
-               </div>
+            <div className="mt-2 h-1 bg-white/5 rounded-full relative overflow-hidden">
+               <motion.div animate={{ left: `${Math.min(100, (metrics.avgRPN / 500) * 100)}%` }} className="absolute h-full w-4 bg-white/20 blur-sm" />
             </div>
          </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex gap-4 overflow-hidden">
-        {/* Pane 1: Failure Modes (with Maturity Staircase) */}
-        <div className="flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 relative">
-           {isLoading && (
-             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/60 backdrop-blur-sm space-y-4 text-rose-500">
-                <div className="relative">
-                   <Target size={40} className="animate-ping absolute inset-0 opacity-20" />
-                   <Target size={40} className="relative animate-pulse" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Synching Reliability Matrix...</p>
-             </div>
-           )}
-
-           {/* Maturity Staircase Header */}
-           <div className="p-4 border-b border-white/5 bg-white/[0.02]">
-              <div className="flex items-center justify-between mb-4">
-                 <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reliability Maturity Distribution</h3>
-                    <p className="text-[8px] text-slate-600 uppercase font-bold tracking-widest mt-0.5">Fleet-wide Mitigation Effectiveness</p>
-                 </div>
-                 <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="text-[8px] font-black text-slate-500 uppercase">Target: Level 8</span>
-                 </div>
+      <div className="flex-1 min-h-0 flex flex-col space-y-3 overflow-hidden">
+        {/* TOP: Failure Modes Compact Table */}
+        <div className="flex-1 glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 flex flex-col relative">
+           <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                 <ShieldAlert size={14} className="text-rose-500" />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Failure Modes Inventory</h3>
+                 <span className="text-[8px] bg-rose-500/10 text-rose-400 px-1.5 py-0.5 rounded font-black">{filteredModes.length} ENTRIES</span>
               </div>
               
-              <div className="flex items-end gap-1 h-20">
+              {/* Maturity Staircase Header - Inline Compact */}
+              <div className="flex items-end gap-0.5 h-6">
                  {maturityLevels.slice().reverse().map((ml: any) => {
                    const count = (metrics as any).maturityDist[ml.lv] || 0
                    const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
                    return (
-                     <div key={ml.lv} className="flex-1 group relative flex flex-col items-center justify-end h-full">
-                        <div className="absolute -top-6 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
-                           <div className="bg-slate-900 border border-white/10 px-2 py-1 rounded text-[8px] font-black text-white uppercase">
-                              LV.{ml.lv} {ml.label}: {count} MODES
-                           </div>
+                     <div key={ml.lv} className="w-4 h-full relative group">
+                        <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-10' : 'opacity-80 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                           <div className="bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase">LV.{ml.lv} {ml.label}: {count}</div>
                         </div>
-                        <motion.div 
-                          initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(4, pct)}%` }}
-                          className={`w-full rounded-t-lg transition-all cursor-help ${ml.color} ${count === 0 ? 'opacity-10 grayscale' : 'opacity-80 group-hover:opacity-100 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
-                        />
-                        <div className={`mt-1 text-[7px] font-black uppercase ${count > 0 ? 'text-slate-300' : 'text-slate-700'}`}>L{ml.lv}</div>
                      </div>
                    )
                  })}
               </div>
            </div>
 
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-              {filteredModes?.length === 0 && !isLoading ? (
-                 <div className="h-full flex flex-col items-center justify-center opacity-30">
-                    <AlertTriangle size={48} className="mb-4" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">No Failure Modes Found</p>
-                 </div>
-              ) : (
-                <div className="space-y-2">
-                   {filteredModes?.map((mode: any) => {
-                     const rpnColor = mode.rpn > 200 ? 'text-rose-500' : mode.rpn > 100 ? 'text-amber-500' : 'text-emerald-500'
-                     
-                     // Calculate local maturity for this item
-                     const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
-                     const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
-                     const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
-                     let lv = 0;
-                     if (['Eliminated', 'Prevented'].includes(mode.status)) lv = 8;
-                     else if (hasM && hasR && hasW) lv = 7;
-                     else if (hasM && hasR) lv = 6;
-                     else if (hasR && hasW) lv = 5;
-                     else if (hasR) lv = 4;
-                     else if (hasM && hasW) lv = 3;
-                     else if (hasW) lv = 2;
-                     else if (hasM) lv = 1;
-                     const ml = maturityLevels.find(l => l.lv === lv)!
+           <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                 <thead className="sticky top-0 bg-[#0a0c14] z-10">
+                    <tr className="border-b border-white/5">
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">System</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Maturity</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Failure Mode / Impact Effect</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Assets</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Mit</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">RPN</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-white/[0.02]">
+                    {filteredModes.map((mode: any) => {
+                      const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
+                      const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
+                      const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
+                      let lv = 0;
+                      if (['Eliminated', 'Prevented'].includes(mode.status)) lv = 8;
+                      else if (hasM && hasR && hasW) lv = 7;
+                      else if (hasM && hasR) lv = 6;
+                      else if (hasR && hasW) lv = 5;
+                      else if (hasR) lv = 4;
+                      else if (hasM && hasW) lv = 3;
+                      else if (hasW) lv = 2;
+                      else if (hasM) lv = 1;
+                      const ml = maturityLevels.find(l => l.lv === lv)!
 
-                     return (
-                       <div 
-                         key={mode.id} 
-                         onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
-                         className={`group glass-panel p-3 rounded-2xl border-white/5 hover:border-white/20 cursor-pointer transition-all ${selectedModeId === mode.id ? 'bg-white/10 ring-1 ring-rose-500/50' : 'bg-[#0a0c14]/40'}`}
-                       >
-                          <div className="flex items-start justify-between">
-                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                   <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 uppercase tracking-widest">
-                                      {mode.system_name}
-                                   </span>
-                                   <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${ml.color} bg-opacity-20 text-[8px] font-black uppercase tracking-widest`}>
-                                      <Shield size={8} /> LV.{lv} {ml.label}
-                                   </div>
-                                </div>
-                                <h4 className="text-sm font-black text-white group-hover:text-rose-400 transition-colors truncate">{mode.title}</h4>
-                                <p className="text-[10px] text-slate-500 line-clamp-1 mt-1 font-medium">{mode.effect}</p>
-                             </div>
-                             
-                             <div className="flex flex-col items-end gap-2 ml-4">
-                                <div className="text-right">
-                                   <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">RPN SCORE</p>
-                                   <p className={`text-lg font-black leading-none ${rpnColor}`}>{mode.rpn}</p>
-                                </div>
-                             </div>
-                          </div>
-                       </div>
-                     )
-                   })}
-                </div>
-              )}
+                      return (
+                        <tr 
+                          key={mode.id} 
+                          onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
+                          className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedModeId === mode.id ? 'bg-rose-500/10' : ''}`}
+                        >
+                           <td className="px-4 py-1.5">
+                              <span className="text-[9px] font-black uppercase text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded tracking-tighter">{mode.system_name}</span>
+                           </td>
+                           <td className="px-4 py-1.5 whitespace-nowrap">
+                              <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded ${ml.color} bg-opacity-20 text-[9px] font-black uppercase tracking-tighter w-fit`}>
+                                 <Shield size={10} /> LV.{lv} {ml.label}
+                              </div>
+                           </td>
+                           <td className="px-4 py-1.5 min-w-[300px]">
+                              <div className="flex flex-col">
+                                 <span className="text-[11px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight">{mode.title}</span>
+                                 <span className="text-[9px] text-slate-500 font-medium truncate italic max-w-[500px] leading-tight mt-0.5">{mode.effect}</span>
+                              </div>
+                           </td>
+                           <td className="px-4 py-1.5 text-center">
+                              <span className="text-[10px] font-black text-slate-400 bg-white/5 px-2 py-0.5 rounded">{mode.affected_assets?.length || 0}</span>
+                           </td>
+                           <td className="px-4 py-1.5 text-center">
+                              <span className="text-[10px] font-black text-slate-400 bg-white/5 px-2 py-0.5 rounded">{mode.mitigations?.length || 0}</span>
+                           </td>
+                           <td className="px-4 py-1.5 text-right">
+                              <span className={`text-[12px] font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-300'}`}>{mode.rpn}</span>
+                           </td>
+                        </tr>
+                      )
+                    })}
+                 </tbody>
+              </table>
            </div>
         </div>
 
-        {/* Pane 2: Root Causes */}
-        <div className="flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 relative">
-           <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-500 font-black uppercase tracking-[0.2em] text-[11px]">
-                <Zap size={16} />
-                <span>Root Causes <span className="text-slate-500 ml-1 opacity-50">[{filteredCauses.length}]</span></span>
-              </div>
-              <div className="flex items-center gap-3">
-                 <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[8px] font-black text-slate-500 uppercase">Live Analysis</span>
-                 </div>
+        {/* BOTTOM: Root Causes Compact Table */}
+        <div className="h-[35%] glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 flex flex-col relative">
+           <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                 <Zap size={14} className="text-amber-500" />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Known Root Causes</h3>
+                 <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded font-black">{filteredCauses.length} IDENTIFIED</span>
               </div>
            </div>
-           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
-              {filteredCauses.map((cause: Cause) => (
-                <button
-                  key={cause.id}
-                  onClick={() => setSelectedCauseId(selectedCauseId === cause.id ? null : cause.id)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all relative group overflow-hidden ${selectedCauseId === cause.id ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-black uppercase tracking-tight leading-tight mb-2 pr-2">{cause.cause_text}</p>
-                      <div className="flex items-center gap-3">
-                         <div className="flex items-center gap-1">
-                            <User size={10} className="text-slate-500" />
-                            <span className="text-[9px] font-black uppercase opacity-60">{cause.responsible_team || 'General Ops'}</span>
-                         </div>
-                         <div className="flex items-center gap-1">
-                            <Layers size={10} className="text-slate-500" />
-                            <span className="text-[9px] font-black uppercase opacity-60">{cause.failure_modes?.length || 0} Modes Linked</span>
-                         </div>
-                      </div>
-                    </div>
-                    <div className="text-right ml-4 bg-black/40 px-3 py-2 rounded-xl border border-white/5">
-                       <p className="text-[8px] font-black uppercase opacity-60 mb-0.5">OCCUR</p>
-                       <p className={`text-xl font-black ${selectedCauseId === cause.id ? 'text-white' : 'text-amber-500'}`}>{cause.occurrence_level}/10</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                     <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Frequency: {cause.occurrence_level > 7 ? 'Critical' : 'Moderate'}</span>
-                     </div>
-                     <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md">
-                        <Lightbulb size={10} className="text-amber-500" />
-                        <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">BKM Ready</span>
-                     </div>
-                  </div>
+           <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                 <thead className="sticky top-0 bg-[#0a0c14] z-10">
+                    <tr className="border-b border-white/5">
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Origin / Cause Text</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Responsible Team</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Modes</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Res</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">Occur</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-white/[0.02]">
+                    {filteredCauses.map((cause: any) => (
+                       <tr 
+                         key={cause.id} 
+                         onClick={() => setSelectedCauseId(selectedCauseId === cause.id ? null : cause.id)}
+                         className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedCauseId === cause.id ? 'bg-amber-500/10' : ''}`}
+                       >
+                          <td className="px-4 py-1.5 min-w-[300px]">
+                             <span className="text-[11px] font-black text-white uppercase group-hover:text-amber-400 transition-colors leading-tight">{cause.cause_text}</span>
+                          </td>
+                          <td className="px-4 py-1.5">
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-tight">{cause.responsible_team || 'General Ops'}</span>
+                          </td>
+                          <td className="px-4 py-1.5 text-center">
+                             <span className="text-[10px] font-black text-slate-500 px-2 py-0.5 rounded bg-white/5">{cause.failure_modes?.length || 0}</span>
+                          </td>
+                          <td className="px-4 py-1.5 text-center">
+                             <div className="flex items-center justify-center">
+                                {cause.resolutions?.length > 0 ? <ShieldCheck size={12} className="text-emerald-500" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />}
+                             </div>
+                          </td>
+                          <td className="px-4 py-1.5 text-right">
+                             <span className={`text-[12px] font-black tracking-tighter ${cause.occurrence_level > 7 ? 'text-amber-500 italic' : 'text-slate-400'}`}>{cause.occurrence_level}/10</span>
+                          </td>
+                       </tr>
+                    ))}
+                 </tbody>
+              </table>
+           </div>
+        </div>
+      </div>
 
-                  {selectedCauseId === cause.id && <motion.div layoutId="cause-active" className="absolute left-0 top-0 bottom-0 w-1 bg-white" />}
-                </button>
-              ))}
-              {filteredCauses.length === 0 && !isLoading && (
-                <div className="h-full flex flex-col items-center justify-center py-20 text-slate-600 opacity-20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.05)_0%,transparent_70%)]" />
-                  <Activity size={64} strokeWidth={1} className="mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2">No Root Causes Identified</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-700">Database consistent. All telemetry within bounds.</p>
-                </div>
-                )}
-                </div>
-                </div>
-                </div>
-
-                {/* Addition Wizard Modal */}
+      {/* Addition Wizard Modals */}
       <AnimatePresence>
         {showWizard && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
@@ -540,6 +496,34 @@ export default function FAR() {
                
                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  <FARWizard onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far-modes'] }); queryClient.invalidateQueries({ queryKey: ['far-causes'] }); }} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showCauseWizard && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
+              className="glass-panel w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[32px] border border-amber-500/30 overflow-hidden"
+            >
+               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-amber-500/5">
+                 <div className="flex items-center gap-3">
+                   <div className="p-2 rounded-xl bg-amber-500/20 text-amber-500">
+                     <Zap size={20} />
+                   </div>
+                   <div>
+                     <h2 className="text-lg font-black uppercase tracking-tight text-white italic">Root Cause Investigation</h2>
+                     <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Source Identification & Attribution</p>
+                   </div>
+                 </div>
+                 <button onClick={() => setShowCauseWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+               </div>
+               
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                 <CauseWizard onComplete={() => { setShowCauseWizard(false); queryClient.invalidateQueries({ queryKey: ['far-modes'] }); queryClient.invalidateQueries({ queryKey: ['far-causes'] }); }} />
                </div>
             </motion.div>
           </div>
