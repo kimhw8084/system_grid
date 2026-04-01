@@ -78,6 +78,181 @@ const SharedServiceModals = ({
   )
 }
 
+import { createPortal } from 'react-dom'
+
+const SharedNetworkModals = ({
+  activeEdit,
+  setActiveEdit,
+  options,
+  devices,
+  onUpdate
+}: {
+  activeEdit: any,
+  setActiveEdit: (l: any) => void,
+  options: any,
+  devices: any,
+  onUpdate: () => void
+}) => {
+  const queryClient = useQueryClient()
+  const [connData, setConnData] = useState<any>({})
+
+  useEffect(() => {
+    if (activeEdit) {
+      setConnData({
+        ...activeEdit,
+        device_a_id: activeEdit.source_device_id,
+        device_b_id: activeEdit.target_device_id,
+        port_a: activeEdit.source_port || activeEdit.port_a,
+        port_b: activeEdit.target_port || activeEdit.port_b
+      })
+    }
+  }, [activeEdit])
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch(`/api/v1/networks/connections/${activeEdit.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      onUpdate()
+      setActiveEdit(null)
+      toast.success('Link Matrix Updated')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  return createPortal(
+    <AnimatePresence>
+      {activeEdit && (
+        <motion.div 
+          key="network-edit-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-10"
+        >
+          <motion.div 
+            key="network-edit-modal"
+            initial={{ scale: 0.95, opacity: 0 }} 
+            animate={{ scale: 1, opacity: 1 }} 
+            exit={{ scale: 0.95, opacity: 0 }} 
+            className="glass-panel w-[500px] p-10 rounded-[40px] space-y-6 border border-blue-500/30"
+          >
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-blue-400">
+                <LinkIcon size={24} />
+                <span>Modify Connectivity</span>
+              </h2>
+              <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+              <div className="col-span-2">
+                <StyledSelect
+                  label="Source Entity *"
+                  value={connData.device_a_id}
+                  onChange={e => setConnData({...connData, device_a_id: e.target.value})}
+                  options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                  placeholder="Select Registry Asset..."
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
+                <input value={connData.port_a || ''} onChange={e => setConnData({...connData, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
+                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
+                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
+                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
+              </div>
+              <StyledSelect
+                  label="Direction"
+                  value={connData.direction}
+                  onChange={e => setConnData({...connData, direction: e.target.value})}
+                  options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
+              />
+              <div className="col-span-2 border-t border-white/5 pt-4">
+                <StyledSelect
+                  label="Peer Entity *"
+                  value={connData.device_b_id}
+                  onChange={e => setConnData({...connData, device_b_id: e.target.value})}
+                  options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                  placeholder="Select Registry Asset..."
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
+                <input value={connData.port_b || ''} onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
+                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
+                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
+                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
+              </div>
+              <StyledSelect
+                  label="Link Type *"
+                  value={connData.link_type}
+                  onChange={e => setConnData({...connData, link_type: e.target.value})}
+                  options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
+                      ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
+                      : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
+                  }
+              />
+              <div className="col-span-2">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
+                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
+                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+              </div>
+              <StyledSelect
+                  label="Unit"
+                  value={connData.unit}
+                  onChange={e => setConnData({...connData, unit: e.target.value})}
+                  options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
+              />
+            </div>
+            <div className="flex space-x-3 pt-4 border-t border-white/5">
+              <button onClick={() => setActiveEdit(null)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+              <button onClick={() => {
+                if(!connData.device_a_id || !connData.port_a || !connData.device_b_id || !connData.port_b) {
+                  return toast.error("Entity and Port mapping required")
+                }
+                mutation.mutate(connData)
+              }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body
+  )
+}
+
+
 const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: number, onViewDetails: (s: any) => void, onEdit: (s: any) => void }) => {
   const { data: services, isLoading } = useQuery({
     queryKey: ['device-services', deviceId],
@@ -1277,166 +1452,6 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
     )
 }
 
-import { createPortal } from 'react-dom'
-
-const SharedNetworkModals = ({
-  activeEdit,
-  setActiveEdit,
-  options,
-  devices,
-  onUpdate
-}: {
-  activeEdit: any,
-  setActiveEdit: (l: any) => void,
-  options: any,
-  devices: any,
-  onUpdate: () => void
-}) => {
-  const queryClient = useQueryClient()
-  const [connData, setConnData] = useState<any>({})
-
-  useEffect(() => {
-    if (activeEdit) {
-      setConnData({
-        ...activeEdit,
-        device_a_id: activeEdit.source_device_id,
-        device_b_id: activeEdit.target_device_id,
-        port_a: activeEdit.source_port,
-        port_b: activeEdit.target_port
-      })
-    }
-  }, [activeEdit])
-
-  const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiFetch(`/api/v1/networks/connections/${activeEdit.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data)
-      })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: () => {
-      onUpdate()
-      setActiveEdit(null)
-      toast.success('Link Matrix Updated')
-    },
-    onError: (e: any) => toast.error(e.message)
-  })
-
-  return (
-    <AnimatePresence>
-      {activeEdit && createPortal(
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} 
-            className="glass-panel w-[500px] p-10 rounded-[40px] space-y-6"
-          >
-            <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-blue-400">
-               <LinkIcon size={24} />
-               <span>Modify Connectivity</span>
-            </h2>
-            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
-              <div className="col-span-2">
-                <StyledSelect
-                  label="Source Entity *"
-                  value={connData.device_a_id}
-                  onChange={e => setConnData({...connData, device_a_id: e.target.value})}
-                  options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                  placeholder="Select Registry Asset..."
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
-                <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
-                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
-                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
-                </div>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
-                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
-              </div>
-              <StyledSelect
-                  label="Direction"
-                  value={connData.direction}
-                  onChange={e => setConnData({...connData, direction: e.target.value})}
-                  options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
-              />
-              <div className="col-span-2 border-t border-white/5 pt-4">
-                <StyledSelect
-                  label="Peer Entity *"
-                  value={connData.device_b_id}
-                  onChange={e => setConnData({...connData, device_b_id: e.target.value})}
-                  options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                  placeholder="Select Registry Asset..."
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
-                <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
-                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
-                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
-                </div>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
-                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
-              </div>
-              <StyledSelect
-                  label="Link Type *"
-                  value={connData.link_type}
-                  onChange={e => setConnData({...connData, link_type: e.target.value})}
-                  options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
-                      ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
-                      : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
-                  }
-              />
-              <div className="col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
-                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
-              </div>
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
-                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-              </div>
-              <StyledSelect
-                  label="Unit"
-                  value={connData.unit}
-                  onChange={e => setConnData({...connData, unit: e.target.value})}
-                  options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
-              />
-            </div>
-            <div className="flex space-x-3 pt-4 border-t border-white/5">
-              <button onClick={() => setActiveEdit(null)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500">Abort</button>
-              <button onClick={() => {
-                if(!connData.device_a_id || (!connData.source_port && !connData.port_a) || !connData.device_b_id || (!connData.target_port && !connData.port_b)) {
-                  return toast.error("Entity and Port mapping required")
-                }
-                mutation.mutate(connData)
-              }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
-            </div>
-          </motion.div>
-        </div>,
-        document.body
-      )}
-    </AnimatePresence>
-  )
-}
-
 const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
   const queryClient = useQueryClient()
 
@@ -1557,30 +1572,37 @@ const SecurityTab = ({ device }: { device: any }) => {
 
   const availableIPs = useMemo(() => {
     const ips: any[] = []
+    
+    // Add explicitly configured IPs from Device record
     if (device?.primary_ip) ips.push({ value: device.primary_ip, label: `Primary: ${device.primary_ip}` })
     if (device?.management_ip) ips.push({ value: device.management_ip, label: `Mgmt: ${device.management_ip}` })
     
-    // Add those network entries where the asset is source or peer
+    // Add all IPs discovered in the fabric (connections) for this asset
     const relatedConns = allConnections?.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
     relatedConns.forEach((c: any) => {
       const isSrc = c.source_device_id === deviceId
       const ip = isSrc ? c.source_ip : c.target_ip
-      const port = isSrc ? c.source_port : c.target_port
-      if (ip && ip !== device.primary_ip && ip !== device.management_ip) {
+      const port = isSrc ? (c.source_port || c.port_a) : (c.target_port || c.port_b)
+      if (ip) {
         ips.push({ value: ip, label: `${ip} [${port}]` })
       }
     })
     
-    // Deduplicate IPs
+    // Deduplicate IPs based on value to prevent redundant select options, 
+    // but prefer the detailed port label over the generic primary/mgmt label if both exist.
     const uniqueIPsMap = new Map()
     ips.forEach(item => {
-      if (!uniqueIPsMap.has(item.value)) {
+      const existing = uniqueIPsMap.get(item.value)
+      // If we don't have this IP yet, or if the current item has a port label (contains '[')
+      // and the existing one was a generic "Primary:" or "Mgmt:" label, replace it.
+      if (!existing || (!existing.label.includes('[') && item.label.includes('['))) {
         uniqueIPsMap.set(item.value, item)
       }
     })
     
     return Array.from(uniqueIPsMap.values())
   }, [device, allConnections, deviceId])
+
 
   const mutation = useMutation({    mutationFn: async (data: any) => {
       const res = await apiFetch('/api/v1/security/firewall', {
