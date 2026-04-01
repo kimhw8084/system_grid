@@ -54,9 +54,9 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                         <tr className="bg-white/[0.01] text-[10px] text-slate-500 font-black uppercase tracking-widest border-b border-white/5">
                             <th className="px-8 py-4 font-black">Connected Peer (Target)</th>
                             <th className="px-6 py-4 font-black">Egress Port</th>
-                            <th className="px-6 py-4 font-black">Ingress Port</th>
+                            <th className="px-6 py-4 font-black text-center">Ingress Port</th>
                             <th className="px-6 py-4 font-black text-center">Speed</th>
-                            <th className="px-6 py-4 font-black text-center">Topology</th>
+                            <th className="px-6 py-4 font-black text-center">Type</th>
                             <th className="px-8 py-4 font-black text-right">Actions</th>
                         </tr>
                     </thead>
@@ -66,13 +66,13 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                             const isSource = sourceDevice?.id === conn.source_device_id
                             const peerId = isSource ? conn.target_device_id : conn.source_device_id
                             const peerDevice = devices.find(d => d.id === peerId)
-                            
-                            const peerName = peerDevice?.name || conn.peer_name || "Unknown Asset"
+
+                            const peerName = peerDevice?.name || (isSource ? conn.server_b : conn.server_a) || "Unknown Asset"
                             const peerSystem = peerDevice?.system || "N/A"
-                            
+
                             const localPort = isSource ? conn.source_port : conn.target_port
                             const remotePort = isSource ? conn.target_port : conn.source_port
-                            
+
                             return (
                                 <tr key={conn.id} className="group hover:bg-blue-500/[0.03] transition-colors">
                                     <td className="px-8 py-4">
@@ -104,15 +104,16 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                                       </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                            conn.link_type === 'Physical' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 
-                                            conn.link_type === 'Virtual' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                                            'bg-slate-500/10 border-slate-500/20 text-slate-400'
-                                        }`}>
-                                            {conn.link_type || conn.purpose || 'DATA'}
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-4 text-right">
+                                       {conn.link_type && (
+                                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                                               conn.link_type === 'Physical' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 
+                                               conn.link_type === 'Virtual' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                                               'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                                           }`}>
+                                               {conn.link_type}
+                                           </span>
+                                       )}
+                                    </td>                                    <td className="px-8 py-4 text-right">
                                         <button 
                                             onClick={() => onViewForensics(conn)}
                                             className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95 group/btn"
@@ -146,9 +147,8 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Topology Verification Active</span>
-                  </div>
-                  <div className="h-3 w-px bg-white/10" />
+                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Fabric Verification Active</span>
+                  </div>                  <div className="h-3 w-px bg-white/10" />
                   <span className="text-[9px] font-mono text-slate-600">ID: {sourceDevice?.id || '---'}</span>
                 </div>
                 <button onClick={onClose} className="px-8 py-2.5 bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95">

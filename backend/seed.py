@@ -51,7 +51,8 @@ def seed():
             "DeviceType": ["Physical", "Virtual", "Switch", "Firewall", "Load Balancer", "Storage", "PDU"],
             "Status": ["Active", "Maintenance", "Standby", "Decommissioned", "Provisioning"],
             "Environment": ["Production", "Staging", "QA", "DR"],
-            "BusinessUnit": ["Operations", "Finance", "Security", "Engineering"]
+            "BusinessUnit": ["Operations", "Finance", "Security", "Engineering"],
+            "LinkPurpose": ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"]
         }
         for cat, vals in cats.items():
             for v in vals:
@@ -181,7 +182,19 @@ def seed():
             db.add(PortConnection(
                 source_device_id=w.id, source_port="eth0", source_ip=w.primary_ip,
                 target_device_id=target_sw.id, target_port=f"Gig1/0/{workers.index(w)//8 + 1}",
-                purpose="Primary Link", speed_gbps=10, direction="bidirectional"
+                link_type="Data", purpose="Primary Link", speed_gbps=10, unit="Gbps", direction="bidirectional"
+            ))
+
+        # --- SERVER-TO-SERVER CONNECTIONS ---
+        print("Seeding 30+ Server-to-Server Direct Links...")
+        for i in range(35):
+            s1, s2 = random.sample(workers, 2)
+            # Ensure they are not the same
+            db.add(PortConnection(
+                source_device_id=s1.id, source_port="eth1", source_ip=s1.primary_ip.replace(".50.", ".60."),
+                target_device_id=s2.id, target_port="eth1", target_ip=s2.primary_ip.replace(".50.", ".60."),
+                link_type="Data", purpose="Backend Replication / Heartbeat Flow",
+                speed_gbps=40, unit="Gbps", direction="bidirectional"
             ))
 
         # 8. Relationship Scenarios (HA, Clusters, Deps)

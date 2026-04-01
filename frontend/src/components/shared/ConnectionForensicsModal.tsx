@@ -104,10 +104,9 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                          <p className="text-sm font-black text-indigo-400">{connection.speed || connection.speed_gbps + ' Gbps' || '-'}</p>
                       </div>
                       <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Topology</p>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Type</p>
                          <p className="text-sm font-black text-white">{connection.link_type || '-'}</p>
-                      </div>
-                      <div className="text-center">
+                      </div>                      <div className="text-center">
                          <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Traffic Mode</p>
                          <p className="text-sm font-black text-amber-400">{connection.direction || '-'}</p>
                       </div>
