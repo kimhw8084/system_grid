@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
@@ -10,19 +12,22 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 # --- FAILURE MODES ---
 
 @router.get("/modes")
-def get_failure_modes(system: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(models.FarFailureMode).options(
+async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureMode).options(
         joinedload(models.FarFailureMode.causes),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.prevention_actions)
     ).filter(models.FarFailureMode.is_deleted == False)
+    
     if system:
-        query = query.filter(models.FarFailureMode.system_name == system)
-    return query.all()
+        stmt = stmt.filter(models.FarFailureMode.system_name == system)
+    
+    result = await db.execute(stmt)
+    return result.unique().scalars().all()
 
 @router.post("/modes")
-def create_failure_mode(data: dict, db: Session = Depends(get_db)):
+async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     # Calculate RPN
     rpn = data.get('severity', 1) * data.get('occurrence', 1) * data.get('detection', 1)
     
@@ -37,69 +42,77 @@ def create_failure_mode(data: dict, db: Session = Depends(get_db)):
         status="Analyzing"
     )
     db.add(mode)
-    db.flush()
+    await db.flush()
 
     # Link Assets
     if data.get('affected_assets'):
-        assets = db.query(models.Device).filter(models.Device.id.in_(data['affected_assets'])).all()
-        mode.affected_assets = assets
+        stmt = select(models.Device).filter(models.Device.id.in_(data['affected_assets']))
+        result = await db.execute(stmt)
+        assets = result.scalars().all()
+        mode.affected_assets = list(assets)
 
-    db.commit()
-    db.refresh(mode)
+    await db.commit()
+    await db.refresh(mode)
     return mode
 
 # --- CAUSES ---
 
 @router.get("/causes")
-def get_failure_causes(db: Session = Depends(get_db)):
-    return db.query(models.FarFailureCause).options(
+async def get_failure_causes(db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureCause).options(
         joinedload(models.FarFailureCause.failure_modes)
-    ).all()
+    )
+    result = await db.execute(stmt)
+    return result.unique().scalars().all()
 
 @router.post("/causes")
-def create_cause(data: dict, db: Session = Depends(get_db)):
+async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     cause = models.FarFailureCause(
         cause_text=data.get('cause_text'),
         occurrence_level=data.get('occurrence_level', 1),
         responsible_team=data.get('responsible_team')
     )
     db.add(cause)
-    db.flush()
+    await db.flush()
     
     if data.get('mode_ids'):
-        modes = db.query(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids'])).all()
-        cause.failure_modes = modes
+        stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids']))
+        result = await db.execute(stmt)
+        modes = result.scalars().all()
+        cause.failure_modes = list(modes)
         
-    db.commit()
-    db.refresh(cause)
+    await db.commit()
+    await db.refresh(cause)
     return cause
 
 # --- RESOLUTIONS ---
 
 @router.post("/resolutions")
-def create_resolution(data: dict, db: Session = Depends(get_db)):
+async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
     res = models.FarResolution(
         knowledge_id=data.get('knowledge_id'),
         preventive_follow_up=data.get('preventive_follow_up'),
         responsible_team=data.get('responsible_team')
     )
     db.add(res)
-    db.flush()
+    await db.flush()
     
     if data.get('cause_ids'):
-        causes = db.query(models.FarFailureCause).filter(models.FarFailureCause.id.in_(data['cause_ids'])).all()
+        stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(data['cause_ids']))
+        result = await db.execute(stmt)
+        causes = result.scalars().all()
         # Handle join table linkage (far_cause_resolutions)
         for cause in causes:
             cause.resolutions.append(res)
             
-    db.commit()
-    db.refresh(res)
+    await db.commit()
+    await db.refresh(res)
     return res
 
 # --- MITIGATIONS ---
 
 @router.post("/mitigations")
-def create_mitigation(data: dict, db: Session = Depends(get_db)):
+async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
     mit = models.FarMitigation(
         mitigation_type=data.get('mitigation_type'),
         mitigation_steps=data.get('mitigation_steps'),
@@ -107,21 +120,23 @@ def create_mitigation(data: dict, db: Session = Depends(get_db)):
         monitoring_item_id=data.get('monitoring_item_id')
     )
     db.add(mit)
-    db.flush()
+    await db.flush()
     
     if data.get('mode_ids'):
-        modes = db.query(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids'])).all()
+        stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids']))
+        result = await db.execute(stmt)
+        modes = result.scalars().all()
         for mode in modes:
             mode.mitigations.append(mit)
             
-    db.commit()
-    db.refresh(mit)
+    await db.commit()
+    await db.refresh(mit)
     return mit
 
 # --- PREVENTION ---
 
 @router.post("/prevention")
-def create_prevention(data: dict, db: Session = Depends(get_db)):
+async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
     prev = models.FarPrevention(
         failure_mode_id=data.get('failure_mode_id'),
         prevention_action=data.get('prevention_action'),
@@ -129,6 +144,6 @@ def create_prevention(data: dict, db: Session = Depends(get_db)):
         target_date=data.get('target_date')
     )
     db.add(prev)
-    db.commit()
-    db.refresh(prev)
+    await db.commit()
+    await db.refresh(prev)
     return prev

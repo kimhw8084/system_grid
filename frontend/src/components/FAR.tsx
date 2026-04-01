@@ -241,7 +241,6 @@ export default function FAR() {
 // --- FAR Wizard Component ---
 function FARWizard({ onComplete }: { onComplete: () => void }) {
   const queryClient = useQueryClient()
-  const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<any>({
     system_name: '',
     title: '',
@@ -252,6 +251,7 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
     affected_assets: [],
     causes: []
   })
+  const [assetSearch, setAssetSearch] = useState('')
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const systems = options?.filter((o: any) => o.category === 'LogicalSystem') || []
@@ -261,6 +261,15 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
     enabled: !!formData.system_name,
     queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${formData.system_name}`)).json() 
   })
+
+  const filteredDevices = useMemo(() => {
+    if (!devices) return []
+    if (!assetSearch) return devices
+    return devices.filter((d: any) => 
+      d.name.toLowerCase().includes(assetSearch.toLowerCase()) || 
+      d.model.toLowerCase().includes(assetSearch.toLowerCase())
+    )
+  }, [devices, assetSearch])
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -274,120 +283,113 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const rpn = formData.severity * formData.occurrence * formData.detection
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="grid grid-cols-3 gap-4 mb-12">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className={`h-1.5 rounded-full transition-all ${step >= s ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]' : 'bg-white/10'}`} />
-        ))}
+    <div className="flex flex-col space-y-10">
+      <div className="text-center space-y-2">
+        <div className="inline-flex p-4 rounded-3xl bg-rose-500/10 text-rose-500 mb-2 shadow-xl shadow-rose-500/5"><ShieldAlert size={48} /></div>
+        <h2 className="text-5xl font-black uppercase tracking-tighter text-white italic">Document Failure Mode</h2>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Comprehensive Risk Registration & Analysis</p>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-        <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full max-w-2xl space-y-8">
-              <div className="text-center space-y-2">
-                <div className="inline-flex p-4 rounded-3xl bg-rose-500/10 text-rose-500 mb-4 shadow-xl shadow-rose-500/5"><Box size={48} /></div>
-                <h2 className="text-5xl font-black uppercase tracking-tighter text-white italic">Define System Scope</h2>
-                <p className="text-slate-500 text-sm font-medium">Select the system and specific assets that share this failure mode.</p>
-              </div>
+      <div className="grid grid-cols-12 gap-10">
+        {/* Left Column: Scope & Identity */}
+        <div className="col-span-7 space-y-8">
+          <div className="space-y-6 bg-white/5 p-8 rounded-[32px] border border-white/5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">1. Logical System Context</label>
+              <StyledSelect 
+                options={systems.map((s: any) => ({ label: s.label, value: s.value }))}
+                value={formData.system_name}
+                onChange={(e) => setFormData({ ...formData, system_name: e.target.value })}
+                placeholder="Select System..."
+              />
+            </div>
 
-              <div className="space-y-6 bg-white/5 p-8 rounded-[32px] border border-white/5">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Logical System</label>
-                  <StyledSelect 
-                    options={systems.map((s: any) => ({ label: s.label, value: s.value }))}
-                    value={formData.system_name}
-                    onChange={(e) => setFormData({ ...formData, system_name: e.target.value })}
-                    placeholder="Select System Context..."
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">2. Failure Mode Title</label>
+              <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Memory Leak / Network Congestion" className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold uppercase tracking-tight outline-none focus:border-rose-500/50 transition-all text-white shadow-inner" />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">3. Effect of Failure</label>
+              <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Impact statement..." className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight outline-none focus:border-rose-500/50 transition-all min-h-[120px] text-white shadow-inner" />
+            </div>
+          </div>
+
+          <div className="space-y-4 bg-white/5 p-8 rounded-[32px] border border-white/5">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">4. Affected Assets (Optional)</label>
+              {formData.system_name && (
+                <div className="relative">
+                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input 
+                    value={assetSearch}
+                    onChange={e => setAssetSearch(e.target.value)}
+                    placeholder="Search assets..."
+                    className="bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-rose-500/50 w-40 transition-all"
                   />
                 </div>
-
-                {formData.system_name && (
-                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 pt-4 border-t border-white/5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Affected Assets ({devices?.length || 0} Found)</label>
-                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        {devices?.map((d: any) => (
-                          <label key={d.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
-                            <input type="checkbox" className="hidden" checked={formData.affected_assets.includes(d.id)} onChange={() => {
-                              const next = formData.affected_assets.includes(d.id) ? formData.affected_assets.filter((id: any) => id !== d.id) : [...formData.affected_assets, d.id]
-                              setFormData({ ...formData, affected_assets: next })
-                            }} />
-                            <Server size={14} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-600'} />
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-tight leading-none">{d.name}</p>
-                              <p className="text-[9px] text-slate-500 font-bold uppercase">{d.model}</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                   </motion.div>
+              )}
+            </div>
+            
+            {formData.system_name ? (
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {filteredDevices.map((d: any) => (
+                  <label key={d.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+                    <input type="checkbox" className="hidden" checked={formData.affected_assets.includes(d.id)} onChange={() => {
+                      const next = formData.affected_assets.includes(d.id) ? formData.affected_assets.filter((id: any) => id !== d.id) : [...formData.affected_assets, d.id]
+                      setFormData({ ...formData, affected_assets: next })
+                    }} />
+                    <Server size={14} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-600'} />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{d.name}</p>
+                      <p className="text-[9px] text-slate-500 font-bold uppercase truncate">{d.model}</p>
+                    </div>
+                  </label>
+                ))}
+                {filteredDevices.length === 0 && (
+                  <div className="col-span-2 py-8 text-center text-[10px] font-black uppercase text-slate-600 tracking-widest">No matching assets</div>
                 )}
               </div>
-            </motion.div>
-          )}
-
-          {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full max-w-2xl space-y-8">
-               <div className="text-center space-y-2">
-                <div className="inline-flex p-4 rounded-3xl bg-amber-500/10 text-amber-500 mb-4"><Zap size={48} /></div>
-                <h2 className="text-5xl font-black uppercase tracking-tighter text-white italic">Failure Mode & Effect</h2>
-                <p className="text-slate-500 text-sm font-medium">What happens when things go wrong? Describe the symptom and impact.</p>
+            ) : (
+              <div className="py-12 text-center text-[10px] font-black uppercase text-slate-600 tracking-widest bg-black/20 rounded-2xl border border-dashed border-white/5">
+                Select a system to view assets
               </div>
+            )}
+          </div>
+        </div>
 
-              <div className="space-y-6 bg-white/5 p-8 rounded-[32px] border border-white/5">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Failure Mode Title</label>
-                    <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Memory Leak / Disk Full / Power Supply Surge" className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold uppercase tracking-tight outline-none focus:border-rose-500/50 transition-all text-white shadow-inner" />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Effect of Failure (Impact Statement)</label>
-                    <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the downstream impact on services and customers..." className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold tracking-tight outline-none focus:border-rose-500/50 transition-all min-h-[140px] text-white shadow-inner" />
-                 </div>
-              </div>
-            </motion.div>
-          )}
+        {/* Right Column: Risk Scoring */}
+        <div className="col-span-5 space-y-8">
+          <div className="space-y-6">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">5. Risk Priority Scoring</label>
+            <div className="space-y-4">
+              <ScoreInput label="Severity" value={formData.severity} onChange={(v:any) => setFormData({ ...formData, severity: v })} color="text-rose-500" description="Impact level" />
+              <ScoreInput label="Occurrence" value={formData.occurrence} onChange={(v:any) => setFormData({ ...formData, occurrence: v })} color="text-amber-500" description="Frequency level" />
+              <ScoreInput label="Detection" value={formData.detection} onChange={(v:any) => setFormData({ ...formData, detection: v })} color="text-blue-400" description="Difficulty to find" />
+            </div>
+          </div>
 
-          {step === 3 && (
-            <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="w-full max-w-2xl space-y-8">
-               <div className="text-center space-y-2">
-                <div className="inline-flex p-4 rounded-3xl bg-blue-500/10 text-blue-500 mb-4"><Sliders size={48} /></div>
-                <h2 className="text-5xl font-black uppercase tracking-tighter text-white italic">FMEA Risk Scoring</h2>
-                <p className="text-slate-500 text-sm font-medium">Score the severity, occurrence, and detection levels (1-10).</p>
-              </div>
+          <div className="bg-white/5 rounded-[40px] p-8 text-center border border-white/5 shadow-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 via-transparent to-blue-500/5" />
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 relative z-10">Calculated RPN</p>
+            <h4 className="text-7xl font-black text-white tracking-tighter relative z-10 italic">
+              {rpn}
+            </h4>
+            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest relative z-10 transition-colors ${rpn > 100 ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
+              {rpn > 100 ? 'Critical Risk' : 'Acceptable Risk'}
+            </div>
+          </div>
 
-              <div className="grid grid-cols-3 gap-8">
-                 <ScoreInput label="Severity" value={formData.severity} onChange={(v:any) => setFormData({ ...formData, severity: v })} color="text-rose-500" description="How bad is the impact?" />
-                 <ScoreInput label="Occurrence" value={formData.occurrence} onChange={(v:any) => setFormData({ ...formData, occurrence: v })} color="text-amber-500" description="How often does it happen?" />
-                 <ScoreInput label="Detection" value={formData.detection} onChange={(v:any) => setFormData({ ...formData, detection: v })} color="text-blue-400" description="How hard is it to find?" />
-              </div>
-
-              <div className="bg-white/5 rounded-[40px] p-10 text-center border border-white/5 shadow-2xl relative overflow-hidden group">
-                 <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 relative z-10">Calculated Risk Priority Number (RPN)</p>
-                 <h4 className="text-8xl font-black text-white tracking-tighter relative z-10 italic">
-                   {formData.severity * formData.occurrence * formData.detection}
-                 </h4>
-                 <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[9px] font-black uppercase tracking-widest relative z-10">
-                   {formData.severity * formData.occurrence * formData.detection > 100 ? 'Critical Risk Threshold' : 'Standard Monitoring Mode'}
-                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="flex items-center gap-6 mt-12">
-          {step > 1 && (
-            <button onClick={() => setStep(step - 1)} className="px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all flex items-center gap-2">
-              <ChevronLeft size={16} /> Previous
-            </button>
-          )}
           <button 
-            disabled={(step === 1 && !formData.system_name) || (step === 2 && !formData.title)}
-            onClick={() => step === 3 ? mutation.mutate(formData) : setStep(step + 1)} 
-            className="bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-16 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-rose-500/30 active:scale-95 transition-all flex items-center gap-3"
+            disabled={!formData.system_name || !formData.title || mutation.isPending}
+            onClick={() => mutation.mutate(formData)} 
+            className="w-full bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-6 rounded-2xl text-[12px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-rose-500/30 active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : step === 3 ? 'Authorize Record' : 'Proceed Stage'} <ArrowRight size={16} />
+            {mutation.isPending ? <RefreshCcw size={18} className="animate-spin" /> : <Save size={18} />} 
+            {mutation.isPending ? 'Processing...' : 'Authorize Risk Record'}
           </button>
         </div>
       </div>

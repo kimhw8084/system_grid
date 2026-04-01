@@ -216,8 +216,8 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
             ? `M ${l.x1} ${l.y1} L ${l.x1 + l.offset} ${l.y1} L ${l.x1 + l.offset} ${l.y2} L ${l.x2} ${l.y2}`
             : `M ${l.x1} ${l.y1} L ${l.x2} ${l.y2}`
 
-          return (
-            <g key={l.id || i} className={`pointer-events-auto cursor-pointer group ${l.isScrolledOut ? 'opacity-20' : 'opacity-100'}`} 
+            return (
+            <g key={l.id || i} className={`pointer-events-auto cursor-pointer group ${(l.isScrolledOut && !l.isInternal) ? 'opacity-20' : 'opacity-100'}`} 
                onMouseEnter={(e) => setHoveredLine({ ...l, mouseX: e.clientX, mouseY: e.clientY })}
                onMouseLeave={() => setHoveredLine(null)}
                onClick={() => l.connection && onLineClick?.(l.connection)}>
@@ -225,14 +225,14 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               <path
                 d={path} fill="none" stroke="#3b82f6" strokeWidth="2.5" filter="url(#lineGlow)"
                 strokeLinecap="round" strokeLinejoin="round" 
-                className={`group-hover:stroke-blue-400 group-hover:stroke-[4px] transition-all ${l.isScrolledOut ? 'stroke-dash-4' : ''}`}
-                strokeDasharray={l.isScrolledOut ? "8 8" : "none"}
+                className={`group-hover:stroke-blue-400 group-hover:stroke-[4px] transition-all ${(l.isScrolledOut && !l.isInternal) ? 'stroke-dash-4' : ''}`}
+                strokeDasharray={(l.isScrolledOut && !l.isInternal) ? "8 8" : "none"}
               />
               <path
                 d={path} fill="none" stroke="#60a5fa" strokeWidth="1" strokeOpacity="0.8"
                 strokeLinecap="round" strokeLinejoin="round"
               />
-              {!l.isScrolledOut && (
+              {(!l.isScrolledOut || l.isInternal) && (
                 <>
                   <circle cx={l.x1} cy={l.y1} r="4" fill="#ffffff" filter="url(#lineGlow)" />
                   <circle cx={l.x2} cy={l.y2} r="4" fill="#ffffff" filter="url(#lineGlow)" />
