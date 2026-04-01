@@ -460,6 +460,7 @@ class Investigation(Base, BaseMixin):
     __tablename__ = "investigations"
     title = Column(String, index=True)
     problem_statement = Column(Text)
+    category = Column(String, default="General") # General, Troubleshooting, Security, Maintenance
     
     status = Column(String, default="Analyzing") # Analyzing, Escalated, Monitoring, Resolved, Closed
     priority = Column(String, default="Medium") # Urgent, High, Medium, Low
@@ -469,10 +470,14 @@ class Investigation(Base, BaseMixin):
     impacted_device_ids = Column(JSON, default=list)
     assigned_team = Column(String)
     
-    # Forensics (Legacy from IncidentLog)
+    # Forensics & Troubleshooting Details
+    impact = Column(Text)
     trigger_event = Column(Text)
     root_cause = Column(Text)
     resolution_steps = Column(Text)
+    mitigation_items = Column(JSON, default=list) # List of actions taken to mitigate
+    prevention_method = Column(Text)
+    monitoring_items = Column(JSON, default=list) # Items to monitor after resolution
     lessons_learned = Column(Text)
     
     is_deleted = Column(Boolean, default=False)
@@ -484,7 +489,8 @@ class InvestigationProgress(Base, BaseMixin):
     __tablename__ = "investigation_progress"
     investigation_id = Column(Integer, ForeignKey("investigations.id", ondelete="CASCADE"))
     entry_text = Column(Text)
-    entry_type = Column(String, default="Update") # Update, Evidence, Milestone, Escalation
+    entry_type = Column(String, default="Update") # Update, Diagnosis, Action, Observation, Milestone
+    poc = Column(String) # Point of Contact/Person who did it
     
     added_by = Column(String)
     timestamp = Column(DateTime, server_default=func.now())
