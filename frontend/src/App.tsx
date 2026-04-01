@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
 
@@ -20,6 +20,7 @@ import MonitoringGrid from "./components/MonitoringGrid"
 import Investigation from "./components/Investigation"
 import Vendor from "./components/Vendor"
 import Knowledge from "./components/Knowledge"
+import FAR from "./components/FAR"
 import DataFlowDesigner from "./components/DataFlowDesigner"
 import ExternalIntelligence from "./components/ExternalIntelligence"
 import Temp1 from "./components/Temp1"
@@ -223,8 +224,9 @@ function MainLayout() {
           <SidebarItem icon={Server} label="Assets" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Shield} label="Investigations" path="/investigations" active={location.pathname === "/investigations"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Target} label="Failure Analysis" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Info} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
@@ -267,6 +269,7 @@ function MainLayout() {
             <Route path="/services" element={<ServiceRegistry />} />
             <Route path="/investigations" element={<Investigation />} />
             <Route path="/vendors" element={<Vendor />} />
+            <Route path="/far" element={<FAR />} />
             <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/network" element={<NetworkFabric />} />
             <Route path="/monitoring" element={<MonitoringGrid />} />

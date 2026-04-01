@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..database import Base
@@ -437,9 +437,13 @@ class ContractCoverage(Base, BaseMixin):
 
 class KnowledgeEntry(Base, BaseMixin):
     __tablename__ = "knowledge_entries"
-    category = Column(String, index=True) # Q&A, Manual, Instruction, FAQ, Best Practice
+    category = Column(String, index=True) # Q&A, Manual, Instruction, FAQ, Best Practice, BKM
     title = Column(String, index=True)
     content = Column(Text) # Markdown or Rich Text
+    
+    # Structured BKM (Best Known Method) Data
+    # For BKM: { purpose, prerequisites: [], flowchart_data, steps: [], tips: [], troubleshooting: [], next_steps: [] }
+    content_json = Column(JSON, default=dict) 
     
     # Q&A specific fields
     question_context = Column(Text) # Original problem description
@@ -453,6 +457,97 @@ class KnowledgeEntry(Base, BaseMixin):
     
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
+
+# --- NEW FAR (FAILURE ANALYSIS & RESOLUTION) MODULE ---
+
+# Many-to-Many Join Tables for FAR
+far_mode_assets = Table(
+    "far_mode_assets", Base.metadata,
+    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+    Column("device_id", Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+)
+
+far_mode_causes = Table(
+    "far_mode_causes", Base.metadata,
+    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+    Column("cause_id", Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"))
+)
+
+far_cause_resolutions = Table(
+    "far_cause_resolutions", Base.metadata,
+    Column("cause_id", Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE")),
+    Column("resolution_id", Integer, ForeignKey("far_resolutions.id", ondelete="CASCADE"))
+)
+
+far_mode_mitigations = Table(
+    "far_mode_mitigations", Base.metadata,
+    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+    Column("mitigation_id", Integer, ForeignKey("far_mitigations.id", ondelete="CASCADE"))
+)
+
+class FarFailureMode(Base, BaseMixin):
+    __tablename__ = "far_failure_modes"
+    system_name = Column(String, index=True)
+    title = Column(String, index=True)
+    effect = Column(Text)
+    
+    # FMEA Indices
+    severity = Column(Integer, default=1)
+    occurrence = Column(Integer, default=1)
+    detection = Column(Integer, default=1)
+    rpn = Column(Integer, default=1)
+    
+    # Status: Analyzing, Cause Identified, Resolution Identified, Mitigated, Eliminated
+    status = Column(String, default="Analyzing")
+    has_incident_history = Column(Boolean, default=False)
+    
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+
+    # Relationships
+    affected_assets = relationship("Device", secondary=far_mode_assets)
+    causes = relationship("FarFailureCause", secondary=far_mode_causes, back_populates="failure_modes")
+    mitigations = relationship("FarMitigation", secondary=far_mode_mitigations)
+    prevention_actions = relationship("FarPrevention", back_populates="failure_mode", cascade="all, delete-orphan")
+
+class FarFailureCause(Base, BaseMixin):
+    __tablename__ = "far_failure_causes"
+    cause_text = Column(Text)
+    occurrence_level = Column(Integer, default=1)
+    responsible_team = Column(String)
+    
+    failure_modes = relationship("FarFailureMode", secondary=far_mode_causes, back_populates="causes")
+    resolutions = relationship("FarResolution", secondary=far_cause_resolutions)
+
+class FarResolution(Base, BaseMixin):
+    __tablename__ = "far_resolutions"
+    # Links to a KnowledgeEntry (BKM)
+    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
+    preventive_follow_up = Column(Text)
+    responsible_team = Column(String)
+    
+    knowledge_bkm = relationship("KnowledgeEntry")
+
+class FarMitigation(Base, BaseMixin):
+    __tablename__ = "far_mitigations"
+    # Types: Monitoring, Workaround, Process Change
+    mitigation_type = Column(String) 
+    mitigation_steps = Column(Text)
+    responsible_team = Column(String)
+    
+    # Link to a specific Monitoring Item if type is 'Monitoring'
+    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
+    monitoring_item = relationship("MonitoringItem")
+
+class FarPrevention(Base, BaseMixin):
+    __tablename__ = "far_prevention"
+    failure_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+    prevention_action = Column(Text)
+    status = Column(String, default="Open") # Open, In Progress, Verified, Completed
+    target_date = Column(DateTime, nullable=True)
+    responsible_team = Column(String)
+    
+    failure_mode = relationship("FarFailureMode", back_populates="prevention_actions")
 
 # --- NEW INVESTIGATION MODULE (Renamed/Expanded Troubleshooting) ---
 
