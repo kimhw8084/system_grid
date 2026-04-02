@@ -336,6 +336,7 @@ class DataFlow(Base, BaseMixin):
     name = Column(String, index=True)
     description = Column(Text)
     category = Column(String, default="System") # System, Service, Application
+    status = Column(String, default="Up to date") # Up to date, Deprecated, Planned, etc.
     nodes_json = Column(JSON, default=list)
     edges_json = Column(JSON, default=list)
     viewport_json = Column(JSON, default=dict)
