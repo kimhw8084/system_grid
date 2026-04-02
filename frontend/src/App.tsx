@@ -217,7 +217,7 @@ function MainLayout() {
           </div>
         )}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Temp 1" path="/temp1" active={location.pathname === "/temp1"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Package} label="Rack Temp" path="/rack-temp" active={location.pathname === "/rack-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />

@@ -50,9 +50,9 @@ def seed():
         print("Seeding SettingOptions & Global Metadata...")
         cats = {
             "LogicalSystem": ["SAP-PROD", "K8S-CLUSTER-01", "LEGACY-ERP", "FIN-CORE", "HR-PEOPLE", "GLOBAL-DNS", "AI-TRAINING-01", "BI-ANALYTICS"],
-            "DeviceType": ["Physical", "Virtual", "Switch", "Firewall", "Load Balancer", "Storage", "PDU", "UPS", "Console-Server"],
-            "Status": ["Active", "Maintenance", "Standby", "Decommissioned", "Provisioning", "Failed", "Reserved"],
-            "Environment": ["Production", "Staging", "QA", "DR", "Sandbox", "Legacy"],
+            "DeviceType": ["Physical", "Virtual", "Switch", "Firewall", "Load Balancer", "Storage", "PDU", "UPS", "Console-Server", "Patch Panel"],
+            "Status": ["Planned", "Active", "Maintenance", "Standby", "Failed", "Decommissioned", "Provisioning", "Reserved"],
+            "Environment": ["Production", "Staging", "QA", "Dev", "DR", "Lab", "Sandbox", "Legacy"],
             "BusinessUnit": ["Operations", "Finance", "Security", "Engineering", "R&D", "Marketing"],
             "LinkPurpose": ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat", "Stacking"]
         }
@@ -277,7 +277,7 @@ def seed():
             ])
             mfr, model, d_type, size, os_name = mfr_data
             
-            status = random.choices(cats["Status"], weights=[70, 10, 5, 5, 5, 2, 3])[0]
+            status = random.choices(cats["Status"], weights=[5, 65, 10, 5, 5, 5, 2, 3])[0]
             
             d = Device(
                 name=f"{sys.lower()}-{code.lower()}-{i:03d}",

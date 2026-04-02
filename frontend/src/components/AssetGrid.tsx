@@ -451,6 +451,9 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                 <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${
                   a.status === 'Active' ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-400' :
                   a.status === 'Maintenance' ? 'bg-amber-500/20 border-amber-500/20 text-amber-400' :
+                  a.status === 'Failed' ? 'bg-rose-500/20 border-rose-500/20 text-rose-400' :
+                  a.status === 'Reserved' ? 'bg-blue-500/20 border-blue-500/20 text-blue-400' :
+                  a.status === 'Provisioning' ? 'bg-indigo-500/20 border-indigo-500/20 text-indigo-400' :
                   'bg-slate-500/10 border-white/5 text-slate-500'
                 } ${selectedId === a.id ? 'border-white/40 text-white' : ''}`}>
                   {a.status}
@@ -495,6 +498,9 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                  <div className={`px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest shadow-2xl ${
                     selectedAsset.status === 'Active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-emerald-500/5' :
                     selectedAsset.status === 'Maintenance' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-amber-500/5' :
+                    selectedAsset.status === 'Failed' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-rose-500/5' :
+                    selectedAsset.status === 'Reserved' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 shadow-blue-500/5' :
+                    selectedAsset.status === 'Provisioning' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 shadow-indigo-500/5' :
                     'bg-slate-500/10 border-white/5 text-slate-500 shadow-black'
                  }`}>
                    {selectedAsset.status} STATUS
@@ -1826,6 +1832,7 @@ const ASSET_TYPES = [
     { value: 'Load Balancer', label: 'Load Balancer' },
     { value: 'PDU', label: 'PDU' },
     { value: 'UPS', label: 'UPS' },
+    { value: 'Console-Server', label: 'Console Server' },
     { value: 'Patch Panel', label: 'Patch Panel' }
 ]
 
@@ -1834,8 +1841,10 @@ const STATUS_ITEMS = [
     { value: 'Active', label: 'Active' },
     { value: 'Maintenance', label: 'Maintenance' },
     { value: 'Standby', label: 'Standby' },
-    { value: 'Offline', label: 'Offline' },
-    { value: 'Decommissioned', label: 'Decommissioned' }
+    { value: 'Failed', label: 'Failed' },
+    { value: 'Decommissioned', label: 'Decommissioned' },
+    { value: 'Provisioning', label: 'Provisioning' },
+    { value: 'Reserved', label: 'Reserved' }
 ]
 
 const ENVIRONMENT_ITEMS = [
@@ -1845,7 +1854,8 @@ const ENVIRONMENT_ITEMS = [
     { value: 'Dev', label: 'Dev' },
     { value: 'DR', label: 'DR' },
     { value: 'Lab', label: 'Lab' },
-    { value: 'Sandbox', label: 'Sandbox' }
+    { value: 'Sandbox', label: 'Sandbox' },
+    { value: 'Legacy', label: 'Legacy' }
 ]
 
 const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {

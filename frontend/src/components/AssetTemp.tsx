@@ -2593,6 +2593,7 @@ const ASSET_TYPES = [
     { value: 'Load Balancer', label: 'Load Balancer' },
     { value: 'PDU', label: 'PDU' },
     { value: 'UPS', label: 'UPS' },
+    { value: 'Console-Server', label: 'Console Server' },
     { value: 'Patch Panel', label: 'Patch Panel' }
 ]
 
@@ -2601,8 +2602,10 @@ const STATUS_ITEMS = [
     { value: 'Active', label: 'Active' },
     { value: 'Maintenance', label: 'Maintenance' },
     { value: 'Standby', label: 'Standby' },
-    { value: 'Offline', label: 'Offline' },
-    { value: 'Decommissioned', label: 'Decommissioned' }
+    { value: 'Failed', label: 'Failed' },
+    { value: 'Decommissioned', label: 'Decommissioned' },
+    { value: 'Provisioning', label: 'Provisioning' },
+    { value: 'Reserved', label: 'Reserved' }
 ]
 
 const ENVIRONMENT_ITEMS = [
@@ -2612,7 +2615,8 @@ const ENVIRONMENT_ITEMS = [
     { value: 'Dev', label: 'Dev' },
     { value: 'DR', label: 'DR' },
     { value: 'Lab', label: 'Lab' },
-    { value: 'Sandbox', label: 'Sandbox' }
+    { value: 'Sandbox', label: 'Sandbox' },
+    { value: 'Legacy', label: 'Legacy' }
 ]
 
 const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
