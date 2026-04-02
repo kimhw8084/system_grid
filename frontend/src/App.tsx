@@ -7,7 +7,6 @@ import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
 
 import Dashboard from "./components/Dashboard"
-import RackElevations from "./components/RackElevations"
 import AssetGrid from "./components/AssetGrid"
 import AssetTemp from "./components/AssetTemp"
 import NetworkFabric from "./components/NetworkFabric"
@@ -219,8 +218,7 @@ function MainLayout() {
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Activity} label="Temp 1" path="/temp1" active={location.pathname === "/temp1"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Package} label="Rack Temp" path="/rack-temp" active={location.pathname === "/rack-temp"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={ServerCrash} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Server} label="Assets" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Shield} label="Investigations" path="/investigations" active={location.pathname === "/investigations"} isOpen={isSidebarOpen} />
@@ -263,8 +261,7 @@ function MainLayout() {
           <Routes>
             <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
             <Route path="/temp1" element={<Temp1 />} />
-            <Route path="/rack-temp" element={<RackTemp />} />
-            <Route path="/racks" element={<RackElevations />} />
+            <Route path="/racks" element={<RackTemp />} />
             <Route path="/asset-temp" element={<AssetTemp />} />
             <Route path="/services" element={<ServiceRegistry />} />
             <Route path="/investigations" element={<Investigation />} />
