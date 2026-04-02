@@ -28,7 +28,8 @@ from app.models.models import (
     AuditLog, SettingOption, FirewallRule, ExternalEntity, ExternalLink,
     Vendor, VendorPersonnel, VendorContract, KnowledgeEntry,
     Investigation, InvestigationProgress,
-    FarFailureMode, FarFailureCause, FarResolution, FarMitigation, FarPrevention
+    FarFailureMode, FarFailureCause, FarResolution, FarMitigation, FarPrevention,
+    RcaRecord, RcaTimelineEvent, RcaMitigation
 )
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "system_grid.db")
@@ -474,10 +475,41 @@ def seed():
             
             db.add(FarMitigation(mitigation_type="Workaround", mitigation_steps="Periodic service restart every 12h", responsible_team="SRE"))
 
+        # 13. Incident RCA (Root Cause Analysis) - Scenarios
+        print("Seeding Incident RCA Records...")
+        rca_scenarios = [
+            ("FAB-2 SENSOR BLINDNESS", "K8S-CLUSTER-01", "P1", {"flow_halted": True, "scrap_risk": True, "quality_impact": False, "global_outage": False}),
+            ("DATABASE DEADLOCK CASCADE", "SAP-PROD", "P2", {"flow_halted": True, "scrap_risk": False, "quality_impact": False, "global_outage": False}),
+            ("NETWORK JITTER SPIKE", "GLOBAL-DNS", "P3", {"flow_halted": False, "scrap_risk": False, "quality_impact": True, "global_outage": False})
+        ]
+        for title, sys_name, sev, logic in rca_scenarios:
+            rca = RcaRecord(
+                title=title,
+                trigger_source="Auto Alert",
+                severity=sev,
+                severity_logic=logic,
+                initial_symptoms="High latency and repeated timeout errors reported by monitoring nodes.",
+                target_system=sys_name,
+                impacted_asset_ids=[random.choice(all_workers).id for _ in range(2)],
+                status="Investigation",
+                narrative_summary="Discovery phase: Initial investigation points to a race condition in the orchestration layer. Evidence suggests a correlation between high load and sensor feedback delay."
+            )
+            db.add(rca)
+            db.flush()
+            
+            # Timeline events
+            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=datetime.now() - timedelta(hours=2), event_type="Detection", description="Alert triggered on node telemetry"))
+            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=datetime.now() - timedelta(minutes=90), event_type="Observation", description="Confirmed replication across multiple nodes"))
+            
+            # Mitigations
+            db.add(RcaMitigation(rca_id=rca.id, type="Workaround", action_description="Rolling restart of core services", status="Completed"))
+            db.add(RcaMitigation(rca_id=rca.id, type="Preventive", action_description="Patching kernel to v5.15.2", status="Planned"))
+
         db.commit()
         print("--- ULTIMATE SEED COMPLETE ---")
         print(f"Racks: 10 | Devices: {len(all_workers) + len(core_net_devices)} | Services: 220")
-        print(f"Audit Logs: 100 | Incident Logs: 15 | FAR Modes: 4")
+        print(f"Audit Logs: 100 | Incident Logs: 15 | FAR Modes: 4 | RCAs: 3")
+
 
 if __name__ == "__main__":
     seed()

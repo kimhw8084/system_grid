@@ -620,3 +620,59 @@ class Project(Base, BaseMixin):
     
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
+
+# --- INCIDENT RCA (ROOT CAUSE ANALYSIS) MODULE ---
+
+class RcaRecord(Base, BaseMixin):
+    __tablename__ = "rca_records"
+    title = Column(String, index=True)
+    trigger_source = Column(String) # e.g. "Auto Alert", "Manual Report", "Customer Escalation"
+    severity = Column(String) # Auto-calculated: P1, P2, P3, P4
+    severity_logic = Column(JSON, default=dict) # { flow_halted: bool, scrap_risk: bool, etc }
+    initial_symptoms = Column(Text)
+    
+    # Cascading selection context
+    target_system = Column(String) # System name
+    impacted_asset_ids = Column(JSON, default=list) # List of device IDs within that system
+    
+    # Investigation Flow
+    narrative_summary = Column(Text) # Step-by-step narrative
+    evidence_json = Column(JSON, default=list) # [{ type: 'image|log|text', content: '...', timestamp: '...' }]
+    
+    # Resolution Logic
+    cause_of_failure = Column(Text)
+    signature_indicator = Column(Text) # The specific log/metric that confirms the failure
+    
+    # External Hooks
+    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
+    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
+    
+    status = Column(String, default="Open") # Open, Investigation, Resolved, Closed
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+
+    # Relationships
+    timeline = relationship("RcaTimelineEvent", back_populates="rca", cascade="all, delete-orphan")
+    mitigations = relationship("RcaMitigation", back_populates="rca", cascade="all, delete-orphan")
+    knowledge_bkm = relationship("KnowledgeEntry")
+    monitoring_config = relationship("MonitoringItem")
+
+class RcaTimelineEvent(Base, BaseMixin):
+    __tablename__ = "rca_timeline_events"
+    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+    event_time = Column(DateTime)
+    event_type = Column(String) # e.g. "Detection", "Mitigation", "Observation", "Resolution"
+    description = Column(Text)
+    involved_pocs = Column(JSON, default=list) # List of names/IDs
+    
+    rca = relationship("RcaRecord", back_populates="timeline")
+
+class RcaMitigation(Base, BaseMixin):
+    __tablename__ = "rca_mitigations"
+    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+    type = Column(String) # Preventive, Workaround, Mitigation
+    action_description = Column(Text)
+    status = Column(String, default="Planned") # Planned, In Progress, Verified, Completed
+    
+    rca = relationship("RcaRecord", back_populates="mitigations")
+

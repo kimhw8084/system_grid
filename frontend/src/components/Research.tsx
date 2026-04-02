@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -7,7 +7,7 @@ import {
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
-  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye
+  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -34,12 +34,18 @@ export default function Research() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [activeRcaModal, setActiveRcaModal] = useState<any>(null)
+  const [activeRcaDetails, setActiveRcaDetails] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
 
   const { data: investigations, isLoading } = useQuery({ 
     queryKey: ['investigations'], 
     queryFn: async () => (await apiFetch('/api/v1/investigations/')).json() 
+  })
+
+  const { data: rcaRecords, isLoading: rcaLoading } = useQuery({ 
+    queryKey: ['rca-records'], 
+    queryFn: async () => (await apiFetch('/api/v1/rca/')).json() 
   })
   
   const { data: devices } = useQuery({ 
@@ -66,6 +72,20 @@ export default function Research() {
     }
   })
 
+  const rcaMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const url = data.id ? `/api/v1/rca/${data.id}` : '/api/v1/rca/'
+      const method = data.id ? 'PUT' : 'POST'
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rca-records'] })
+      toast.success('RCA Matrix Synchronized')
+      setActiveRcaModal(null)
+    }
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => apiFetch(`/api/v1/investigations/${id}`, { method: 'DELETE' }),
     onSuccess: () => { 
@@ -74,36 +94,51 @@ export default function Research() {
     }
   })
 
-  const stats = useMemo(() => {
-    if (!investigations) return { total: 0, analyzing: 0, troubleshooting: 0, urgent: 0 }
-    return {
-      total: investigations.length,
-      analyzing: investigations.filter((i: any) => i.status === 'Analyzing').length,
-      troubleshooting: investigations.filter((i: any) => i.category === 'Troubleshooting').length,
-      urgent: investigations.filter((i: any) => i.priority === 'Urgent').length
+  const rcaDeleteMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/rca/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rca-records'] })
+      toast.success('RCA Record Purged')
     }
-  }, [investigations])
+  })
+
+  const combinedData = useMemo(() => {
+    const invs = (investigations || []).map((i: any) => ({ ...i, type: 'Investigation' }))
+    const rcas = (rcaRecords || []).map((r: any) => ({ ...r, type: 'RCA', category: 'RCA' }))
+    return [...invs, ...rcas].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+  }, [investigations, rcaRecords])
+
+  const stats = useMemo(() => {
+    return {
+      total: combinedData.length,
+      analyzing: combinedData.filter((i: any) => i.status === 'Analyzing' || i.status === 'Open' || i.status === 'Investigation').length,
+      troubleshooting: combinedData.filter((i: any) => i.category === 'Troubleshooting' || i.category === 'RCA').length,
+      urgent: combinedData.filter((i: any) => i.priority === 'Urgent' || i.severity === 'P1').length
+    }
+  }, [combinedData])
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "ID", width: 50, pinned: 'left', cellClass: 'text-center font-mono text-slate-500' },
+    { field: "id", headerName: "ID", width: 80, pinned: 'left', cellRenderer: (p: any) => (
+      <span className="text-[10px] font-mono font-black text-slate-500">{p.data.type === 'RCA' ? `RCA_${p.value}` : `RES_${p.value}`}</span>
+    )},
     { field: "category", headerName: "Category", width: 110, cellRenderer: (p: any) => (
       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
         p.value === 'Troubleshooting' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
         p.value === 'Security' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500' :
+        p.value === 'RCA' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 font-bold tracking-widest' :
         'bg-blue-500/20 border-blue-500/30 text-blue-400'
       }`}>{p.value}</span>
     )},
     { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
     { field: "status", headerName: "Status", width: 100, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
-    { field: "priority", headerName: "Priority", width: 80, cellRenderer: (p: any) => (
+    { field: "severity", headerName: "Risk", width: 70, valueGetter: (p: any) => p.data.severity || p.data.priority, cellRenderer: (p: any) => (
         <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
-          p.value === 'Urgent' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse' :
-          p.value === 'High' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
+          (p.value === 'Urgent' || p.value === 'P1') ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse' :
+          (p.value === 'High' || p.value === 'P2') ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
           'bg-blue-500/20 border-blue-500/30 text-blue-400'
         }`}>{p.value}</span>
       )
     },
-    { field: "assigned_team", headerName: "Team", width: 80, cellClass: 'text-center font-bold text-slate-400' },
     { field: "updated_at", headerName: "Last Pulse", width: 130, cellClass: 'font-mono text-[9px] text-slate-400', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : '---' },
     {
       headerName: "Action",
@@ -111,8 +146,13 @@ export default function Research() {
       pinned: 'right',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => setActiveDetails(p.data)} className="p-1 bg-blue-600/10 text-blue-400 rounded hover:bg-blue-600/20 transition-all"><Eye size={12}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Research', message: 'Permanently remove this record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1 bg-rose-600/10 text-rose-400 rounded hover:bg-rose-600/20 transition-all"><Trash2 size={12}/></button>
+           <button onClick={() => p.data.type === 'RCA' ? setActiveRcaDetails(p.data) : setActiveDetails(p.data)} className="p-1 bg-blue-600/10 text-blue-400 rounded hover:bg-blue-600/20 transition-all"><Eye size={12}/></button>
+           <button onClick={() => setConfirmModal({ 
+             isOpen: true, 
+             title: p.data.type === 'RCA' ? 'Purge RCA' : 'Purge Research', 
+             message: 'Permanently remove this record?', 
+             onConfirm: () => p.data.type === 'RCA' ? rcaDeleteMutation.mutate(p.data.id) : deleteMutation.mutate(p.data.id) 
+           })} className="p-1 bg-rose-600/10 text-rose-400 rounded hover:bg-rose-600/20 transition-all"><Trash2 size={12}/></button>
         </div>
       )
     }
@@ -132,7 +172,10 @@ export default function Research() {
             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search Research Matrix..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all shadow-inner text-white" />
           </div>
-          <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Launch Research</button>
+          <div className="flex gap-1">
+            <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={12}/> New RCA</button>
+            <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Launch Research</button>
+          </div>
         </div>
       </div>
 
@@ -144,14 +187,14 @@ export default function Research() {
       </div>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
-        {isLoading && (
+        {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
           </div>
         )}
         <AgGridReact 
-          rowData={investigations || []} 
+          rowData={combinedData} 
           columnDefs={columnDefs as any}
           headerHeight={32}
           rowHeight={32}
@@ -176,6 +219,24 @@ export default function Research() {
             onClose={() => setActiveDetails(null)} 
             onSave={(d: any) => mutation.mutate(d)}
             setConfirmModal={setConfirmModal}
+          />
+        )}
+        {activeRcaModal && (
+          <RcaForm 
+            item={activeRcaModal} 
+            options={options} 
+            devices={devices} 
+            onClose={() => setActiveRcaModal(null)} 
+            onSave={(d: any) => rcaMutation.mutate(d)}
+            isSaving={rcaMutation.isPending}
+          />
+        )}
+        {activeRcaDetails && (
+          <RcaDetails 
+            item={activeRcaDetails} 
+            devices={devices}
+            onClose={() => setActiveRcaDetails(null)} 
+            onSave={(d: any) => rcaMutation.mutate(d)}
           />
         )}
       </AnimatePresence>
@@ -286,8 +347,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
       toast.success('Activity Recorded')
     }
   })
-
-  const isTroubleshooting = formData.category === 'Troubleshooting'
 
   const timelineColumnDefs = [
     { field: "timestamp", headerName: "Time", width: 140, cellRenderer: (p: any) => new Date(p.value).toLocaleString() },
@@ -440,7 +499,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
                          {formData.problem_statement}
                       </div>
                    </div>
-                   {/* Device/System links could go here if needed */}
                 </div>
               )}
 
@@ -464,6 +522,479 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
   )
 }
 
+function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
+  const [formData, setFormData] = useState({ 
+    ...item 
+  })
+
+  // Cascading Logic
+  const systems = useMemo(() => {
+    const s = new Set<string>()
+    options?.filter((o: any) => o.category === 'LogicalSystem').forEach((o: any) => s.add(o.value))
+    return Array.from(s)
+  }, [options])
+
+  const availableAssets = useMemo(() => {
+    if (!formData.target_system) return []
+    return devices?.filter((d: any) => d.system === formData.target_system) || []
+  }, [formData.target_system, devices])
+
+  // Severity Logic
+  const calculateSeverity = (logic: any) => {
+    if (logic.global_outage) return 'P1'
+    if (logic.flow_halted && logic.scrap_risk) return 'P1'
+    if (logic.flow_halted || logic.scrap_risk) return 'P2'
+    if (logic.quality_impact) return 'P3'
+    return 'P4'
+  }
+
+  useEffect(() => {
+    const sev = calculateSeverity(formData.severity_logic)
+    if (sev !== formData.severity) {
+      setFormData(prev => ({ ...prev, severity: sev }))
+    }
+  }, [formData.severity_logic])
+
+  const toggleLogic = (key: string) => {
+    setFormData(prev => ({
+      ...prev,
+      severity_logic: { ...prev.severity_logic, [key]: !prev.severity_logic[key] }
+    }))
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl p-8 rounded-[32px] border border-purple-500/30 space-y-6">
+        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <h2 className="text-2xl font-black uppercase text-purple-400 flex items-center gap-3 tracking-tighter">
+            <ShieldAlert size={24} /> New Incident RCA
+          </h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div className="col-span-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Incident Title</label>
+            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-white font-bold shadow-inner" placeholder="E.G. FAB-2 LINE BLOCKAGE: SENSOR FAILURE" />
+          </div>
+
+          <StyledSelect 
+            label="Target System (Cascading)" 
+            value={formData.target_system} 
+            onChange={e => setFormData({...formData, target_system: e.target.value, impacted_asset_ids: []})} 
+            options={systems.map(s => ({value: s, label: s}))}
+            placeholder="Select System first..."
+          />
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest px-1">Target Assets</label>
+            <div className={`h-11 bg-slate-950 border border-white/10 rounded-xl flex items-center px-4 overflow-hidden ${!formData.target_system ? 'opacity-50 cursor-not-allowed' : ''}`}>
+               <select 
+                disabled={!formData.target_system}
+                multiple
+                value={formData.impacted_asset_ids}
+                onChange={e => {
+                  const values = Array.from(e.target.selectedOptions, option => parseInt(option.value))
+                  setFormData({...formData, impacted_asset_ids: values})
+                }}
+                className="w-full bg-transparent text-[10px] font-bold text-slate-300 outline-none h-full"
+               >
+                 {availableAssets.map((a: any) => (
+                   <option key={a.id} value={a.id}>{a.name}</option>
+                 ))}
+               </select>
+            </div>
+            {formData.target_system && (
+              <p className="text-[8px] text-slate-600 mt-1 uppercase italic px-1">Hold Ctrl/Cmd to multi-select</p>
+            )}
+          </div>
+
+          <div className="col-span-2 space-y-3">
+             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block px-1">Severity Auto-Calculator (FAB Operational Flow)</label>
+             <div className="grid grid-cols-2 gap-3">
+                <SeverityToggle label="Process Flow Halted?" active={formData.severity_logic.flow_halted} onClick={() => toggleLogic('flow_halted')} />
+                <SeverityToggle label="Scrap Risk?" active={formData.severity_logic.scrap_risk} onClick={() => toggleLogic('scrap_risk')} />
+                <SeverityToggle label="Quality Impact?" active={formData.severity_logic.quality_impact} onClick={() => toggleLogic('quality_impact')} />
+                <SeverityToggle label="Global Outage?" active={formData.severity_logic.global_outage} onClick={() => toggleLogic('global_outage')} />
+             </div>
+             <div className="mt-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Calculated Severity Level</p>
+                  <p className="text-[8px] text-slate-500 uppercase">Based on operational impact questionnaire</p>
+                </div>
+                <div className={`text-3xl font-black px-6 py-2 rounded-xl border-2 ${
+                  formData.severity === 'P1' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
+                  formData.severity === 'P2' ? 'bg-amber-500/20 border-amber-500 text-amber-500' :
+                  'bg-blue-500/20 border-blue-500 text-blue-400'
+                }`}>
+                  {formData.severity}
+                </div>
+             </div>
+          </div>
+
+          <div className="col-span-2">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Initial Symptoms</label>
+            <textarea value={formData.initial_symptoms} onChange={e => setFormData({...formData, initial_symptoms: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-slate-300 min-h-[80px]" placeholder="Describe what was observed at time of failure..." />
+          </div>
+        </div>
+
+        <div className="flex space-x-4 pt-4">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 tracking-widest">
+            {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <ShieldAlert size={16} />} 
+            Initialize RCA Flow
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function SeverityToggle({ label, active, onClick }: any) {
+  return (
+    <button onClick={onClick} className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${active ? 'bg-purple-500/20 border-purple-500 text-purple-400 font-bold' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/10'}`}>
+      <span className="text-[9px] uppercase tracking-wider">{label}</span>
+      {active ? <CheckCircle2 size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-white/20" />}
+    </button>
+  )
+}
+
+function RcaDetails({ item, devices, onClose, onSave }: any) {
+  const queryClient = useQueryClient()
+  const [formData, setFormData] = useState({ ...item })
+  const [activeTab, setActiveTab] = useState('investigation')
+  const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString() })
+  const [newMitigation, setNewMitigation] = useState({ type: 'Mitigation', action_description: '', status: 'Planned' })
+  
+  const timelineMutation = useMutation({
+    mutationFn: async (data: any) => (await apiFetch(`/api/v1/rca/${item.id}/timeline`, { method: 'POST', body: JSON.stringify(data) })).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rca-records'] })
+      setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString() })
+      toast.success('Timeline Event Appended')
+    }
+  })
+
+  const mitigationMutation = useMutation({
+    mutationFn: async (data: any) => (await apiFetch(`/api/v1/rca/${item.id}/mitigations`, { method: 'POST', body: JSON.stringify(data) })).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rca-records'] })
+      setNewMitigation({ type: 'Mitigation', action_description: '', status: 'Planned' })
+      toast.success('Mitigation Plan Updated')
+    }
+  })
+
+  // Clipboard Image Hook
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile()
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (event: any) => {
+            const base64 = event.target.result
+            const newEvidence = [...(formData.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }]
+            setFormData({ ...formData, evidence_json: newEvidence })
+            toast.success('Image Captured from Clipboard')
+          }
+          reader.readAsDataURL(file)
+        }
+      }
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-8" onPaste={handlePaste}>
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-[92vh] rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-2xl">
+        
+        {/* RCA Header */}
+        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-purple-600/20 rounded-2xl text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10"><ShieldAlert size={28} /></div>
+            <div>
+              <div className="flex items-center space-x-3 mb-1">
+                <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-[9px] font-black text-purple-400 uppercase tracking-widest">RCA_{item.id}</span>
+                <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase ${
+                  formData.severity === 'P1' ? 'bg-rose-500/20 border-rose-500 text-rose-500' : 'bg-slate-500/20 border-white/10 text-slate-400'
+                }`}>{formData.severity}</span>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formData.target_system}</span>
+              </div>
+              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+             <div className="text-right mr-4">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Incident Lifecycle</p>
+                <div className="flex items-center gap-1 mt-1">
+                   {['Open', 'Investigation', 'Resolved', 'Closed'].map(s => (
+                     <div key={s} className={`h-1.5 w-8 rounded-full ${formData.status === s ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-white/10'}`} />
+                   ))}
+                </div>
+             </div>
+            <button onClick={() => onSave(formData)} className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={16}/> Sync State</button>
+            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Vertical Nav */}
+          <div className="w-56 border-r border-white/5 bg-black/20 p-6 space-y-1">
+            <RcaNavBtn active={activeTab === 'investigation'} icon={Terminal} label="Investigation" onClick={() => setActiveTab('investigation')} />
+            <RcaNavBtn active={activeTab === 'timeline'} icon={History} label="Event Timeline" onClick={() => setActiveTab('timeline')} />
+            <RcaNavBtn active={activeTab === 'evidence'} icon={Camera} label="Evidence & Logs" onClick={() => setActiveTab('evidence')} />
+            <RcaNavBtn active={activeTab === 'resolution'} icon={ShieldCheck} label="Resolution" onClick={() => setActiveTab('resolution')} />
+            <RcaNavBtn active={activeTab === 'mitigation'} icon={Shield} label="Mitigation Plan" onClick={() => setActiveTab('mitigation')} />
+            <RcaNavBtn active={activeTab === 'hooks'} icon={LinkIcon} label="System Hooks" onClick={() => setActiveTab('hooks')} />
+          </div>
+
+          {/* RCA Workspace */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/50 p-8">
+            <div className="max-w-5xl mx-auto">
+               
+               {activeTab === 'investigation' && (
+                 <div className="space-y-8">
+                   <SectionCard icon={Info} title="Initial Symptoms" color="text-slate-400">
+                     <p className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 italic leading-relaxed">
+                        {formData.initial_symptoms || 'No symptoms recorded at initialization.'}
+                     </p>
+                   </SectionCard>
+                   
+                   <SectionCard icon={Terminal} title="Step-by-Step Narrative" color="text-purple-400">
+                      <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3">Document the progressive discovery of the failure chain</p>
+                      <textarea 
+                        value={formData.narrative_summary} 
+                        onChange={e => setFormData({...formData, narrative_summary: e.target.value})}
+                        className="w-full bg-slate-950 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 outline-none focus:border-purple-500 min-h-[300px] shadow-inner font-mono leading-relaxed"
+                        placeholder="08:00 - Initial report received... 08:15 - Commenced log analysis..."
+                      />
+                   </SectionCard>
+                 </div>
+               )}
+
+               {activeTab === 'timeline' && (
+                 <div className="space-y-8">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-4 gap-4 items-end shadow-xl">
+                       <div className="col-span-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Chronological Event Description</label>
+                          <input 
+                            value={newTimeline.description} 
+                            onChange={e => setNewTimeline({...newTimeline, description: e.target.value})}
+                            className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500"
+                            placeholder="Describe what happened..."
+                          />
+                       </div>
+                       <StyledSelect 
+                        label="Event Type"
+                        value={newTimeline.event_type}
+                        onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})}
+                        options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}, {value:'Escalation', label:'Escalation'}]}
+                       />
+                       <div className="flex gap-2">
+                          <div className="flex-1">
+                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Backdate Time</label>
+                             <input 
+                              type="datetime-local"
+                              value={newTimeline.event_time.slice(0, 16)}
+                              onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})}
+                              className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[10px] text-slate-400 outline-none focus:border-purple-500 [color-scheme:dark]"
+                             />
+                          </div>
+                          <button 
+                            disabled={!newTimeline.description || timelineMutation.isPending}
+                            onClick={() => timelineMutation.mutate(newTimeline)}
+                            className="p-3 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            <Plus size={20} />
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="relative pl-8 space-y-6">
+                       <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500/50 via-blue-500/50 to-transparent" />
+                       {(formData.timeline || []).sort((a:any, b:any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((e: any, i: number) => (
+                         <div key={e.id} className="relative bg-white/5 border border-white/5 rounded-2xl p-5 group hover:bg-white/10 transition-all">
+                            <div className="absolute -left-[30px] top-6 w-5 h-5 bg-slate-950 border-2 border-purple-500 rounded-full z-10 flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.5)]">
+                               <div className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                               <div className="flex items-center gap-3">
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                    e.event_type === 'Detection' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
+                                    e.event_type === 'Resolution' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' :
+                                    'bg-blue-500/20 border-blue-500 text-blue-400'
+                                  }`}>{e.event_type}</span>
+                                  <span className="text-[10px] font-mono text-slate-500 font-bold">{new Date(e.event_time).toLocaleString()}</span>
+                               </div>
+                               <button className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><Trash2 size={12}/></button>
+                            </div>
+                            <p className="text-sm text-slate-200 font-medium">{e.description}</p>
+                         </div>
+                       ))}
+                       {(!formData.timeline || formData.timeline.length === 0) && (
+                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl">
+                            <History size={40} className="mx-auto text-slate-800 mb-4" />
+                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">No timeline events recorded</p>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+               )}
+
+               {activeTab === 'evidence' && (
+                 <div className="space-y-6">
+                    <div className="bg-purple-600/10 border border-purple-500/30 rounded-3xl p-10 text-center space-y-4">
+                       <div className="w-20 h-20 bg-slate-950 rounded-full flex items-center justify-center mx-auto border border-purple-500/30 shadow-2xl text-purple-400">
+                          <Clipboard size={32} />
+                       </div>
+                       <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">Clipboard Image Hook</h3>
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest max-w-sm mx-auto">Click here and press <kbd className="bg-slate-950 px-2 py-1 rounded border border-white/10 text-slate-300">Ctrl+V</kbd> to capture screenshots, logs, or evidence directly into the RCA.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                       {(formData.evidence_json || []).map((ev: any, i: number) => (
+                         <div key={i} className="group relative bg-slate-950 border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                            {ev.type === 'image' && (
+                              <img src={ev.content} alt="Evidence" className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-all" />
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-4">
+                               <p className="text-[8px] font-black text-white uppercase tracking-widest">{new Date(ev.timestamp).toLocaleString()}</p>
+                               <div className="flex gap-2 mt-2">
+                                  <button onClick={() => {
+                                    const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
+                                    setFormData({...formData, evidence_json: newEv})
+                                  }} className="p-2 bg-rose-600/20 text-rose-500 rounded-lg border border-rose-500/30"><Trash2 size={14}/></button>
+                                  <button className="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 flex-1 flex items-center justify-center gap-2"><Eye size={14} /><span className="text-[8px] font-black uppercase">Inspect</span></button>
+                               </div>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+               )}
+
+               {activeTab === 'resolution' && (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <SectionCard icon={Search} title="Cause of Failure" color="text-purple-400" className="md:col-span-2">
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3">The definitive technical reason for the incident</p>
+                       <textarea 
+                        value={formData.cause_of_failure} 
+                        onChange={e => setFormData({...formData, cause_of_failure: e.target.value})}
+                        className="w-full bg-slate-950 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 outline-none focus:border-purple-500 min-h-[200px]"
+                        placeholder="e.g. Memory leak in v3.2.1 kernel causing OOM killer to target database..."
+                       />
+                    </SectionCard>
+                    <SectionCard icon={Zap} title="Signature Indicator" color="text-amber-400" className="md:col-span-2">
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3">Specific metric or log snippet that identifies this failure pattern</p>
+                       <textarea 
+                        value={formData.signature_indicator} 
+                        onChange={e => setFormData({...formData, signature_indicator: e.target.value})}
+                        className="w-full bg-slate-950 border border-white/10 rounded-2xl p-6 text-xs text-amber-500 outline-none focus:border-amber-500 font-mono"
+                        placeholder="ERR_DB_OOM: Process 1422 terminated by signal 9"
+                       />
+                    </SectionCard>
+                 </div>
+               )}
+
+               {activeTab === 'mitigation' && (
+                 <div className="space-y-8">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-4 gap-4 items-end shadow-xl">
+                       <div className="col-span-2">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Action Description</label>
+                          <input 
+                            value={newMitigation.action_description} 
+                            onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value})}
+                            className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-purple-500"
+                            placeholder="What needs to be done?"
+                          />
+                       </div>
+                       <StyledSelect 
+                        label="Mitigation Type"
+                        value={newMitigation.type}
+                        onChange={e => setNewMitigation({...newMitigation, type: e.target.value})}
+                        options={[{value:'Preventive', label:'Preventive'}, {value:'Workaround', label:'Workaround'}, {value:'Mitigation', label:'Mitigation'}]}
+                       />
+                       <button 
+                        disabled={!newMitigation.action_description || mitigationMutation.isPending}
+                        onClick={() => mitigationMutation.mutate(newMitigation)}
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"
+                      >
+                        <PlusCircle size={16} /> Deploy Plan
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                       {(formData.mitigations || []).map((m: any) => (
+                         <div key={m.id} className="bg-white/5 border border-white/5 rounded-2xl p-6 flex items-center justify-between group">
+                            <div className="flex items-center gap-6">
+                               <div className={`p-3 rounded-xl border ${
+                                 m.type === 'Preventive' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                 m.type === 'Workaround' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
+                                 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                               }`}><Shield size={20} /></div>
+                               <div>
+                                  <div className="flex items-center gap-3 mb-1">
+                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{m.type} Plan</span>
+                                     <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-white/10 text-slate-400">{m.status}</span>
+                                  </div>
+                                  <p className="text-sm font-bold text-white">{m.action_description}</p>
+                               </div>
+                            </div>
+                            <div className="flex gap-2">
+                               <button className="p-2 bg-white/5 rounded-lg text-slate-500 hover:text-white"><CheckCircle2 size={16}/></button>
+                               <button className="p-2 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500"><Trash2 size={16}/></button>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+               )}
+
+               {activeTab === 'hooks' && (
+                 <div className="grid grid-cols-2 gap-8">
+                    <SectionCard icon={Lightbulb} title="Best Known Methods (BKM)" color="text-blue-400">
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-4">Link to technical documentation or manuals</p>
+                       <StyledSelect 
+                        label="Linked BKM"
+                        value={formData.knowledge_id || ''}
+                        onChange={e => setFormData({...formData, knowledge_id: parseInt(e.target.value)})}
+                        options={[]} // TODO: Fetch knowledge entries
+                        placeholder="Choose manual..."
+                       />
+                       <div className="mt-6 p-4 border border-dashed border-white/10 rounded-2xl text-center">
+                          <p className="text-[9px] font-black text-slate-600 uppercase">No BKM Link Established</p>
+                       </div>
+                    </SectionCard>
+                    <SectionCard icon={Activity} title="Monitoring Sync" color="text-indigo-400">
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-4">Link to active monitoring or telemetry</p>
+                       <StyledSelect 
+                        label="Linked Config"
+                        value={formData.monitoring_item_id || ''}
+                        onChange={e => setFormData({...formData, monitoring_item_id: parseInt(e.target.value)})}
+                        options={[]} // TODO: Fetch monitoring items
+                        placeholder="Choose telemetry..."
+                       />
+                       <div className="mt-6 p-4 border border-dashed border-white/10 rounded-2xl text-center">
+                          <p className="text-[9px] font-black text-slate-600 uppercase">No Telemetry Link Established</p>
+                       </div>
+                    </SectionCard>
+                 </div>
+               )}
+
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+const RcaNavBtn = ({ active, icon: Icon, label, onClick }: any) => (
+  <button onClick={onClick} className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-2xl transition-all ${active ? 'bg-purple-600 text-white shadow-xl shadow-purple-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
+    <Icon size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+  </button>
+)
+
 const NavBtn = ({ active, icon: Icon, label, onClick }: any) => (
   <button onClick={onClick} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-white/5'}`}>
     <Icon size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
@@ -471,8 +1002,8 @@ const NavBtn = ({ active, icon: Icon, label, onClick }: any) => (
 )
 
 const SectionCard = ({ icon: Icon, title, children, color, className }: any) => (
-  <div className={`bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3 ${className}`}>
-    <div className={`flex items-center gap-2 ${color}`}><Icon size={14} /><h3 className="text-[9px] font-black uppercase tracking-widest">{title}</h3></div>
+  <div className={`bg-white/5 border border-white/5 rounded-3xl p-6 space-y-4 ${className}`}>
+    <div className={`flex items-center gap-3 ${color}`}><Icon size={18} /><h3 className="text-[10px] font-black uppercase tracking-widest">{title}</h3></div>
     {children}
   </div>
 )
@@ -496,4 +1027,3 @@ const ListInput = ({ items, onChange, placeholder }: { items: string[], onChange
     </div>
   )
 }
-
