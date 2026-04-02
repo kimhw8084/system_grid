@@ -1712,7 +1712,7 @@ export default function RackTemp() {
                       <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Temporary Asset/Project Name</label>
                       <input 
                         value={reserveInfo.temporary_name}
-                        onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value })}
+                        onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value.toUpperCase() })}
                         placeholder="e.g. AI-NODE-CLUSTER-01"
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
                       />
@@ -1794,7 +1794,7 @@ export default function RackTemp() {
                 <div>
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Site Name</label>
                   <input value={isEditingSite ? isEditingSite.name : newSite.name}
-                    onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value }) : setNewSite({ ...newSite, name: e.target.value })}
+                    onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value.toUpperCase() }) : setNewSite({ ...newSite, name: e.target.value.toUpperCase() })}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
                     placeholder="e.g. DATA-CENTER-01" />
                 </div>
@@ -1844,7 +1844,7 @@ export default function RackTemp() {
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Rack Identifier</label>
                   <input
                     value={isEditingRack ? isEditingRack.name : newRack.name}
-                    onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value }) : setNewRack({ ...newRack, name: e.target.value })}
+                    onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
                     placeholder="e.g. RACK-A01" />
                 </div>

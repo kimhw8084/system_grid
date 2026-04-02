@@ -438,13 +438,12 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
               <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">
                 {formData.service_type === 'OS' ? 'Operating System Name *' : 'Service Instance Name *'}
               </label>
-              <input 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-                className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
-                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"} 
-              />
-           </div>
+              <input
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})}
+                className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`}
+                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"}
+              />           </div>
            <StyledSelect
                 label="Target Host Node"
                 value={formData.device_id || ""}
@@ -668,14 +667,13 @@ export default function ServiceRegistry() {
       suppressSizeToFit: true,
       resizable: false
     },
-    { 
-      field: "name", 
-      headerName: "Instance", 
-      flex: 1, 
+    {
+      field: "name",
+      headerName: "Instance",
+      flex: 1,
       pinned: 'left',
-      cellClass: 'text-center font-bold text-blue-100',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
+      cellClass: 'text-center font-bold text-blue-100 uppercase',
+      headerClass: 'text-center',      cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-2 h-full">
            {p.data.service_type === 'Database' && <Database size={12} className="text-amber-400" />}
            {p.data.service_type === 'Web Server' && <Globe size={12} className="text-blue-400" />}

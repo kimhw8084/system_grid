@@ -267,7 +267,7 @@ function EntityForm({ entity, onClose, onSave, isPending }: any) {
            <div className="col-span-2 space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">System Name *</label>
               <input 
-                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})}
                 className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all"
                 placeholder="e.g., Azure Auth Gateway"
               />
@@ -297,7 +297,7 @@ function EntityForm({ entity, onClose, onSave, isPending }: any) {
            <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">FQDN / Hostname</label>
               <input 
-                value={formData.hostname} onChange={e => setFormData({...formData, hostname: e.target.value})}
+                value={formData.hostname} onChange={e => setFormData({...formData, hostname: e.target.value.toUpperCase()})}
                 className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-3 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all"
                 placeholder="api.partner.com"
               />

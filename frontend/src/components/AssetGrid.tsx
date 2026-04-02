@@ -773,13 +773,12 @@ export default function AssetGrid() {
   const columnDefs = useMemo(() => [
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
-      field: "name", 
-      headerName: "name", 
-      flex: 1.2, 
+      field: "name",
+      headerName: "name",
+      flex: 1.2,
       pinned: 'left',
-      cellClass: 'text-center text-[11px]',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter',
+      cellClass: 'text-center text-[11px] uppercase',
+      headerClass: 'text-center text-[11px]',      filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
         <span className="font-bold text-blue-400">{p.value}</span>
       )
@@ -1910,7 +1909,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname</label>
                 <input 
                   value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
+                  onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
                   className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
                   placeholder="SRV-NAME-01" 
                 />
@@ -2006,7 +2005,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
-                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value.toUpperCase()})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                    <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                 </div>
              </div>

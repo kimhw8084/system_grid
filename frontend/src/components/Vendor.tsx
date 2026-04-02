@@ -187,7 +187,7 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
@@ -469,7 +469,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Full Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Position</label>

@@ -370,7 +370,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
                          <tr key={f.id} className="hover:bg-white/5 transition-colors group">
                             <td className="px-6 py-4">
                                <div className="flex flex-col">
-                                  <span className="text-sm font-black text-white uppercase tracking-tight">{f.name}</span>
+                                  <span className="text-sm font-black text-white tracking-tight uppercase">{f.name}</span>
                                   <span className="text-[10px] text-slate-500 font-bold uppercase truncate max-w-[300px]">{f.description || 'No description provided'}</span>
                                </div>
                             </td>
@@ -553,7 +553,7 @@ const DetailPane = ({ flow, onChange }: any) => {
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Architecture Name</label>
                   <input 
                     value={flow.name}
-                    onChange={e => onChange({ ...flow, name: e.target.value })}
+                    onChange={e => onChange({ ...flow, name: e.target.value.toUpperCase() })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-indigo-500/50"
                     placeholder="Enter Name..."
                   />
