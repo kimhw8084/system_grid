@@ -65,17 +65,26 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
   const triggerRef = useRef<HTMLDivElement>(null)
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
-      setCoords({ top: rect.bottom + 8, left: rect.left, width: rect.width })
+      setCoords({ top: rect.bottom + 8, left: rect.left, width: Math.max(rect.width, 300) })
     }
   }, [isOpen])
 
-  const filteredOptions = (options || []).filter((o: any) => 
-    o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.system.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredOptions = useMemo(() => {
+    const list = (options || []).filter((o: any) => 
+      o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.system.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    // Sort selected to the top, then alphabetically
+    return [...list].sort((a: any, b: any) => {
+      const aSel = selected.includes(a.value);
+      const bSel = selected.includes(b.value);
+      if (aSel === bSel) return a.label.localeCompare(b.label);
+      return aSel ? -1 : 1;
+    });
+  }, [options, searchTerm, selected]);
 
   const toggle = (val: number) => {
     const next = selected.includes(val) ? selected.filter((x: any) => x !== val) : [...selected, val]
@@ -99,10 +108,10 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
 
       {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-[2000] bg-black/20 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
           <motion.div 
             initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} 
-            className="fixed z-[2001] bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[500px]"
+            className="fixed z-[2001] bg-[#0f172a] border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[500px]"
             style={{ top: coords.top, left: coords.left, width: coords.width }}
           >
             <div className="p-4 border-b border-white/5 bg-black/40 flex items-center space-x-3">
@@ -138,7 +147,7 @@ export default function Temp1() {
   const [selectedSources, setSelectedSources] = useState<number[]>([])
   const [showLabels, setShowLabels] = useState(true)
   const [isFixed, setIsFixed] = useState(false)
-  const [nodeStrength, setNodeStrength] = useState(-500)
+  const [nodeStrength, setNodeStrength] = useState(-600)
   const [highlightedNodeId, setHighlightedNodeId] = useState<number | null>(null)
   
   const [blastDepth, setBlastDepth] = useState(3)
@@ -153,30 +162,50 @@ export default function Temp1() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
+  // --- BULLETPROOF VIEWPORT ENGINE ---
   useLayoutEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const { clientWidth, clientHeight } = containerRef.current;
-        if (clientWidth > 0 && clientHeight > 0) {
-          setDimensions({ width: clientWidth, height: clientHeight });
+        // Use clientHeight if available, otherwise fallback to window height minus offset
+        const finalWidth = clientWidth || window.innerWidth - 600;
+        const finalHeight = clientHeight || window.innerHeight - 300;
+        
+        if (finalWidth > 0 && finalHeight > 0) {
+          setDimensions({ width: finalWidth, height: finalHeight });
         }
       }
     };
+    
     updateSize();
     const observer = new ResizeObserver(() => requestAnimationFrame(updateSize));
     if (containerRef.current) observer.observe(containerRef.current);
     window.addEventListener('resize', updateSize);
-    return () => { observer.disconnect(); window.removeEventListener('resize', updateSize); };
+    
+    // Safety timeout to ensure measurement happens after styles settle
+    const timer = setTimeout(updateSize, 500);
+    
+    return () => { 
+      observer.disconnect(); 
+      window.removeEventListener('resize', updateSize);
+      clearTimeout(timer);
+    };
   }, []);
 
   const { data: devices, isLoading: isLoadingDevices } = useQuery({ 
     queryKey: ['devices'], 
-    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/devices/');
+      return res.json();
+    }
   })
   
   const { data: allRelationships } = useQuery({ 
     queryKey: ['all-relationships'], 
-    queryFn: async () => (await apiFetch('/api/v1/devices/relationships/all')).json()
+    queryFn: async () => {
+      const res = await apiFetch('/api/v1/devices/relationships/all');
+      return res.json();
+    }
   })
 
   const deviceOptions = useMemo(() => {
@@ -242,7 +271,6 @@ export default function Temp1() {
     return { nodes, links }
   }, [selectedSources, devices, allRelationships, blastDepth, crawlDirection, graphSearch])
 
-  // --- DETONATION ENGINE ---
   const triggerFailure = useCallback((nodeId: number) => {
     if (!Array.isArray(allRelationships)) return
     setIsSimulatingFailure(true); setFailureOriginId(nodeId)
@@ -264,17 +292,17 @@ export default function Temp1() {
   useEffect(() => {
     if (fgRef.current && graphData.nodes.length > 0) {
       fgRef.current.d3Force('charge').strength(nodeStrength);
-      fgRef.current.d3Force('link').distance(100);
+      fgRef.current.d3Force('link').distance(110);
       setTimeout(() => fgRef.current.zoomToFit(600, 100), 200)
     }
   }, [graphData.nodes.length, nodeStrength, dimensions])
 
   if (isLoadingDevices) {
-    return <div className="h-full flex flex-col items-center justify-center text-slate-500 font-black uppercase tracking-widest"><RefreshCcw className="animate-spin mb-4" />Syncing Matrix...</div>
+    return <div className="h-full flex flex-col items-center justify-center text-slate-500 font-black uppercase tracking-widest"><RefreshCcw className="animate-spin mb-4" />Calibrating Fabric...</div>
   }
 
   return (
-    <div className="h-full flex flex-col space-y-4 text-slate-200">
+    <div className="h-full w-full flex flex-col space-y-4 text-slate-200">
       
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
@@ -316,13 +344,13 @@ export default function Temp1() {
         </div>
       </div>
 
-      <div className="flex-1 flex min-h-0 space-x-4">
+      <div className="flex-1 flex min-h-0 space-x-4 overflow-hidden">
         
-        {/* Canvas Area */}
-        <div ref={containerRef} className="flex-1 relative rounded-[40px] border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
+        {/* Canvas Area - FORCED MIN HEIGHT */}
+        <div ref={containerRef} className="flex-1 min-h-[500px] relative rounded-[40px] border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
           
           <div className="absolute top-8 left-8 z-10 flex space-x-3 pointer-events-auto">
-             <div className="bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 flex items-center space-x-2">
+             <div className="bg-[#1e293b]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 flex items-center space-x-2">
                 <Search size={14} className="text-slate-500 ml-2" />
                 <input value={graphSearch} onChange={e => setGraphSearch(e.target.value)} placeholder="FILTER MATRIX..." className="bg-transparent border-none text-[10px] font-black text-white uppercase outline-none w-32 tracking-wider placeholder:text-slate-700" />
                 {graphSearch && <button onClick={() => setGraphSearch('')} className="p-2 text-slate-500 hover:text-white"><X size={14} /></button>}
@@ -332,14 +360,12 @@ export default function Temp1() {
           <div className="absolute top-8 right-8 z-10 flex flex-col space-y-3">
              <ActionButton icon={<RefreshCcw size={18} />} onClick={() => fgRef.current?.zoomToFit(600, 150)} label="RECALIBRATE" />
              <ActionButton icon={isSimulatingFailure ? <Zap size={18} /> : <Flame size={18} />} onClick={() => isSimulatingFailure ? (setIsSimulatingFailure(false), setImpactedNodesMap(new Map()), setFailureOriginId(null)) : highlightedNodeId && triggerFailure(highlightedNodeId)} active={isSimulatingFailure} danger label={isSimulatingFailure ? "RESTORE" : "DETONATE"} />
-             <div className="w-full h-px bg-white/5 my-1" />
-             <ActionButton icon={<Download size={18} />} onClick={() => {}} label="EXPORT" />
           </div>
 
           {graphData.nodes.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-8 opacity-20">
                <Compass size={120} className="text-white animate-spin-slow" />
-               <p className="text-[14px] font-black uppercase tracking-[0.8em] text-white italic ml-4">Engage Targets to Initialize Fabric</p>
+               <p className="text-[14px] font-black uppercase tracking-[0.8em] text-white italic ml-4 text-center">Engage Targets to Initialize Fabric</p>
             </div>
           ) : (
             dimensions.width > 0 && dimensions.height > 0 && (
@@ -367,25 +393,25 @@ export default function Temp1() {
                 nodeCanvasObject={(node: any, ctx: any, globalScale: any) => {
                   const isHighlighted = highlightedNodeId === node.id;
                   const isImpacted = impactedNodesMap.has(node.id);
-                  const radius = (node.isSelected ? 28 : 22) / (globalScale < 1 ? Math.sqrt(globalScale) : 1);
+                  const radius = (node.isSelected ? 30 : 24) / (globalScale < 1 ? Math.sqrt(globalScale) : 1);
                   
                   if (isHighlighted || isImpacted) {
                     ctx.beginPath(); ctx.arc(node.x, node.y, radius + (8/globalScale), 0, 2 * Math.PI);
                     ctx.fillStyle = isImpacted ? 'rgba(239, 68, 68, 0.3)' : `${node.color}33`; ctx.fill();
                   }
                   ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
-                  ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'; ctx.fill();
+                  ctx.fillStyle = 'rgba(2, 6, 23, 0.95)'; ctx.fill();
                   ctx.lineWidth = (isHighlighted ? 4 : 2) / globalScale;
                   ctx.strokeStyle = isImpacted ? '#ef4444' : node.color; ctx.stroke();
                   
-                  const fontSize = (radius * 0.45);
+                  const fontSize = (radius * 0.4);
                   ctx.font = `900 ${fontSize}px Inter, sans-serif`;
                   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                   ctx.fillStyle = '#fff';
                   let label = node.name; if (label.length > 8) label = label.substring(0, 7) + '..';
-                  ctx.fillText(label, node.x, node.y - (fontSize * 0.1));
+                  ctx.fillText(label, node.x, node.y - (fontSize * 0.15));
                   
-                  const subFontSize = fontSize * 0.45;
+                  const subFontSize = fontSize * 0.5;
                   ctx.font = `900 ${subFontSize}px Inter, sans-serif`;
                   ctx.fillStyle = node.color;
                   ctx.fillText(node.type.toUpperCase(), node.x, node.y + (radius * 0.45));
@@ -416,7 +442,7 @@ export default function Temp1() {
             )
           )}
 
-          <div className="absolute bottom-10 left-10 flex items-center bg-slate-900/90 backdrop-blur-3xl px-8 py-4 rounded-3xl border border-white/10 space-x-10 shadow-2xl pointer-events-auto">
+          <div className="absolute bottom-10 left-10 flex items-center bg-[#0f172a]/90 backdrop-blur-3xl px-8 py-4 rounded-3xl border border-white/10 space-x-10 shadow-2xl pointer-events-auto">
              <GridControl active={showLabels} onClick={() => setShowLabels(!showLabels)} icon={<Eye size={16} />} label="Identities" />
              <GridControl active={true} onClick={() => {}} icon={<Layers size={16} />} label="Topology" />
              <GridControl active={isFixed} onClick={() => setIsFixed(!isFixed)} icon={isFixed ? <Lock size={16} /> : <Unlock size={16} />} label="Lock Matrix" />
@@ -435,11 +461,11 @@ export default function Temp1() {
                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-4 text-blue-400">
                        <Fingerprint size={24} className={isSimulatingFailure ? 'text-rose-500 animate-pulse' : 'animate-pulse'} />
-                       <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Forensic Intelligence</h3>
+                       <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Forensic Hub</h3>
                     </div>
                     {highlightedNodeId && <button onClick={() => setHighlightedNodeId(null)} className="p-2 text-slate-600 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20} /></button>}
                  </div>
-                 <p className="text-[9px] text-slate-500 uppercase font-black tracking-[0.4em]">Propagated Failure Analytics</p>
+                 <p className="text-[9px] text-slate-500 uppercase font-black tracking-[0.4em]">Propagated Analytics</p>
               </div>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
@@ -457,35 +483,31 @@ export default function Temp1() {
                              {/* Detonation Summary Banner */}
                              {isSimulatingFailure && impactInfo && (
                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden">
-                                  <div className={`p-6 rounded-[32px] border ${isOrigin ? 'bg-rose-600 border-rose-500' : 'bg-amber-600/20 border-amber-500/30'} flex flex-col space-y-4 shadow-xl`}>
+                                  <div className={`p-6 rounded-[32px] border ${isOrigin ? 'bg-rose-600 border-rose-500 shadow-[0_0_30px_rgba(225,68,68,0.3)]' : 'bg-amber-600/20 border-amber-500/30'} flex flex-col space-y-4`}>
                                      <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
                                            <div className={`p-2 rounded-xl ${isOrigin ? 'bg-white/20' : 'bg-amber-500/20'} text-white`}>
                                               {isOrigin ? <Flame size={18} /> : getImpact(impactInfo.type).icon}
                                            </div>
                                            <span className="text-[12px] font-black uppercase tracking-widest text-white italic">
-                                              {isOrigin ? 'FAILURE ORIGIN (DETONATED)' : getImpact(impactInfo.type).title}
+                                              {isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}
                                            </span>
-                                        </div>
-                                        <div className="flex items-center space-x-2 bg-black/20 px-3 py-1 rounded-full border border-white/5">
-                                           <Activity size={10} className="text-white animate-pulse" />
-                                           <span className="text-[8px] font-black text-white">LIVE_IMPACT</span>
                                         </div>
                                      </div>
                                      <p className="text-[11px] font-bold text-white leading-relaxed opacity-90 uppercase tracking-tight">
-                                        {isOrigin ? 'This asset has been forced offline. Initiating catastrophic propagation through all downstream logic and hardware dependencies.' : getImpact(impactInfo.type).desc}
+                                        {isOrigin ? 'This asset has been forced offline. Catastrophic propagation active.' : getImpact(impactInfo.type).desc}
                                      </p>
                                      {!isOrigin && (
                                        <div className="flex items-center space-x-2 pt-2 border-t border-white/10">
                                           <span className="text-[8px] font-black text-amber-500 uppercase">Triggered by</span>
-                                          <span className="text-[8px] font-black text-white uppercase italic">{(devices as any[]).find(d => Number(d.id) === impactInfo.sourceId)?.name}</span>
+                                          <span className="text-[8px] font-black text-white uppercase italic">{(devices as any[]).find(d => Number(d.id) === impactInfo.sourceId)?.name || 'Unknown Path'}</span>
                                        </div>
                                      )}
                                   </div>
                                </motion.div>
                              )}
 
-                             <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 relative overflow-hidden group">
+                             <div className="bg-[#1e293b]/50 p-6 rounded-[32px] border border-white/5 relative overflow-hidden">
                                 <h4 className="text-3xl font-black text-blue-400 uppercase tracking-tighter italic leading-[1.1] mb-4 break-all">{rawDevice.name}</h4>
                                 <div className="flex flex-wrap gap-2">
                                    <StatusBadge label={rawDevice.type} color={getTypeColor(rawDevice.type)} />
@@ -496,8 +518,7 @@ export default function Temp1() {
                              <div className="space-y-3">
                                 <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center space-x-3"><Info size={12} /><span>Physical Metrics</span></h5>
                                 <div className="grid grid-cols-1 gap-2">
-                                   <ForensicRow label="Site Fabric" value={`${rawDevice.site_name} ➔ RACK ${rawDevice.rack_name}`} />
-                                   <ForensicRow label="Networking" value={rawDevice.primary_ip || 'Static/Internal'} mono />
+                                   <ForensicRow label="Site Fabric" value={`${rawDevice.site_name} ➔ ${rawDevice.rack_name}`} />
                                    <ForensicRow label="Logic Role" value={rawDevice.role || 'Service Node'} />
                                 </div>
                              </div>
@@ -512,18 +533,19 @@ export default function Temp1() {
                                      const isSource = (typeof link.source === 'object' ? link.source.id : link.source) === rawDevice.id;
                                      const partnerId = isSource ? (typeof link.target === 'object' ? link.target.id : link.target) : (typeof link.source === 'object' ? link.source.id : link.source);
                                      const partner = (devices as any[]).find(d => Number(d.id) === partnerId);
+                                     const isImpacted = impactedNodesMap.has(Number(partnerId));
                                      return (
                                        <button 
                                           key={idx} 
                                           onClick={() => setHighlightedNodeId(Number(partnerId))}
-                                          className={`w-full bg-black/40 border border-white/5 rounded-[20px] p-4 flex items-center justify-between group transition-all active:scale-[0.98] ${impactedNodesMap.has(Number(partnerId)) ? 'hover:border-rose-500/40' : 'hover:border-blue-500/40'}`}
+                                          className={`w-full bg-black/40 border border-white/5 rounded-[20px] p-4 flex items-center justify-between group transition-all active:scale-[0.98] ${isImpacted ? 'hover:border-rose-500/40 shadow-[0_0_15px_rgba(225,68,68,0.1)]' : 'hover:border-blue-500/40'}`}
                                        >
                                           <div className="flex items-center space-x-4">
-                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${impactedNodesMap.has(Number(partnerId)) ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isImpacted ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                                 {isSource ? <ArrowRightLeft size={16} /> : <Zap size={16} />}
                                              </div>
                                              <div className="flex flex-col items-start">
-                                                <span className={`text-[12px] font-black uppercase tracking-tight italic group-hover:text-blue-400 ${impactedNodesMap.has(Number(partnerId)) ? 'text-rose-400' : 'text-white'}`}>{partner?.name}</span>
+                                                <span className={`text-[12px] font-black uppercase tracking-tight italic group-hover:text-blue-400 ${isImpacted ? 'text-rose-400' : 'text-white'}`}>{partner?.name || 'Unknown'}</span>
                                                 <span className="text-[8px] font-black text-slate-600 uppercase">{isSource ? 'Out' : 'In'} ➔ {link.type}</span>
                                              </div>
                                           </div>
@@ -537,10 +559,10 @@ export default function Temp1() {
                              <button 
                                onClick={() => triggerFailure(rawDevice.id)}
                                disabled={isSimulatingFailure}
-                               className={`w-full py-5 rounded-[24px] font-black uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center space-x-3 shadow-2xl ${isSimulatingFailure ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/20'}`}
+                               className={`w-full py-5 rounded-[24px] font-black uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center space-x-3 shadow-2xl ${isSimulatingFailure ? 'bg-[#1e293b] text-slate-500 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/20'}`}
                              >
                                 <Flame size={20} />
-                                <span>Engagement Active</span>
+                                <span>{isSimulatingFailure ? 'Simulation Active' : 'Engage Detonation'}</span>
                              </button>
                            </>
                          )
@@ -550,7 +572,7 @@ export default function Temp1() {
                     <div className="h-full flex flex-col items-center justify-center text-center px-10 py-20">
                        <MousePointer2 size={64} className="text-slate-800 mb-8" />
                        <h4 className="text-[13px] font-black uppercase tracking-[0.4em] text-slate-500 mb-3">Engine Ready</h4>
-                       <p className="text-[9px] font-bold text-slate-700 leading-relaxed uppercase max-w-[240px]">Engage matrix nodes to initiate relational forensic audit</p>
+                       <p className="text-[9px] font-bold text-slate-700 leading-relaxed uppercase max-w-[240px]">Select an asset in the matrix to engage relational forensic analysis</p>
                     </div>
                   )}
                 </AnimatePresence>
