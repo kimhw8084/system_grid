@@ -193,7 +193,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               <div className="relative">
                  <div className="absolute inset-0 bg-blue-600/40 blur-lg rounded-xl animate-pulse" />
                  <div className="p-3 bg-blue-600 rounded-xl shadow-2xl relative border border-white/20">
-                    <GridBranch size={24} className="text-white" />
+                    <GitBranch size={24} className="text-white" />
                  </div>
               </div>
               <div>
