@@ -26,7 +26,7 @@ from app.models.models import (
     DeviceRelationship, LogicalService, ServiceSecret, SecretVault,
     MaintenanceWindow, MonitoringItem, IncidentLog, DataFlow,
     AuditLog, SettingOption, FirewallRule, ExternalEntity, ExternalLink,
-    Vendor, VendorContract, ContractCoverage, KnowledgeEntry,
+    Vendor, VendorPersonnel, VendorContract, KnowledgeEntry,
     Investigation, InvestigationProgress,
     FarFailureMode, FarFailureCause, FarResolution, FarMitigation, FarPrevention
 )
@@ -130,30 +130,47 @@ def seed():
         # 4. Vendors & Master Contracts
         print("Seeding Strategic Vendors...")
         vendors = []
-        v_data = [("Cisco", "NW"), ("Palo Alto", "SEC"), ("Dell", "HW"), ("PureStorage", "ST"), ("F5", "LB")]
-        for name, cat in v_data:
+        v_data = [
+            ("Cisco", "NW", "USA"), 
+            ("Palo Alto", "SEC", "USA"), 
+            ("Dell", "HW", "USA"), 
+            ("PureStorage", "ST", "USA"), 
+            ("F5", "LB", "USA")
+        ]
+        for name, cat, country in v_data:
             v = Vendor(
                 name=name, 
-                organization=f"{name} Enterprise", 
-                contact_email=f"global-support@{name.lower()}.com",
-                contact_phone=fake.phone_number(),
-                work_schedule="24/7 Support",
-                access_details="VPN + Jump-host required"
+                primary_email=f"global-support@{name.lower()}.com",
+                primary_phone=fake.phone_number(),
+                country=country
             )
             vendors.append(v)
             db.add(v)
             db.flush()
             
+            # Add some personnel
+            for _ in range(2):
+                vp = VendorPersonnel(
+                    vendor_id=v.id,
+                    name=fake.name(),
+                    position=random.choice(["Support Engineer", "Account Manager", "Technical Lead"]),
+                    team="Global Accounts",
+                    company_email=fake.email(),
+                    internal_email=fake.email(),
+                    phone=fake.phone_number(),
+                    accounts=[{"name": "Internal-ID", "type": "AD", "created_date": "2024-01-01", "status": "Active"}],
+                    pcs=[{"name": f"WS-{random.randint(100,999)}", "type": "PC", "status": "Active"}]
+                )
+                db.add(vp)
+
             contract = VendorContract(
                 vendor_id=v.id, 
                 title=f"Global {cat} Agreement", 
-                contract_number=f"MTRX-{random.randint(1000,9999)}",
-                start_date=datetime.now()-timedelta(days=730), 
-                end_date=datetime.now()+timedelta(days=365),
-                status="Active",
-                total_value=random.uniform(50000, 500000),
-                currency="USD",
-                sow_summary=f"Maintenance and support for all {name} assets."
+                contract_id=f"MTRX-{random.randint(1000,9999)}",
+                effective_date=datetime.now()-timedelta(days=730), 
+                expiry_date=datetime.now()+timedelta(days=365),
+                scope_of_work=[{"deliverable": "24/7 Support", "when": "On-Demand", "response_time": "4hr", "objective": "Resolution"}],
+                schedule={"work_schedule": "24/7", "holiday_policy": "Standard Global"}
             )
             db.add(contract)
             db.flush()
@@ -190,9 +207,15 @@ def seed():
             # Physical Location: Top of each rack
             db.add(DeviceLocation(device_id=d.id, rack_id=racks[i].id, start_unit=42, size_u=1, orientation="Front", depth="Full"))
             
-            # Link to Vendor Contract Coverage
+            # Link to Vendor Contract Coverage (New JSON structure)
             v_ref = next(v for v in vendors if v.name == mfr)
-            db.add(ContractCoverage(contract_id=v_ref.contracts[0].id, device_id=d.id, support_tier="24x7 4Hr", is_active=True))
+            contract_obj = v_ref.contracts[0]
+            if not contract_obj.covered_assets: contract_obj.covered_assets = []
+            # Make sure we are appending to the list correctly
+            current_assets = list(contract_obj.covered_assets)
+            current_assets.append({"device_id": d.id, "support_type": "Both"})
+            contract_obj.covered_assets = current_assets
+            db.add(contract_obj)
 
         db.flush()
 

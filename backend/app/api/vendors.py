@@ -14,9 +14,19 @@ def filter_valid_columns(model, data):
     exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
     return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
+def parse_iso_date(date_str):
+    if not date_str: return None
+    try:
+        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except:
+        return None
+
 @router.get("/")
 async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.Vendor).options(joinedload(models.Vendor.contracts))
+    query = select(models.Vendor).options(
+        joinedload(models.Vendor.contracts),
+        joinedload(models.Vendor.personnel)
+    )
     if not include_deleted:
         query = query.filter(models.Vendor.is_deleted == False)
     result = await db.execute(query.order_by(models.Vendor.name))
@@ -59,17 +69,49 @@ async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
+# --- PERSONNEL ---
+
+@router.post("/{vendor_id}/personnel")
+async def add_personnel(vendor_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    clean_data = filter_valid_columns(models.VendorPersonnel, data)
+    clean_data["vendor_id"] = vendor_id
+    personnel = models.VendorPersonnel(**clean_data)
+    db.add(personnel)
+    await db.commit()
+    await db.refresh(personnel)
+    return personnel
+
+@router.put("/personnel/{personnel_id}")
+async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.id == personnel_id))
+    personnel = result.scalar_one_or_none()
+    if not personnel: raise HTTPException(404, "Personnel not found")
+    
+    clean_data = filter_valid_columns(models.VendorPersonnel, data)
+    for k, v in clean_data.items():
+        setattr(personnel, k, v)
+    
+    await db.commit()
+    return personnel
+
+@router.delete("/personnel/{personnel_id}")
+async def delete_personnel(personnel_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.id == personnel_id))
+    personnel = result.scalar_one_or_none()
+    if not personnel: raise HTTPException(404, "Personnel not found")
+    
+    await db.delete(personnel)
+    await db.commit()
+    return {"status": "success"}
+
 # --- CONTRACTS ---
 
 @router.get("/contracts/")
 async def get_contracts(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.VendorContract).options(
-        joinedload(models.VendorContract.vendor_ref),
-        joinedload(models.VendorContract.coverage_links).joinedload(models.ContractCoverage.device)
-    )
+    query = select(models.VendorContract).options(joinedload(models.VendorContract.vendor_ref))
     if not include_deleted:
         query = query.filter(models.VendorContract.is_deleted == False)
-    result = await db.execute(query.order_by(models.VendorContract.end_date))
+    result = await db.execute(query.order_by(models.VendorContract.expiry_date))
     return result.unique().scalars().all()
 
 @router.post("/contracts/")
@@ -77,27 +119,13 @@ async def create_contract(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.VendorContract, data)
     
     # Handle dates
-    if 'start_date' in data and data['start_date']:
-        clean_data['start_date'] = datetime.fromisoformat(data['start_date'].replace("Z", "+00:00"))
-    if 'end_date' in data and data['end_date']:
-        clean_data['end_date'] = datetime.fromisoformat(data['end_date'].replace("Z", "+00:00"))
+    if 'effective_date' in data:
+        clean_data['effective_date'] = parse_iso_date(data['effective_date'])
+    if 'expiry_date' in data:
+        clean_data['expiry_date'] = parse_iso_date(data['expiry_date'])
 
     contract = models.VendorContract(**clean_data)
     db.add(contract)
-    
-    # Handle coverage multi-select if provided
-    device_ids = data.get("covered_device_ids", [])
-    support_tier = data.get("support_tier", "Standard")
-    
-    await db.flush()
-    
-    for did in device_ids:
-        coverage = models.ContractCoverage(
-            contract_id=contract.id,
-            device_id=did,
-            support_tier=support_tier
-        )
-        db.add(coverage)
 
     try:
         await db.commit()
@@ -115,31 +143,16 @@ async def update_contract(contract_id: int, data: dict, db: AsyncSession = Depen
     
     clean_data = filter_valid_columns(models.VendorContract, data)
     
-    if 'start_date' in data and data['start_date']:
-        clean_data['start_date'] = datetime.fromisoformat(data['start_date'].replace("Z", "+00:00"))
-    if 'end_date' in data and data['end_date']:
-        clean_data['end_date'] = datetime.fromisoformat(data['end_date'].replace("Z", "+00:00"))
+    if 'effective_date' in data:
+        clean_data['effective_date'] = parse_iso_date(data['effective_date'])
+    if 'expiry_date' in data:
+        clean_data['expiry_date'] = parse_iso_date(data['expiry_date'])
         
     for k, v in clean_data.items():
         setattr(contract, k, v)
     
-    # Update coverage links if provided
-    if "covered_device_ids" in data:
-        # Purge old links
-        await db.execute(delete(models.ContractCoverage).where(models.ContractCoverage.contract_id == contract_id))
-        
-        device_ids = data.get("covered_device_ids", [])
-        support_tier = data.get("support_tier", "Standard")
-        for did in device_ids:
-            coverage = models.ContractCoverage(
-                contract_id=contract.id,
-                device_id=did,
-                support_tier=support_tier
-            )
-            db.add(coverage)
-
     await db.commit()
-    return {"status": "success"}
+    return contract
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):

@@ -383,56 +383,53 @@ class AuditLog(Base):
 class Vendor(Base, BaseMixin):
     __tablename__ = "vendors"
     name = Column(String, index=True)
-    organization = Column(String, index=True)
-    contact_email = Column(String)
-    contact_phone = Column(String)
-    
-    # Vendor-specific resources (Work PC, Account, Access)
-    pc_info = Column(JSON, default=dict) # {hostname, ip, mac, serial, os}
-    account_info = Column(JSON, default=dict) # {username, access_type, permissions}
-    access_details = Column(Text)
-    
-    # Scheduling & Logistics
-    work_schedule = Column(Text) # e.g. "Mon-Fri 09:00-18:00"
-    on_call_info = Column(JSON, default=dict) # {is_on_call: bool, rotation_notes: str}
+    primary_email = Column(String)
+    primary_phone = Column(String)
+    country = Column(String)
     
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
     
+    personnel = relationship("VendorPersonnel", back_populates="vendor_ref", cascade="all, delete-orphan")
     contracts = relationship("VendorContract", back_populates="vendor_ref", cascade="all, delete-orphan")
+
+class VendorPersonnel(Base, BaseMixin):
+    __tablename__ = "vendor_personnel"
+    vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
+    name = Column(String, index=True)
+    position = Column(String)
+    team = Column(String)
+    company_email = Column(String)
+    internal_email = Column(String)
+    phone = Column(String)
+    
+    # Nested lists of dicts
+    accounts = Column(JSON, default=list) # [{name, type, created_date, status}]
+    pcs = Column(JSON, default=list) # [{name, type, created_date, status}]
+    
+    metadata_json = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)
+    
+    vendor_ref = relationship("Vendor", back_populates="personnel")
 
 class VendorContract(Base, BaseMixin):
     __tablename__ = "vendor_contracts"
     vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
     title = Column(String, index=True)
-    contract_number = Column(String, index=True)
-    start_date = Column(DateTime)
-    end_date = Column(DateTime)
-    status = Column(String, default="Active") # Active, Expiring, Renewed, Terminated
+    contract_id = Column(String, index=True)
+    effective_date = Column(DateTime)
+    expiry_date = Column(DateTime)
     
-    # Scope of Work (SOW) & Content
-    sow_summary = Column(Text)
-    sow_details_json = Column(JSON, default=list) # [{item, description, status}]
-    
-    # Financials
-    total_value = Column(Float, default=0.0)
-    currency = Column(String, default="USD")
+    # Details
+    covered_assets = Column(JSON, default=list) # [{device_id, support_type}]
+    scope_of_work = Column(JSON, default=list) # [{deliverable, when, response_time, objective}]
+    schedule = Column(JSON, default=dict) # {work_schedule, holiday_policy}
+    document_link = Column(String)
     
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
     
     vendor_ref = relationship("Vendor", back_populates="contracts")
-    coverage_links = relationship("ContractCoverage", back_populates="contract", cascade="all, delete-orphan")
-
-class ContractCoverage(Base, BaseMixin):
-    __tablename__ = "contract_coverage"
-    contract_id = Column(Integer, ForeignKey("vendor_contracts.id", ondelete="CASCADE"))
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
-    support_tier = Column(String) # NBD, 4-Hour, Software-Only, etc.
-    is_active = Column(Boolean, default=True)
-    
-    contract = relationship("VendorContract", back_populates="coverage_links")
-    device = relationship("Device")
 
 # --- NEW KNOWLEDGE BASE MODULE ---
 
