@@ -161,7 +161,8 @@ class LogicalServiceBase(BaseModel):
     expiry_date: Optional[str] = None
     cost: Optional[float] = 0.0
     currency: Optional[str] = "USD"
-    vendor: Optional[str] = None
+    manufacturer: Optional[str] = None
+    supplier: Optional[str] = None
 
 class LogicalServiceCreate(LogicalServiceBase): pass
 class LogicalServiceResponse(LogicalServiceBase, BaseSchema):

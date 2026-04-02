@@ -127,7 +127,8 @@ class LogicalService(Base, BaseMixin):
     expiry_date = Column(DateTime)
     cost = Column(Float, default=0.0)
     currency = Column(String, default="USD") # USD, KRW
-    vendor = Column(String)
+    manufacturer = Column(String) # Developing company (e.g. Microsoft)
+    supplier = Column(String) # Licensing company (e.g. AWS, Reseller)
     
     # Smart Expandability: Unlimited custom key-values
     custom_attributes = Column(JSON, default=dict)

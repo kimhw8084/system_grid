@@ -58,7 +58,8 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
             "installation_date": s.installation_date.isoformat() if s.installation_date else None,
             "purpose": s.purpose,
             "documentation_link": s.documentation_link,
-            "vendor": s.vendor,
+            "manufacturer": s.manufacturer,
+            "supplier": s.supplier,
             "cost": s.cost,
             "currency": s.currency,
             "secrets": [{"id": sc.id, "username": sc.username, "password": sc.password, "note": sc.note} for sc in s.secrets]

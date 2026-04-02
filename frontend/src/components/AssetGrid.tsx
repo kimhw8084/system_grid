@@ -771,20 +771,20 @@ export default function AssetGrid() {
       headerName: "name", 
       flex: 1.2, 
       pinned: 'left',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'text-center text-[11px]',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", width: 110, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "system", headerName: "System", width: 110, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
     { 
       field: "type", 
       headerName: "Type", 
-      width: 80,
+      width: 90,
       cellClass: 'text-center',
-      headerClass: 'text-center',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter',
       
       cellRenderer: (p: any) => {
@@ -796,7 +796,7 @@ export default function AssetGrid() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-black uppercase text-[9px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+        return <span className={`font-black uppercase text-[11px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       }
     },
     { 
@@ -804,7 +804,7 @@ export default function AssetGrid() {
       headerName: "Status", 
       width: 110,
       cellClass: 'text-center',
-      headerClass: 'text-center',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => {
         const colors: any = {
@@ -817,8 +817,8 @@ export default function AssetGrid() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="text-[7px] font-black uppercase tracking-tighter leading-none">
+            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
                 {p.value}
               </span>
             </div>
@@ -827,42 +827,42 @@ export default function AssetGrid() {
       }
     },
 
-    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
       width: 120, 
-      cellClass: 'text-center font-mono text-[9px] text-blue-400',
-      headerClass: 'text-center',
+      cellClass: 'text-center font-mono text-[11px] text-blue-400',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter'
     },
     { 
       field: "management_ip", 
       headerName: "Mgmt IP", 
       width: 120, 
-      cellClass: 'text-center font-mono text-[9px] text-indigo-400',
-      headerClass: 'text-center',
+      cellClass: 'text-center font-mono text-[11px] text-indigo-400',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter'
     },
     { 
       field: "hardware_summary", 
       headerName: "Resources", 
       width: 150, 
-      cellClass: 'text-center font-black uppercase text-[8px] text-slate-400',
-      headerClass: 'text-center',
+      cellClass: 'text-center font-black uppercase text-[11px] text-slate-400',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter'
     },
     { 
       field: "hardware_age", 
       headerName: "Age", 
       width: 80, 
-      cellClass: 'text-center font-black text-[9px] text-slate-500',
-      headerClass: 'text-center',
+      cellClass: 'text-center font-black text-[11px] text-slate-500',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter'
     },
     { 
@@ -870,12 +870,12 @@ export default function AssetGrid() {
       headerName: "Health", 
       width: 80, 
       cellClass: 'text-center',
-      headerClass: 'text-center',
+      headerClass: 'text-center text-[11px]',
       cellRenderer: (p: any) => p.value > 0 ? (
         <div className="flex items-center justify-center h-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="text-[9px] font-black">{p.value}</span>
+              <span className="text-[11px] font-black">{p.value}</span>
            </div>
         </div>
       ) : (
@@ -883,36 +883,36 @@ export default function AssetGrid() {
       )
     },
 
-    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
     { 
       field: "depth", 
       headerName: "Depth", 
       width: 70,
       cellClass: 'text-center',
-      headerClass: 'text-center',
+      headerClass: 'text-center text-[11px]',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[8px]">{p.value || 'Full'}</span>
+      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[11px]">{p.value || 'Full'}</span>
     },
     { 
       field: "mount_orientation", 
       headerName: "Mount", 
-      width: 70, 
+      width: 80, 
       cellClass: 'text-center', 
-      headerClass: 'text-center', 
+      headerClass: 'text-center text-[11px]', 
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>
+      cellRenderer: (p: any) => p.value ? <span className="text-[11px] font-black uppercase text-indigo-400">{p.value}</span> : <span className="text-slate-700 italic text-[10px]">registry</span>
     },
-    { field: "u_start", headerName: "U Pos", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "size_u", headerName: "Size", width: 50, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter' },
-    { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
-    { field: "power_max_w", headerName: "Max W", width: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "u_start", headerName: "U Pos", width: 60, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', filter: 'agNumberColumnFilter' },
+    { field: "size_u", headerName: "Size", width: 60, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', filter: 'agNumberColumnFilter' },
+    { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "power_max_w", headerName: "Max W", width: 70, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     {
       headerName: "Action",
-      width: 130,
+      width: 140,
       pinned: 'right',
       cellClass: 'text-center',
-      headerClass: 'text-center',
+      headerClass: 'text-center text-[11px]',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
@@ -1140,10 +1140,10 @@ export default function AssetGrid() {
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #94a3b8;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
+          --ag-font-size: 11px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 11px !important; justify-content: center !important; }
         .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
         
         /* Make filter popups non-transparent and on top */

@@ -407,7 +407,8 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
     device_id: null, config_json: {}, 
     license_key: "", purchase_type: "One-time", 
     purchase_date: "", expiry_date: "", installation_date: "", 
-    purpose: "", documentation_link: "", cost: 0, currency: "USD", vendor: "",
+    purpose: "", documentation_link: "", cost: 0, currency: "USD", 
+    manufacturer: "", supplier: "",
     ...initialData 
   })
 
@@ -501,7 +502,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
 
         <div className="col-span-2 space-y-4">
            <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3">Licensing & Procurement</h3>
-           <div className="grid grid-cols-3 gap-4">
+           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Model</label>
                 <select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500">
@@ -513,8 +514,12 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Vendor / Provider</label>
-                <input value={formData.vendor || ""} onChange={e => setFormData({...formData, vendor: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft / AWS" />
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Manufacturer / Developer</label>
+                <input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft, Oracle" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Supplier / Reseller</label>
+                <input value={formData.supplier || ""} onChange={e => setFormData({...formData, supplier: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. AWS, Direct" />
               </div>
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License / Activation Key</label>
@@ -528,7 +533,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Expiry / Renewal Date</label>
                 <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 col-span-2">
                 <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
                 <div className="flex space-x-2">
                   <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value) || 0})} className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
@@ -707,9 +712,23 @@ export default function ServiceRegistry() {
     { field: "environment", headerName: "Env", width: 90, cellClass: 'text-center font-bold text-slate-400 uppercase text-[9px]', headerClass: 'text-center' },
     { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center text-[10px]", headerClass: 'text-center' },
     { 
-      field: "vendor", 
-      headerName: "Vendor", 
+      field: "manufacturer", 
+      headerName: "Manufacturer", 
+      width: 150, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex flex-col items-center justify-center leading-tight py-1 h-full">
+           <span className="text-[10px] font-black text-slate-300 uppercase truncate w-full">{p.value || 'N/A'}</span>
+           {p.data.supplier && <span className="text-[8px] font-bold text-slate-500 uppercase truncate w-full">via {p.data.supplier}</span>}
+        </div>
+      )
+    },
+    { 
+      field: "supplier", 
+      headerName: "Supplier", 
       width: 120, 
+      hide: true,
       cellClass: 'text-center text-slate-400 font-medium',
       headerClass: 'text-center'
     },
@@ -879,6 +898,8 @@ export default function ServiceRegistry() {
                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} · {activeDetails.environment}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">HOST: {activeDetails.device_name || 'UNASSIGNED'}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">DEV: {activeDetails.manufacturer || 'UNKNOWN'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">VERSION: {activeDetails.version || 'UNKNOWN'}</p>
                     </div>
