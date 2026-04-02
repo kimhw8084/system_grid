@@ -74,9 +74,63 @@ export default function Vendor() {
 
   const columnDefs = useMemo(() => [
     { field: "name", headerName: "Vendor Name", flex: 1, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
-    { field: "primary_email", headerName: "Primary Email", width: 200, cellClass: 'text-blue-400 font-mono text-[10px]' },
-    { field: "primary_phone", headerName: "Primary Phone", width: 150 },
-    { field: "country", headerName: "Country", width: 120, cellClass: 'text-center uppercase font-black text-slate-400' },
+    { field: "primary_email", headerName: "Primary Email", width: 180, cellClass: 'text-blue-400 font-mono text-[10px]' },
+    { field: "primary_phone", headerName: "Primary Phone", width: 130 },
+    { field: "country", headerName: "Country", width: 100, cellClass: 'text-center uppercase font-black text-slate-400' },
+    { 
+      headerName: "First Contract", 
+      width: 120,
+      valueGetter: (p: any) => {
+        const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
+        if (!dates || dates.length === 0) return null;
+        return new Date(Math.min(...dates.map((d: any) => new Date(d).getTime())));
+      },
+      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
+      cellClass: 'text-[10px] font-bold text-slate-400'
+    },
+    { 
+      headerName: "Latest Contract", 
+      width: 120,
+      valueGetter: (p: any) => {
+        const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
+        if (!dates || dates.length === 0) return null;
+        return new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
+      },
+      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
+      cellClass: 'text-[10px] font-bold text-emerald-400'
+    },
+    {
+      headerName: "Active",
+      width: 80,
+      valueGetter: (p: any) => {
+        const now = new Date();
+        return p.data.contracts?.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > now).length || 0;
+      },
+      cellClass: 'text-center font-black text-blue-400'
+    },
+    {
+      headerName: "Historic",
+      width: 80,
+      valueGetter: (p: any) => {
+        const now = new Date();
+        return p.data.contracts?.filter((c: any) => c.expiry_date && new Date(c.expiry_date) <= now).length || 0;
+      },
+      cellClass: 'text-center font-black text-slate-500'
+    },
+    {
+      headerName: "Assets",
+      width: 80,
+      valueGetter: (p: any) => {
+        const assets = new Set();
+        p.data.contracts?.forEach((c: any) => {
+          c.covered_assets?.forEach((a: any) => {
+            if (a.device_id) assets.add(a.device_id);
+          });
+        });
+        return assets.size;
+      },
+      cellClass: 'text-center font-black text-amber-500'
+    },
     {
       headerName: "Action",
       width: 120,
