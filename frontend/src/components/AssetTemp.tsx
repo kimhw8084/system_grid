@@ -167,7 +167,7 @@ const SharedNetworkModals = ({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
-                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.10" />
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
@@ -176,7 +176,7 @@ const SharedNetworkModals = ({
               </div>
               <div className="col-span-2">
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
-                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
+                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
               </div>
               <StyledSelect
                   label="Direction"
@@ -200,7 +200,7 @@ const SharedNetworkModals = ({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
-                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.254" />
                 </div>
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
@@ -209,7 +209,7 @@ const SharedNetworkModals = ({
               </div>
               <div className="col-span-2">
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
-                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
+                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
               </div>
               <StyledSelect
                   label="Link Type *"
@@ -297,7 +297,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
                  }`}>{s.status}</span>
               </td>
               <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold text-[10px]">{s.environment}</td>
-              <td className="px-4 py-3 text-center font-mono text-blue-400/60 font-bold text-[10px]">
+              <td className="px-4 py-3 text-center text-blue-400/60 font-bold text-[10px]">
                 {s.installation_date ? new Date(s.installation_date).toLocaleDateString() : '-'}
               </td>
               <td className="px-4 py-3 text-center">
@@ -526,7 +526,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 setJsonValue(e.target.value);
                 syncFromJSON(e.target.value);
             }} 
-            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] text-blue-300 outline-none`}
           />
         )}
       </div>
@@ -711,11 +711,11 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <div className="grid grid-cols-2 gap-4">
                      <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</p>
-                        <p className="text-xl font-mono text-blue-400 font-black">{selectedAsset.primary_ip || '---.---.---.---'}</p>
+                        <p className="text-xl text-blue-400 font-black">{selectedAsset.primary_ip || '---.---.---.---'}</p>
                      </div>
                      <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</p>
-                        <p className="text-xl font-mono text-indigo-400 font-black">{selectedAsset.management_ip || '---.---.---.---'}</p>
+                        <p className="text-xl text-indigo-400 font-black">{selectedAsset.management_ip || '---.---.---.---'}</p>
                      </div>
                   </div>
                   {selectedAsset.management_url && (
@@ -745,7 +745,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      </div>
                      <div>
                         <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Identity Tag / SN</p>
-                        <p className="text-xs font-mono text-white uppercase">{selectedAsset.asset_tag || 'NO TAG'} // {selectedAsset.serial_number || 'NO SN'}</p>
+                        <p className="text-xs text-white uppercase">{selectedAsset.asset_tag || 'NO TAG'} // {selectedAsset.serial_number || 'NO SN'}</p>
                      </div>
                      <div>
                         <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Operating System</p>
@@ -820,7 +820,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         <Activity size={16} className="text-blue-400" />
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Power Payload (Avg/Max)</span>
                      </div>
-                     <span className="text-xs font-mono text-white font-black">{selectedAsset.power_typical_w}W // {selectedAsset.power_max_w}W</span>
+                     <span className="text-xs text-white font-black">{selectedAsset.power_typical_w}W // {selectedAsset.power_max_w}W</span>
                   </div>
                </div>
             </div>
@@ -1009,7 +1009,7 @@ export default function AssetTemp() {
       pinned: 'left',
       width: 180,
       minWidth: 180,
-      cellClass: 'text-left font-bold text-[10px]',
+      cellClass: 'text-left font-bold',
       headerClass: 'text-left',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
@@ -1017,7 +1017,7 @@ export default function AssetTemp() {
       ),
       hide: hiddenColumns.includes("name")
     },
-    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("system") },
+    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("system") },
     { 
       field: "type", 
       headerName: "Type", 
@@ -1035,7 +1035,7 @@ export default function AssetTemp() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-bold uppercase text-[10px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       },
       hide: hiddenColumns.includes("type")
     },
@@ -1058,8 +1058,8 @@ export default function AssetTemp() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="text-[10px] font-bold uppercase tracking-tighter leading-none">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">
                 {p.value}
               </span>
             </div>
@@ -1069,18 +1069,18 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("status")
     },
 
-    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("environment") },
-    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("owner") },
-    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("manufacturer") },
-    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("model") },
-    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_name") },
-    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_version") },
+    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("environment") },
+    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("owner") },
+    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("manufacturer") },
+    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("model") },
+    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_name") },
+    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_version") },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
       width: 110,
       minWidth: 110,
-      cellClass: 'text-center font-mono text-[10px] font-bold text-blue-400',
+      cellClass: 'text-center font-bold text-blue-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("primary_ip")
@@ -1090,7 +1090,7 @@ export default function AssetTemp() {
       headerName: "Mgmt IP", 
       width: 110,
       minWidth: 110,
-      cellClass: 'text-center font-mono text-[10px] font-bold text-indigo-400',
+      cellClass: 'text-center font-bold text-indigo-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("management_ip")
@@ -1100,7 +1100,7 @@ export default function AssetTemp() {
       headerName: "Resources", 
       minWidth: 120,
       flex: 1,
-      cellClass: 'text-center font-bold uppercase text-[10px] text-slate-400',
+      cellClass: 'text-center font-bold uppercase text-slate-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("hardware_summary")
@@ -1110,7 +1110,7 @@ export default function AssetTemp() {
       headerName: "Age", 
       width: 80,
       minWidth: 80,
-      cellClass: 'text-center font-bold text-[10px] text-slate-500',
+      cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("hardware_age")
@@ -1126,7 +1126,7 @@ export default function AssetTemp() {
         <div className="flex items-center justify-center h-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="text-[10px] font-bold">{p.value}</span>
+              <span className="font-bold">{p.value}</span>
            </div>
         </div>
       ) : (
@@ -1135,8 +1135,8 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("open_incident_count")
     },
 
-    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("site_name") },
-    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("rack_name") },
+    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("site_name") },
+    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("rack_name") },
     { 
       field: "depth", 
       headerName: "Depth", 
@@ -1145,7 +1145,7 @@ export default function AssetTemp() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase text-[10px]">{p.value || 'Full'}</span>,
+      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase">{p.value || 'Full'}</span>,
       hide: hiddenColumns.includes("depth")
     },
     { 
@@ -1156,13 +1156,13 @@ export default function AssetTemp() {
       cellClass: 'text-center', 
       headerClass: 'text-center', 
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase text-[10px]">{p.value || 'REGISTRY'}</span>,
+      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase">{p.value || 'REGISTRY'}</span>,
       hide: hiddenColumns.includes("mount_orientation")
     },
-    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("u_start") },
-    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
-    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
-    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
+    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("u_start") },
+    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
+    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
+    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
     {
       headerName: "Action",
       width: 120,
@@ -1225,7 +1225,7 @@ export default function AssetTemp() {
   const currentTheme = themes[activeTheme]
 
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="h-full flex flex-col space-y-4" style={{ fontFamily: currentTheme.font, fontWeight: 700 }}>
       {/* STYLE LABORATORY BAR */}
       <AnimatePresence>
         {showStyleLab && (
@@ -1250,7 +1250,7 @@ export default function AssetTemp() {
                           value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                           className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                         />
-                        <span className="text-[10px] font-mono text-white w-4">{fontSize}</span>
+                        <span className="text-[10px] text-white w-4">{fontSize}</span>
                      </div>
                   </div>
 
@@ -1488,9 +1488,9 @@ export default function AssetTemp() {
                     <div className="flex items-center space-x-3 mt-1">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
                                     <span className="w-1 h-1 rounded-full bg-white/20" />
-                                    <p className="text-[10px] font-mono text-blue-400/80 uppercase tracking-widest" title="Primary IP">{activeDetails.primary_ip || 'NO PRIMARY IP'}</p>
+                                    <p className="text-[10px] text-blue-400/80 uppercase tracking-widest" title="Primary IP">{activeDetails.primary_ip || 'NO PRIMARY IP'}</p>
                                     <span className="w-1 h-1 rounded-full bg-white/20" />
-                                    <p className="text-[10px] font-mono text-indigo-400/80 uppercase tracking-widest" title="Management IP">{activeDetails.management_ip || 'NO MGMT IP'}</p>
+                                    <p className="text-[10px] text-indigo-400/80 uppercase tracking-widest" title="Management IP">{activeDetails.management_ip || 'NO MGMT IP'}</p>
                                     <span className="w-1 h-1 rounded-full bg-white/20" />
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AGE: {activeDetails.hardware_age}</p>
                                   </div>
@@ -1573,7 +1573,7 @@ export default function AssetTemp() {
             font-weight: 900 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
-            font-size: ${Math.max(fontSize - 2, 8)}px !important; 
+            font-size: ${fontSize}px !important; 
             justify-content: center !important; 
         }
         .ag-cell { 
@@ -1678,15 +1678,15 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
             return (
               <tr key={c.id} className="hover:bg-white/5 transition-colors group">
                 <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight text-[10px]">{localPort}</td>
-                <td className="px-4 py-3 font-mono text-slate-200 font-bold text-[10px]">{localIP || <span className="text-slate-700 italic">Unassigned</span>}</td>
+                <td className="px-4 py-3 font-bold text-slate-200 text-[10px]">{localIP || <span className="text-slate-700 italic">Unassigned</span>}</td>
                 <td className="px-4 py-3">
                    <div className="flex flex-col">
-                      <span className="font-mono text-slate-500 text-[10px] uppercase font-bold">{localMAC || 'N/A'}</span>
+                      <span className="text-slate-500 text-[10px] uppercase font-bold">{localMAC || 'N/A'}</span>
                       {localVLAN && <span className="text-[10px] font-bold text-indigo-400 uppercase mt-0.5">VLAN {localVLAN}</span>}
                    </div>
                 </td>
                 <td className="px-4 py-3 text-center">
-                   <span className="text-slate-400 font-mono font-bold text-[10px]">{c.speed}</span>
+                   <span className="text-slate-400 font-bold text-[10px]">{c.speed}</span>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button 
@@ -1919,12 +1919,12 @@ const SecurityTab = ({ device }: { device: any }) => {
                       <span className="text-[10px] text-rose-400 font-bold uppercase tracking-tight">{r.risk || 'Risk not assessed'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-slate-400 font-bold text-[10px]">
+                  <td className="px-4 py-3 text-slate-400 font-bold text-[10px]">
                     {r.source_type === 'Device' ? (
                       <span className="text-blue-400 font-bold">{r.source_device_name}</span>
                     ) : (r.source_custom_ip || 'ANY')}
                   </td>
-                  <td className="px-4 py-3 font-mono text-slate-400 font-bold text-[10px]">
+                  <td className="px-4 py-3 text-slate-400 font-bold text-[10px]">
                     <div className="flex flex-col">
                       <span className="text-emerald-400 font-bold uppercase">{r.dest_device_name || 'THIS ASSET'}</span>
                       {r.dest_custom_ip && <span className="text-[10px] text-white opacity-60 italic font-bold">{r.dest_custom_ip}</span>}
@@ -2114,7 +2114,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                     <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
-              <td className="px-4 py-2 font-mono text-center text-slate-400 font-bold text-[10px]">
+              <td className="px-4 py-2 text-center text-slate-400 font-bold text-[10px]">
                 {editingId === h.id ? (
                     <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
@@ -2264,7 +2264,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
                     <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
               </td>
-              <td className="px-4 py-2 font-mono text-slate-400">
+              <td className="px-4 py-2 text-slate-400">
                 {editingId === s.id ? (
                     <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
                 ) : (
@@ -2746,11 +2746,11 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="space-y-3">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Primary IP Address</label>
-                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management IP Address</label>
-                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-indigo-500" />
+                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management URL / Console</label>
@@ -2787,11 +2787,11 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
                 <div className="flex space-x-2">
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-bold" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Typical</label>
                     </div>
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-bold" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Peak</label>
                     </div>
                 </div>
