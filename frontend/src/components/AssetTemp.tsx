@@ -283,21 +283,21 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
         <tbody className="divide-y divide-white/5">
           {services?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
-              <td className="px-4 py-3 text-slate-400 uppercase font-black text-[9px]">{s.service_type}</td>
-              <td className="px-4 py-3 text-slate-500 italic truncate max-w-[150px]">
+              <td className="px-4 py-3 font-bold text-[10px] text-blue-400">{s.name}</td>
+              <td className="px-4 py-3 text-slate-400 uppercase font-bold text-[10px]">{s.service_type}</td>
+              <td className="px-4 py-3 text-slate-500 font-bold truncate max-w-[150px] text-[10px]">
                 {s.purpose ? <span title={s.purpose}>{s.purpose}</span> : '-'}
               </td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
                     s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
                     s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
                  }`}>{s.status}</span>
               </td>
-              <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold">{s.environment}</td>
-              <td className="px-4 py-3 text-center font-mono text-blue-400/60">
+              <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold text-[10px]">{s.environment}</td>
+              <td className="px-4 py-3 text-center font-mono text-blue-400/60 font-bold text-[10px]">
                 {s.installation_date ? new Date(s.installation_date).toLocaleDateString() : '-'}
               </td>
               <td className="px-4 py-3 text-center">
@@ -555,8 +555,8 @@ const MetadataViewer = ({ data }: { data: any }) => {
           <tbody className="divide-y divide-white/5">
             {Object.entries(obj).map(([k, v]) => (
               <tr key={k} className="hover:bg-white/5 transition-colors">
-                <td className="px-4 py-2 font-black uppercase text-slate-400">{k}</td>
-                <td className="px-4 py-2 text-slate-200">{String(v)}</td>
+                <td className="px-4 py-2 font-bold uppercase text-slate-400 text-[10px]">{k}</td>
+                <td className="px-4 py-2 text-slate-200 font-bold text-[10px]">{String(v)}</td>
               </tr>
             ))}
             {Object.keys(obj).length === 0 && (
@@ -1009,20 +1009,20 @@ export default function AssetTemp() {
       pinned: 'left',
       width: 180,
       minWidth: 180,
-      cellClass: 'text-left font-bold',
+      cellClass: 'text-left font-bold text-[10px]',
       headerClass: 'text-left',
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
-        <span className="text-blue-400 pl-2">{p.value}</span>
+        <span className="text-blue-400 pl-2 font-bold">{p.value}</span>
       ),
       hide: hiddenColumns.includes("name")
     },
-    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("system") },
+    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("system") },
     { 
       field: "type", 
       headerName: "Type", 
-      width: 90,
-      minWidth: 90,
+      width: 100,
+      minWidth: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -1035,15 +1035,15 @@ export default function AssetTemp() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-black uppercase text-[9px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+        return <span className={`font-bold uppercase text-[10px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       },
       hide: hiddenColumns.includes("type")
     },
     { 
       field: "status", 
       headerName: "Status", 
-      width: 100,
-      minWidth: 100,
+      width: 110,
+      minWidth: 110,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -1058,8 +1058,8 @@ export default function AssetTemp() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="text-[7px] font-black uppercase tracking-tighter leading-none">
+            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="text-[10px] font-bold uppercase tracking-tighter leading-none">
                 {p.value}
               </span>
             </div>
@@ -1069,18 +1069,18 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("status")
     },
 
-    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("environment") },
-    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("owner") },
-    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("manufacturer") },
-    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("model") },
-    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_name") },
-    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_version") },
+    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("environment") },
+    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("owner") },
+    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("manufacturer") },
+    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("model") },
+    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_name") },
+    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("os_version") },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
-      width: 100,
-      minWidth: 100,
-      cellClass: 'text-center font-mono text-[9px] text-blue-400',
+      width: 110,
+      minWidth: 110,
+      cellClass: 'text-center font-mono text-[10px] font-bold text-blue-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("primary_ip")
@@ -1088,9 +1088,9 @@ export default function AssetTemp() {
     { 
       field: "management_ip", 
       headerName: "Mgmt IP", 
-      width: 100,
-      minWidth: 100,
-      cellClass: 'text-center font-mono text-[9px] text-indigo-400',
+      width: 110,
+      minWidth: 110,
+      cellClass: 'text-center font-mono text-[10px] font-bold text-indigo-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("management_ip")
@@ -1100,7 +1100,7 @@ export default function AssetTemp() {
       headerName: "Resources", 
       minWidth: 120,
       flex: 1,
-      cellClass: 'text-center font-black uppercase text-[8px] text-slate-400',
+      cellClass: 'text-center font-bold uppercase text-[10px] text-slate-400',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("hardware_summary")
@@ -1108,9 +1108,9 @@ export default function AssetTemp() {
     { 
       field: "hardware_age", 
       headerName: "Age", 
-      width: 70,
-      minWidth: 70,
-      cellClass: 'text-center font-black text-[9px] text-slate-500',
+      width: 80,
+      minWidth: 80,
+      cellClass: 'text-center font-bold text-[10px] text-slate-500',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("hardware_age")
@@ -1126,7 +1126,7 @@ export default function AssetTemp() {
         <div className="flex items-center justify-center h-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="text-[9px] font-black">{p.value}</span>
+              <span className="text-[10px] font-bold">{p.value}</span>
            </div>
         </div>
       ) : (
@@ -1135,34 +1135,34 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("open_incident_count")
     },
 
-    { field: "site_name", headerName: "Site", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("site_name") },
-    { field: "rack_name", headerName: "Rack", width: 90, minWidth: 90, cellClass: 'text-center', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("rack_name") },
+    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("site_name") },
+    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-[10px]', headerClass: 'text-center', filter: 'agTextColumnFilter', hide: hiddenColumns.includes("rack_name") },
     { 
       field: "depth", 
       headerName: "Depth", 
-      width: 70,
-      minWidth: 70,
+      width: 80,
+      minWidth: 80,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[8px]">{p.value || 'Full'}</span>,
+      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase text-[10px]">{p.value || 'Full'}</span>,
       hide: hiddenColumns.includes("depth")
     },
     { 
       field: "mount_orientation", 
       headerName: "Mount", 
-      width: 80,
-      minWidth: 80,
+      width: 90,
+      minWidth: 90,
       cellClass: 'text-center', 
       headerClass: 'text-center', 
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span className="text-[8px] font-black uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">{p.value}</span> : <span className="text-slate-700 italic text-[7px]">registry</span>,
+      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase text-[10px]">{p.value || 'REGISTRY'}</span>,
       hide: hiddenColumns.includes("mount_orientation")
     },
-    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("u_start") },
-    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
-    { field: "power_typical_w", headerName: "Avg W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
-    { field: "power_max_w", headerName: "Max W", width: 70, minWidth: 70, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
+    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("u_start") },
+    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
+    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
+    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "font-mono text-center font-bold text-[10px]", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
     {
       headerName: "Action",
       width: 120,
@@ -1580,7 +1580,7 @@ export default function AssetTemp() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
-            font-weight: ${currentTheme.weight};
+            font-weight: 700 !important;
         }
         
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
@@ -1677,21 +1677,21 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
 
             return (
               <tr key={c.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight">{localPort}</td>
-                <td className="px-4 py-3 font-mono text-slate-200">{localIP || <span className="text-slate-700 italic">Unassigned</span>}</td>
+                <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight text-[10px]">{localPort}</td>
+                <td className="px-4 py-3 font-mono text-slate-200 font-bold text-[10px]">{localIP || <span className="text-slate-700 italic">Unassigned</span>}</td>
                 <td className="px-4 py-3">
                    <div className="flex flex-col">
-                      <span className="font-mono text-slate-500 text-[9px] uppercase">{localMAC || 'N/A'}</span>
-                      {localVLAN && <span className="text-[8px] font-black text-indigo-400 uppercase mt-0.5">VLAN {localVLAN}</span>}
+                      <span className="font-mono text-slate-500 text-[10px] uppercase font-bold">{localMAC || 'N/A'}</span>
+                      {localVLAN && <span className="text-[10px] font-bold text-indigo-400 uppercase mt-0.5">VLAN {localVLAN}</span>}
                    </div>
                 </td>
                 <td className="px-4 py-3 text-center">
-                   <span className="text-slate-400 font-mono">{c.speed}</span>
+                   <span className="text-slate-400 font-mono font-bold text-[10px]">{c.speed}</span>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button 
                     onClick={() => onViewLink(c)}
-                    className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
+                    className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
                   >
                     <Network size={10} /> {peerName} ({peerPort})
                   </button>
@@ -1915,23 +1915,23 @@ const SecurityTab = ({ device }: { device: any }) => {
                 <tr key={r.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="font-bold text-white uppercase">{r.name}</span>
-                      <span className="text-[8px] text-rose-400 font-bold uppercase tracking-tight">{r.risk || 'Risk not assessed'}</span>
+                      <span className="font-bold text-white uppercase text-[10px]">{r.name}</span>
+                      <span className="text-[10px] text-rose-400 font-bold uppercase tracking-tight">{r.risk || 'Risk not assessed'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono text-slate-400">
+                  <td className="px-4 py-3 font-mono text-slate-400 font-bold text-[10px]">
                     {r.source_type === 'Device' ? (
                       <span className="text-blue-400 font-bold">{r.source_device_name}</span>
                     ) : (r.source_custom_ip || 'ANY')}
                   </td>
-                  <td className="px-4 py-3 font-mono text-slate-400">
+                  <td className="px-4 py-3 font-mono text-slate-400 font-bold text-[10px]">
                     <div className="flex flex-col">
                       <span className="text-emerald-400 font-bold uppercase">{r.dest_device_name || 'THIS ASSET'}</span>
-                      {r.dest_custom_ip && <span className="text-[9px] text-white opacity-60 italic">{r.dest_custom_ip}</span>}
+                      {r.dest_custom_ip && <span className="text-[10px] text-white opacity-60 italic font-bold">{r.dest_custom_ip}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-indigo-400 font-bold">
+                    <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-indigo-400 font-bold text-[10px]">
                       {r.protocol} // {r.port_range}
                     </span>
                   </td>
@@ -2101,20 +2101,20 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                         className="w-24 mx-auto"
                     />
                 ) : (
-                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
+                    <span className="text-[10px] font-bold uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
                 )}
               </td>
-              <td className="px-4 py-2 font-bold text-slate-200 text-center">
+              <td className="px-4 py-2 font-bold text-slate-200 text-center text-[10px]">
                 {editingId === h.id ? (
                     <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
               </td>
-              <td className="px-4 py-2 text-slate-500 text-center">
+              <td className="px-4 py-2 text-slate-500 text-center font-bold text-[10px]">
                 {editingId === h.id ? (
                     <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
-              <td className="px-4 py-2 font-mono text-center text-slate-400">
+              <td className="px-4 py-2 font-mono text-center text-slate-400 font-bold text-[10px]">
                 {editingId === h.id ? (
                     <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
@@ -2503,8 +2503,8 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                      </select>
                    ) : (
                      <div className="flex flex-col">
-                        <span className="font-black text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                        <span className="font-bold text-white uppercase tracking-tight text-[10px]">{currentDevice?.name || 'Local'}</span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
                           {localRole}
                         </span>
                      </div>
@@ -2521,7 +2521,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                     </select>
                   ) : (
                     <div className="flex flex-col items-center">
-                       <span className="font-black text-slate-500 uppercase tracking-widest text-[8px] mb-1">{r.relationship_type}</span>
+                       <span className="font-bold text-slate-500 uppercase tracking-widest text-[10px] mb-1">{r.relationship_type}</span>
                        <div className="flex items-center space-x-2 text-slate-600">
                           <div className="h-px w-8 bg-white/10" />
                           <ArrowRightLeft size={10} className={isSource ? "" : "rotate-180"} />
@@ -2546,8 +2546,8 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                       </select>
                     ) : (
                       <div className="flex flex-col">
-                         <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
-                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                         <span className="font-bold text-blue-400 uppercase tracking-tight text-[10px]">{peer?.name || 'Unknown Entity'}</span>
+                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
                            {peerRole}
                          </span>
                       </div>
