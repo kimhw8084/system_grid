@@ -77,7 +77,6 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
       o.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
       o.system.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    // Sort selected to the top, then alphabetically
     return [...list].sort((a: any, b: any) => {
       const aSel = selected.includes(a.value);
       const bSel = selected.includes(b.value);
@@ -147,7 +146,7 @@ export default function Temp1() {
   const [selectedSources, setSelectedSources] = useState<number[]>([])
   const [showLabels, setShowLabels] = useState(true)
   const [isFixed, setIsFixed] = useState(false)
-  const [nodeStrength, setNodeStrength] = useState(-600)
+  const [nodeStrength, setNodeStrength] = useState(-800)
   const [highlightedNodeId, setHighlightedNodeId] = useState<number | null>(null)
   
   const [blastDepth, setBlastDepth] = useState(3)
@@ -162,29 +161,22 @@ export default function Temp1() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
 
-  // --- BULLETPROOF VIEWPORT ENGINE ---
   useLayoutEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         const { clientWidth, clientHeight } = containerRef.current;
-        // Use clientHeight if available, otherwise fallback to window height minus offset
-        const finalWidth = clientWidth || window.innerWidth - 600;
-        const finalHeight = clientHeight || window.innerHeight - 300;
-        
+        const finalWidth = clientWidth || window.innerWidth - 640;
+        const finalHeight = clientHeight || window.innerHeight - 340;
         if (finalWidth > 0 && finalHeight > 0) {
           setDimensions({ width: finalWidth, height: finalHeight });
         }
       }
     };
-    
     updateSize();
     const observer = new ResizeObserver(() => requestAnimationFrame(updateSize));
     if (containerRef.current) observer.observe(containerRef.current);
     window.addEventListener('resize', updateSize);
-    
-    // Safety timeout to ensure measurement happens after styles settle
     const timer = setTimeout(updateSize, 500);
-    
     return () => { 
       observer.disconnect(); 
       window.removeEventListener('resize', updateSize);
@@ -194,18 +186,12 @@ export default function Temp1() {
 
   const { data: devices, isLoading: isLoadingDevices } = useQuery({ 
     queryKey: ['devices'], 
-    queryFn: async () => {
-      const res = await apiFetch('/api/v1/devices/');
-      return res.json();
-    }
+    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
   
   const { data: allRelationships } = useQuery({ 
     queryKey: ['all-relationships'], 
-    queryFn: async () => {
-      const res = await apiFetch('/api/v1/devices/relationships/all');
-      return res.json();
-    }
+    queryFn: async () => (await apiFetch('/api/v1/devices/relationships/all')).json()
   })
 
   const deviceOptions = useMemo(() => {
@@ -214,12 +200,13 @@ export default function Temp1() {
     })) || []
   }, [devices])
 
+  // --- DEDUPLICATED CRAWL ENGINE ---
   const graphData = useMemo(() => {
     if (!devices || !Array.isArray(devices) || selectedSources.length === 0) return { nodes: [], links: [] }
 
     const startIds = selectedSources.map(Number)
     const reachableNodeIds = new Set<number>(startIds)
-    const rawLinks: any[] = []
+    const linkMap = new Map<string, any>() // Deduplication by unique link key
     
     if (Array.isArray(allRelationships)) {
       let currentLevel = Array.from(reachableNodeIds)
@@ -228,14 +215,17 @@ export default function Temp1() {
         currentLevel.forEach(nodeId => {
           allRelationships.forEach((rel: any) => {
             const s = Number(rel.source_device_id); const t = Number(rel.target_device_id)
+            const linkId = `${s}-${t}-${rel.id}`;
+            
             const isOut = (s === nodeId) && (crawlDirection === 'both' || crawlDirection === 'out')
             const isIn = (t === nodeId) && (crawlDirection === 'both' || crawlDirection === 'in')
+
             if (isOut && !reachableNodeIds.has(t)) {
-              reachableNodeIds.add(t); nextLevel.push(t); rawLinks.push(rel)
+              reachableNodeIds.add(t); nextLevel.push(t); linkMap.set(linkId, rel)
             } else if (isIn && !reachableNodeIds.has(s)) {
-              reachableNodeIds.add(s); nextLevel.push(s); rawLinks.push(rel)
+              reachableNodeIds.add(s); nextLevel.push(s); linkMap.set(linkId, rel)
             } else if ((s === nodeId || t === nodeId) && reachableNodeIds.has(s) && reachableNodeIds.has(t)) {
-              rawLinks.push(rel)
+              linkMap.set(linkId, rel)
             }
           })
         })
@@ -258,12 +248,12 @@ export default function Temp1() {
     }).filter(n => !graphSearch || n.name.toLowerCase().includes(graphSearch.toLowerCase()))
 
     const nodeIdsSet = new Set(nodes.map(n => n.id))
-    const links = rawLinks
+    const links = Array.from(linkMap.values())
       .filter(r => nodeIdsSet.has(Number(r.source_device_id)) && nodeIdsSet.has(Number(r.target_device_id)))
       .map(r => ({
         source: Number(r.source_device_id),
         target: Number(r.target_device_id),
-        label: `${r.source_role?.charAt(0) || 'S'}➔${r.target_role?.charAt(0) || 'T'}`,
+        label: `${r.source_role || 'S'} ➔ ${r.target_role || 'T'}`,
         type: r.relationship_type,
         isCritical: r.relationship_type === 'Critical'
       }))
@@ -276,7 +266,6 @@ export default function Temp1() {
     setIsSimulatingFailure(true); setFailureOriginId(nodeId)
     const impacted = new Map<number, any>()
     impacted.set(nodeId, { reason: 'ORIGIN', sourceId: null, type: 'Critical' })
-    
     const crawl = (current: number) => {
       allRelationships.forEach((r: any) => {
         const s = Number(r.source_device_id); const t = Number(r.target_device_id)
@@ -292,19 +281,14 @@ export default function Temp1() {
   useEffect(() => {
     if (fgRef.current && graphData.nodes.length > 0) {
       fgRef.current.d3Force('charge').strength(nodeStrength);
-      fgRef.current.d3Force('link').distance(110);
+      fgRef.current.d3Force('link').distance(100);
       setTimeout(() => fgRef.current.zoomToFit(600, 100), 200)
     }
   }, [graphData.nodes.length, nodeStrength, dimensions])
 
-  if (isLoadingDevices) {
-    return <div className="h-full flex flex-col items-center justify-center text-slate-500 font-black uppercase tracking-widest"><RefreshCcw className="animate-spin mb-4" />Calibrating Fabric...</div>
-  }
-
   return (
     <div className="h-full w-full flex flex-col space-y-4 text-slate-200">
       
-      {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-8">
            <div className="relative group cursor-default">
@@ -346,8 +330,7 @@ export default function Temp1() {
 
       <div className="flex-1 flex min-h-0 space-x-4 overflow-hidden">
         
-        {/* Canvas Area - FORCED MIN HEIGHT */}
-        <div ref={containerRef} className="flex-1 min-h-[500px] relative rounded-[40px] border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div ref={containerRef} className="flex-1 relative rounded-[40px] border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
           
           <div className="absolute top-8 left-8 z-10 flex space-x-3 pointer-events-auto">
              <div className="bg-[#1e293b]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 flex items-center space-x-2">
@@ -378,63 +361,72 @@ export default function Temp1() {
                 onNodeClick={(node: any) => setHighlightedNodeId(node.id)}
                 onBackgroundClick={() => setHighlightedNodeId(null)}
                 nodeRelSize={1}
-                linkWidth={(link: any) => link.isCritical ? 8 : 4} 
+                linkWidth={18}
                 linkColor={(link: any) => {
+                  const sId = typeof link.source === 'object' ? link.source.id : link.source;
+                  const tId = typeof link.target === 'object' ? link.target.id : link.target;
                   if (isSimulatingFailure) {
-                    const sId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const tId = typeof link.target === 'object' ? link.target.id : link.target;
                     return (impactedNodesMap.has(sId) && impactedNodesMap.has(tId)) ? '#ef4444' : 'rgba(255,255,255,0.02)';
                   }
-                  return link.isCritical ? '#ef4444' : 'rgba(148, 163, 184, 0.15)';
+                  return link.isCritical ? '#ef444433' : 'rgba(148, 163, 184, 0.08)';
                 }}
                 linkDirectionalParticles={4}
-                linkDirectionalParticleWidth={2}
-                linkDirectionalParticleSpeed={0.01}
+                linkDirectionalParticleWidth={3}
+                linkDirectionalParticleSpeed={0.015}
                 nodeCanvasObject={(node: any, ctx: any, globalScale: any) => {
                   const isHighlighted = highlightedNodeId === node.id;
                   const isImpacted = impactedNodesMap.has(node.id);
-                  const radius = (node.isSelected ? 30 : 24) / (globalScale < 1 ? Math.sqrt(globalScale) : 1);
+                  const radius = (node.isSelected ? 32 : 26) / (globalScale < 1 ? Math.sqrt(globalScale) : 1);
                   
                   if (isHighlighted || isImpacted) {
                     ctx.beginPath(); ctx.arc(node.x, node.y, radius + (8/globalScale), 0, 2 * Math.PI);
                     ctx.fillStyle = isImpacted ? 'rgba(239, 68, 68, 0.3)' : `${node.color}33`; ctx.fill();
                   }
                   ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
-                  ctx.fillStyle = 'rgba(2, 6, 23, 0.95)'; ctx.fill();
+                  ctx.fillStyle = 'rgba(2, 6, 23, 0.98)'; ctx.fill();
                   ctx.lineWidth = (isHighlighted ? 4 : 2) / globalScale;
                   ctx.strokeStyle = isImpacted ? '#ef4444' : node.color; ctx.stroke();
                   
-                  const fontSize = (radius * 0.4);
-                  ctx.font = `900 ${fontSize}px Inter, sans-serif`;
-                  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                  ctx.fillStyle = '#fff';
-                  let label = node.name; if (label.length > 8) label = label.substring(0, 7) + '..';
-                  ctx.fillText(label, node.x, node.y - (fontSize * 0.15));
+                  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+                  let fSize = radius * 0.6; 
+                  ctx.font = `900 ${fSize}px Inter, sans-serif`;
+                  while (ctx.measureText(node.name).width > radius * 1.7 && fSize > 6) {
+                    fSize -= 1; ctx.font = `900 ${fSize}px Inter, sans-serif`;
+                  }
+                  ctx.fillText(node.name, node.x, node.y - (fSize * 0.15));
                   
-                  const subFontSize = fontSize * 0.5;
-                  ctx.font = `900 ${subFontSize}px Inter, sans-serif`;
+                  const subFSize = Math.max(fSize * 0.45, 6);
+                  ctx.font = `900 ${subFSize}px Inter, sans-serif`;
                   ctx.fillStyle = node.color;
-                  ctx.fillText(node.type.toUpperCase(), node.x, node.y + (radius * 0.45));
+                  ctx.fillText(node.type.toUpperCase(), node.x, node.y + (radius * 0.5));
+                }}
+                nodePointerAreaPaint={(node: any, color: any, ctx: any, globalScale: any) => {
+                  const radius = (node.isSelected ? 32 : 26) / (globalScale < 1 ? Math.sqrt(globalScale) : 1);
+                  ctx.fillStyle = color;
+                  ctx.beginPath(); ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI); ctx.fill();
                 }}
                 linkCanvasObjectMode={() => 'after'}
                 linkCanvasObject={(link: any, ctx: any, globalScale: any) => {
-                  if (globalScale < 0.6) return;
                   const start = link.source; const end = link.target;
                   if (typeof start !== 'object' || typeof end !== 'object') return;
-                  const label = link.label; const fontSize = 11 / globalScale; 
+                  const label = link.label;
                   const midX = start.x + (end.x - start.x) * 0.5;
                   const midY = start.y + (end.y - start.y) * 0.5;
                   let angle = Math.atan2(end.y - start.y, end.x - start.x);
                   if (angle > Math.PI / 2) angle -= Math.PI; if (angle < -Math.PI / 2) angle += Math.PI;
+                  const fontSize = 12 / globalScale;
                   ctx.save(); ctx.translate(midX, midY); ctx.rotate(angle);
                   ctx.font = `900 ${fontSize}px Inter, sans-serif`;
                   const textWidth = ctx.measureText(label).width;
-                  const h = fontSize + (6 / globalScale); const w = textWidth + (10 / globalScale);
-                  ctx.fillStyle = 'rgba(15, 23, 42, 0.98)'; ctx.fillRect(-w/2, -h/2, w, h);
-                  ctx.lineWidth = 1 / globalScale; ctx.strokeStyle = link.isCritical ? '#f87171' : 'rgba(255,255,255,0.1)';
-                  ctx.strokeRect(-w/2, -h/2, w, h);
-                  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = link.isCritical ? '#f87171' : '#64748b';
-                  ctx.fillText(label, 0, 0); ctx.restore();
+                  const padding = 12 / globalScale;
+                  const boxW = textWidth + padding;
+                  const boxH = 18 / globalScale;
+                  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+                  ctx.fillRect(-boxW/2, -boxH/2, boxW, boxH);
+                  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                  ctx.fillStyle = link.isCritical ? '#fca5a5' : '#cbd5e1';
+                  ctx.fillText(label, 0, 0);
+                  ctx.restore();
                 }}
                 enableNodeDrag={!isFixed}
                 cooldownTicks={100}
@@ -448,13 +440,12 @@ export default function Temp1() {
              <GridControl active={isFixed} onClick={() => setIsFixed(!isFixed)} icon={isFixed ? <Lock size={16} /> : <Unlock size={16} />} label="Lock Matrix" />
              <div className="w-px h-10 bg-white/10" />
              <div className="flex flex-col space-y-2 w-40">
-                <input type="range" min="-1200" max="-200" step="50" value={nodeStrength} onChange={(e) => setNodeStrength(Number(e.target.value))} className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+                <input type="range" min="-1500" max="-300" step="50" value={nodeStrength} onChange={(e) => setNodeStrength(Number(e.target.value))} className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
                 <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase tracking-widest"><span>Dense</span><span>Sparse</span></div>
              </div>
           </div>
         </div>
 
-        {/* Sidepanel */}
         <aside className="w-[440px] flex flex-col shrink-0">
            <div className="flex-1 bg-white/5 rounded-[40px] border border-white/5 flex flex-col overflow-hidden shadow-2xl">
               <div className="p-8 border-b border-white/5 bg-black/30">
@@ -480,7 +471,6 @@ export default function Temp1() {
                          
                          return (
                            <>
-                             {/* Detonation Summary Banner */}
                              {isSimulatingFailure && impactInfo && (
                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden">
                                   <div className={`p-6 rounded-[32px] border ${isOrigin ? 'bg-rose-600 border-rose-500 shadow-[0_0_30px_rgba(225,68,68,0.3)]' : 'bg-amber-600/20 border-amber-500/30'} flex flex-col space-y-4`}>
@@ -489,14 +479,10 @@ export default function Temp1() {
                                            <div className={`p-2 rounded-xl ${isOrigin ? 'bg-white/20' : 'bg-amber-500/20'} text-white`}>
                                               {isOrigin ? <Flame size={18} /> : getImpact(impactInfo.type).icon}
                                            </div>
-                                           <span className="text-[12px] font-black uppercase tracking-widest text-white italic">
-                                              {isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}
-                                           </span>
+                                           <span className="text-[12px] font-black uppercase tracking-widest text-white italic">{isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}</span>
                                         </div>
                                      </div>
-                                     <p className="text-[11px] font-bold text-white leading-relaxed opacity-90 uppercase tracking-tight">
-                                        {isOrigin ? 'This asset has been forced offline. Catastrophic propagation active.' : getImpact(impactInfo.type).desc}
-                                     </p>
+                                     <p className="text-[11px] font-bold text-white leading-relaxed opacity-90 uppercase tracking-tight">{isOrigin ? 'This asset has been forced offline. Catastrophic propagation active.' : getImpact(impactInfo.type).desc}</p>
                                      {!isOrigin && (
                                        <div className="flex items-center space-x-2 pt-2 border-t border-white/10">
                                           <span className="text-[8px] font-black text-amber-500 uppercase">Triggered by</span>
@@ -527,11 +513,13 @@ export default function Temp1() {
                                 <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center space-x-3"><LinkIcon size={12} /><span>Relational Trace</span></h5>
                                 <div className="space-y-2">
                                    {graphData.links.filter(l => 
-                                     (typeof l.source === 'object' ? l.source.id : l.source) === rawDevice.id || 
-                                     (typeof l.target === 'object' ? l.target.id : l.target) === rawDevice.id
+                                     Number(typeof l.source === 'object' ? l.source.id : l.source) === rawDevice.id || 
+                                     Number(typeof l.target === 'object' ? l.target.id : l.target) === rawDevice.id
                                    ).map((link, idx) => {
-                                     const isSource = (typeof link.source === 'object' ? link.source.id : link.source) === rawDevice.id;
-                                     const partnerId = isSource ? (typeof link.target === 'object' ? link.target.id : link.target) : (typeof link.source === 'object' ? link.source.id : link.source);
+                                     const sId = Number(typeof link.source === 'object' ? link.source.id : link.source);
+                                     const tId = Number(typeof link.target === 'object' ? link.target.id : link.target);
+                                     const isSource = sId === rawDevice.id;
+                                     const partnerId = isSource ? tId : sId;
                                      const partner = (devices as any[]).find(d => Number(d.id) === partnerId);
                                      const isImpacted = impactedNodesMap.has(Number(partnerId));
                                      return (
@@ -583,8 +571,6 @@ export default function Temp1() {
     </div>
   )
 }
-
-// --- Internal UI ---
 
 const HeaderStat = ({ label, value, color }: any) => (
   <div className="flex flex-col items-start min-w-[100px]">
