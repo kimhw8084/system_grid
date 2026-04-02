@@ -267,3 +267,26 @@ class FarFailureModeResponse(BaseSchema):
     causes: List[FarFailureCauseResponse] = []
     mitigations: List[FarMitigationResponse] = []
     prevention_actions: List[FarPreventionResponse] = []
+
+class ProjectBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    status: Optional[str] = "Planning"
+    priority: Optional[str] = "Medium"
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    owner: Optional[str] = None
+    team_members: Optional[List[str]] = []
+    budget: Optional[float] = 0.0
+    currency: Optional[str] = "USD"
+    tasks_json: Optional[List[Dict[str, Any]]] = []
+    linked_device_ids: Optional[List[int]] = []
+    linked_service_ids: Optional[List[int]] = []
+    milestones_json: Optional[List[Dict[str, Any]]] = []
+    risk_assessment: Optional[str] = None
+    kpis_json: Optional[Dict[str, Any]] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+
+class ProjectCreate(ProjectBase): pass
+class ProjectResponse(ProjectBase, BaseSchema):
+    is_deleted: bool = False

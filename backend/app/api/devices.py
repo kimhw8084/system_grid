@@ -48,7 +48,10 @@ async def sync_device_to_os(device, db: AsyncSession):
 async def get_devices(system: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     
-    query = select(models.Device).options(selectinload(models.Device.network_interfaces))
+    query = select(models.Device).options(
+        selectinload(models.Device.network_interfaces),
+        selectinload(models.Device.logical_services)
+    )
     if not include_deleted:
         query = query.filter(models.Device.is_deleted == False)
     
@@ -142,6 +145,12 @@ async def get_devices(system: Optional[str] = None, include_deleted: bool = Fals
 
         # Incidents Indicator
         device_dict["open_incident_count"] = inc_map.get(d.id, 0)
+
+        # Logical Services
+        device_dict["logical_services"] = [
+            {"id": s.id, "name": s.name, "service_type": s.service_type, "status": s.status}
+            for s in d.logical_services if not s.is_deleted
+        ]
 
         # Multi-IP Summary
         ips = [i.ip_address for i in d.network_interfaces if i.ip_address]

@@ -592,3 +592,31 @@ class InvestigationProgress(Base, BaseMixin):
     metadata_json = Column(JSON, default=dict) # To store links to files/images
     
     investigation = relationship("Investigation", back_populates="progress_logs")
+
+class Project(Base, BaseMixin):
+    __tablename__ = "projects"
+    name = Column(String, index=True)
+    description = Column(Text)
+    status = Column(String, default="Planning") # Planning, In Progress, On Hold, Completed, Cancelled
+    priority = Column(String, default="Medium") # Low, Medium, High, Critical
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    owner = Column(String)
+    team_members = Column(JSON, default=list) # List of names/IDs
+    budget = Column(Float, default=0.0)
+    currency = Column(String, default="USD")
+    
+    # Gantt/Timeline data
+    tasks_json = Column(JSON, default=list) # [{id, name, start, end, progress, dependencies: []}]
+    
+    # Resources/Assets linked to project
+    linked_device_ids = Column(JSON, default=list)
+    linked_service_ids = Column(JSON, default=list)
+    
+    # Innovative Visuals Metadata
+    milestones_json = Column(JSON, default=list) # [{name, date, status}]
+    risk_assessment = Column(Text)
+    kpis_json = Column(JSON, default=dict) # {target_uptime: 99.9, etc}
+    
+    metadata_json = Column(JSON, default=dict)
+    is_deleted = Column(Boolean, default=False)

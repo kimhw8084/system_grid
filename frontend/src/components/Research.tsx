@@ -29,7 +29,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   </div>
 )
 
-export default function Investigation() {
+export default function Research() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -61,7 +61,7 @@ export default function Investigation() {
     },
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['investigations'] })
-      toast.success('Investigation Synchronized')
+      toast.success('Research Synchronized')
       setActiveModal(null)
     }
   })
@@ -70,7 +70,7 @@ export default function Investigation() {
     mutationFn: async (id: number) => apiFetch(`/api/v1/investigations/${id}`, { method: 'DELETE' }),
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['investigations'] })
-      toast.success('Investigation Purged')
+      toast.success('Research Purged')
     }
   })
 
@@ -93,7 +93,7 @@ export default function Investigation() {
         'bg-blue-500/20 border-blue-500/30 text-blue-400'
       }`}>{p.value}</span>
     )},
-    { field: "title", headerName: "Investigation Title", flex: 1.5, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
+    { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
     { field: "status", headerName: "Status", width: 100, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
     { field: "priority", headerName: "Priority", width: 80, cellRenderer: (p: any) => (
         <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
@@ -112,7 +112,7 @@ export default function Investigation() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <button onClick={() => setActiveDetails(p.data)} className="p-1 bg-blue-600/10 text-blue-400 rounded hover:bg-blue-600/20 transition-all"><Eye size={12}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Investigation', message: 'Permanently remove this record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1 bg-rose-600/10 text-rose-400 rounded hover:bg-rose-600/20 transition-all"><Trash2 size={12}/></button>
+           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Research', message: 'Permanently remove this record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1 bg-rose-600/10 text-rose-400 rounded hover:bg-rose-600/20 transition-all"><Trash2 size={12}/></button>
         </div>
       )
     }
@@ -122,32 +122,32 @@ export default function Investigation() {
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2">
-            <Shield size={24} className="text-blue-500" /> Operational Investigations
+          <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2 text-white">
+            <Shield size={24} className="text-blue-500" /> Research Matrix
           </h1>
-          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold">Deep Forensics & Troubleshooting Tracker</p>
+          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold leading-none">Deep Forensics & Scientific Troubleshooting</p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="relative">
             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search investigations..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search Research Matrix..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all shadow-inner text-white" />
           </div>
-          <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Launch Tracker</button>
+          <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Launch Research</button>
         </div>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
-        <CompactSummary label="Total Active" value={stats.total} icon={Activity} color="text-blue-400" />
+        <CompactSummary label="Total Research" value={stats.total} icon={Activity} color="text-blue-400" />
         <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
-        <CompactSummary label="Troubleshooting" value={stats.troubleshooting} icon={AlertTriangle} color="text-amber-500" />
-        <CompactSummary label="Urgent Alerts" value={stats.urgent} icon={ShieldAlert} color="text-rose-500" />
+        <CompactSummary label="Deep Troubleshooting" value={stats.troubleshooting} icon={AlertTriangle} color="text-amber-500" />
+        <CompactSummary label="Critical Alerts" value={stats.urgent} icon={ShieldAlert} color="text-rose-500" />
       </div>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing investigation registry...</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
           </div>
         )}
         <AgGridReact 
@@ -161,7 +161,7 @@ export default function Investigation() {
 
       <AnimatePresence>
         {activeModal && (
-          <InvestigationForm 
+          <ResearchForm 
             item={activeModal} 
             options={options} 
             devices={devices} 
@@ -171,7 +171,7 @@ export default function Investigation() {
           />
         )}
         {activeDetails && (
-          <InvestigationDetails 
+          <ResearchDetails 
             item={activeDetails} 
             onClose={() => setActiveDetails(null)} 
             onSave={(d: any) => mutation.mutate(d)}
@@ -206,7 +206,7 @@ export default function Investigation() {
   )
 }
 
-function InvestigationForm({ item, options, devices, onClose, onSave, isSaving }: any) {
+function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ 
     category: 'General',
     status: 'Analyzing',
@@ -223,15 +223,15 @@ function InvestigationForm({ item, options, devices, onClose, onSave, isSaving }
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-6 rounded-3xl border border-blue-500/30 space-y-4">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <h2 className="text-xl font-black uppercase text-blue-400 flex items-center gap-2 tracking-tighter">
-            <PlusCircle size={20} /> Initialize Investigation
+            <PlusCircle size={20} /> Initialize Research
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Investigation Title</label>
-            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-white font-bold" placeholder="e.g. Unexplained latency in SAP Cluster" />
+            <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Research Title</label>
+            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-white font-bold" placeholder="E.G. CLUSTER LATENCY ANALYSIS" />
           </div>
 
           <StyledSelect label="Category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} options={categories.map(c => ({value: c, label: c}))} />
@@ -266,7 +266,7 @@ function InvestigationForm({ item, options, devices, onClose, onSave, isSaving }
   )
 }
 
-function InvestigationDetails({ item, onClose, onSave, setConfirmModal }: any) {
+function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
@@ -312,7 +312,7 @@ function InvestigationDetails({ item, onClose, onSave, setConfirmModal }: any) {
             <div className="p-2 bg-blue-600/20 rounded-xl text-blue-400 border border-blue-500/30"><Shield size={20} /></div>
             <div>
               <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">{formData.category} // ID: INV_{formData.id}</span>
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">{formData.category} // ID: RES_{formData.id}</span>
                 <StatusPill value={formData.status} />
               </div>
               <h1 className="text-xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
@@ -446,13 +446,13 @@ function InvestigationDetails({ item, onClose, onSave, setConfirmModal }: any) {
 
               {activeTab === 'settings' && (
                 <div className="max-w-xl space-y-4">
-                  <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-white/20 pl-3">Investigation Parameters</h3>
+                  <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-white/20 pl-3">Research Parameters</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <StyledSelect label="Current Phase" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={[{value:'Analyzing', label:'Analyzing'}, {value:'Escalated', label:'Escalated'}, {value:'Monitoring', label:'Monitoring'}, {value:'Resolved', label:'Resolved'}, {value:'Closed', label:'Closed'}]} />
                     <StyledSelect label="Priority Rating" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} options={[{value:'Urgent', label:'Urgent'}, {value:'High', label:'High'}, {value:'Medium', label:'Medium'}, {value:'Low', label:'Low'}]} />
                   </div>
                   <div className="pt-6 border-t border-white/5">
-                    <button onClick={() => setConfirmModal({ isOpen: true, title: 'Archive Investigation', message: 'Move this investigation to history?', onConfirm: () => { /* archive logic */ } })} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Archive Record</button>
+                    <button onClick={() => setConfirmModal({ isOpen: true, title: 'Archive Research', message: 'Move this investigation to history?', onConfirm: () => { /* archive logic */ } })} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Archive Record</button>
                   </div>
                 </div>
               )}

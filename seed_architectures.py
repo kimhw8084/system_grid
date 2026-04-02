@@ -1,160 +1,124 @@
-
+import asyncio
 import json
-import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
+from backend.app.database import AsyncSessionLocal, engine, Base
+from backend.app.models import models
 
-def seed():
-    conn = sqlite3.connect('backend/system_grid.db')
-    cursor = conn.cursor()
+async def clear_existing_data(db: AsyncSession):
+    print("Cleaning existing architecture and network data...")
+    # Order matters due to foreign keys if enforced, though we use CASCADE often
+    await db.execute(delete(models.DataFlow))
+    await db.execute(delete(models.PortConnection))
+    await db.execute(delete(models.LogicalService))
+    await db.execute(delete(models.ExternalEntity))
+    # We keep devices but might want to clear them for a fresh start if they match our seed names
+    await db.commit()
 
-    # Clear existing data flows to avoid clutter during this exercise
-    cursor.execute("DELETE FROM data_flows")
+async def seed_complex_architecture():
+    async with AsyncSessionLocal() as db:
+        await clear_existing_data(db)
 
-    # Architecture 1: GLOBAL_PAYMENT_GATEWAY_V4
-    # Assets: 5 (Load Balancer), 3 (Physical Server), 2 (Storage)
-    # Drilldown for 3 (Physical Server): Services 3, 4, 5, 6
-    
-    arch1_nodes = [
-        {
-            "id": "node-lb-5",
-            "type": "assetNode",
-            "position": {"x": 100, "y": 250},
-            "data": {"label": "LB-PROD-EDGE", "type": "Load Balancer", "system": "PAYMENT_GATEWAY", "assetId": 5}
-        },
-        {
-            "id": "node-srv-3",
-            "type": "assetNode",
-            "position": {"x": 450, "y": 250},
-            "data": {
-                "label": "SRV-APP-CLUSTER-01", "type": "Physical", "system": "PAYMENT_GATEWAY", "assetId": 3,
-                "internalNodes": [
-                    {"id": "port-in-e1", "type": "inputPort", "position": {"x": 50, "y": 150}, "data": {"label": "LB-PROD-EDGE"}},
-                    {"id": "service-3", "type": "serviceNode", "position": {"x": 300, "y": 100}, "data": {"label": "Ubuntu 22.04", "service_type": "OS", "status": "Active", "serviceId": 3}},
-                    {"id": "service-5", "type": "serviceNode", "position": {"x": 300, "y": 200}, "data": {"label": "Nginx Edge", "service_type": "Web Server", "status": "Active", "serviceId": 5}},
-                    {"id": "service-6", "type": "serviceNode", "position": {"x": 550, "y": 150}, "data": {"label": "Payment Logic", "service_type": "Internal App", "status": "Active", "serviceId": 6}},
-                    {"id": "port-out-e2", "type": "outputPort", "position": {"x": 800, "y": 150}, "data": {"label": "NAS-SECURE-STORAGE"}}
-                ],
-                "internalEdges": [
-                    {"id": "se1", "source": "port-in-e1", "target": "service-5", "type": "labeled", "data": {"label": "HTTPS/443", "type": "smoothstep"}},
-                    {"id": "se2", "source": "service-5", "target": "service-6", "type": "labeled", "data": {"label": "FastCGI", "type": "bezier"}},
-                    {"id": "se3", "source": "service-6", "target": "port-out-e2", "type": "labeled", "data": {"label": "NFS v4.1", "type": "straight"}}
-                ]
-            }
-        },
-        {
-            "id": "node-storage-2",
-            "type": "assetNode",
-            "position": {"x": 800, "y": 250},
-            "data": {"label": "NAS-SECURE-STORAGE", "type": "Storage", "system": "PAYMENT_GATEWAY", "assetId": 2}
-        }
-    ]
-    
-    arch1_edges = [
-        {"id": "e1", "source": "node-lb-5", "target": "node-srv-3", "type": "labeled", "data": {"label": "INBOUND_TRAFFIC", "type": "bezier"}},
-        {"id": "e2", "source": "node-srv-3", "target": "node-storage-2", "type": "labeled", "data": {"label": "DATA_PERSISTENCE", "type": "smoothstep"}}
-    ]
+        # 1. Create Core Infrastructure Devices
+        print("Seeding cluster devices...")
+        devices = [
+            models.Device(name="LB-PROD-01", type="Virtual", system="EDGE-NETWORK", status="Active", environment="Production", primary_ip="10.0.1.5", serial_number="LB-SN-01", asset_tag="LB-AT-01"),
+            models.Device(name="LB-PROD-02", type="Virtual", system="EDGE-NETWORK", status="Active", environment="Production", primary_ip="10.0.1.6", serial_number="LB-SN-02", asset_tag="LB-AT-02"),
+            models.Device(name="WEB-PROD-CLUSTER-01", type="Physical", system="ERP-FRONTEND", status="Active", environment="Production", primary_ip="10.0.2.10", serial_number="WEB-SN-01", asset_tag="WEB-AT-01"),
+            models.Device(name="WEB-PROD-CLUSTER-02", type="Physical", system="ERP-FRONTEND", status="Active", environment="Production", primary_ip="10.0.2.11", serial_number="WEB-SN-02", asset_tag="WEB-AT-02"),
+            models.Device(name="APP-AUTH-SRV", type="Virtual", system="IDENTITY-CORE", status="Active", environment="Production", primary_ip="10.0.5.50", serial_number="AUTH-SN-01", asset_tag="AUTH-AT-01"),
+            models.Device(name="DB-SQL-PRIMARY", type="Physical", system="ERP-DATA", status="Active", environment="Production", primary_ip="10.0.10.100", serial_number="DB-SN-01", asset_tag="DB-AT-01"),
+            models.Device(name="DB-SQL-REPLICA", type="Physical", system="ERP-DATA", status="Active", environment="Production", primary_ip="10.0.10.101", serial_number="DB-SN-02", asset_tag="DB-AT-02"),
+        ]
+        db.add_all(devices)
+        await db.commit()
+        for d in devices: await db.refresh(d)
+        
+        dev_map = {d.name: d for d in devices}
 
-    # Architecture 2: HYBRID_CLOUD_FABRIC
-    # Assets: 20 (Firewall), 7 (Virtual Server), 10 (Storage)
-    
-    arch2_nodes = [
-        {
-            "id": "node-fw-20",
-            "type": "assetNode",
-            "position": {"x": 100, "y": 300},
-            "data": {"label": "FW-CORE-VPC", "type": "Firewall", "system": "HYBRID_FABRIC", "assetId": 20}
-        },
-        {
-            "id": "node-v-7",
-            "type": "assetNode",
-            "position": {"x": 500, "y": 300},
-            "data": {
-                "label": "VM-WORKER-01", "type": "Virtual", "system": "HYBRID_FABRIC", "assetId": 7,
-                "internalNodes": [
-                    {"id": "port-in-e3", "type": "inputPort", "position": {"x": 50, "y": 150}, "data": {"label": "FW-CORE-VPC"}},
-                    {"id": "service-13", "type": "serviceNode", "position": {"x": 300, "y": 150}, "data": {"label": "API Endpoint", "service_type": "Web Server", "status": "Active", "serviceId": 13}},
-                    {"id": "service-12", "type": "serviceNode", "position": {"x": 600, "y": 150}, "data": {"label": "PostgreSQL", "service_type": "Database", "status": "Active", "serviceId": 12}},
-                    {"id": "port-out-e4", "type": "outputPort", "position": {"x": 900, "y": 150}, "data": {"label": "S3-REPLICATION-SYNC"}}
-                ],
-                "internalEdges": [
-                    {"id": "se4", "source": "port-in-e3", "target": "service-13", "type": "labeled", "data": {"label": "REST_CALL", "type": "bezier"}},
-                    {"id": "se5", "source": "service-13", "target": "service-12", "type": "labeled", "data": {"label": "SQL_QUERY", "type": "step"}},
-                    {"id": "se6", "source": "service-12", "target": "port-out-e4", "type": "labeled", "data": {"label": "BACKUP_STREAM", "type": "straight"}}
-                ]
-            }
-        },
-        {
-            "id": "node-storage-10",
-            "type": "assetNode",
-            "position": {"x": 900, "y": 300},
-            "data": {"label": "S3-REPLICATION-SYNC", "type": "Storage", "system": "HYBRID_FABRIC", "assetId": 10}
-        }
-    ]
-    
-    arch2_edges = [
-        {"id": "e3", "source": "node-fw-20", "target": "node-v-7", "type": "labeled", "data": {"label": "DMZ_ACCESS", "type": "step"}},
-        {"id": "e4", "source": "node-v-7", "target": "node-storage-10", "type": "labeled", "data": {"label": "OFFSITE_SYNC", "type": "bezier"}}
-    ]
+        # 2. Create External Entities
+        print("Seeding external IQ entities...")
+        externals = [
+            models.ExternalEntity(name="STRIPE-PAYMENT-API", type="Cloud Service", owner_organization="Stripe Inc.", hostname="api.stripe.com", ip_address="3.18.12.50", description="Global Payment Processor"),
+            models.ExternalEntity(name="AUTH0-IDP", type="Cloud Service", owner_organization="Okta", hostname="auth.sysgrid.io", ip_address="35.12.5.1", description="External Identity Provider"),
+        ]
+        db.add_all(externals)
+        await db.commit()
+        for e in externals: await db.refresh(e)
+        ext_map = {e.name: e for e in externals}
 
-    # Architecture 3: SAP_ERP_FOUNDATION
-    # Assets: 1 (Switch), 19 (Physical Server), 4 (Storage)
-    
-    arch3_nodes = [
-        {
-            "id": "node-sw-1",
-            "type": "assetNode",
-            "position": {"x": 100, "y": 200},
-            "data": {"label": "SW-CORE-DIST", "type": "Switch", "system": "SAP_ERP", "assetId": 1}
-        },
-        {
-            "id": "node-srv-19",
-            "type": "assetNode",
-            "position": {"x": 500, "y": 200},
-            "data": {
-                "label": "SRV-SAP-HANNA", "type": "Physical", "system": "SAP_ERP", "assetId": 19,
-                "internalNodes": [
-                    {"id": "port-in-e5", "type": "inputPort", "position": {"x": 50, "y": 150}, "data": {"label": "SW-CORE-DIST"}},
-                    {"id": "service-gen-1", "type": "serviceNode", "position": {"x": 300, "y": 150}, "data": {"label": "HANA_DB_ENGINE", "service_type": "Database", "status": "Active", "isGeneric": False}},
-                    {"id": "service-gen-2", "type": "serviceNode", "position": {"x": 600, "y": 150}, "data": {"label": "ABAP_APP_SERVER", "service_type": "Internal App", "status": "Active", "isGeneric": False}},
-                    {"id": "port-out-e6", "type": "outputPort", "position": {"x": 900, "y": 150}, "data": {"label": "SAN-FIBRE-ARRAY"}}
-                ],
-                "internalEdges": [
-                    {"id": "se7", "source": "port-in-e5", "target": "service-gen-2", "type": "labeled", "data": {"label": "GUI_ACCESS", "type": "smoothstep"}},
-                    {"id": "se8", "source": "service-gen-2", "target": "service-gen-1", "type": "labeled", "data": {"label": "MEM_IPC", "type": "straight"}},
-                    {"id": "se9", "source": "service-gen-1", "target": "port-out-e6", "type": "labeled", "data": {"label": "FC_WRITE", "type": "bezier"}}
-                ]
-            }
-        },
-        {
-            "id": "node-storage-4",
-            "type": "assetNode",
-            "position": {"x": 900, "y": 200},
-            "data": {"label": "SAN-FIBRE-ARRAY", "type": "Storage", "system": "SAP_ERP", "assetId": 4}
-        }
-    ]
-    
-    arch3_edges = [
-        {"id": "e5", "source": "node-sw-1", "target": "node-srv-19", "type": "labeled", "data": {"label": "NET_ACCESS", "type": "bezier"}},
-        {"id": "e6", "source": "node-srv-19", "target": "node-storage-4", "type": "labeled", "data": {"label": "FC_CHANNEL", "type": "straight"}}
-    ]
+        # 3. Create Logical Services
+        print("Seeding logical services...")
+        services = [
+            models.LogicalService(name="NGINX-HA", service_type="Web", device_id=dev_map["LB-PROD-01"].id, status="Active", version="1.24.0"),
+            models.LogicalService(name="ERP-CORE-API", service_type="Middleware", device_id=dev_map["WEB-PROD-CLUSTER-01"].id, status="Active", version="v4.2.1"),
+            models.LogicalService(name="ERP-CORE-API", service_type="Middleware", device_id=dev_map["WEB-PROD-CLUSTER-02"].id, status="Active", version="v4.2.1"),
+            models.LogicalService(name="KEYCLOAK-IAM", service_type="Security", device_id=dev_map["APP-AUTH-SRV"].id, status="Active", version="21.0"),
+            models.LogicalService(name="POSTGRES-PRD", service_type="Database", device_id=dev_map["DB-SQL-PRIMARY"].id, status="Active", version="15.4"),
+        ]
+        db.add_all(services)
+        await db.commit()
 
-    now = datetime.now().isoformat()
-    
-    flows = [
-        ("GLOBAL_PAYMENT_GATEWAY_V4", "End-to-end payment orchestration path", "System", arch1_nodes, arch1_edges),
-        ("HYBRID_CLOUD_FABRIC", "VPC to On-Prem sync architecture", "System", arch2_nodes, arch2_edges),
-        ("SAP_ERP_FOUNDATION", "Core business processing matrix", "System", arch3_nodes, arch3_edges)
-    ]
+        # 4. Create Port Connections (The "Telemetry" that powers the drill-down)
+        print("Seeding port telemetry...")
+        conns = [
+            # LB to Web
+            models.PortConnection(source_device_id=dev_map["LB-PROD-01"].id, target_device_id=dev_map["WEB-PROD-CLUSTER-01"].id, source_port="TCP/443", target_port="TCP/8080", link_type="HTTP", purpose="Traffic Forwarding", speed_gbps=10.0, created_by_user_id="seed"),
+            models.PortConnection(source_device_id=dev_map["LB-PROD-01"].id, target_device_id=dev_map["WEB-PROD-CLUSTER-02"].id, source_port="TCP/443", target_port="TCP/8080", link_type="HTTP", purpose="Traffic Forwarding", speed_gbps=10.0, created_by_user_id="seed"),
+            # Web to DB
+            models.PortConnection(source_device_id=dev_map["WEB-PROD-CLUSTER-01"].id, target_device_id=dev_map["DB-SQL-PRIMARY"].id, source_port="TCP/50212", target_port="TCP/5432", link_type="SQL", purpose="Primary DB Access", speed_gbps=40.0, created_by_user_id="seed"),
+            models.PortConnection(source_device_id=dev_map["WEB-PROD-CLUSTER-02"].id, target_device_id=dev_map["DB-SQL-PRIMARY"].id, source_port="TCP/51233", target_port="TCP/5432", link_type="SQL", purpose="Primary DB Access", speed_gbps=40.0, created_by_user_id="seed"),
+            # DB Sync
+            models.PortConnection(source_device_id=dev_map["DB-SQL-PRIMARY"].id, target_device_id=dev_map["DB-SQL-REPLICA"].id, source_port="TCP/5432", target_port="TCP/5432", link_type="SYNC", purpose="Asynchronous Replication", speed_gbps=10.0, created_by_user_id="seed"),
+            # Web to Auth0
+            models.PortConnection(source_device_id=dev_map["APP-AUTH-SRV"].id, target_device_id=ext_map["AUTH0-IDP"].id, source_port="TCP/443", target_port="TCP/443", link_type="AUTH", purpose="OIDC Token Validation", speed_gbps=1.0, created_by_user_id="seed"),
+            # Web to Stripe
+            models.PortConnection(source_device_id=dev_map["WEB-PROD-CLUSTER-01"].id, target_device_id=ext_map["STRIPE-PAYMENT-API"].id, source_port="TCP/443", target_port="TCP/443", link_type="HTTPS", purpose="Payment Processing", speed_gbps=1.0, created_by_user_id="seed"),
+        ]
+        db.add_all(conns)
+        await db.commit()
 
-    for name, desc, cat, nodes, edges in flows:
-        cursor.execute("""
-            INSERT INTO data_flows (name, description, category, nodes_json, edges_json, viewport_json, is_template, is_deleted, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
-        """, (name, desc, cat, json.dumps(nodes), json.dumps(edges), json.dumps({"x": 0, "y": 0, "zoom": 1}), now, now))
-
-    conn.commit()
-    conn.close()
-    print("Successfully seeded 3 detailed architectures.")
+        # 5. Create a Master Architecture Flow
+        print("Seeding Master Architecture Manifest...")
+        master_arch = models.DataFlow(
+            name="ERP GLOBAL PRODUCTION CLUSTER",
+            category="System",
+            status="Up to date",
+            description="Full stack production visualization showing load balancing, database replication and external gateway dependencies.",
+            nodes_json=[
+                # Load Balancer
+                { "id": "node-lb-1", "type": "device", "position": { "x": 100, "y": 250 }, "data": { "name": "LB-PROD-01", "id": dev_map["LB-PROD-01"].id, "type": "Virtual", "system": "EDGE-NETWORK", "ip_address": "10.0.1.5" } },
+                # Web Tiers
+                { "id": "node-web-1", "type": "device", "position": { "x": 450, "y": 100 }, "data": { "name": "WEB-PROD-CLUSTER-01", "id": dev_map["WEB-PROD-CLUSTER-01"].id, "type": "Physical", "system": "ERP-FRONTEND", "ip_address": "10.0.2.10" } },
+                { "id": "node-web-2", "type": "device", "position": { "x": 450, "y": 400 }, "data": { "name": "WEB-PROD-CLUSTER-02", "id": dev_map["WEB-PROD-CLUSTER-02"].id, "type": "Physical", "system": "ERP-FRONTEND", "ip_address": "10.0.2.11" } },
+                # Auth
+                { "id": "node-auth", "type": "device", "position": { "x": 800, "y": 0 }, "data": { "name": "APP-AUTH-SRV", "id": dev_map["APP-AUTH-SRV"].id, "type": "Virtual", "system": "IDENTITY-CORE", "ip_address": "10.0.5.50" } },
+                # Databases
+                { "id": "node-db-p", "type": "device", "position": { "x": 800, "y": 250 }, "data": { "name": "DB-SQL-PRIMARY", "id": dev_map["DB-SQL-PRIMARY"].id, "type": "Physical", "system": "ERP-DATA", "ip_address": "10.0.10.100" } },
+                { "id": "node-db-r", "type": "device", "position": { "x": 1100, "y": 250 }, "data": { "name": "DB-SQL-REPLICA", "id": dev_map["DB-SQL-REPLICA"].id, "type": "Physical", "system": "ERP-DATA", "ip_address": "10.0.10.101" } },
+                # External
+                { "id": "node-stripe", "type": "external", "position": { "x": 800, "y": 500 }, "data": { "name": "STRIPE-PAYMENT-API", "id": ext_map["STRIPE-PAYMENT-API"].id, "owner_organization": "Stripe Inc.", "type": "Cloud Service" } },
+                { "id": "node-auth0", "type": "external", "position": { "x": 1100, "y": 0 }, "data": { "name": "AUTH0-IDP", "id": ext_map["AUTH0-IDP"].id, "owner_organization": "Okta", "type": "Cloud Service" } },
+            ],
+            edges_json=[
+                { "id": "e-lb-web1", "source": "node-lb-1", "target": "node-web-1", "type": "labeled", "data": { "label": "LOAD BALANCING", "type": "DATA" }, "animated": True },
+                { "id": "e-lb-web2", "source": "node-lb-1", "target": "node-web-2", "type": "labeled", "data": { "label": "LOAD BALANCING", "type": "DATA" }, "animated": True },
+                { "id": "e-web1-db", "source": "node-web-1", "target": "node-db-p", "type": "labeled", "data": { "label": "SQL TRAFFIC", "type": "DATA" }, "animated": True },
+                { "id": "e-web2-db", "source": "node-web-2", "target": "node-db-p", "type": "labeled", "data": { "label": "SQL TRAFFIC", "type": "DATA" }, "animated": True },
+                { "id": "e-db-sync", "source": "node-db-p", "target": "node-db-r", "type": "labeled", "data": { "label": "DB MIRRORING", "type": "SYNC" }, "animated": True },
+                { "id": "e-web1-stripe", "source": "node-web-1", "target": "node-stripe", "type": "labeled", "data": { "label": "PAYMENT API", "type": "DATA" }, "animated": True },
+                { "id": "e-auth-auth0", "source": "node-auth", "target": "node-auth0", "type": "labeled", "data": { "label": "OIDC FLOW", "type": "AUTH" }, "animated": True },
+                { "id": "e-web-auth", "source": "node-web-1", "target": "node-auth", "type": "labeled", "data": { "label": "AUTH VALIDATION", "type": "AUTH" }, "animated": True },
+            ],
+            viewport_json={}
+        )
+        db.add(master_arch)
+        await db.commit()
+        print("MASTER ARCHITECTURE SEEDED SUCCESSFULLY.")
 
 if __name__ == "__main__":
-    seed()
+    import sys
+    import os
+    sys.path.append(os.getcwd())
+    asyncio.run(seed_complex_architecture())

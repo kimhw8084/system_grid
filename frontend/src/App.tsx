@@ -16,12 +16,14 @@ import ServiceRegistry from "./components/ServiceRegistry"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
-import Investigation from "./components/Investigation"
+import Research from "./components/Research"
 import Vendor from "./components/Vendor"
 import Knowledge from "./components/Knowledge"
 import FAR from "./components/FAR"
 import DataFlowDesigner from "./components/DataFlowDesigner"
 import ExternalIntelligence from "./components/ExternalIntelligence"
+import Projects from "./components/Projects"
+import External from "./components/External"
 import Temp1 from "./components/Temp1"
 import RackTemp from "./components/RackTemp"
 import metadata from "./metadata.json"
@@ -217,18 +219,18 @@ function MainLayout() {
         )}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Activity} label="Temp 1" path="/temp1" active={location.pathname === "/temp1"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Server} label="Assets" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Shield} label="Investigations" path="/investigations" active={location.pathname === "/investigations"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Target} label="Failure Analysis" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Search} label="Research" path="/research" active={location.pathname === "/research"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} />
           <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Settings} label="Settings" path="/settings" active={location.pathname === "/settings"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
         <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
@@ -251,28 +253,35 @@ function MainLayout() {
                ))}
             </div>
           </div>
-          <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
-            SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
-              {isOnline ? 'ONLINE' : 'OFFLINE'}
-            </span>
+          <div className="flex items-center space-x-6">
+            <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
+              SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
+                {isOnline ? 'ONLINE' : 'OFFLINE'}
+              </span>
+            </div>
+            <div className="h-6 w-px bg-white/10" />
+            <Link to="/settings" className={`p-2 rounded-xl transition-all ${location.pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+               <Settings size={20} />
+            </Link>
           </div>
         </header>
         <div className="flex-1 p-8 overflow-hidden relative">
           <Routes>
             <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
-            <Route path="/temp1" element={<Temp1 />} />
+            <Route path="/projects" element={<Projects />} />
             <Route path="/racks" element={<RackTemp />} />
             <Route path="/asset-temp" element={<AssetTemp />} />
             <Route path="/services" element={<ServiceRegistry />} />
-            <Route path="/investigations" element={<Investigation />} />
-            <Route path="/vendors" element={<Vendor />} />
-            <Route path="/far" element={<FAR />} />
-            <Route path="/knowledge" element={<Knowledge />} />
+            <Route path="/external" element={<External />} />
             <Route path="/network" element={<NetworkFabric />} />
-            <Route path="/monitoring" element={<MonitoringGrid />} />
             <Route path="/architecture" element={<DataFlowDesigner />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/research" element={<Research />} />
+            <Route path="/far" element={<FAR />} />
+            <Route path="/monitoring" element={<MonitoringGrid />} />
+            <Route path="/vendors" element={<Vendor />} />
+            <Route path="/knowledge" element={<Knowledge />} />
             <Route path="/logs" element={<AuditLogs />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
