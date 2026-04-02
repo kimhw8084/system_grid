@@ -91,7 +91,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
           <p className="text-[10px] font-black uppercase">Loading services...</p>
         </div>
       )}
-      {!isLoading && (<table className="w-full text-[10px]">
+      {!isLoading && (<table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Service Name</th>
@@ -106,9 +106,9 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
           {services?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
               <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
-              <td className="px-4 py-3 text-slate-400 uppercase font-black text-[9px]">{s.service_type}</td>
+              <td className="px-4 py-3 text-slate-400 uppercase font-black text-[11px]">{s.service_type}</td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${
+                 <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase border ${
                     s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
                     s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
@@ -448,7 +448,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-black text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
-                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded border ${
+                <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${
                   a.status === 'Active' ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-400' :
                   a.status === 'Maintenance' ? 'bg-amber-500/20 border-amber-500/20 text-amber-400' :
                   'bg-slate-500/10 border-white/5 text-slate-500'
@@ -456,7 +456,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   {a.status}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-[9px] font-bold opacity-60">
+              <div className="flex items-center space-x-2 text-[11px] font-bold opacity-60">
                 <span>{a.system}</span>
                 <span className="w-1 h-1 rounded-full bg-current opacity-30" />
                 <span>{a.type}</span>
@@ -1312,7 +1312,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="p-0">
-      <table className="w-full text-[10px]">
+      <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
             <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Category</th>
@@ -1334,22 +1334,22 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                         className="w-24 mx-auto"
                     />
                 ) : (
-                    <span className="text-[8px] font-black uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
+                    <span className="font-black uppercase text-blue-400">{h.category}</span>
                 )}
               </td>
               <td className="px-4 py-2 font-bold text-slate-200 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
               </td>
               <td className="px-4 py-2 text-slate-500 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
               <td className="px-4 py-2 font-mono text-center text-slate-400">
                 {editingId === h.id ? (
-                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[11px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
               </td>
               <td className="px-4 py-2 text-center">
@@ -1469,7 +1469,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="p-0">
-      <table className="w-full text-[10px]">
+      <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
@@ -1494,12 +1494,12 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 font-bold text-slate-200">
                 {editingId === s.id ? (
-                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
               </td>
               <td className="px-4 py-2 font-mono text-slate-400">
                 {editingId === s.id ? (
-                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
+                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
                 ) : (
                     <div className="flex items-center space-x-3 group">
                        <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
@@ -1511,7 +1511,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 text-slate-500">
                 {editingId === s.id ? (
-                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.notes}
               </td>
               <td className="px-4 py-2 text-center">
@@ -1701,7 +1701,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="p-0">
-      <table className="w-full text-[10px]">
+      <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
             <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Local Identity</th>
@@ -1722,7 +1722,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               <tr key={r.id} className="hover:bg-white/5 transition-colors">
                 <td className="px-4 py-3">
                    {editingId === r.id ? (
-                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                        <option>Consumer</option>
                        <option>Provider</option>
                        <option>Hypervisor</option>
@@ -1737,7 +1737,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                    ) : (
                      <div className="flex flex-col">
                         <span className="font-black text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                        <span className={`text-[11px] font-black uppercase w-fit mt-1 ${isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
                           {localRole}
                         </span>
                      </div>
@@ -1745,7 +1745,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {editingId === r.id ? (
-                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                       <option>Depends On</option>
                       <option>Hosts</option>
                       <option>Backs Up</option>
@@ -1754,7 +1754,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                     </select>
                   ) : (
                     <div className="flex flex-col items-center">
-                       <span className="font-black text-slate-500 uppercase tracking-widest text-[8px] mb-1">{r.relationship_type}</span>
+                       <span className="font-black text-slate-500 uppercase tracking-widest text-[11px] mb-1">{r.relationship_type}</span>
                        <div className="flex items-center space-x-2 text-slate-600">
                           <div className="h-px w-8 bg-white/10" />
                           <ArrowRightLeft size={10} className={isSource ? "" : "rotate-180"} />
@@ -1765,7 +1765,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3">
                     {editingId === r.id ? (
-                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                         <option>Consumer</option>
                         <option>Provider</option>
                         <option>Hypervisor</option>
@@ -1780,7 +1780,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                     ) : (
                       <div className="flex flex-col">
                          <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
-                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                         <span className={`text-[11px] font-black uppercase w-fit mt-1 ${!isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
                            {peerRole}
                          </span>
                       </div>
