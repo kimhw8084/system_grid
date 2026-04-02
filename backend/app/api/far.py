@@ -11,10 +11,10 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 
 # --- FAILURE MODES ---
 
-@router.get("/modes")
+@router.get("/modes", response_model=List[schemas.FarFailureModeResponse])
 async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions),
+        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.prevention_actions)
@@ -26,7 +26,7 @@ async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Dep
     result = await db.execute(stmt)
     return result.unique().scalars().all()
 
-@router.post("/modes")
+@router.post("/modes", response_model=schemas.FarFailureModeResponse)
 async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     # Calculate RPN
     rpn = data.get('severity', 1) * data.get('occurrence', 1) * data.get('detection', 1)
@@ -62,7 +62,7 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     
     # Reload with all relationships to avoid MissingGreenlet during serialization
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions),
+        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
         joinedload(models.FarFailureMode.prevention_actions)
@@ -70,18 +70,41 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     return result.unique().scalar_one()
 
+@router.put("/modes/{mode_id}", response_model=schemas.FarFailureModeResponse)
+async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+    result = await db.execute(stmt)
+    mode = result.scalar_one_or_none()
+    if not mode: raise HTTPException(404)
+    
+    for k, v in data.items():
+        if hasattr(mode, k):
+            setattr(mode, k, v)
+            
+    await db.commit()
+    
+    # Reload with full relations
+    stmt = select(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
+        joinedload(models.FarFailureMode.mitigations),
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.prevention_actions)
+    ).filter(models.FarFailureMode.id == mode_id)
+    result = await db.execute(stmt)
+    return result.unique().scalar_one()
+
 # --- CAUSES ---
 
-@router.get("/causes")
+@router.get("/causes", response_model=List[schemas.FarFailureCauseResponse])
 async def get_failure_causes(db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureCause).options(
         joinedload(models.FarFailureCause.failure_modes),
-        joinedload(models.FarFailureCause.resolutions)
+        joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm)
     )
     result = await db.execute(stmt)
     return result.unique().scalars().all()
 
-@router.post("/causes")
+@router.post("/causes", response_model=schemas.FarFailureCauseResponse)
 async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     cause = models.FarFailureCause(
         cause_text=data.get('cause_text'),
@@ -101,14 +124,14 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     
     stmt = select(models.FarFailureCause).options(
         joinedload(models.FarFailureCause.failure_modes),
-        joinedload(models.FarFailureCause.resolutions)
+        joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm)
     ).filter(models.FarFailureCause.id == cause.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
 
 # --- RESOLUTIONS ---
 
-@router.post("/resolutions")
+@router.post("/resolutions", response_model=schemas.FarResolutionResponse)
 async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
     res = models.FarResolution(
         knowledge_id=data.get('knowledge_id'),
@@ -128,13 +151,13 @@ async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
             
     await db.commit()
     
-    stmt = select(models.FarResolution).filter(models.FarResolution.id == res.id)
+    stmt = select(models.FarResolution).options(joinedload(models.FarResolution.knowledge_bkm)).filter(models.FarResolution.id == res.id)
     result = await db.execute(stmt)
     return result.scalar_one()
 
 # --- MITIGATIONS ---
 
-@router.post("/mitigations")
+@router.post("/mitigations", response_model=schemas.FarMitigationResponse)
 async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
     mit = models.FarMitigation(
         mitigation_type=data.get('mitigation_type'),
@@ -160,7 +183,7 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
 
 # --- PREVENTION ---
 
-@router.post("/prevention")
+@router.post("/prevention", response_model=schemas.FarPreventionResponse)
 async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
     prev = models.FarPrevention(
         failure_mode_id=data.get('failure_mode_id'),

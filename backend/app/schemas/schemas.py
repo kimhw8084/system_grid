@@ -99,6 +99,13 @@ class DeviceResponse(DeviceBase, BaseSchema):
     hardware_age: Optional[str] = "N/A"
     open_incident_count: Optional[int] = 0
 
+class DeviceTinyResponse(BaseSchema):
+    name: str
+    system: Optional[str] = None
+    type: Optional[str] = None
+    status: Optional[str] = None
+    primary_ip: Optional[str] = None
+
 class MaintenanceWindowBase(BaseModel):
     title: str
     start_time: str
@@ -216,3 +223,46 @@ class ExternalLinkResponse(ExternalLinkBase, BaseSchema):
     external_entity_name: Optional[str] = None
     device_name: Optional[str] = None
     service_name: Optional[str] = None
+
+# --- FAR (FAILURE ANALYSIS & RESOLUTION) SCHEMAS ---
+
+class FarResolutionResponse(BaseSchema):
+    knowledge_id: Optional[int] = None
+    preventive_follow_up: Optional[str] = None
+    responsible_team: Optional[str] = None
+    knowledge_bkm: Optional[Any] = None
+
+class FarFailureCauseResponse(BaseSchema):
+    cause_text: str
+    occurrence_level: int = 1
+    responsible_team: Optional[str] = None
+    resolutions: List[FarResolutionResponse] = []
+
+class FarMitigationResponse(BaseSchema):
+    mitigation_type: str
+    mitigation_steps: Optional[str] = None
+    responsible_team: Optional[str] = None
+    monitoring_item_id: Optional[int] = None
+
+class FarPreventionResponse(BaseSchema):
+    failure_mode_id: int
+    prevention_action: str
+    status: str = "Open"
+    target_date: Optional[datetime] = None
+    responsible_team: Optional[str] = None
+
+class FarFailureModeResponse(BaseSchema):
+    system_name: str
+    title: str
+    effect: Optional[str] = None
+    severity: int = 1
+    occurrence: int = 1
+    detection: int = 1
+    rpn: int = 1
+    status: str = "Analyzing"
+    has_incident_history: bool = False
+    
+    affected_assets: List[DeviceTinyResponse] = []
+    causes: List[FarFailureCauseResponse] = []
+    mitigations: List[FarMitigationResponse] = []
+    prevention_actions: List[FarPreventionResponse] = []

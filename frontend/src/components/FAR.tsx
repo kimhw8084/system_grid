@@ -89,15 +89,18 @@ export default function FAR() {
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
+  const [showMitigationWizard, setShowMitigationWizard] = useState(false)
+  const [showResolutionWizard, setShowResolutionWizard] = useState(false)
+  const [showPreventionWizard, setShowPreventionWizard] = useState(false)
   
   // Queries
   const { data: modes, isLoading: modesLoading } = useQuery({ 
-    queryKey: ['far-modes'], 
+    queryKey: ['far', 'modes'], 
     queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
   })
 
   const { data: causes, isLoading: causesLoading } = useQuery({
-    queryKey: ['far-causes'],
+    queryKey: ['far', 'causes'],
     queryFn: async () => (await apiFetch('/api/v1/far/causes')).json()
   })
 
@@ -136,13 +139,17 @@ export default function FAR() {
         c.cause_text.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
+    // Contextual Filter: If mode is selected, show only its causes
     if (selectedModeId) {
-      result = result.filter((c: any) => 
-        c.failure_modes?.some((m: any) => m.id === selectedModeId)
-      )
+      const mode = modes?.find((m: any) => m.id === selectedModeId)
+      if (mode) {
+        result = result.filter((c: any) => mode.causes?.some((mc: any) => mc.id === c.id))
+      }
     }
     return result
-  }, [causes, searchTerm, selectedModeId])
+  }, [causes, searchTerm, selectedModeId, modes])
+
+  const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -188,15 +195,15 @@ export default function FAR() {
   }, [filteredModes])
 
   const maturityLevels = [
-    { lv: 8, label: 'Prevented', desc: 'Eliminated / Design Proofed', color: 'bg-emerald-500' },
-    { lv: 7, label: 'Triple Shield', desc: 'Monitoring + Resolution + Workaround', color: 'bg-emerald-400' },
-    { lv: 6, label: 'Automated Fix', desc: 'Monitoring + Resolution', color: 'bg-sky-500' },
-    { lv: 5, label: 'Hybrid Patch', desc: 'Resolution + Workaround', color: 'bg-sky-400' },
-    { lv: 4, label: 'Resolved Only', desc: 'Manual Permanent Fix', color: 'bg-blue-500' },
-    { lv: 3, label: 'Detect & Patch', desc: 'Monitoring + Workaround', color: 'bg-amber-500' },
-    { lv: 2, label: 'Workaround Only', desc: 'Temporary Patch Only', color: 'bg-amber-400' },
-    { lv: 1, label: 'Visibility Only', desc: 'Monitoring Without Action', color: 'bg-rose-400' },
-    { lv: 0, label: 'Exposed', desc: 'No Monitoring / No Action', color: 'bg-rose-600' }
+    { lv: 8, label: 'Prevented', desc: 'Eliminated / Design Proofed', color: 'bg-emerald-500', tooltip: 'DESIGN PROOF: Failure mode eliminated by architectural change or permanent hardware/software design proofing.' },
+    { lv: 7, label: 'Triple Shield', desc: 'Monitoring + Resolution + Workaround', color: 'bg-emerald-400', tooltip: 'TRIPLE SHIELD: Full defense-in-depth. Automated detection, immediate workaround, and verified BKM are all active.' },
+    { lv: 6, label: 'Automated Fix', desc: 'Monitoring + Resolution', color: 'bg-sky-500', tooltip: 'STABLE DEFENSE: Monitoring identifies failure and a permanent BKM fix is available. Lacks an immediate temporary workaround.' },
+    { lv: 5, label: 'Hybrid Patch', desc: 'Resolution + Workaround', color: 'bg-sky-400', tooltip: 'HYBRID PATCH: Permanent fix and temporary workaround identified. Lacks automated monitoring to detect onset.' },
+    { lv: 4, label: 'Resolved Only', desc: 'Manual Permanent Fix', color: 'bg-blue-500', tooltip: 'RESOLUTION ONLY: A verified permanent fix exists, but failure is silent (no monitoring) and has no immediate workaround.' },
+    { lv: 3, label: 'Detect & Patch', desc: 'Monitoring + Workaround', color: 'bg-amber-500', tooltip: 'DETECT & PATCH: Monitoring provides visibility and a workaround reduces impact, but no permanent BKM has been identified.' },
+    { lv: 2, label: 'Workaround Only', desc: 'Temporary Patch Only', color: 'bg-amber-400', tooltip: 'WORKAROUND ONLY: A temporary patch exists for recovery, but we are blind to failure onset (no monitoring).' },
+    { lv: 1, label: 'Visibility Only', desc: 'Monitoring Without Action', color: 'bg-rose-400', tooltip: 'MONITORING ONLY: We can see the failure occurring via telemetry, but have no workaround or permanent resolution playbook.' },
+    { lv: 0, label: 'Exposed', desc: 'No Monitoring / No Action', color: 'bg-rose-600', tooltip: 'SYSTEM EXPOSED: Critical blind spot. No telemetry, no workaround, and no permanent resolution identified. High risk.' }
   ]
 
   const toggleSystem = (sys: string) => {
@@ -207,6 +214,7 @@ export default function FAR() {
 
   return (
     <div className="h-full flex flex-col space-y-3">
+      {/* ... header and ribbon ... */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2 text-white">
@@ -326,43 +334,36 @@ export default function FAR() {
          </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col space-y-3 overflow-hidden">
-        {/* TOP: Failure Modes Compact Table */}
-        <div className="flex-1 glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 flex flex-col relative">
+      <div className="flex-1 min-h-0 flex space-x-3 overflow-hidden">
+        {/* PANE 1: Failure Modes (Left) */}
+        <div className={`flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 transition-all duration-500 ${selectedModeId ? 'w-[30%]' : 'w-full'}`}>
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <ShieldAlert size={14} className="text-rose-500" />
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Failure Modes Inventory</h3>
-                 <span className="text-[8px] bg-rose-500/10 text-rose-400 px-1.5 py-0.5 rounded font-black">{filteredModes.length} ENTRIES</span>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Failure Inventory</h3>
               </div>
-              
-              {/* Maturity Staircase Header - Inline Compact */}
-              <div className="flex items-end gap-0.5 h-6">
-                 {maturityLevels.slice().reverse().map((ml: any) => {
-                   const count = (metrics as any).maturityDist[ml.lv] || 0
-                   const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
-                   return (
-                     <div key={ml.lv} className="w-4 h-full relative group">
-                        <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-10' : 'opacity-80 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                           <div className="bg-slate-900 border border-white/10 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase">LV.{ml.lv} {ml.label}: {count}</div>
-                        </div>
-                     </div>
-                   )
-                 })}
-              </div>
+              {!selectedModeId && (
+                <div className="flex items-end gap-1 h-6">
+                  {maturityLevels.slice().reverse().map((ml: any) => {
+                    const count = (metrics as any).maturityDist[ml.lv] || 0
+                    const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
+                    return (
+                      <div key={ml.lv} className="w-3 h-full relative group">
+                          <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-10' : 'opacity-80 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
            </div>
 
            <div className="flex-1 overflow-y-auto custom-scrollbar">
               <table className="w-full text-left border-collapse">
                  <thead className="sticky top-0 bg-[#0a0c14] z-10">
                     <tr className="border-b border-white/5">
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">System</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Maturity</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Failure Mode / Impact Effect</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Assets</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Mit</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">RPN</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">System / Lv</th>
+                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Failure Mode</th>
+                       {!selectedModeId && <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">RPN</th>}
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-white/[0.02]">
@@ -387,29 +388,22 @@ export default function FAR() {
                           onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
                           className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedModeId === mode.id ? 'bg-rose-500/10' : ''}`}
                         >
-                           <td className="px-4 py-1.5">
-                              <span className="text-[9px] font-black uppercase text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded tracking-tighter">{mode.system_name}</span>
-                           </td>
-                           <td className="px-4 py-1.5 whitespace-nowrap">
-                              <div className={`flex items-center gap-1.5 px-1.5 py-0.5 rounded ${ml.color} bg-opacity-20 text-[9px] font-black uppercase tracking-tighter w-fit`}>
-                                 <Shield size={10} /> LV.{lv} {ml.label}
+                           <td className="px-4 py-2">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit">{mode.system_name}</span>
+                                <div className={`flex items-center gap-1 text-[8px] font-black uppercase ${ml.color.replace('bg-', 'text-')}`}>
+                                   <Shield size={8} /> L{lv}
+                                </div>
                               </div>
                            </td>
-                           <td className="px-4 py-1.5 min-w-[300px]">
-                              <div className="flex flex-col">
-                                 <span className="text-[11px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight">{mode.title}</span>
-                                 <span className="text-[9px] text-slate-500 font-medium truncate italic max-w-[500px] leading-tight mt-0.5">{mode.effect}</span>
-                              </div>
+                           <td className="px-4 py-2">
+                              <span className="text-[10px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2">{mode.title}</span>
                            </td>
-                           <td className="px-4 py-1.5 text-center">
-                              <span className="text-[10px] font-black text-slate-400 bg-white/5 px-2 py-0.5 rounded">{mode.affected_assets?.length || 0}</span>
-                           </td>
-                           <td className="px-4 py-1.5 text-center">
-                              <span className="text-[10px] font-black text-slate-400 bg-white/5 px-2 py-0.5 rounded">{mode.mitigations?.length || 0}</span>
-                           </td>
-                           <td className="px-4 py-1.5 text-right">
-                              <span className={`text-[12px] font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-300'}`}>{mode.rpn}</span>
-                           </td>
+                           {!selectedModeId && (
+                             <td className="px-4 py-2 text-right">
+                                <span className={`text-[11px] font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>{mode.rpn}</span>
+                             </td>
+                           )}
                         </tr>
                       )
                     })}
@@ -418,57 +412,164 @@ export default function FAR() {
            </div>
         </div>
 
-        {/* BOTTOM: Root Causes Compact Table */}
-        <div className="h-[35%] glass-panel rounded-3xl overflow-hidden border-white/5 bg-[#0a0c14]/40 flex flex-col relative">
-           <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                 <Zap size={14} className="text-amber-500" />
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Known Root Causes</h3>
-                 <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded font-black">{filteredCauses.length} IDENTIFIED</span>
-              </div>
-           </div>
+        {/* PANE 2 & 3: War Room (Maturity Lab) */}
+        <AnimatePresence mode="wait">
+          {selectedModeId && selectedMode ? (
+            <motion.div 
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 20, opacity: 0 }}
+              className="flex-1 flex space-x-3 overflow-hidden"
+            >
+               {/* Detail Lab (Active Actions) */}
+               <div className="w-[65%] glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/60 flex flex-col overflow-hidden">
+                  <div className="p-6 border-b border-white/5 bg-gradient-to-r from-rose-500/10 to-transparent flex items-center justify-between">
+                     <div>
+                        <div className="flex items-center gap-2 mb-1">
+                           <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(244,63,94,0.2)]">Maturity Lab</span>
+                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedMode.system_name}</span>
+                        </div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">{selectedMode.title}</h2>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Score (RPN)</p>
+                        <p className={`text-3xl font-black italic leading-none ${selectedMode.rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{selectedMode.rpn}</p>
+                     </div>
+                  </div>
 
-           <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse">
-                 <thead className="sticky top-0 bg-[#0a0c14] z-10">
-                    <tr className="border-b border-white/5">
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Origin / Cause Text</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Responsible Team</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Modes</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Res</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">Occur</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.02]">
-                    {filteredCauses.map((cause: any) => (
-                       <tr 
-                         key={cause.id} 
-                         onClick={() => setSelectedCauseId(selectedCauseId === cause.id ? null : cause.id)}
-                         className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedCauseId === cause.id ? 'bg-amber-500/10' : ''}`}
-                       >
-                          <td className="px-4 py-1.5 min-w-[300px]">
-                             <span className="text-[11px] font-black text-white uppercase group-hover:text-amber-400 transition-colors leading-tight">{cause.cause_text}</span>
-                          </td>
-                          <td className="px-4 py-1.5">
-                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-tight">{cause.responsible_team || 'General Ops'}</span>
-                          </td>
-                          <td className="px-4 py-1.5 text-center">
-                             <span className="text-[10px] font-black text-slate-500 px-2 py-0.5 rounded bg-white/5">{cause.failure_modes?.length || 0}</span>
-                          </td>
-                          <td className="px-4 py-1.5 text-center">
-                             <div className="flex items-center justify-center">
-                                {cause.resolutions?.length > 0 ? <ShieldCheck size={12} className="text-emerald-500" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                     {/* 1. Maturity Roadmap Checklist */}
+                     <section className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
+                           <CheckCircle2 size={14} /> Reliability Roadmap
+                        </h3>
+                        <div className="grid grid-cols-2 gap-3">
+                           {[
+                             { label: 'Automated Monitoring', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Monitoring'), icon: Activity, color: 'text-sky-400', action: () => setShowMitigationWizard(true) },
+                             { label: 'Immediate Workaround', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Workaround'), icon: Zap, color: 'text-amber-400', action: () => setShowMitigationWizard(true) },
+                             { label: 'Permanent BKM', status: selectedMode.causes?.some((c:any) => c.resolutions?.length > 0), icon: Lightbulb, color: 'text-emerald-400', action: () => setShowResolutionWizard(true) },
+                             { label: 'Engineering Fix', status: ['Eliminated', 'Prevented'].includes(selectedMode.status), icon: ShieldCheck, color: 'text-emerald-500', action: () => setShowPreventionWizard(true) }
+                           ].map((item, i) => (
+                             <div key={i} className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${item.status ? 'bg-white/5 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/5 opacity-60 hover:opacity-100 hover:border-rose-500/20'}`}>
+                                <div className="flex items-center gap-3">
+                                   <div className={`p-2 rounded-xl bg-white/5 ${item.status ? item.color : 'text-slate-600'}`}>
+                                      <item.icon size={18} />
+                                   </div>
+                                   <div>
+                                      <p className={`text-[10px] font-black uppercase tracking-widest ${item.status ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
+                                      <p className="text-[8px] font-bold uppercase text-slate-600">{item.status ? 'Verified & Active' : 'Action Required'}</p>
+                                   </div>
+                                </div>
+                                {!item.status && (
+                                  <button onClick={item.action} className="p-2 hover:bg-white/5 rounded-lg text-rose-500 transition-colors">
+                                     <Plus size={16} />
+                                  </button>
+                                )}
+                                {item.status && <CheckCircle2 size={16} className="text-emerald-500" />}
                              </div>
-                          </td>
-                          <td className="px-4 py-1.5 text-right">
-                             <span className={`text-[12px] font-black tracking-tighter ${cause.occurrence_level > 7 ? 'text-amber-500 italic' : 'text-slate-400'}`}>{cause.occurrence_level}/10</span>
-                          </td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </div>
+                           ))}
+                        </div>
+                     </section>
+
+                     {/* 2. Resolutions / BKMs */}
+                     <section className="space-y-4">
+                        <div className="flex items-center justify-between">
+                           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
+                              <Book size={14} /> Knowledge Alignment (BKM)
+                           </h3>
+                           <button onClick={() => setShowResolutionWizard(true)} className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:underline">+ Map Resolution</button>
+                        </div>
+                        <div className="space-y-2">
+                           {selectedMode.causes?.map((cause: any) => cause.resolutions?.map((res: any, idx: number) => (
+                             <div key={idx} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-white/10 transition-all">
+                                <div className="flex items-center gap-4">
+                                   <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                                      <FileText size={20} />
+                                   </div>
+                                   <div className="min-w-0">
+                                      <p className="text-[11px] font-black text-white uppercase tracking-tight truncate">{res.knowledge_bkm?.title || 'Relational BKM Link'}</p>
+                                      <div className="flex items-center gap-3 mt-0.5">
+                                         <p className="text-[9px] text-slate-500 font-bold uppercase">Team: {res.responsible_team}</p>
+                                         <p className="text-[9px] text-slate-600 font-bold uppercase">Source: {cause.cause_text.slice(0, 30)}...</p>
+                                      </div>
+                                   </div>
+                                </div>
+                                <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all"><ExternalLink size={14} /></button>
+                             </div>
+                           )))}
+                           {(!selectedMode.causes?.some((c:any) => c.resolutions?.length > 0)) && (
+                             <div className="py-10 text-center border-2 border-dashed border-white/5 rounded-3xl opacity-20">
+                                <p className="text-[10px] font-black uppercase tracking-widest italic">No Reliability BKMs Linked</p>
+                             </div>
+                           )}
+                        </div>
+                     </section>
+
+                     {/* 3. Affected Assets */}
+                     <section className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
+                           <Box size={14} /> Affected Infrastructure
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                           {selectedMode.affected_assets?.map((asset: any) => (
+                             <div key={asset.id} className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl flex items-center gap-2 group hover:border-rose-500/30 transition-all">
+                                <Server size={12} className="text-slate-500 group-hover:text-rose-500" />
+                                <span className="text-[10px] font-black text-white uppercase tracking-tighter">{asset.name}</span>
+                             </div>
+                           ))}
+                        </div>
+                     </section>
+                  </div>
+               </div>
+
+               {/* Right Context (Root Causes & Status) */}
+               <div className="w-[35%] flex flex-col space-y-3 overflow-hidden">
+                  {/* Root Causes Stack */}
+                  <div className="flex-1 flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 overflow-hidden">
+                     <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <Zap size={14} className="text-amber-500" />
+                           <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Attributed Causes</h3>
+                        </div>
+                        <button onClick={() => setShowCauseWizard(true)} className="p-1 hover:bg-white/5 rounded-md text-amber-500 transition-colors"><Plus size={14}/></button>
+                     </div>
+                     <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                        {selectedMode.causes?.map((cause: any) => (
+                          <div key={cause.id} className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3 group hover:border-amber-500/30 transition-all">
+                             <p className="text-[11px] font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{cause.cause_text}</p>
+                             <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                <span className="text-[8px] font-black text-slate-500 uppercase">{cause.responsible_team}</span>
+                                <div className="flex items-center gap-1.5">
+                                   <div className={`w-1.5 h-1.5 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                                   <span className="text-[10px] font-black text-amber-500 italic">{cause.occurrence_level}/10</span>
+                                </div>
+                             </div>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  {/* Operational Status Panel */}
+                  <div className="h-[30%] glass-panel rounded-3xl border-white/5 bg-gradient-to-br from-[#0a0c14]/60 to-[#1a1c24]/60 p-5 flex flex-col justify-between relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500 blur-[60px] opacity-10" />
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Operational State</p>
+                        <div className="flex items-center gap-3">
+                           <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                           <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter">{selectedMode.status}</h4>
+                        </div>
+                     </div>
+                     <div className="flex gap-2 relative z-10">
+                        <button className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest transition-all">Update Status</button>
+                        <button className="p-2 bg-white/5 hover:bg-rose-500/20 border border-white/5 rounded-xl text-rose-500 transition-all"><X size={16} onClick={() => setSelectedModeId(null)} /></button>
+                     </div>
+                  </div>
+               </div>
+            </motion.div>
+          ) : (
+            <div className="hidden" />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Addition Wizard Modals */}
@@ -495,7 +596,7 @@ export default function FAR() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 <FARWizard onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far-modes'] }); queryClient.invalidateQueries({ queryKey: ['far-causes'] }); }} />
+                 <FARWizard onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
           </div>
@@ -523,12 +624,165 @@ export default function FAR() {
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 <CauseWizard onComplete={() => { setShowCauseWizard(false); queryClient.invalidateQueries({ queryKey: ['far-modes'] }); queryClient.invalidateQueries({ queryKey: ['far-causes'] }); }} />
+                 <CauseWizard onComplete={() => { setShowCauseWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {showMitigationWizard && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-sky-500/30 overflow-hidden">
+               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-sky-500/5">
+                 <div className="flex items-center gap-3">
+                   <Activity size={20} className="text-sky-500" />
+                   <div>
+                     <h2 className="text-lg font-black uppercase text-white italic">Mitigation Registry</h2>
+                     <p className="text-[9px] text-slate-500 font-black uppercase">Monitoring & Workaround Documentation</p>
+                   </div>
+                 </div>
+                 <button onClick={() => setShowMitigationWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+               </div>
+               <div className="p-8">
+                 <MitigationWizard modeId={selectedModeId!} onComplete={() => { setShowMitigationWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showResolutionWizard && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-emerald-500/30 overflow-hidden">
+               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-emerald-500/5">
+                 <div className="flex items-center gap-3">
+                   <Lightbulb size={20} className="text-emerald-500" />
+                   <div>
+                     <h2 className="text-lg font-black uppercase text-white italic">Knowledge Alignment</h2>
+                     <p className="text-[9px] text-slate-500 font-black uppercase">Map Verified BKM to Failure Mode</p>
+                   </div>
+                 </div>
+                 <button onClick={() => setShowResolutionWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+               </div>
+               <div className="p-8">
+                 <ResolutionWizard mode={selectedMode!} onComplete={() => { setShowResolutionWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showPreventionWizard && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-emerald-600/30 overflow-hidden">
+               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-emerald-600/5">
+                 <div className="flex items-center gap-3">
+                   <ShieldCheck size={20} className="text-emerald-500" />
+                   <div>
+                     <h2 className="text-lg font-black uppercase text-white italic">Prevention Action</h2>
+                     <p className="text-[9px] text-slate-500 font-black uppercase">Engineering Hardening & Design Proofing</p>
+                   </div>
+                 </div>
+                 <button onClick={() => setShowPreventionWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+               </div>
+               <div className="p-8">
+                 <PreventionWizard modeId={selectedModeId!} onComplete={() => { setShowPreventionWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// --- Sub-Wizards ---
+
+function MitigationWizard({ modeId, onComplete }: { modeId: number, onComplete: () => void }) {
+  const [formData, setFormData] = useState({ mitigation_type: 'Monitoring', mitigation_steps: '', responsible_team: '' })
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/mitigations', { method: 'POST', body: JSON.stringify({ ...data, mode_ids: [modeId] }) })
+      return res.json()
+    },
+    onSuccess: () => { toast.success('Mitigation Active'); onComplete() }
+  })
+  return (
+    <div className="space-y-6">
+       <div className="grid grid-cols-2 gap-4">
+          {['Monitoring', 'Workaround'].map(t => (
+            <button key={t} onClick={() => setFormData({...formData, mitigation_type: t})} className={`p-4 rounded-2xl border transition-all text-center ${formData.mitigation_type === t ? 'bg-sky-500/20 border-sky-500 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>
+               <p className="text-[10px] font-black uppercase tracking-widest">{t}</p>
+            </button>
+          ))}
+       </div>
+       <textarea value={formData.mitigation_steps} onChange={e => setFormData({...formData, mitigation_steps: e.target.value})} placeholder="Steps / Configuration Details..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[120px]" />
+       <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Responsible Team..." className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest">Commit Mitigation</button>
+    </div>
+  )
+}
+
+function ResolutionWizard({ mode, onComplete }: { mode: any, onComplete: () => void }) {
+  const [selectedCauseId, setSelectedCauseId] = useState(mode.causes?.[0]?.id || null)
+  const [formData, setFormData] = useState({ knowledge_id: null, preventive_follow_up: '', responsible_team: '' })
+  
+  const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
+
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/resolutions', { method: 'POST', body: JSON.stringify({ ...data, cause_ids: [selectedCauseId] }) })
+      return res.json()
+    },
+    onSuccess: () => { toast.success('Resolution Linked'); onComplete() }
+  })
+
+  return (
+    <div className="space-y-6">
+       <div className="space-y-1.5">
+          <label className="text-[9px] font-black uppercase text-slate-500 ml-1">Target Root Cause</label>
+          <select value={selectedCauseId} onChange={e => setSelectedCauseId(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none">
+             {mode.causes?.map((c:any) => <option key={c.id} value={c.id}>{c.cause_text.slice(0, 50)}...</option>)}
+          </select>
+       </div>
+       <div className="space-y-1.5">
+          <label className="text-[9px] font-black uppercase text-slate-500 ml-1">Select Verified BKM</label>
+          <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+             {bkms?.map((b:any) => (
+               <button key={b.id} onClick={() => setFormData({...formData, knowledge_id: b.id})} className={`p-3 rounded-xl border text-left transition-all ${formData.knowledge_id === b.id ? 'bg-emerald-500/20 border-emerald-500 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>
+                  <p className="text-[10px] font-black uppercase tracking-tight">{b.title}</p>
+               </button>
+             ))}
+          </div>
+       </div>
+       <textarea value={formData.preventive_follow_up} onChange={e => setFormData({...formData, preventive_follow_up: e.target.value})} placeholder="Preventive Follow-up Action..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[100px]" />
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest">Map BKM to Cause</button>
+    </div>
+  )
+}
+
+function PreventionWizard({ modeId, onComplete }: { modeId: number, onComplete: () => void }) {
+  const [formData, setFormData] = useState({ prevention_action: '', responsible_team: '', target_date: new Date().toISOString().split('T')[0] })
+  const mutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/prevention', { method: 'POST', body: JSON.stringify({ ...data, failure_mode_id: modeId }) })
+      // Also update mode status to Prevented
+      await apiFetch(`/api/v1/far/modes/${modeId}`, { method: 'PUT', body: JSON.stringify({ status: 'Prevented' }) })
+      return res.json()
+    },
+    onSuccess: () => { toast.success('System Permanently Hardened'); onComplete() }
+  })
+  return (
+    <div className="space-y-6">
+       <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 mb-4">
+          <p className="text-[10px] text-emerald-400 font-bold leading-relaxed uppercase tracking-tight">Warning: Logging a prevention action will promote this Failure Mode to "Prevented" status, indicating the risk is architecturaly eliminated.</p>
+       </div>
+       <textarea value={formData.prevention_action} onChange={e => setFormData({...formData, prevention_action: e.target.value})} placeholder="Describe architectural/design proofing change..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[120px]" />
+       <div className="grid grid-cols-2 gap-4">
+          <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Hardening Team..." className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
+          <input type="date" value={formData.target_date} onChange={e => setFormData({...formData, target_date: e.target.value})} className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
+       </div>
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Finalize Design Proof</button>
     </div>
   )
 }
@@ -558,7 +812,7 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
   })
 
   const { data: allCauses } = useQuery({
-    queryKey: ['far-causes-all'],
+    queryKey: ['far', 'causes'],
     queryFn: async () => (await apiFetch('/api/v1/far/causes')).json()
   })
 
@@ -765,7 +1019,7 @@ function CauseWizard({ onComplete }: { onComplete: () => void }) {
   const [modeSearch, setModeSearch] = useState('')
 
   const { data: allModes } = useQuery({
-    queryKey: ['far-modes-all'],
+    queryKey: ['far', 'modes'],
     queryFn: async () => (await apiFetch('/api/v1/far/modes')).json()
   })
 
@@ -941,3 +1195,4 @@ function ScoreSelector({ label, value, onChange, levels, color }: { label: strin
     </div>
   )
 }
+
