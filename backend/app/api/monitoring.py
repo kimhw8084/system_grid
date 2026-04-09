@@ -14,8 +14,11 @@ def filter_valid_columns(model, data):
     return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/", response_model=List[schemas.MonitoringItemResponse])
-async def get_monitoring_items(device_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.MonitoringItem)
+    if not include_deleted:
+        query = query.filter(models.MonitoringItem.is_deleted == False)
+    
     if device_id:
         query = query.filter(models.MonitoringItem.device_id == device_id)
     
@@ -92,12 +95,33 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
         
     return resp
 
+@router.post("/bulk-action")
+async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    action = data.get("action")
+    payload = data.get("payload", {})
+    if not ids: return {"status": "no_op"}
+    
+    if action == "delete":
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=True))
+    elif action == "purge":
+        await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
+    elif action == "restore":
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=False))
+    elif action == "update":
+        clean_update = filter_valid_columns(models.MonitoringItem, payload)
+        if clean_update:
+            await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(**clean_update))
+    
+    await db.commit()
+    return {"status": "success"}
+
 @router.delete("/{item_id}")
 async def delete_monitoring_item(item_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.id == item_id))
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Monitoring item not found")
     
-    await db.delete(item)
+    item.is_deleted = True
     await db.commit()
     return {"status": "success"}

@@ -278,7 +278,9 @@ class MonitoringItem(Base, BaseMixin):
     notification_throttle = Column(Integer, default=3600) # Seconds between re-alerts
     severity = Column(String, default="Warning") # Critical, Warning, Info
     is_active = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False)
     recovery_docs = Column(JSON, default=list) # List of KnowledgeEntry IDs
+    owner_id = Column(String)
     
     device = relationship("Device", back_populates="monitoring_items")
 

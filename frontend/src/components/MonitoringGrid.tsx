@@ -6,30 +6,22 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, MoreVertical, List,
   BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor,
-  Download, Copy, ChevronDown, ChevronUp, Layers
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
 import { StyledSelect } from './shared/StyledSelect'
-
-const CATEGORIES = [
-  { value: 'Hardware', icon: Cpu, color: 'text-blue-400' },
-  { value: 'Log', icon: Database, color: 'text-emerald-400' },
-  { value: 'Network', icon: Network, color: 'text-amber-400' },
-  { value: 'Application', icon: Activity, color: 'text-rose-400' },
-  { value: 'Synthetic', icon: Globe, color: 'text-purple-400' }
-]
+import { ConfigRegistryModal } from "./ConfigRegistry"
+import { ConfirmationModal } from "./shared/ConfirmationModal"
 
 const STATUSES = [
   { value: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { value: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
+  { value: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  { value: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' }
 ]
-
-const SEVERITIES = ['Critical', 'Warning', 'Info']
-const NOTIFICATION_METHODS = ['Email', 'Slack', 'Teams', 'PagerDuty', 'Webhook', 'SMS', 'Voice']
 
 export default function MonitoringGrid() {
   const queryClient = useQueryClient()
@@ -40,6 +32,7 @@ export default function MonitoringGrid() {
   const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -49,6 +42,39 @@ export default function MonitoringGrid() {
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[] } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
+  
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
+  const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+
+  const { data: settingsOptions } = useQuery({ 
+    queryKey: ['settings-options'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+  })
+
+  const categories = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringCategory") : [], [settingsOptions])
+  const severities = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringSeverity") : [], [settingsOptions])
+  const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (showBulkMenu && !target.closest('.bulk-menu-container')) {
+        setShowBulkMenu(false)
+      }
+    }
+    if (showBulkMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showBulkMenu])
 
   useEffect(() => {
     if (gridRef.current?.api) {
@@ -57,28 +83,42 @@ export default function MonitoringGrid() {
   }, [fontSize, rowDensity])
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
-  const { data: items, isLoading } = useQuery({
+  const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json()
+    queryFn: async () => (await apiFetch('/api/v1/monitoring/?include_deleted=true')).json()
   })
+
+  const items = useMemo(() => {
+    if (!allItems) return []
+    return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
+  }, [allItems, activeTab])
 
   const { data: devices } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number, data: any }) => {
-      await apiFetch(`/api/v1/monitoring/${id}`, { 
-        method: 'PUT',
-        body: JSON.stringify(data)
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: idsToUse, action, payload })
       })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-    }
+      setSelectedIds([])
+      setShowBulkMenu(false)
+      setIsBulkStatusOpen(false)
+      setIsBulkSeverityOpen(false)
+      setIsBulkNotifyOpen(false)
+      toast.success('Bulk Operation Complete')
+    },
+    onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
   })
 
   const deleteMutation = useMutation({
@@ -87,7 +127,7 @@ export default function MonitoringGrid() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-      toast.success('Monitoring item decommissioned')
+      toast.success('Monitoring item de-activated')
     }
   })
 
@@ -112,16 +152,11 @@ export default function MonitoringGrid() {
       width: 110,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const cat = CATEGORIES.find(c => c.value === p.value)
-        const Icon = cat?.icon || Activity
-        return (
-          <div className="flex items-center justify-center space-x-2 h-full">
-            <Icon size={12} className={cat?.color || 'text-slate-400'} />
-            <span className="text-[9px] font-black uppercase tracking-tight text-white">{p.value}</span>
-          </div>
-        )
-      }
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+          <span className="text-[9px] font-black uppercase tracking-tight text-white">{p.value}</span>
+        </div>
+      )
     },
     { 
       field: "status", 
@@ -143,28 +178,19 @@ export default function MonitoringGrid() {
     { 
       field: "is_active", 
       headerName: "Live", 
-      width: 80,
+      width: 60,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const isExisting = p.data.status === 'Existing'
         const isActive = p.value
         return (
           <div className="flex items-center justify-center h-full">
-            <button 
-              onClick={() => {
-                if (isExisting) {
-                  updateMutation.mutate({ id: p.data.id, data: { is_active: !isActive } })
-                }
-              }}
-              disabled={!isExisting}
-              className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${isActive ? 'bg-emerald-500' : 'bg-slate-700'} ${!isExisting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-            >
-              <span className={`${isActive ? 'translate-x-4' : 'translate-x-1'} inline-block h-2 w-2 transform rounded-full bg-white transition-transform`} />
+            <div className="relative">
+              <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-700'}`} />
               {isActive && (
-                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
+                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-30" />
               )}
-            </button>
+            </div>
           </div>
         )
       }
@@ -206,8 +232,7 @@ export default function MonitoringGrid() {
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-2 h-full">
-          <div className="w-1 h-1 rounded-full bg-blue-500" />
+        <div className="flex items-center justify-center h-full">
           <span className="text-[9px] font-black uppercase text-slate-300">{p.value}</span>
         </div>
       )
@@ -253,7 +278,6 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <Bell size={10} className="text-slate-500" />
               <span className="text-[9px] font-black uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
            </button>
         </div>
@@ -276,14 +300,18 @@ export default function MonitoringGrid() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
                <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 hover:bg-slate-700 hover:text-white text-slate-400 rounded-md transition-all"><Eye size={12}/></button>
-               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery BKMs" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={12}/></button>
+               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery Procedures" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={12}/></button>
                <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-emerald-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={12}/></button>
-               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
+               {activeTab === 'active' ? (
+                 <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
+               ) : (
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
+               )}
            </div>
         </div>
       )
     }
-  ], [updateMutation]) as any
+  ], [activeTab, bulkMutation]) as any
 
   const exportCsv = () => {
     gridRef.current.api.exportDataAsCsv({
@@ -361,6 +389,15 @@ export default function MonitoringGrid() {
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">High-Reliability Infrastructure Observability</p>
            </div>
+           
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+                <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Active
+                </button>
+                <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Deleted
+                </button>
+           </div>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -389,11 +426,37 @@ export default function MonitoringGrid() {
              </button>
           </div>
 
+          <div className="relative bulk-menu-container">
+            <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+            <AnimatePresence>
+              {showBulkMenu && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
+                   <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Monitors Selected</p>
+                   {activeTab === 'deleted' ? (
+                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                   ) : (
+                     <>
+                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                        <button onClick={() => { setIsBulkSeverityOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-rose-400 transition-all">Set Severity...</button>
+                        <button onClick={() => { setIsBulkNotifyOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Notification...</button>
+                     </>
+                   )}
+                   <div className="h-px bg-white/5 mx-2 my-1" />
+                   <button onClick={() => { 
+                       const title = activeTab === 'deleted' ? 'Purge Monitors' : 'De-activate Matrix'
+                       const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'De-activate selected monitors?'
+                       openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                    }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk De-activate'}</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <button 
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
-            + Deploy Monitor
+            + Add Monitoring
           </button>
         </div>
       </div>
@@ -401,7 +464,7 @@ export default function MonitoringGrid() {
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
-             <Zap size={32} className="text-blue-400 animate-pulse" />
+             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
           </div>
         )}
@@ -435,11 +498,34 @@ export default function MonitoringGrid() {
         />
       </div>
 
+      <BulkActionModals
+        isStatusOpen={isBulkStatusOpen}
+        isSeverityOpen={isBulkSeverityOpen}
+        isNotifyOpen={isBulkNotifyOpen}
+        onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
+        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+        count={selectedIds.length}
+        severities={severities}
+        notificationMethods={notificationMethods}
+      />
+
+      <ConfirmationModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
+
       <AnimatePresence>
         {isFormOpen && (
           <MonitoringForm 
             item={editingItem} 
             devices={devices}
+            categories={categories}
+            severities={severities}
+            notificationMethods={notificationMethods}
             onClose={() => setIsFormOpen(false)} 
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
@@ -452,7 +538,16 @@ export default function MonitoringGrid() {
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
-        {showRegistry && <RegistryConfigModal onClose={() => setShowRegistry(false)} />}
+        <ConfigRegistryModal
+            isOpen={showRegistry}
+            onClose={() => setShowRegistry(false)}
+            title="Monitoring Matrix Enumerations"
+            sections={[
+                { title: "Categories", category: "MonitoringCategory", icon: Layers },
+                { title: "Severity Levels", category: "MonitoringSeverity", icon: AlertCircle },
+                { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
+            ]}
+        />
       </AnimatePresence>
 
       <style>{`
@@ -487,84 +582,87 @@ export default function MonitoringGrid() {
   )
 }
 
-// --- POPUP MODALS ---
+function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply, count, severities, notificationMethods }: any) {
+    const [val, setVal] = useState('')
+    
+    useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
 
-function RegistryConfigModal({ onClose }: any) {
-  return (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl p-8 rounded-[40px] border-blue-500/20">
-        <div className="flex items-center justify-between mb-8">
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400 border border-blue-500/20">
-                <Settings size={24} />
-              </div>
+    if (isStatusOpen) return (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
               <div>
-                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Registry Configuration</h3>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Global Monitoring Standards</p>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+                   <Tag size={24}/> <span>Update Status</span>
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
               </div>
-           </div>
-           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24}/></button>
+              <StyledSelect
+                label="Target Status"
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                options={STATUSES}
+                placeholder="Select Status..."
+              />
+              <div className="flex space-x-3 pt-2">
+                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                 <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
+              </div>
+           </motion.div>
         </div>
+    )
 
-        <div className="grid grid-cols-2 gap-8">
-           <div className="space-y-6">
+    if (isSeverityOpen) return (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-rose-500/30 space-y-6">
               <div>
-                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
-                    <Layers size={12}/> <span>Categories</span>
-                 </h4>
-                 <div className="space-y-2">
-                    {CATEGORIES.map(c => (
-                       <div key={c.value} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                             <c.icon size={14} className={c.color} />
-                             <span className="text-[11px] font-bold text-slate-200">{c.value}</span>
-                          </div>
-                          <Edit2 size={12} className="text-slate-600 cursor-pointer hover:text-white transition-colors" />
-                       </div>
-                    ))}
-                    <button className="w-full py-2 border border-dashed border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:border-blue-500/30 hover:text-blue-400 transition-all">+ Add Category</button>
-                 </div>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
+                   <Shield size={24}/> <span>Update Severity</span>
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
               </div>
-           </div>
-
-           <div className="space-y-6">
-              <div>
-                 <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
-                    <AlertCircle size={12}/> <span>Severity Levels</span>
-                 </h4>
-                 <div className="space-y-2">
-                    {SEVERITIES.map(s => (
-                       <div key={s} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-200">{s}</span>
-                          <Edit2 size={12} className="text-slate-600 cursor-pointer hover:text-white transition-colors" />
-                       </div>
-                    ))}
-                    <button className="w-full py-2 border border-dashed border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:border-rose-500/30 hover:text-rose-400 transition-all">+ Add Severity</button>
-                 </div>
+              <StyledSelect
+                label="Target Severity"
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
+                placeholder="Select Severity..."
+              />
+              <div className="flex space-x-3 pt-2">
+                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                 <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
               </div>
-
-              <div>
-                 <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
-                    <Bell size={12}/> <span>Notification Methods</span>
-                 </h4>
-                 <div className="grid grid-cols-2 gap-2">
-                    {NOTIFICATION_METHODS.map(m => (
-                       <div key={m} className="bg-white/5 border border-white/5 p-2 rounded-lg flex items-center justify-center">
-                          <span className="text-[9px] font-black uppercase text-slate-400">{m}</span>
-                       </div>
-                    ))}
-                 </div>
-              </div>
-           </div>
+           </motion.div>
         </div>
-        
-        <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
-           <button onClick={onClose} className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all">Close Registry</button>
+    )
+
+    if (isNotifyOpen) return (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-amber-500/30 space-y-6">
+              <div>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
+                   <Bell size={24}/> <span>Update Notification</span>
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
+              </div>
+              <StyledSelect
+                label="Target Method"
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                placeholder="Select Method..."
+              />
+              <div className="flex space-x-3 pt-2">
+                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                 <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
+              </div>
+           </motion.div>
         </div>
-      </motion.div>
-    </div>
-  )
+    )
+
+    return null;
 }
+
+// --- POPUP MODALS ---
 
 function ServicesModal({ names, title, onClose }: any) {
   return (
@@ -621,11 +719,11 @@ function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
              <BookOpen size={20} className="text-amber-500" />
-             <h3 className="text-sm font-black uppercase text-amber-500 tracking-tight">Recovery Intelligence</h3>
+             <h3 className="text-sm font-black uppercase text-amber-500 tracking-tight">Recovery Procedures</h3>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
         </div>
-        <p className="text-[10px] text-slate-500 font-black uppercase mb-4 tracking-widest">Linked Best Known Methods (BKM)</p>
+        <p className="text-[10px] text-slate-500 font-black uppercase mb-4 tracking-widest">Linked Procedures (BKM)</p>
         <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
           {ids.map((id: number, i: number) => (
             <button 
@@ -749,7 +847,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                        NODE: MON-{item.id}
                     </span>
                     <span className={`px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border ${item.is_active ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-700/50 border-white/10 text-slate-500'}`}>
-                       {item.is_active ? 'Live Telemetry' : 'Standby Mode'}
+                       {item.status}
                     </span>
                  </div>
                  <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
@@ -767,15 +865,15 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-blue-600/5 border border-white/5 rounded-3xl p-5 group hover:border-blue-500/20 transition-all">
                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
-                          <Info size={12}/> <span>Strategic Purpose</span>
+                          <Info size={12}/> <span>Purpose</span>
                        </h4>
                        <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
-                          {item.purpose || 'No strategic purpose defined.'}
+                          {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
                     <div className="bg-rose-600/5 border border-white/5 rounded-3xl p-5 group hover:border-rose-500/20 transition-all">
                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
-                          <Zap size={12}/> <span>Operational Impact</span>
+                          <Zap size={12}/> <span>Impact</span>
                        </h4>
                        <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
                           {item.impact || 'No impact analysis defined.'}
@@ -786,7 +884,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  {/* Logic Specification */}
                  <section className="space-y-3">
                     <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center px-1">
-                       <Settings size={14} className="mr-3" /> Logic Specification Dropdown
+                       <Settings size={14} className="mr-3" /> Logic Specification
                     </h3>
                     <div className="space-y-3">
                        {item.logic_json?.map((log: any) => (
@@ -848,7 +946,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  {/* Recovery Linkage */}
                  <section className="space-y-3">
                     <h3 className="text-[11px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center px-1">
-                       <BookOpen size={14} className="mr-3" /> Recovery Intel
+                       <BookOpen size={14} className="mr-3" /> Recovery Procedures
                     </h3>
                     <div className="space-y-2">
                        {item.recovery_doc_titles?.map((title: string, i: number) => (
@@ -878,22 +976,6 @@ function MonitoringDetailModal({ item, onClose }: any) {
               </div>
            </div>
         </div>
-
-        <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-center relative z-10">
-           <div className="flex items-center space-x-4">
-              <div className="flex flex-col">
-                 <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Reporting Lead</span>
-                 <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400"><User size={12}/></div>
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">{item.owner || 'System Admin'}</span>
-                 </div>
-              </div>
-           </div>
-           <div className="flex items-center space-x-2">
-              <button className="px-6 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase transition-all tracking-widest border border-white/5">Full Report (PDF)</button>
-              <button className="px-6 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl text-[9px] font-black uppercase transition-all tracking-widest border border-emerald-500/30">Sync Reality</button>
-           </div>
-        </div>
       </motion.div>
     </div>
   )
@@ -913,14 +995,14 @@ const LOGIC_SUGGESTIONS: any = {
   'Custom': 'Enter full custom logic script or detailed specifications here...'
 }
 
-function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
+function MonitoringForm({ item, devices, categories, severities, notificationMethods, onClose, onSuccess }: any) {
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [activeLogicId, setActiveLogicId] = useState<number | null>(null)
 
   const [formData, setFormData] = useState({
-    category: 'Hardware',
+    category: 'Infrastructure',
     status: 'Planned',
     title: '',
     spec: '',
@@ -940,6 +1022,8 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     severity: 'Warning',
     is_active: true,
     recovery_docs: [],
+    owner: '',
+    owner_id: '',
     ...item
   })
 
@@ -1069,13 +1153,13 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
               </div>
               <div>
                 <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">
-                  {item ? 'Update Logic' : 'Deploy Monitoring'}
+                  {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
                 <div className="flex items-center space-x-2 mt-0.5">
                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Infrastructure Command Interface</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${formData.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-white/10'}`}>
-                      {formData.is_active ? 'LIVE MATRIX' : 'PAUSED'}
+                      {formData.status}
                    </span>
                 </div>
               </div>
@@ -1152,7 +1236,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                         label="Category"
                         value={formData.category}
                         onChange={(e: any) => setFormData({...formData, category: e.target.value})}
-                        options={CATEGORIES.map(c => ({ value: c.value, label: c.value }))}
+                        options={categories.map((c:any) => ({ value: c.value, label: c.label }))}
                       />
                       <StyledSelect 
                         label="Status"
@@ -1160,6 +1244,27 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                         onChange={(e: any) => setFormData({...formData, status: e.target.value})}
                         options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
                       />
+                   </div>
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Owner Name</label>
+                        <input 
+                          value={formData.owner}
+                          onChange={e => setFormData({...formData, owner: e.target.value})}
+                          placeholder="Name..."
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Owner ID</label>
+                        <input 
+                          value={formData.owner_id}
+                          onChange={e => setFormData({...formData, owner_id: e.target.value})}
+                          placeholder="ID..."
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all"
+                        />
+                      </div>
                    </div>
                 </div>
 
@@ -1202,7 +1307,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                          <Info size={14}/> <span>Strategic Purpose</span>
+                          <Info size={14}/> <span>Purpose</span>
                         </label>
                         <textarea 
                           value={formData.purpose}
@@ -1214,7 +1319,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                       </div>
                       <div className="space-y-2">
                         <label className="text-[11px] font-black uppercase tracking-widest text-rose-400 flex items-center space-x-2">
-                          <Zap size={14}/> <span>Operational Impact</span>
+                          <Zap size={14}/> <span>Impact</span>
                         </label>
                         <textarea 
                           value={formData.impact}
@@ -1380,7 +1485,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                      label="Severity Level"
                      value={formData.severity}
                      onChange={(e: any) => setFormData({...formData, severity: e.target.value})}
-                     options={SEVERITIES.map(s => ({ value: s, label: s }))}
+                     options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
                    />
 
                    <div className="space-y-4 p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -1401,7 +1506,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                         label="Primary Notification Method"
                         value={formData.notification_method}
                         onChange={(e: any) => setFormData({...formData, notification_method: e.target.value})}
-                        options={NOTIFICATION_METHODS.map(m => ({ value: m, label: m }))}
+                        options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
                       />
                       
                       <div className="space-y-2">
@@ -1431,7 +1536,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                 {/* Right: Recovery Methods (Linked Knowledge) */}
                 <div className="col-span-12 sm:col-span-8 space-y-6">
                    <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2 border-b border-white/5 pb-2">
-                      <Activity size={14}/> <span>Recovery Intelligence (Linked BKM/Knowledge)</span>
+                      <Activity size={14}/> <span>Recovery Procedures (Linked BKM/Knowledge)</span>
                    </h3>
                    
                    <div className="space-y-4">
@@ -1532,7 +1637,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                 className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
               >
                 {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
-                <span>{item ? 'Commit Synchronized Logic' : 'Deploy Logic to Matrix'}</span>
+                <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
               </button>
            </div>
         </div>

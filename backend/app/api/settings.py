@@ -123,6 +123,15 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     elif opt.category == "ServiceType":
         res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value, models.LogicalService.is_deleted == False))
         if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringCategory":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.category == opt.value, models.MonitoringItem.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringSeverity":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.severity == opt.value, models.MonitoringItem.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "NotificationMethod":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.notification_method == opt.value, models.MonitoringItem.is_deleted == False))
+        if res.scalars().first(): in_use = True
         
     if in_use:
         raise HTTPException(status_code=400, detail=f"Cannot delete '{opt.label}' because it is currently assigned to one or more assets or services.")
@@ -274,6 +283,20 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("BusinessUnit", "HR", "Human Resources"),
         ("BusinessUnit", "Sales", "Sales & Business Development"),
         ("BusinessUnit", "Security", "Information Security"),
+        # Monitoring
+        ("MonitoringCategory", "Infrastructure", "Hardware and OS level monitoring"),
+        ("MonitoringCategory", "Log", "Log pattern and regex monitoring"),
+        ("MonitoringCategory", "Network", "Connectivity and latency monitoring"),
+        ("MonitoringCategory", "Application", "Application health and metrics monitoring"),
+        ("MonitoringCategory", "Synthetic", "Synthetic transactions and availability"),
+        ("MonitoringSeverity", "Critical", "Immediate action required"),
+        ("MonitoringSeverity", "Warning", "Needs attention soon"),
+        ("MonitoringSeverity", "Info", "Purely informational"),
+        ("NotificationMethod", "Email", "Standard email alerts"),
+        ("NotificationMethod", "Slack", "Instant message alerts"),
+        ("NotificationMethod", "Teams", "Instant message alerts"),
+        ("NotificationMethod", "PagerDuty", "High-priority on-call alerts"),
+        ("NotificationMethod", "Webhook", "Custom automation triggers"),
         # Semiconductor Impact Categories
         ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
         ("ImpactCategory", "Yield Degradation", "Reduced output quality"),

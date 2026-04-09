@@ -140,10 +140,13 @@ class MonitoringItemBase(BaseModel):
     notification_throttle: Optional[int] = 3600
     severity: Optional[str] = "Warning"
     is_active: Optional[bool] = True
+    is_deleted: Optional[bool] = False
     recovery_docs: Optional[List[int]] = []
+    owner_id: Optional[str] = None
 
 class MonitoringItemCreate(MonitoringItemBase): pass
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
+    is_deleted: bool = False
     device_name: Optional[str] = None
     monitored_service_names: List[str] = [] # Optional, for UI convenience
     recovery_doc_titles: List[str] = [] # For UI convenience
