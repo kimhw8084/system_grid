@@ -4,7 +4,8 @@ import {
   Activity, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
-  AlertCircle, Clock, Zap, Settings, MoreVertical, List
+  AlertCircle, Clock, Zap, Settings, MoreVertical, List,
+  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -33,7 +34,16 @@ export default function MonitoringGrid() {
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
-  const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showStyleLab, setShowStyleLab] = useState(false)
+
+  // Modals state
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<any>(null)
+  const [detailItem, setDetailItem] = useState<any>(null)
+  const [servicePopup, setServicePopup] = useState<{ names: string[], title: string } | null>(null)
+  const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
+  const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[] } | null>(null)
+  const [activeBkm, setActiveBkm] = useState<any>(null)
 
   useEffect(() => {
     if (gridRef.current?.api) {
@@ -42,8 +52,6 @@ export default function MonitoringGrid() {
   }, [fontSize, rowDensity])
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const { data: items, isLoading } = useQuery({
@@ -68,19 +76,16 @@ export default function MonitoringGrid() {
 
   const columnDefs = useMemo(() => [
     { 
-      field: "id", 
-      headerName: "", 
-      width: 50, 
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: 'text-center pl-2', 
-      headerClass: 'text-center pl-2' 
+      field: "device_name", 
+      headerName: "Target Asset", 
+      width: 150, 
+      cellClass: "text-slate-200 font-bold text-center", 
+      headerClass: 'text-center' 
     },
     { 
       field: "category", 
-      headerName: "Cat", 
-      width: 100,
+      headerName: "Category", 
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -95,84 +100,31 @@ export default function MonitoringGrid() {
       }
     },
     { 
-      field: "status", 
-      headerName: "Status", 
-      width: 100,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const style = STATUSES.find(s => s.value === p.value)?.color || 'bg-slate-500/20 text-slate-400'
-        return (
-          <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${style}`}>
-              {p.value}
-            </span>
-          </div>
-        )
-      }
-    },
-    { 
-      field: "severity", 
-      headerName: "Svr", 
-      width: 90,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-          'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-          'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-        }
-        return (
-          <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
-              {p.value}
-            </span>
-          </div>
-        )
-      }
-    },
-    { 
-      field: "is_active", 
-      headerName: "Live", 
-      width: 80,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-           <div className={`w-2 h-2 rounded-full ${p.value ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse' : 'bg-slate-600'}`} />
-        </div>
-      )
-    },
-    { 
       field: "title", 
       headerName: "Title", 
+      minWidth: 200,
       flex: 1.5, 
       cellClass: "text-blue-400 font-bold text-left", 
       headerClass: 'text-left' 
     },
-    { field: "device_name", headerName: "Target Asset", flex: 1, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
     { 
       field: "monitored_service_names", 
       headerName: "Services", 
-      flex: 1, 
+      width: 100, 
       cellClass: "text-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const names = p.value || []
-        if (names.length === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
+        const count = names.length
+        if (count === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
         return (
-          <div className="flex items-center justify-center -space-x-1 overflow-hidden h-full" title={names.join(', ')}>
-            {names.slice(0, 2).map((n: string, i: number) => (
-              <div key={i} className="px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-[8px] font-bold text-blue-300 truncate max-w-[60px]">
-                {n}
-              </div>
-            ))}
-            {names.length > 2 && (
-              <div className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[8px] font-bold text-slate-400">
-                +{names.length - 2}
-              </div>
-            )}
+          <div className="flex items-center justify-center h-full">
+            <button 
+              onClick={() => setServicePopup({ names, title: p.data.title })}
+              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[10px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            >
+              {count} {count === 1 ? 'SVC' : 'SVCS'}
+            </button>
           </div>
         )
       }
@@ -190,19 +142,75 @@ export default function MonitoringGrid() {
         </div>
       )
     },
-    {
-      headerName: "Ops",
+    { 
+      field: "severity", 
+      headerName: "Severity", 
       width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]',
+          'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+          'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+        }
+        return (
+          <div className="flex items-center justify-center h-full">
+            <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
+              {p.value}
+            </span>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "check_interval", 
+      headerName: "Check Freq", 
+      width: 100, 
+      cellClass: 'text-center text-slate-400 font-mono text-[10px]', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span>{p.value}s</span>
+    },
+    { 
+      field: "notification_method", 
+      headerName: "Notification", 
+      width: 130, 
+      cellClass: 'text-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+           <button 
+             onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
+             className="flex items-center space-x-2 hover:text-blue-400 transition-colors"
+           >
+              <Bell size={10} className="text-slate-500" />
+              <span className="text-[10px] font-black uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
+           </button>
+        </div>
+      )
+    },
+    { 
+      field: "purpose", 
+      headerName: "Purpose", 
+      flex: 1, 
+      cellClass: "text-slate-500 italic text-left truncate px-4", 
+      headerClass: 'text-left' 
+    },
+    {
+      headerName: "Actions",
+      width: 160,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 hover:bg-slate-700 hover:text-white text-slate-400 rounded-md transition-all"><Eye size={14}/></button>
+               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery BKMs" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={14}/></button>
                {p.data.monitoring_url && (
-                 <button onClick={() => window.open(p.data.monitoring_url, '_blank')} title="Monitoring Console" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
+                 <button onClick={() => window.open(p.data.monitoring_url, '_blank')} title="External Console" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
                )}
-               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Modify Logic" className="p-1.5 hover:bg-blue-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={14}/></button>
+               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-emerald-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={14}/></button>
                <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
@@ -268,9 +276,9 @@ export default function MonitoringGrid() {
         <div className="flex items-center space-x-6">
            <div>
               <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center">
-                <span>Monitoring</span>
+                <span>Monitoring Matrix</span>
               </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Observability Infrastructure & Logic Registry</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">High-Reliability Infrastructure Observability</p>
            </div>
         </div>
         
@@ -280,7 +288,7 @@ export default function MonitoringGrid() {
             <input 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="SEARCH LOGIC, PLATFORM..."
+              placeholder="SCAN MATRIX..."
               className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all"
             />
           </div>
@@ -298,7 +306,7 @@ export default function MonitoringGrid() {
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
-            + Add Monitoring
+            + Deploy Monitor
           </button>
         </div>
       </div>
@@ -315,8 +323,8 @@ export default function MonitoringGrid() {
           rowData={items || []} 
           columnDefs={columnDefs} 
           rowSelection="multiple"
-          headerHeight={fontSize + rowDensity + 8}
-          rowHeight={fontSize + rowDensity}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 8}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
           autoSizeStrategy={autoSizeStrategy}
@@ -335,6 +343,11 @@ export default function MonitoringGrid() {
             }}
           />
         )}
+        {detailItem && <MonitoringDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
+        {servicePopup && <ServicesModal names={servicePopup.names} title={servicePopup.title} onClose={() => setServicePopup(null)} />}
+        {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
+        {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
+        {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
       </AnimatePresence>
 
       <style>{`
@@ -367,6 +380,317 @@ export default function MonitoringGrid() {
     </div>
   )
 }
+
+// --- POPUP MODALS ---
+
+function ServicesModal({ names, title, onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-3xl border-blue-500/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
+        </div>
+        <p className="text-[10px] text-slate-500 font-bold uppercase mb-4 italic">Linked to: {title}</p>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+          {names.map((name: string, i: number) => (
+            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center space-x-3">
+              <Shield size={14} className="text-blue-500" />
+              <span className="text-[11px] font-bold text-slate-200">{name}</span>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function RecipientsModal({ recipients, method, onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-3xl border-emerald-500/20">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
+        </div>
+        <div className="flex items-center space-x-2 mb-4">
+          <Bell size={12} className="text-slate-500" />
+          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Method: {method}</span>
+        </div>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+          {recipients.map((r: string, i: number) => (
+            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center space-x-3 group hover:border-emerald-500/30 transition-all">
+              <Mail size={14} className="text-emerald-500" />
+              <span className="text-[11px] font-bold text-slate-200">{r}</span>
+            </div>
+          ))}
+          {recipients.length === 0 && <p className="text-center py-4 text-slate-600 italic text-[10px]">No recipients defined</p>}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-3xl border-amber-500/20">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+             <BookOpen size={20} className="text-amber-500" />
+             <h3 className="text-sm font-black uppercase text-amber-500 tracking-tight">Recovery Intelligence</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
+        </div>
+        <p className="text-[10px] text-slate-500 font-black uppercase mb-4 tracking-widest">Linked Best Known Methods (BKM)</p>
+        <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+          {ids.map((id: number, i: number) => (
+            <button 
+              key={id} 
+              onClick={() => onOpenBkm(id)}
+              className="w-full text-left bg-black/40 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
+            >
+              <div className="flex items-center space-x-4">
+                 <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                    <FileText size={16} />
+                 </div>
+                 <div>
+                    <span className="text-[11px] font-black uppercase text-slate-200 block leading-tight">{titles[i]}</span>
+                    <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
+                 </div>
+              </div>
+              <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+            </button>
+          ))}
+          {ids.length === 0 && (
+             <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-2xl">
+                <BookOpen size={24} className="text-slate-800" />
+                <p className="text-[10px] text-slate-700 font-black uppercase italic tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
+             </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function BkmDetailModal({ bkmId, onClose }: any) {
+  const { data: bkm, isLoading } = useQuery({
+    queryKey: ['knowledge-entry', bkmId],
+    queryFn: async () => (await apiFetch(`/api/v1/knowledge/${bkmId}`)).json(),
+    enabled: !!bkmId
+  })
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-[40px] border-amber-500/30">
+        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
+           <div className="flex items-center space-x-4">
+              <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 border border-amber-500/20">
+                <BookOpen size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">{bkm?.title || 'Loading Document...'}</h2>
+                <div className="flex items-center space-x-2 mt-0.5">
+                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Operational Triage Instruction</span>
+                   <span className="w-1 h-1 rounded-full bg-slate-700" />
+                   <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">BKM ID: KB-{bkmId}</span>
+                </div>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+              <X size={24} />
+           </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8">
+           {isLoading ? (
+             <div className="h-full flex flex-col items-center justify-center space-y-4">
+                <Clock size={32} className="text-amber-500 animate-spin" />
+                <span className="text-[10px] font-black uppercase text-amber-500 tracking-widest animate-pulse">Retrieving Knowledge...</span>
+             </div>
+           ) : (
+             <>
+                <div className="bg-amber-500/5 border border-amber-500/10 rounded-3xl p-6">
+                   <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center space-x-2">
+                      <Zap size={12}/> <span>Executive Summary</span>
+                   </h4>
+                   <p className="text-slate-300 font-bold leading-relaxed text-[13px]">{bkm.content || 'No content provided.'}</p>
+                </div>
+
+                {bkm.content_json?.steps?.length > 0 && (
+                  <div className="space-y-4">
+                     <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] border-l-2 border-amber-500 pl-4">Resolution Workflow</h4>
+                     <div className="space-y-4 pl-4">
+                        {bkm.content_json.steps.map((step: any, i: number) => (
+                           <div key={i} className="flex space-x-6 relative">
+                              {i < bkm.content_json.steps.length - 1 && <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-white/5" />}
+                              <div className="w-10 h-10 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center flex-shrink-0 z-10 text-[12px] font-black text-amber-500 shadow-lg">
+                                 {i + 1}
+                              </div>
+                              <div className="bg-black/20 border border-white/5 rounded-2xl p-5 flex-1 hover:border-amber-500/20 transition-all">
+                                 <h5 className="text-[11px] font-black uppercase text-slate-200 mb-1">{step.title}</h5>
+                                 <p className="text-[12px] text-slate-400 font-bold leading-relaxed">{step.description}</p>
+                              </div>
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+                )}
+             </>
+           )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function MonitoringDetailModal({ item, onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-2xl p-8">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[85vh] flex flex-col p-8 rounded-[50px] border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)]">
+        <div className="flex items-center justify-between mb-8">
+           <div className="flex items-center space-x-6">
+              <div className="w-16 h-16 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                 <Monitor size={32} strokeWidth={1.5} />
+              </div>
+              <div>
+                 <div className="flex items-center space-x-3 mb-1">
+                    <span className="px-3 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-full text-[10px] font-black uppercase text-blue-400 tracking-tighter">
+                       ID: MON-{item.id}
+                    </span>
+                    <span className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter border ${item.is_active ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
+                       {item.is_active ? 'Status: Active' : 'Status: Paused'}
+                    </span>
+                 </div>
+                 <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
+                 <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest mt-2 flex items-center">
+                    <Zap size={12} className="mr-2 text-blue-500" /> Integrated Intelligence Node
+                 </p>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 hover:text-white transition-all">
+              <X size={24} />
+           </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
+           <div className="grid grid-cols-12 gap-10">
+              <div className="col-span-8 space-y-10">
+                 <section className="space-y-4">
+                    <h3 className="text-[12px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center">
+                       <Info size={16} className="mr-3" /> Operational Context
+                    </h3>
+                    <div className="bg-white/5 border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 p-8 text-blue-500 opacity-5 group-hover:opacity-10 transition-opacity">
+                          <Activity size={120} />
+                       </div>
+                       <p className="text-[14px] font-bold text-slate-200 leading-relaxed italic border-l-4 border-blue-600 pl-6 py-2">
+                          "{item.purpose || 'No strategic purpose defined for this monitoring node.'}"
+                       </p>
+                       <div className="grid grid-cols-3 gap-6 mt-8">
+                          <div className="space-y-1">
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Target Asset</span>
+                             <p className="text-[13px] font-black text-white uppercase">{item.device_name || 'N/A'}</p>
+                          </div>
+                          <div className="space-y-1">
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Interface</span>
+                             <p className="text-[13px] font-black text-blue-400 uppercase italic">{item.platform}</p>
+                          </div>
+                          <div className="space-y-1">
+                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Intelligence Class</span>
+                             <p className="text-[13px] font-black text-emerald-400 uppercase">{item.category}</p>
+                          </div>
+                       </div>
+                    </div>
+                 </section>
+
+                 <section className="space-y-4">
+                    <h3 className="text-[12px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center">
+                       <Settings size={16} className="mr-3" /> Logic Specification
+                    </h3>
+                    <div className="bg-[#0f172a] border border-white/5 rounded-3xl p-8 font-mono text-[13px] relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/30" />
+                       <div className="flex items-center justify-between mb-6 opacity-60">
+                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center">
+                             <Zap size={12} className="mr-2"/> Logic Execution Engine v2.4
+                          </span>
+                          <span className="text-[10px] text-slate-600 uppercase font-black tracking-tighter italic">SHA-256: 8D3F...E21</span>
+                       </div>
+                       {item.logic_json?.map((log: any, idx: number) => (
+                         <div key={idx} className="mb-8 last:mb-0 group">
+                            <div className="flex items-center space-x-4 mb-3">
+                               <span className="text-[11px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/20">TYPE: {log.type}</span>
+                               <span className="text-slate-500 italic text-[11px]">{log.description}</span>
+                            </div>
+                            <pre className="text-blue-300 leading-relaxed bg-black/40 p-5 rounded-2xl border border-white/5 group-hover:border-emerald-500/20 transition-all">
+                               {log.logic_info}
+                            </pre>
+                         </div>
+                       )) || <p className="text-slate-600 italic">No complex logic defined.</p>}
+                    </div>
+                 </section>
+              </div>
+
+              <div className="col-span-4 space-y-10">
+                 <section className="space-y-4">
+                    <h3 className="text-[12px] font-black text-rose-400 uppercase tracking-[0.3em] flex items-center">
+                       <Bell size={16} className="mr-3" /> Reliability Matrix
+                    </h3>
+                    <div className="space-y-3">
+                       {[
+                          { label: 'Severity Level', value: item.severity, color: 'text-rose-400' },
+                          { label: 'Check Frequency', value: `${item.check_interval}s`, color: 'text-slate-300' },
+                          { label: 'Persistence Delay', value: `${item.alert_duration}s`, color: 'text-amber-400' },
+                          { label: 'Notify Throttle', value: `${item.notification_throttle}s`, color: 'text-blue-400' }
+                       ].map((stat, i) => (
+                         <div key={i} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/10 transition-all">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">{stat.label}</span>
+                            <span className={`text-[12px] font-black ${stat.color} uppercase tracking-tighter`}>{stat.value}</span>
+                         </div>
+                       ))}
+                    </div>
+                 </section>
+
+                 <section className="space-y-4">
+                    <h3 className="text-[12px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center">
+                       <BookOpen size={16} className="mr-3" /> Recovery Linkage
+                    </h3>
+                    <div className="space-y-3">
+                       {item.recovery_doc_titles?.map((title: string, i: number) => (
+                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-center space-x-4 hover:border-amber-500/30 transition-all cursor-pointer">
+                            <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400"><FileText size={16}/></div>
+                            <span className="text-[11px] font-black uppercase text-slate-300 tracking-tight leading-tight">{title}</span>
+                         </div>
+                       ))}
+                       {item.recovery_doc_titles?.length === 0 && (
+                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-6 text-center">
+                             <AlertCircle size={20} className="mx-auto text-rose-500 mb-3" />
+                             <p className="text-[10px] font-black text-rose-500 uppercase italic tracking-widest">No BKM Linked</p>
+                             <p className="text-[9px] text-slate-600 font-bold uppercase mt-1">MTTR impact risk detected</p>
+                          </div>
+                       )}
+                    </div>
+                 </section>
+
+                 {item.monitoring_url && (
+                    <button 
+                       onClick={() => window.open(item.monitoring_url, '_blank')}
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-[30px] font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center space-x-3"
+                    >
+                       <ExternalLink size={16} />
+                       <span>Open Platform Console</span>
+                    </button>
+                 )}
+              </div>
+           </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// --- REST OF THE FORM COMPONENT (Existing) ---
 
 const LOGIC_TYPES = ['Threshold', 'Regex', 'Query', 'Health Check', 'Log Pattern', 'Synthetic', 'Custom']
 
