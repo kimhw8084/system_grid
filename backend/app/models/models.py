@@ -264,6 +264,7 @@ class MonitoringItem(Base, BaseMixin):
     platform = Column(String) # Zabbix, Prometheus, Datadog, etc.
     monitoring_url = Column(String) # Direct clickable link
     purpose = Column(Text)
+    impact = Column(Text)
     notification_method = Column(String) # Email, Slack, PagerDuty
     notification_recipients = Column(JSON, default=list)
     logic = Column(Text) # For log-based: regex or query

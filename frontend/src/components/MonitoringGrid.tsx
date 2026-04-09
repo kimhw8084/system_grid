@@ -5,7 +5,8 @@ import {
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, MoreVertical, List,
-  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor
+  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor,
+  Download, Copy, ChevronDown, ChevronUp, Layers
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -27,6 +28,9 @@ const STATUSES = [
   { value: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' }
 ]
 
+const SEVERITIES = ['Critical', 'Warning', 'Info']
+const NOTIFICATION_METHODS = ['Email', 'Slack', 'Teams', 'PagerDuty', 'Webhook', 'SMS', 'Voice']
+
 export default function MonitoringGrid() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -35,6 +39,7 @@ export default function MonitoringGrid() {
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showRegistry, setShowRegistry] = useState(false)
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -64,6 +69,18 @@ export default function MonitoringGrid() {
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: any }) => {
+      await apiFetch(`/api/v1/monitoring/${id}`, { 
+        method: 'PUT',
+        body: JSON.stringify(data)
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+    }
+  })
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiFetch(`/api/v1/monitoring/${id}`, { method: 'DELETE' })
@@ -76,16 +93,23 @@ export default function MonitoringGrid() {
 
   const columnDefs = useMemo(() => [
     { 
+      headerCheckboxSelection: true, 
+      checkboxSelection: true, 
+      width: 50, 
+      pinned: 'left',
+      headerClass: 'ag-checkbox-header'
+    },
+    { 
       field: "device_name", 
       headerName: "Target Asset", 
-      width: 150, 
+      width: 140, 
       cellClass: "text-slate-200 font-bold text-center", 
       headerClass: 'text-center' 
     },
     { 
       field: "category", 
       headerName: "Category", 
-      width: 120,
+      width: 110,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -94,7 +118,53 @@ export default function MonitoringGrid() {
         return (
           <div className="flex items-center justify-center space-x-2 h-full">
             <Icon size={12} className={cat?.color || 'text-slate-400'} />
-            <span className="text-[10px] font-black uppercase tracking-tight text-white">{p.value}</span>
+            <span className="text-[9px] font-black uppercase tracking-tight text-white">{p.value}</span>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "status", 
+      headerName: "Status", 
+      width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const status = STATUSES.find(s => s.value === p.value)
+        return (
+          <div className="flex items-center justify-center h-full">
+            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`}>
+              {p.value}
+            </span>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "is_active", 
+      headerName: "Live", 
+      width: 80,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const isExisting = p.data.status === 'Existing'
+        const isActive = p.value
+        return (
+          <div className="flex items-center justify-center h-full">
+            <button 
+              onClick={() => {
+                if (isExisting) {
+                  updateMutation.mutate({ id: p.data.id, data: { is_active: !isActive } })
+                }
+              }}
+              disabled={!isExisting}
+              className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${isActive ? 'bg-emerald-500' : 'bg-slate-700'} ${!isExisting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <span className={`${isActive ? 'translate-x-4' : 'translate-x-1'} inline-block h-2 w-2 transform rounded-full bg-white transition-transform`} />
+              {isActive && (
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
+              )}
+            </button>
           </div>
         )
       }
@@ -102,7 +172,7 @@ export default function MonitoringGrid() {
     { 
       field: "title", 
       headerName: "Title", 
-      minWidth: 200,
+      minWidth: 180,
       flex: 1.5, 
       cellClass: "text-blue-400 font-bold text-left", 
       headerClass: 'text-left' 
@@ -110,7 +180,7 @@ export default function MonitoringGrid() {
     { 
       field: "monitored_service_names", 
       headerName: "Services", 
-      width: 100, 
+      width: 90, 
       cellClass: "text-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -121,9 +191,9 @@ export default function MonitoringGrid() {
           <div className="flex items-center justify-center h-full">
             <button 
               onClick={() => setServicePopup({ names, title: p.data.title })}
-              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[10px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[9px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
             >
-              {count} {count === 1 ? 'SVC' : 'SVCS'}
+              {count}
             </button>
           </div>
         )
@@ -132,31 +202,31 @@ export default function MonitoringGrid() {
     { 
       field: "platform", 
       headerName: "Platform", 
-      width: 120, 
+      width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-2 h-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase text-slate-300">{p.value}</span>
+          <div className="w-1 h-1 rounded-full bg-blue-500" />
+          <span className="text-[9px] font-black uppercase text-slate-300">{p.value}</span>
         </div>
       )
     },
     { 
       field: "severity", 
       headerName: "Severity", 
-      width: 100,
+      width: 90,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
-          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.1)]',
+          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/30',
           'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
           'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/30'
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
               {p.value}
             </span>
           </div>
@@ -165,26 +235,26 @@ export default function MonitoringGrid() {
     },
     { 
       field: "check_interval", 
-      headerName: "Check Freq", 
-      width: 100, 
-      cellClass: 'text-center text-slate-400 font-mono text-[10px]', 
+      headerName: "Freq", 
+      width: 70, 
+      cellClass: 'text-center text-slate-400 font-mono text-[9px]', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span>{p.value}s</span>
     },
     { 
       field: "notification_method", 
-      headerName: "Notification", 
-      width: 130, 
+      headerName: "Notify", 
+      width: 100, 
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
            <button 
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
-             className="flex items-center space-x-2 hover:text-blue-400 transition-colors"
+             className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
               <Bell size={10} className="text-slate-500" />
-              <span className="text-[10px] font-black uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
+              <span className="text-[9px] font-black uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
            </button>
         </div>
       )
@@ -193,34 +263,45 @@ export default function MonitoringGrid() {
       field: "purpose", 
       headerName: "Purpose", 
       flex: 1, 
-      cellClass: "text-slate-500 italic text-left truncate px-4", 
+      cellClass: "text-slate-500 italic text-left truncate px-4 text-[10px]", 
       headerClass: 'text-left' 
     },
     {
       headerName: "Actions",
-      width: 160,
+      width: 150,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 hover:bg-slate-700 hover:text-white text-slate-400 rounded-md transition-all"><Eye size={14}/></button>
-               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery BKMs" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={14}/></button>
-               {p.data.monitoring_url && (
-                 <button onClick={() => window.open(p.data.monitoring_url, '_blank')} title="External Console" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
-               )}
-               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-emerald-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={14}/></button>
-               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={14}/></button>
+               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 hover:bg-slate-700 hover:text-white text-slate-400 rounded-md transition-all"><Eye size={12}/></button>
+               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery BKMs" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={12}/></button>
+               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-emerald-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={12}/></button>
+               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
            </div>
         </div>
       )
     }
-  ], []) as any
+  ], [updateMutation]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
+  const exportCsv = () => {
+    gridRef.current.api.exportDataAsCsv({
+      fileName: `monitoring_matrix_${new Date().toISOString().split('T')[0]}.csv`
+    })
+    toast.success('Matrix exported to CSV')
+  }
+
+  const copyToClipboard = () => {
+    const selectedRows = gridRef.current.api.getSelectedRows()
+    if (selectedRows.length === 0) {
+      toast.error('Select rows to copy')
+      return
+    }
+    const text = selectedRows.map((r: any) => `${r.device_name} | ${r.title} | ${r.status}`).join('\n')
+    navigator.clipboard.writeText(text)
+    toast.success('Copied to clipboard')
+  }
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -297,7 +378,13 @@ export default function MonitoringGrid() {
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Config">
+             <button onClick={exportCsv} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Export CSV">
+                <Download size={16} />
+             </button>
+             <button onClick={copyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Copy Selected">
+                <Copy size={16} />
+             </button>
+             <button onClick={() => setShowRegistry(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
                 <Settings size={16} />
              </button>
           </div>
@@ -327,7 +414,24 @@ export default function MonitoringGrid() {
           rowHeight={fontSize + rowDensity + 8}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
-          autoSizeStrategy={autoSizeStrategy}
+          suppressRowClickSelection={true}
+          sideBar={{
+            toolPanels: [
+              {
+                id: 'columns',
+                labelDefault: 'Columns',
+                labelKey: 'columns',
+                iconKey: 'columns',
+                toolPanel: 'agColumnsToolPanel',
+                toolPanelParams: {
+                  suppressRowGroups: true,
+                  suppressValues: true,
+                  suppressPivots: true,
+                  suppressPivotMode: true,
+                },
+              },
+            ],
+          }}
         />
       </div>
 
@@ -348,6 +452,7 @@ export default function MonitoringGrid() {
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
+        {showRegistry && <RegistryConfigModal onClose={() => setShowRegistry(false)} />}
       </AnimatePresence>
 
       <style>{`
@@ -376,12 +481,90 @@ export default function MonitoringGrid() {
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
       `}</style>
     </div>
   )
 }
 
 // --- POPUP MODALS ---
+
+function RegistryConfigModal({ onClose }: any) {
+  return (
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl p-8 rounded-[40px] border-blue-500/20">
+        <div className="flex items-center justify-between mb-8">
+           <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400 border border-blue-500/20">
+                <Settings size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Registry Configuration</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Global Monitoring Standards</p>
+              </div>
+           </div>
+           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={24}/></button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8">
+           <div className="space-y-6">
+              <div>
+                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
+                    <Layers size={12}/> <span>Categories</span>
+                 </h4>
+                 <div className="space-y-2">
+                    {CATEGORIES.map(c => (
+                       <div key={c.value} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                             <c.icon size={14} className={c.color} />
+                             <span className="text-[11px] font-bold text-slate-200">{c.value}</span>
+                          </div>
+                          <Edit2 size={12} className="text-slate-600 cursor-pointer hover:text-white transition-colors" />
+                       </div>
+                    ))}
+                    <button className="w-full py-2 border border-dashed border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:border-blue-500/30 hover:text-blue-400 transition-all">+ Add Category</button>
+                 </div>
+              </div>
+           </div>
+
+           <div className="space-y-6">
+              <div>
+                 <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
+                    <AlertCircle size={12}/> <span>Severity Levels</span>
+                 </h4>
+                 <div className="space-y-2">
+                    {SEVERITIES.map(s => (
+                       <div key={s} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-200">{s}</span>
+                          <Edit2 size={12} className="text-slate-600 cursor-pointer hover:text-white transition-colors" />
+                       </div>
+                    ))}
+                    <button className="w-full py-2 border border-dashed border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:border-rose-500/30 hover:text-rose-400 transition-all">+ Add Severity</button>
+                 </div>
+              </div>
+
+              <div>
+                 <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center space-x-2">
+                    <Bell size={12}/> <span>Notification Methods</span>
+                 </h4>
+                 <div className="grid grid-cols-2 gap-2">
+                    {NOTIFICATION_METHODS.map(m => (
+                       <div key={m} className="bg-white/5 border border-white/5 p-2 rounded-lg flex items-center justify-center">
+                          <span className="text-[9px] font-black uppercase text-slate-400">{m}</span>
+                       </div>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        </div>
+        
+        <div className="mt-8 pt-6 border-t border-white/5 flex justify-end">
+           <button onClick={onClose} className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all">Close Registry</button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
 
 function ServicesModal({ names, title, onClose }: any) {
   return (
@@ -546,27 +729,30 @@ function BkmDetailModal({ bkmId, onClose }: any) {
 }
 
 function MonitoringDetailModal({ item, onClose }: any) {
+  const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
+
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-2xl p-8">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[85vh] flex flex-col p-8 rounded-[50px] border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)]">
-        <div className="flex items-center justify-between mb-8">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-8">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-10 rounded-[40px] border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)] relative">
+        {/* Background Accent */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600/5 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
+
+        <div className="flex items-center justify-between mb-8 relative z-10">
            <div className="flex items-center space-x-6">
-              <div className="w-16 h-16 rounded-3xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
-                 <Monitor size={32} strokeWidth={1.5} />
+              <div className="w-14 h-14 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                 <Monitor size={28} strokeWidth={1.5} />
               </div>
               <div>
                  <div className="flex items-center space-x-3 mb-1">
-                    <span className="px-3 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-full text-[10px] font-black uppercase text-blue-400 tracking-tighter">
-                       ID: MON-{item.id}
+                    <span className="px-3 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-full text-[9px] font-black uppercase text-blue-400 tracking-tighter">
+                       NODE: MON-{item.id}
                     </span>
-                    <span className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter border ${item.is_active ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-700 text-slate-400'}`}>
-                       {item.is_active ? 'Status: Active' : 'Status: Paused'}
+                    <span className={`px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border ${item.is_active ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-700/50 border-white/10 text-slate-500'}`}>
+                       {item.is_active ? 'Live Telemetry' : 'Standby Mode'}
                     </span>
                  </div>
-                 <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
-                 <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest mt-2 flex items-center">
-                    <Zap size={12} className="mr-2 text-blue-500" /> Integrated Intelligence Node
-                 </p>
+                 <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
               </div>
            </div>
            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 hover:text-white transition-all">
@@ -574,100 +760,107 @@ function MonitoringDetailModal({ item, onClose }: any) {
            </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
-           <div className="grid grid-cols-12 gap-10">
-              <div className="col-span-8 space-y-10">
-                 <section className="space-y-4">
-                    <h3 className="text-[12px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center">
-                       <Info size={16} className="mr-3" /> Operational Context
-                    </h3>
-                    <div className="bg-white/5 border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
-                       <div className="absolute top-0 right-0 p-8 text-blue-500 opacity-5 group-hover:opacity-10 transition-opacity">
-                          <Activity size={120} />
-                       </div>
-                       <p className="text-[14px] font-bold text-slate-200 leading-relaxed italic border-l-4 border-blue-600 pl-6 py-2">
-                          "{item.purpose || 'No strategic purpose defined for this monitoring node.'}"
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10">
+           <div className="grid grid-cols-1 sm:grid-cols-12 gap-8">
+              <div className="sm:col-span-7 space-y-8">
+                 {/* Purpose & Impact */}
+                 <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-blue-600/5 border border-white/5 rounded-3xl p-5 group hover:border-blue-500/20 transition-all">
+                       <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                          <Info size={12}/> <span>Strategic Purpose</span>
+                       </h4>
+                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
+                          {item.purpose || 'No strategic purpose defined.'}
                        </p>
-                       <div className="grid grid-cols-3 gap-6 mt-8">
-                          <div className="space-y-1">
-                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Target Asset</span>
-                             <p className="text-[13px] font-black text-white uppercase">{item.device_name || 'N/A'}</p>
-                          </div>
-                          <div className="space-y-1">
-                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Interface</span>
-                             <p className="text-[13px] font-black text-blue-400 uppercase italic">{item.platform}</p>
-                          </div>
-                          <div className="space-y-1">
-                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Intelligence Class</span>
-                             <p className="text-[13px] font-black text-emerald-400 uppercase">{item.category}</p>
-                          </div>
-                       </div>
+                    </div>
+                    <div className="bg-rose-600/5 border border-white/5 rounded-3xl p-5 group hover:border-rose-500/20 transition-all">
+                       <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                          <Zap size={12}/> <span>Operational Impact</span>
+                       </h4>
+                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
+                          {item.impact || 'No impact analysis defined.'}
+                       </p>
                     </div>
                  </section>
 
-                 <section className="space-y-4">
-                    <h3 className="text-[12px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center">
-                       <Settings size={16} className="mr-3" /> Logic Specification
+                 {/* Logic Specification */}
+                 <section className="space-y-3">
+                    <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center px-1">
+                       <Settings size={14} className="mr-3" /> Logic Specification Dropdown
                     </h3>
-                    <div className="bg-[#0f172a] border border-white/5 rounded-3xl p-8 font-mono text-[13px] relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/30" />
-                       <div className="flex items-center justify-between mb-6 opacity-60">
-                          <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center">
-                             <Zap size={12} className="mr-2"/> Logic Execution Engine v2.4
-                          </span>
-                          <span className="text-[10px] text-slate-600 uppercase font-black tracking-tighter italic">SHA-256: 8D3F...E21</span>
-                       </div>
-                       {item.logic_json?.map((log: any, idx: number) => (
-                         <div key={idx} className="mb-8 last:mb-0 group">
-                            <div className="flex items-center space-x-4 mb-3">
-                               <span className="text-[11px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/20">TYPE: {log.type}</span>
-                               <span className="text-slate-500 italic text-[11px]">{log.description}</span>
-                            </div>
-                            <pre className="text-blue-300 leading-relaxed bg-black/40 p-5 rounded-2xl border border-white/5 group-hover:border-emerald-500/20 transition-all">
-                               {log.logic_info}
-                            </pre>
+                    <div className="space-y-3">
+                       {item.logic_json?.map((log: any) => (
+                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-2xl overflow-hidden transition-all hover:border-emerald-500/20">
+                            <button 
+                               onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
+                               className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
+                            >
+                               <div className="flex items-center space-x-4">
+                                  <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-tighter">TYPE: {log.type}</span>
+                                  <span className="text-slate-300 font-bold text-[11px] uppercase tracking-tight">{log.description}</span>
+                               </div>
+                               {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                            </button>
+                            <AnimatePresence>
+                               {expandedLogic === log.id && (
+                                 <motion.div 
+                                    initial={{ height: 0 }} 
+                                    animate={{ height: 'auto' }} 
+                                    exit={{ height: 0 }} 
+                                    className="overflow-hidden bg-black/40 border-t border-white/5"
+                                 >
+                                    <pre className="p-5 font-mono text-[12px] text-blue-300 leading-relaxed overflow-x-auto custom-scrollbar">
+                                       {log.logic_info}
+                                    </pre>
+                                 </motion.div>
+                               )}
+                            </AnimatePresence>
                          </div>
-                       )) || <p className="text-slate-600 italic">No complex logic defined.</p>}
+                       ))}
                     </div>
                  </section>
               </div>
 
-              <div className="col-span-4 space-y-10">
-                 <section className="space-y-4">
-                    <h3 className="text-[12px] font-black text-rose-400 uppercase tracking-[0.3em] flex items-center">
-                       <Bell size={16} className="mr-3" /> Reliability Matrix
+              <div className="sm:col-span-5 space-y-8">
+                 {/* Reliability Matrix */}
+                 <section className="space-y-3">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center px-1">
+                       <Bell size={14} className="mr-3" /> Reliability Matrix
                     </h3>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
                        {[
-                          { label: 'Severity Level', value: item.severity, color: 'text-rose-400' },
-                          { label: 'Check Frequency', value: `${item.check_interval}s`, color: 'text-slate-300' },
-                          { label: 'Persistence Delay', value: `${item.alert_duration}s`, color: 'text-amber-400' },
-                          { label: 'Notify Throttle', value: `${item.notification_throttle}s`, color: 'text-blue-400' }
+                          { label: 'Severity', value: item.severity, color: 'text-rose-400', icon: Shield },
+                          { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
+                          { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
+                          { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
                        ].map((stat, i) => (
-                         <div key={i} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between hover:bg-white/10 transition-all">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">{stat.label}</span>
+                         <div key={i} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
+                            <div className="flex items-center justify-between mb-2">
+                               <stat.icon size={12} className="text-slate-600" />
+                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
+                            </div>
                             <span className={`text-[12px] font-black ${stat.color} uppercase tracking-tighter`}>{stat.value}</span>
                          </div>
                        ))}
                     </div>
                  </section>
 
-                 <section className="space-y-4">
-                    <h3 className="text-[12px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center">
-                       <BookOpen size={16} className="mr-3" /> Recovery Linkage
+                 {/* Recovery Linkage */}
+                 <section className="space-y-3">
+                    <h3 className="text-[11px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center px-1">
+                       <BookOpen size={14} className="mr-3" /> Recovery Intel
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                        {item.recovery_doc_titles?.map((title: string, i: number) => (
-                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-center space-x-4 hover:border-amber-500/30 transition-all cursor-pointer">
-                            <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400"><FileText size={16}/></div>
-                            <span className="text-[11px] font-black uppercase text-slate-300 tracking-tight leading-tight">{title}</span>
+                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group">
+                            <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
+                            <span className="text-[10px] font-black uppercase text-slate-300 tracking-tight leading-tight">{title}</span>
                          </div>
                        ))}
                        {item.recovery_doc_titles?.length === 0 && (
-                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-6 text-center">
-                             <AlertCircle size={20} className="mx-auto text-rose-500 mb-3" />
-                             <p className="text-[10px] font-black text-rose-500 uppercase italic tracking-widest">No BKM Linked</p>
-                             <p className="text-[9px] text-slate-600 font-bold uppercase mt-1">MTTR impact risk detected</p>
+                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4 text-center">
+                             <AlertCircle size={18} className="mx-auto text-rose-500 mb-2" />
+                             <p className="text-[10px] font-black text-rose-500 uppercase italic">No BKM Linked</p>
                           </div>
                        )}
                     </div>
@@ -676,13 +869,29 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  {item.monitoring_url && (
                     <button 
                        onClick={() => window.open(item.monitoring_url, '_blank')}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-[30px] font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center space-x-3"
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
                     >
-                       <ExternalLink size={16} />
+                       <ExternalLink size={14} />
                        <span>Open Platform Console</span>
                     </button>
                  )}
               </div>
+           </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-center relative z-10">
+           <div className="flex items-center space-x-4">
+              <div className="flex flex-col">
+                 <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 italic">Reporting Lead</span>
+                 <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-400"><User size={12}/></div>
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">{item.owner || 'System Admin'}</span>
+                 </div>
+              </div>
+           </div>
+           <div className="flex items-center space-x-2">
+              <button className="px-6 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase transition-all tracking-widest border border-white/5">Full Report (PDF)</button>
+              <button className="px-6 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-xl text-[9px] font-black uppercase transition-all tracking-widest border border-emerald-500/30">Sync Reality</button>
            </div>
         </div>
       </motion.div>
@@ -690,7 +899,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
   )
 }
 
-// --- REST OF THE FORM COMPONENT (Existing) ---
+// --- REST OF THE FORM COMPONENT ---
 
 const LOGIC_TYPES = ['Threshold', 'Regex', 'Query', 'Health Check', 'Log Pattern', 'Synthetic', 'Custom']
 
@@ -718,6 +927,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     platform: 'Zabbix',
     monitoring_url: '',
     purpose: '',
+    impact: '',
     notification_method: 'Email',
     notification_recipients: [],
     logic: '',
@@ -732,6 +942,17 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     recovery_docs: [],
     ...item
   })
+
+  // Sync is_active with status
+  useEffect(() => {
+    if (!item) { // Only for new items or when status explicitly changes
+       if (formData.status === 'Existing') {
+         setFormData(prev => ({ ...prev, is_active: true }))
+       } else {
+         setFormData(prev => ({ ...prev, is_active: false }))
+       }
+    }
+  }, [formData.status, item])
 
   // Initialize activeLogicId if entries exist
   useEffect(() => {
@@ -834,14 +1055,14 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 sm:p-10">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-7xl h-[90vh] overflow-hidden flex flex-col p-8 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
+        className="glass-panel w-full max-w-7xl h-full sm:h-[90vh] overflow-hidden flex flex-col p-6 sm:p-8 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-6 mb-6 gap-4">
            <div className="flex items-center space-x-4">
               <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400 border border-blue-500/20">
                 <Zap size={20} />
@@ -869,7 +1090,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                 <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   {tab.label}
                 </button>
@@ -884,7 +1105,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-8 p-2">
-                <div className="col-span-4 space-y-6">
+                <div className="col-span-12 sm:col-span-4 space-y-6">
                    <div className="space-y-4">
                       <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 border-l-2 border-blue-600 pl-3">Target Identification</h3>
                       <StyledSelect 
@@ -942,7 +1163,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                    </div>
                 </div>
 
-                <div className="col-span-8 space-y-6">
+                <div className="col-span-12 sm:col-span-8 space-y-6">
                    <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Title</label>
@@ -978,24 +1199,38 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                       </div>
                    </div>
 
-                   <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2">
-                         <Info size={14}/> <span>Business Purpose & Operational Impact</span>
-                      </label>
-                      <textarea 
-                        value={formData.purpose}
-                        onChange={e => setFormData({...formData, purpose: e.target.value})}
-                        placeholder="Why is this being monitored? What is the impact of failure?"
-                        rows={6}
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
-                      />
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                          <Info size={14}/> <span>Strategic Purpose</span>
+                        </label>
+                        <textarea 
+                          value={formData.purpose}
+                          onChange={e => setFormData({...formData, purpose: e.target.value})}
+                          placeholder="Why are we monitoring this? How does it help the team?"
+                          rows={4}
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase tracking-widest text-rose-400 flex items-center space-x-2">
+                          <Zap size={14}/> <span>Operational Impact</span>
+                        </label>
+                        <textarea 
+                          value={formData.impact}
+                          onChange={e => setFormData({...formData, impact: e.target.value})}
+                          placeholder="What does it mean if this alert notifies? What is the consequence?"
+                          rows={4}
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
+                        />
+                      </div>
                    </div>
                 </div>
              </div>
            ) : activeTab === 'logic' ? (
              <div className="grid grid-cols-12 gap-8 p-2 h-full min-h-[500px]">
                 {/* Left: Logic Entry Selection */}
-                <div className="col-span-4 space-y-4">
+                <div className="col-span-12 sm:col-span-4 space-y-4">
                    <div className="flex items-center justify-between">
                       <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-2">
                          <Settings size={14}/> <span>Logic Entries</span>
@@ -1070,7 +1305,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                 </div>
 
                 {/* Right: Detailed Logic Editor */}
-                <div className="col-span-8 flex flex-col space-y-4 h-full">
+                <div className="col-span-12 sm:col-span-8 flex flex-col space-y-4 h-full">
                    {activeLogicEntry ? (
                      <>
                         <div className="grid grid-cols-2 gap-4">
@@ -1102,7 +1337,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                               </button>
                            </div>
                            
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex font-mono text-[12px] shadow-inner relative group">
+                           <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex font-mono text-[12px] shadow-inner relative group min-h-[200px]">
                               {showLineNumbers && (
                                 <div className="bg-white/5 border-r border-white/10 px-3 py-4 text-slate-600 text-right select-none whitespace-pre leading-relaxed min-w-[40px]">
                                    {activeLogicEntry.logic_info.split('\n').map((_, i) => i + 1).join('\n')}
@@ -1138,14 +1373,14 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
            ) : (
              <div className="grid grid-cols-12 gap-8 p-2">
                 {/* Left: Severity & Throttling */}
-                <div className="col-span-4 space-y-6">
+                <div className="col-span-12 sm:col-span-4 space-y-6">
                    <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-400 border-l-2 border-amber-600 pl-3">Alert Routing Rules</h3>
                    
                    <StyledSelect 
                      label="Severity Level"
                      value={formData.severity}
                      onChange={(e: any) => setFormData({...formData, severity: e.target.value})}
-                     options={['Critical', 'Warning', 'Info'].map(s => ({ value: s, label: s }))}
+                     options={SEVERITIES.map(s => ({ value: s, label: s }))}
                    />
 
                    <div className="space-y-4 p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -1166,7 +1401,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                         label="Primary Notification Method"
                         value={formData.notification_method}
                         onChange={(e: any) => setFormData({...formData, notification_method: e.target.value})}
-                        options={['Email', 'Slack', 'Teams', 'PagerDuty', 'Webhook', 'SMS', 'Voice'].map(m => ({ value: m, label: m }))}
+                        options={NOTIFICATION_METHODS.map(m => ({ value: m, label: m }))}
                       />
                       
                       <div className="space-y-2">
@@ -1194,7 +1429,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                 </div>
 
                 {/* Right: Recovery Methods (Linked Knowledge) */}
-                <div className="col-span-8 space-y-6">
+                <div className="col-span-12 sm:col-span-8 space-y-6">
                    <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2 border-b border-white/5 pb-2">
                       <Activity size={14}/> <span>Recovery Intelligence (Linked BKM/Knowledge)</span>
                    </h3>
@@ -1222,7 +1457,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                             />
                          </div>
 
-                         <div className="grid grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                             {filteredKnowledge?.map((entry: any) => (
                                <button
                                  key={entry.id}
@@ -1269,15 +1504,20 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
            )}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-white/10 flex justify-between items-center">
+        <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
            <div className="flex items-center space-x-2">
               <button 
-                onClick={() => setFormData({...formData, is_active: !formData.is_active})}
+                onClick={() => {
+                  if (formData.status === 'Existing') {
+                    setFormData({...formData, is_active: !formData.is_active})
+                  }
+                }}
+                disabled={formData.status !== 'Existing'}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all ${
                   formData.is_active 
                     ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
                     : 'bg-slate-500/10 border-white/10 text-slate-500 hover:bg-white/5 hover:text-white'
-                }`}
+                } ${formData.status !== 'Existing' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div className={`w-2 h-2 rounded-full ${formData.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                 <span className="text-[10px] font-black uppercase tracking-widest">{formData.is_active ? 'Monitor Active' : 'Monitor Paused'}</span>
@@ -1285,11 +1525,11 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
            </div>
 
            <div className="flex space-x-4">
-              <button onClick={onClose} className="px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all">Abort</button>
+              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
               <button 
                 onClick={() => mutation.mutate(formData)}
                 disabled={mutation.isPending}
-                className="px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
+                className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
               >
                 {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
                 <span>{item ? 'Commit Synchronized Logic' : 'Deploy Logic to Matrix'}</span>

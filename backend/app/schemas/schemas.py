@@ -126,6 +126,7 @@ class MonitoringItemBase(BaseModel):
     platform: Optional[str] = None # Zabbix, Prometheus, Datadog, etc.
     monitoring_url: Optional[str] = None # Direct clickable link
     purpose: Optional[str] = None
+    impact: Optional[str] = None
     notification_method: Optional[str] = None # Email, Slack, PagerDuty
     notification_recipients: Optional[List[str]] = []
     logic: Optional[str] = None # For log-based: regex or query
