@@ -34,6 +34,10 @@ async def get_monitoring_items(device_id: Optional[int] = None, db: AsyncSession
             svc_res = await db.execute(select(models.LogicalService.name).filter(models.LogicalService.id.in_(item.monitored_services)))
             resp.monitored_service_names = list(svc_res.scalars().all())
             
+        if item.recovery_docs:
+            doc_res = await db.execute(select(models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(item.recovery_docs)))
+            resp.recovery_doc_titles = list(doc_res.scalars().all())
+            
         res.append(resp)
         
     return res
@@ -53,6 +57,10 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
     if db_obj.monitored_services:
         svc_res = await db.execute(select(models.LogicalService.name).filter(models.LogicalService.id.in_(db_obj.monitored_services)))
         resp.monitored_service_names = list(svc_res.scalars().all())
+        
+    if db_obj.recovery_docs:
+        doc_res = await db.execute(select(models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(db_obj.recovery_docs)))
+        resp.recovery_doc_titles = list(doc_res.scalars().all())
         
     return resp
 
@@ -77,6 +85,10 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     if item.monitored_services:
         svc_res = await db.execute(select(models.LogicalService.name).filter(models.LogicalService.id.in_(item.monitored_services)))
         resp.monitored_service_names = list(svc_res.scalars().all())
+        
+    if item.recovery_docs:
+        doc_res = await db.execute(select(models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(item.recovery_docs)))
+        resp.recovery_doc_titles = list(doc_res.scalars().all())
         
     return resp
 

@@ -271,6 +271,14 @@ class MonitoringItem(Base, BaseMixin):
     owner = Column(String)
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
     
+    # Reliability & Frequency Controls
+    check_interval = Column(Integer, default=60) # Seconds
+    alert_duration = Column(Integer, default=0) # Seconds before alerting
+    notification_throttle = Column(Integer, default=3600) # Seconds between re-alerts
+    severity = Column(String, default="Warning") # Critical, Warning, Info
+    is_active = Column(Boolean, default=True)
+    recovery_docs = Column(JSON, default=list) # List of KnowledgeEntry IDs
+    
     device = relationship("Device", back_populates="monitoring_items")
 
 class FirewallRule(Base, BaseMixin):

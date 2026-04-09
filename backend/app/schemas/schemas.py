@@ -132,11 +132,20 @@ class MonitoringItemBase(BaseModel):
     logic_json: Optional[List[Dict[str, Any]]] = []
     owner: Optional[str] = None
     monitored_services: List[int] = []
+    
+    # New Fields
+    check_interval: Optional[int] = 60
+    alert_duration: Optional[int] = 0
+    notification_throttle: Optional[int] = 3600
+    severity: Optional[str] = "Warning"
+    is_active: Optional[bool] = True
+    recovery_docs: Optional[List[int]] = []
 
 class MonitoringItemCreate(MonitoringItemBase): pass
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     device_name: Optional[str] = None
     monitored_service_names: List[str] = [] # Optional, for UI convenience
+    recovery_doc_titles: List[str] = [] # For UI convenience
 
 class ServiceSecretBase(BaseModel):
     username: Optional[str] = None
