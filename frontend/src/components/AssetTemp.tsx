@@ -1952,6 +1952,100 @@ const SecurityTab = ({ device }: { device: any }) => {
   )
 }
 
+const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
+  const { data: items, isLoading } = useQuery({
+    queryKey: ['device-monitoring', deviceId],
+    queryFn: async () => (await apiFetch(`/api/v1/monitoring/?device_id=${deviceId}`)).json()
+  })
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between px-2">
+         <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Active Monitoring Logic</h3>
+      </div>
+      
+      {isLoading ? (
+        <div className="py-20 text-center text-slate-500"><RefreshCcw className="animate-spin mx-auto mb-4" /> <span className="text-[10px] font-black uppercase tracking-widest">Scanning Logic Matrix...</span></div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {items?.map((item: any) => (
+            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-blue-500/30 transition-all group">
+              <div className="flex items-start justify-between mb-6">
+                 <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-blue-600/10 rounded-xl text-blue-400 border border-blue-500/20">
+                       <Activity size={20} />
+                    </div>
+                    <div>
+                       <h4 className="text-sm font-black text-white uppercase tracking-tight">{item.title}</h4>
+                       <div className="flex items-center space-x-3 mt-1">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{item.category} // {item.platform}</span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                             item.status === 'Existing' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                             'text-blue-400 border-blue-500/20 bg-blue-500/5'
+                          }`}>{item.status}</span>
+                       </div>
+                    </div>
+                 </div>
+                 {item.monitoring_url && (
+                    <button onClick={() => window.open(item.monitoring_url, '_blank')} className="p-2 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/10 transition-all">
+                       <ExternalLink size={16} />
+                    </button>
+                 )}
+              </div>
+
+              <div className="space-y-4">
+                 {item.logic_json?.length > 0 ? (
+                    <div className="bg-black/40 rounded-xl border border-white/5 overflow-hidden">
+                       <table className="w-full text-[10px]">
+                          <thead className="bg-white/5 border-b border-white/5">
+                             <tr>
+                                <th className="px-4 py-2 text-left font-black uppercase text-slate-500">Logic Type</th>
+                                <th className="px-4 py-2 text-left font-black uppercase text-slate-500">Trigger / Description</th>
+                                <th className="px-4 py-2 text-left font-black uppercase text-slate-500">Technical Parameters</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                             {item.logic_json.map((l: any, idx: number) => (
+                                <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                   <td className="px-4 py-2 font-bold text-blue-400 uppercase">{l.type}</td>
+                                   <td className="px-4 py-2 text-slate-300 font-bold">{l.description}</td>
+                                   <td className="px-4 py-2 font-mono text-indigo-400">{l.parameters}</td>
+                                </tr>
+                             ))}
+                          </tbody>
+                       </table>
+                    </div>
+                 ) : (
+                    <div className="p-4 bg-black/20 rounded-xl border border-dashed border-white/10 text-center">
+                       <p className="text-[9px] font-bold text-slate-600 uppercase italic">No structured logic entries defined</p>
+                    </div>
+                 )}
+
+                 <div className="flex items-start justify-between pt-2 border-t border-white/5">
+                    <div className="space-y-1">
+                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Notification Path</p>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase">{item.notification_method} // {item.notification_recipients?.join(', ') || 'Global NOC'}</p>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Owner / Point of Contact</p>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase">{item.owner || 'System Engineering'}</p>
+                    </div>
+                 </div>
+              </div>
+            </div>
+          ))}
+          {!items?.length && (
+            <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center justify-center space-y-4">
+               <div className="p-6 bg-white/5 rounded-full opacity-20"><Activity size={48} /></div>
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600 italic">No monitoring logic bound to this asset</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
     const [tab, setTab] = useState('hardware')
     const queryClient = useQueryClient()
@@ -1972,7 +2066,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'metadata'].map(t => (
+                    {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
                         <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
@@ -1997,6 +2091,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                 )}
                 {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
                 {tab === 'security' && <SecurityTab device={device} />}
+                {tab === 'monitoring' && <MonitoringTab deviceId={device.id} />}
             </div>
         </div>
     )

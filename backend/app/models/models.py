@@ -262,10 +262,12 @@ class MonitoringItem(Base, BaseMixin):
     title = Column(String) # What's being monitored
     spec = Column(Text) # Details/Thresholds
     platform = Column(String) # Zabbix, Prometheus, Datadog, etc.
-    external_link = Column(String) # Direct clickable link
+    monitoring_url = Column(String) # Direct clickable link
     purpose = Column(Text)
     notification_method = Column(String) # Email, Slack, PagerDuty
+    notification_recipients = Column(JSON, default=list)
     logic = Column(Text) # For log-based: regex or query
+    logic_json = Column(JSON, default=list) # Structured logic entries
     owner = Column(String)
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
     

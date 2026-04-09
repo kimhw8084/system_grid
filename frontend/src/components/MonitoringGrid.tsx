@@ -28,6 +28,19 @@ const STATUSES = [
 
 export default function MonitoringGrid() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  
+  // --- STYLE LABORATORY STATE ---
+  const [fontSize, setFontSize] = useState(11)
+  const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 50)
+    }
+  }, [fontSize, rowDensity])
+
   const [searchTerm, setSearchTerm] = useState('')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
@@ -54,11 +67,20 @@ export default function MonitoringGrid() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
+    { 
+      field: "id", 
+      headerName: "", 
+      width: 50, 
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'text-center pl-2', 
+      headerClass: 'text-center pl-2' 
+    },
     { 
       field: "category", 
       headerName: "Cat", 
-      width: 130,
+      width: 100,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -89,7 +111,14 @@ export default function MonitoringGrid() {
         )
       }
     },
-    { field: "device_name", headerName: "Target", flex: 1, cellClass: "text-blue-400 font-bold text-center", headerClass: 'text-center' },
+    { 
+      field: "title", 
+      headerName: "Monitoring Title", 
+      flex: 1.5, 
+      cellClass: "text-blue-400 font-bold text-left", 
+      headerClass: 'text-left' 
+    },
+    { field: "device_name", headerName: "Target Asset", flex: 1, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
     { 
       field: "monitored_service_names", 
       headerName: "Services", 
@@ -115,7 +144,6 @@ export default function MonitoringGrid() {
         )
       }
     },
-    { field: "title", headerName: "Intent", flex: 1.5, cellClass: "text-slate-200 font-bold text-center", headerClass: 'text-center' },
     { 
       field: "platform", 
       headerName: "Platform", 
@@ -138,19 +166,71 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               {p.data.external_link && (
-                 <button onClick={() => window.open(p.data.external_link, '_blank')} title="External Link" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
+               {p.data.monitoring_url && (
+                 <button onClick={() => window.open(p.data.monitoring_url, '_blank')} title="Monitoring Console" className="p-1.5 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md transition-all"><ExternalLink size={14}/></button>
                )}
-               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
-               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
+               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Modify Logic" className="p-1.5 hover:bg-blue-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={14}/></button>
+               <button onClick={() => deleteMutation.mutate(p.data.id)} title="Decommission" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
       )
     }
   ], []) as any
 
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
+
   return (
     <div className="h-full flex flex-col space-y-4">
+      {/* STYLE LABORATORY BAR */}
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -172,7 +252,10 @@ export default function MonitoringGrid() {
             />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
+                <Activity size={16} />
+             </button>
              <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Config">
                 <Settings size={16} />
              </button>
@@ -195,13 +278,15 @@ export default function MonitoringGrid() {
           </div>
         )}
         <AgGridReact 
+          ref={gridRef}
           rowData={items || []} 
           columnDefs={columnDefs} 
           rowSelection="multiple"
-          headerHeight={28}
-          rowHeight={28}
+          headerHeight={fontSize + rowDensity + 8}
+          rowHeight={fontSize + rowDensity}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
+          autoSizeStrategy={autoSizeStrategy}
         />
       </div>
 
@@ -221,36 +306,56 @@ export default function MonitoringGrid() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
+          --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; padding-right: 8px !important; line-height: 28px !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+            font-weight: 700 !important;
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )
 }
 
+const LOGIC_TYPES = ['Threshold', 'Regex', 'Query', 'Health Check', 'Log Pattern', 'Synthetic', 'Custom']
+
 function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
-  const [formData, setFormData] = useState(item || {
+  const [formData, setFormData] = useState({
     category: 'Hardware',
     status: 'Planned',
     title: '',
     spec: '',
     platform: 'Zabbix',
-    external_link: '',
+    monitoring_url: '',
     purpose: '',
     notification_method: 'Email',
+    notification_recipients: [],
     logic: '',
+    logic_json: [],
     device_id: null,
-    monitored_services: []
+    monitored_services: [],
+    ...item
   })
+
+  const [recipientInput, setRecipientInput] = useState('')
 
   // Fetch services for selected device
   const { data: deviceServices } = useQuery({
@@ -285,13 +390,38 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     setFormData({ ...formData, monitored_services: current })
   }
 
+  const addLogicEntry = () => {
+    const newEntries = [...(formData.logic_json || []), { type: 'Threshold', description: '', parameters: '', id: Date.now() }]
+    setFormData({ ...formData, logic_json: newEntries })
+  }
+
+  const removeLogicEntry = (id: number) => {
+    setFormData({ ...formData, logic_json: formData.logic_json.filter((e: any) => e.id !== id) })
+  }
+
+  const updateLogicEntry = (id: number, field: string, value: string) => {
+    const newEntries = formData.logic_json.map((e: any) => e.id === id ? { ...e, [field]: value } : e)
+    setFormData({ ...formData, logic_json: newEntries })
+  }
+
+  const addRecipient = () => {
+    if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
+      setFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
+      setRecipientInput('')
+    }
+  }
+
+  const removeRecipient = (r: string) => {
+    setFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-10">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
+        className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-8 mb-8">
            <div className="flex items-center space-x-4">
@@ -310,60 +440,64 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
            </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 grid grid-cols-2 gap-8">
-           <div className="space-y-6">
-              <StyledSelect 
-                label="Target Resource"
-                value={formData.device_id}
-                onChange={(e: any) => {
-                    const val = e.target.value === "" ? null : parseInt(e.target.value);
-                    setFormData({...formData, device_id: val, monitored_services: []});
-                }}
-                options={devices?.map((d: any) => ({ value: d.id, label: `${d.name} (${d.system})` })) || []}
-                placeholder="Select Device..."
-              />
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 grid grid-cols-12 gap-8">
+           {/* Left Column: Asset & Basic Info */}
+           <div className="col-span-4 space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 border-l-2 border-blue-600 pl-3">Target Selection</h3>
+                <StyledSelect 
+                  label="Target Registry Asset"
+                  value={formData.device_id}
+                  onChange={(e: any) => {
+                      const val = e.target.value === "" ? null : parseInt(e.target.value);
+                      setFormData({...formData, device_id: val, monitored_services: []});
+                  }}
+                  options={devices?.map((d: any) => ({ value: d.id, label: `${d.name} [${d.system}]` })) || []}
+                  placeholder="Select Device..."
+                />
 
-              {formData.device_id && (
-                <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
-                  <div className="flex items-center justify-between px-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Monitored Services</label>
-                    <span className="text-[9px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-                      {formData.monitored_services?.length || 0} Selected
-                    </span>
+                {formData.device_id && (
+                  <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Service Scope</label>
+                      <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                        {formData.monitored_services?.length || 0} Bound
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {deviceServices?.length > 0 ? (
+                        deviceServices.map((svc: any) => (
+                          <button
+                            key={svc.id}
+                            onClick={() => toggleService(svc.id)}
+                            className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase transition-all flex items-center space-x-1.5 border ${
+                              formData.monitored_services?.includes(svc.id)
+                                ? 'bg-blue-600 border-blue-400 text-white shadow-lg'
+                                : 'bg-black/40 border-white/10 text-slate-500 hover:text-slate-300'
+                            }`}
+                          >
+                            {formData.monitored_services?.includes(svc.id) ? <Check size={8} strokeWidth={4} /> : <div className="w-1 h-1 rounded-full bg-slate-700" />}
+                            <span>{svc.name}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-[9px] text-slate-600 uppercase italic px-1">No services registered</p>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {deviceServices?.length > 0 ? (
-                      deviceServices.map((svc: any) => (
-                        <button
-                          key={svc.id}
-                          onClick={() => toggleService(svc.id)}
-                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center space-x-2 border ${
-                            formData.monitored_services?.includes(svc.id)
-                              ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/30 scale-105'
-                              : 'bg-black/40 border-white/10 text-slate-500 hover:border-white/30 hover:text-slate-300'
-                          }`}
-                        >
-                          {formData.monitored_services?.includes(svc.id) ? <Check size={10} strokeWidth={4} /> : <div className="w-1 h-1 rounded-full bg-slate-700" />}
-                          <span>{svc.name}</span>
-                        </button>
-                      ))
-                    ) : (
-                      <p className="text-[10px] text-slate-600 uppercase italic px-1">No services registered to this device</p>
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <StyledSelect 
-                  label="Category"
+                  label="Registry Category"
                   value={formData.category}
                   onChange={(e: any) => setFormData({...formData, category: e.target.value})}
                   options={CATEGORIES.map(c => ({ value: c.value, label: c.value }))}
                 />
                 <StyledSelect 
-                  label="Status"
+                  label="Sync Status"
                   value={formData.status}
                   onChange={(e: any) => setFormData({...formData, status: e.target.value})}
                   options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
@@ -371,86 +505,167 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monitoring Intent</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monitoring Title</label>
                 <input 
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  placeholder="e.g., CPU Thermal Threshold / Error log parsing"
+                  placeholder="e.g. CORE-DB: High CPU Load Alert"
                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Technical Specifications</label>
-                <textarea 
-                  value={formData.spec}
-                  onChange={e => setFormData({...formData, spec: e.target.value})}
-                  placeholder="Metrics, thresholds, intervals..."
-                  rows={3}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Deployment Platform</label>
+                <input 
+                  value={formData.platform}
+                  onChange={e => setFormData({...formData, platform: e.target.value})}
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monitoring URL</label>
+                <div className="relative group">
+                   <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
+                   <input 
+                    value={formData.monitoring_url}
+                    onChange={e => setFormData({...formData, monitoring_url: e.target.value})}
+                    placeholder="https://zabbix.internal/..."
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all truncate"
+                   />
+                </div>
               </div>
            </div>
 
-           <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Platform</label>
-                  <input 
-                    value={formData.platform}
-                    onChange={e => setFormData({...formData, platform: e.target.value})}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
-                  />
+           {/* Right Column: Structured Logic & Notifications */}
+           <div className="col-span-8 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-2">
+                     <Settings size={14}/> <span>Structured Logic Specification</span>
+                  </h3>
+                  <button 
+                    onClick={addLogicEntry}
+                    className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
+                  >
+                    <Plus size={12}/> <span>Add Entry</span>
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notifications</label>
-                  <input 
-                    value={formData.notification_method}
-                    onChange={e => setFormData({...formData, notification_method: e.target.value})}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
-                  />
+                
+                <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                  {formData.logic_json?.map((entry: any) => (
+                    <motion.div 
+                      key={entry.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="bg-white/5 border border-white/10 rounded-2xl p-4 relative group"
+                    >
+                      <button 
+                        onClick={() => removeLogicEntry(entry.id)}
+                        className="absolute -right-2 -top-2 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X size={12}/>
+                      </button>
+                      <div className="grid grid-cols-12 gap-4">
+                        <div className="col-span-3">
+                           <StyledSelect 
+                             label="Logic Type"
+                             value={entry.type}
+                             onChange={e => updateLogicEntry(entry.id, 'type', e.target.value)}
+                             options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
+                           />
+                        </div>
+                        <div className="col-span-4">
+                          <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Trigger Description</label>
+                          <input 
+                            value={entry.description}
+                            onChange={e => updateLogicEntry(entry.id, 'description', e.target.value)}
+                            placeholder="e.g. Alert if CPU > 95% for 5m"
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="col-span-5">
+                          <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Technical Parameters / Query</label>
+                          <input 
+                            value={entry.parameters}
+                            onChange={e => updateLogicEntry(entry.id, 'parameters', e.target.value)}
+                            placeholder="e.g. {HOST:system.cpu.util.avg(5m)} > 95"
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-mono text-blue-300 outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {(!formData.logic_json || formData.logic_json.length === 0) && (
+                    <div className="py-12 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-slate-600 space-y-2">
+                       <Database size={32} className="opacity-20" />
+                       <p className="text-[10px] font-black uppercase tracking-widest italic">No logic entries defined for this registry item</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Direct Logic / Logic Pattern</label>
-                <textarea 
-                  value={formData.logic}
-                  onChange={e => setFormData({...formData, logic: e.target.value})}
-                  placeholder="Regex, query strings, or scripts..."
-                  rows={3}
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-mono text-blue-400 outline-none focus:border-blue-500 transition-all resize-none"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-4">
+                   <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-400 flex items-center space-x-2 border-b border-white/5 pb-2">
+                      <Bell size={14}/> <span>Notification Schema</span>
+                   </h3>
+                   <div className="space-y-4">
+                      <StyledSelect 
+                        label="Primary Method"
+                        value={formData.notification_method}
+                        onChange={(e: any) => setFormData({...formData, notification_method: e.target.value})}
+                        options={['Email', 'Slack', 'Teams', 'PagerDuty', 'Webhook', 'SMS', 'Voice'].map(m => ({ value: m, label: m }))}
+                      />
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recipients List</label>
+                         <div className="flex space-x-2">
+                            <input 
+                              value={recipientInput}
+                              onChange={e => setRecipientInput(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && addRecipient()}
+                              placeholder="Add email or channel ID..."
+                              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500"
+                            />
+                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-xl transition-all"><Plus size={14}/></button>
+                         </div>
+                         <div className="flex flex-wrap gap-2 mt-2">
+                            {formData.notification_recipients.map((r: string) => (
+                              <div key={r} className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-lg">
+                                 <span className="text-[10px] font-bold text-blue-300">{r}</span>
+                                 <button onClick={() => removeRecipient(r)} className="text-slate-500 hover:text-rose-400"><X size={10}/></button>
+                              </div>
+                            ))}
+                         </div>
+                      </div>
+                   </div>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Direct Resource Link (URL)</label>
-                <input 
-                  value={formData.external_link}
-                  onChange={e => setFormData({...formData, external_link: e.target.value})}
-                  placeholder="https://..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-blue-500 underline outline-none focus:border-blue-500 transition-all"
-                />
-              </div>
-
-              <div className="p-6 bg-blue-500/5 rounded-[32px] border border-blue-500/10 flex items-start space-x-4">
-                <Info className="text-blue-400 mt-1 flex-shrink-0" size={16} />
-                <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
-                  This monitoring configuration will be synchronized with the global audit trail. All modifications are logged for compliance and alignment across the system ownership team.
-                </p>
+                <div className="space-y-4">
+                   <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2 border-b border-white/5 pb-2">
+                      <Info size={14}/> <span>General Purpose & Scope</span>
+                   </h3>
+                   <textarea 
+                    value={formData.purpose}
+                    onChange={e => setFormData({...formData, purpose: e.target.value})}
+                    placeholder="Explain the business value and impact of this monitoring logic..."
+                    rows={6}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
+                   />
+                </div>
               </div>
            </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-white/10 flex justify-end space-x-4">
-           <button onClick={onClose} className="px-8 py-4 bg-white/5 hover:bg-white/10 text-slate-400 rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all">Cancel</button>
+           <button onClick={onClose} className="px-8 py-4 bg-white/5 hover:bg-white/10 text-slate-400 rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all">Abort</button>
            <button 
              onClick={() => mutation.mutate(formData)}
              disabled={mutation.isPending}
              className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
            >
              {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
-             <span>{item ? 'Save Logic' : 'Add Monitoring'}</span>
+             <span>{item ? 'Commit Synchronized Logic' : 'Deploy Logic to Matrix'}</span>
            </button>
         </div>
       </motion.div>

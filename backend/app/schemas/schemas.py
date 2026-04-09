@@ -124,10 +124,12 @@ class MonitoringItemBase(BaseModel):
     title: str # What's being monitored
     spec: Optional[str] = None # Details/Thresholds
     platform: Optional[str] = None # Zabbix, Prometheus, Datadog, etc.
-    external_link: Optional[str] = None # Direct clickable link
+    monitoring_url: Optional[str] = None # Direct clickable link
     purpose: Optional[str] = None
     notification_method: Optional[str] = None # Email, Slack, PagerDuty
+    notification_recipients: Optional[List[str]] = []
     logic: Optional[str] = None # For log-based: regex or query
+    logic_json: Optional[List[Dict[str, Any]]] = []
     owner: Optional[str] = None
     monitored_services: List[int] = []
 
