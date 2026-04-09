@@ -146,7 +146,7 @@ export default function MonitoringGrid() {
     },
     { 
       field: "title", 
-      headerName: "Monitoring Title", 
+      headerName: "Title", 
       flex: 1.5, 
       cellClass: "text-blue-400 font-bold text-left", 
       headerClass: 'text-left' 
@@ -370,9 +370,22 @@ export default function MonitoringGrid() {
 
 const LOGIC_TYPES = ['Threshold', 'Regex', 'Query', 'Health Check', 'Log Pattern', 'Synthetic', 'Custom']
 
+const LOGIC_SUGGESTIONS: any = {
+  'Threshold': 'Example: cpu_usage > 90% for 5m\nWait for 3 consecutive violations before alerting.',
+  'Regex': 'Example: /.*(Critical|Error|Fatal).*/i\nCapture group $1 for metadata enrichment.',
+  'Query': 'Example: SELECT average(load) FROM system_metrics WHERE host = "$TARGET" AND time > now() - 10m',
+  'Health Check': 'Example: HTTP GET /api/health\nExpected Status: 200\nTimeout: 5000ms',
+  'Log Pattern': 'Example: [TIMESTAMP] [LEVEL] [COMPONENT] [MESSAGE]\nDetect spike in "Connection Refused" patterns.',
+  'Synthetic': 'Example: Browser Script\n1. Navigate to /login\n2. Fill credentials\n3. Verify dashboard element exists',
+  'Custom': 'Enter full custom logic script or detailed specifications here...'
+}
+
 function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
-  const [activeTab, setActiveTab] = useState<'logic' | 'alerting'>('logic')
+  const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
+  const [showLineNumbers, setShowLineNumbers] = useState(true)
+  const [activeLogicId, setActiveLogicId] = useState<number | null>(null)
+
   const [formData, setFormData] = useState({
     category: 'Hardware',
     status: 'Planned',
@@ -387,7 +400,6 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     logic_json: [],
     device_id: null,
     monitored_services: [],
-    // New Fields
     check_interval: 60,
     alert_duration: 0,
     notification_throttle: 3600,
@@ -396,6 +408,13 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
     recovery_docs: [],
     ...item
   })
+
+  // Initialize activeLogicId if entries exist
+  useEffect(() => {
+    if (formData.logic_json?.length > 0 && activeLogicId === null) {
+      setActiveLogicId(formData.logic_json[0].id)
+    }
+  }, [formData.logic_json])
 
   const [recipientInput, setRecipientInput] = useState('')
 
@@ -458,18 +477,26 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
   }
 
   const addLogicEntry = () => {
-    const newEntries = [...(formData.logic_json || []), { type: 'Threshold', description: '', parameters: '', id: Date.now() }]
+    const id = Date.now()
+    const newEntries = [...(formData.logic_json || []), { type: 'Threshold', description: '', logic_info: '', id }]
     setFormData({ ...formData, logic_json: newEntries })
+    setActiveLogicId(id)
   }
 
   const removeLogicEntry = (id: number) => {
-    setFormData({ ...formData, logic_json: formData.logic_json.filter((e: any) => e.id !== id) })
+    const filtered = formData.logic_json.filter((e: any) => e.id !== id)
+    setFormData({ ...formData, logic_json: filtered })
+    if (activeLogicId === id) {
+      setActiveLogicId(filtered.length > 0 ? filtered[0].id : null)
+    }
   }
 
   const updateLogicEntry = (id: number, field: string, value: string) => {
     const newEntries = formData.logic_json.map((e: any) => e.id === id ? { ...e, [field]: value } : e)
     setFormData({ ...formData, logic_json: newEntries })
   }
+
+  const activeLogicEntry = formData.logic_json?.find((e: any) => e.id === activeLogicId)
 
   const addRecipient = () => {
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
@@ -488,7 +515,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-8 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
+        className="glass-panel w-full max-w-7xl h-[90vh] overflow-hidden flex flex-col p-8 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
@@ -510,18 +537,19 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
            </div>
            
            <div className="flex bg-black/40 rounded-2xl p-1 border border-white/5">
-              <button 
-                onClick={() => setActiveTab('logic')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'logic' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                1. Detection & Context
-              </button>
-              <button 
-                onClick={() => setActiveTab('alerting')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'alerting' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                2. Alerting & Recovery
-              </button>
+              {[
+                { id: 'context', label: '1. Detection & Context' },
+                { id: 'logic', label: '2. Logic Specification' },
+                { id: 'alerting', label: '3. Alerting & Recovery' }
+              ].map(tab => (
+                <button 
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
            </div>
 
            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
@@ -530,9 +558,8 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-           {activeTab === 'logic' ? (
+           {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-8 p-2">
-                {/* Left: Metadata & Target */}
                 <div className="col-span-4 space-y-6">
                    <div className="space-y-4">
                       <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 border-l-2 border-blue-600 pl-3">Target Identification</h3>
@@ -583,16 +610,18 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                         options={CATEGORIES.map(c => ({ value: c.value, label: c.value }))}
                       />
                       <StyledSelect 
-                        label="Sync Status"
+                        label="Status"
                         value={formData.status}
                         onChange={(e: any) => setFormData({...formData, status: e.target.value})}
                         options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
                       />
                    </div>
+                </div>
 
-                   <div className="space-y-4">
+                <div className="col-span-8 space-y-6">
+                   <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monitoring Title</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Title</label>
                         <input 
                           value={formData.title}
                           onChange={e => setFormData({...formData, title: e.target.value})}
@@ -602,45 +631,92 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Deployment Platform</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Platform</label>
                         <input 
                           value={formData.platform}
                           onChange={e => setFormData({...formData, platform: e.target.value})}
+                          placeholder="e.g. Zabbix, Prometheus"
                           className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
                         />
                       </div>
+                   </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Monitoring URL</label>
-                        <div className="relative group">
-                          <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                          <input 
-                            value={formData.monitoring_url}
-                            onChange={e => setFormData({...formData, monitoring_url: e.target.value})}
-                            placeholder="https://console.internal/..."
-                            className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all truncate"
-                          />
-                        </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monitoring URL</label>
+                      <div className="relative group">
+                        <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input 
+                          value={formData.monitoring_url}
+                          onChange={e => setFormData({...formData, monitoring_url: e.target.value})}
+                          placeholder="https://console.internal/..."
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all"
+                        />
                       </div>
                    </div>
+
+                   <div className="space-y-2">
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2">
+                         <Info size={14}/> <span>Business Purpose & Operational Impact</span>
+                      </label>
+                      <textarea 
+                        value={formData.purpose}
+                        onChange={e => setFormData({...formData, purpose: e.target.value})}
+                        placeholder="Why is this being monitored? What is the impact of failure?"
+                        rows={6}
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
+                      />
+                   </div>
                 </div>
+             </div>
+           ) : activeTab === 'logic' ? (
+             <div className="grid grid-cols-12 gap-8 p-2 h-full min-h-[500px]">
+                {/* Left: Logic Entry Selection */}
+                <div className="col-span-4 space-y-4">
+                   <div className="flex items-center justify-between">
+                      <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-2">
+                         <Settings size={14}/> <span>Logic Entries</span>
+                      </h3>
+                      <button 
+                         onClick={addLogicEntry}
+                         className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
+                      >
+                         <Plus size={12}/> <span>Add Entry</span>
+                      </button>
+                   </div>
 
-                {/* Right: Logic & Purpose */}
-                <div className="col-span-8 space-y-6">
-                   <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                         <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-2">
-                            <Settings size={14}/> <span>Structured Logic Specification</span>
-                         </h3>
-                         <button 
-                            onClick={addLogicEntry}
-                            className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
-                         >
-                            <Plus size={12}/> <span>Add Entry</span>
-                         </button>
-                      </div>
+                   <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                      {formData.logic_json?.map((entry: any) => (
+                        <div 
+                          key={entry.id}
+                          onClick={() => setActiveLogicId(entry.id)}
+                          className={`p-4 rounded-2xl border cursor-pointer transition-all relative group ${
+                            activeLogicId === entry.id 
+                              ? 'bg-blue-600/10 border-blue-500/50 shadow-lg' 
+                              : 'bg-black/40 border-white/5 hover:border-white/20'
+                          }`}
+                        >
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id); }}
+                             className="absolute -right-2 -top-2 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                           >
+                             <X size={12}/>
+                           </button>
+                           <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-black uppercase text-blue-400">{entry.type}</span>
+                              <span className="text-[8px] font-bold text-slate-600 uppercase italic">Entry #{entry.id.toString().slice(-4)}</span>
+                           </div>
+                           <p className="text-[11px] font-bold text-slate-300 truncate">{entry.description || 'No description provided'}</p>
+                        </div>
+                      ))}
+                      {formData.logic_json?.length === 0 && (
+                        <div className="py-12 text-center text-slate-600 italic text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-3xl">
+                           No logic entries defined
+                        </div>
+                      )}
+                   </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                   <div className="space-y-4 pt-4 border-t border-white/5">
+                      <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1 italic">Check Frequency (Seconds)</label>
                             <div className="relative">
@@ -666,56 +742,73 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                             </div>
                          </div>
                       </div>
+                   </div>
+                </div>
 
-                      <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
-                         {formData.logic_json?.map((entry: any) => (
-                           <motion.div key={entry.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 relative group">
-                              <button onClick={() => removeLogicEntry(entry.id)} className="absolute -right-2 -top-2 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <X size={12}/>
+                {/* Right: Detailed Logic Editor */}
+                <div className="col-span-8 flex flex-col space-y-4 h-full">
+                   {activeLogicEntry ? (
+                     <>
+                        <div className="grid grid-cols-2 gap-4">
+                           <StyledSelect 
+                             label="Logic Type"
+                             value={activeLogicEntry.type}
+                             onChange={e => updateLogicEntry(activeLogicEntry.id, 'type', e.target.value)}
+                             options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
+                           />
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                             <input 
+                               value={activeLogicEntry.description}
+                               onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
+                               placeholder="What does this logic check?"
+                               className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                             />
+                           </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col space-y-2 min-h-0">
+                           <div className="flex items-center justify-between px-1">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Logic Information</label>
+                              <button 
+                                onClick={() => setShowLineNumbers(!showLineNumbers)}
+                                className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                              >
+                                {showLineNumbers ? 'Hide Line Numbers' : 'Show Line Numbers'}
                               </button>
-                              <div className="grid grid-cols-12 gap-4">
-                                 <div className="col-span-3">
-                                    <StyledSelect 
-                                      label="Type"
-                                      value={entry.type}
-                                      onChange={e => updateLogicEntry(entry.id, 'type', e.target.value)}
-                                      options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
-                                    />
-                                 </div>
-                                 <div className="col-span-4">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Description</label>
-                                    <input 
-                                      value={entry.description}
-                                      onChange={e => updateLogicEntry(entry.id, 'description', e.target.value)}
-                                      className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500"
-                                    />
-                                 </div>
-                                 <div className="col-span-5">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Parameters</label>
-                                    <input 
-                                      value={entry.parameters}
-                                      onChange={e => updateLogicEntry(entry.id, 'parameters', e.target.value)}
-                                      className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-mono text-blue-300 outline-none focus:border-blue-500"
-                                    />
-                                 </div>
+                           </div>
+                           
+                           <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex font-mono text-[12px] shadow-inner relative group">
+                              {showLineNumbers && (
+                                <div className="bg-white/5 border-r border-white/10 px-3 py-4 text-slate-600 text-right select-none whitespace-pre leading-relaxed min-w-[40px]">
+                                   {activeLogicEntry.logic_info.split('\n').map((_, i) => i + 1).join('\n')}
+                                </div>
+                              )}
+                              <textarea 
+                                value={activeLogicEntry.logic_info}
+                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'logic_info', e.target.value)}
+                                placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
+                                className="flex-1 bg-transparent p-4 outline-none text-blue-300 resize-none leading-relaxed custom-scrollbar placeholder:text-slate-700"
+                                spellCheck={false}
+                              />
+                              
+                              <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <span className="text-[8px] font-black text-slate-500 uppercase bg-black/60 px-2 py-1 rounded-lg border border-white/5">
+                                    {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
+                                 </span>
                               </div>
-                           </motion.div>
-                         ))}
-                      </div>
-                   </div>
-
-                   <div className="space-y-2">
-                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center space-x-2">
-                         <Info size={14}/> <span>Business Purpose & Operational Impact</span>
-                      </label>
-                      <textarea 
-                        value={formData.purpose}
-                        onChange={e => setFormData({...formData, purpose: e.target.value})}
-                        placeholder="Why is this being monitored? What is the impact of failure?"
-                        rows={4}
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none shadow-inner"
-                      />
-                   </div>
+                           </div>
+                        </div>
+                     </>
+                   ) : (
+                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] space-y-4">
+                        <Activity size={40} className="text-slate-700" />
+                        <div className="text-center">
+                           <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Select an entry to modify logic</p>
+                           <p className="text-[9px] text-slate-600 uppercase font-bold mt-1">Logic Specification Environment</p>
+                        </div>
+                     </div>
+                   )}
                 </div>
              </div>
            ) : (
@@ -734,7 +827,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                    <div className="space-y-4 p-4 bg-white/5 rounded-2xl border border-white/5">
                       <div className="space-y-1.5">
                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notification Throttle (Seconds)</label>
-                         <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight italic italic">Minimum time between re-alerts for the same issue</p>
+                         <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight italic">Minimum time between re-alerts for the same issue</p>
                          <input 
                            type="number"
                            value={formData.notification_throttle}
@@ -798,6 +891,8 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                          <div className="relative group">
                             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                             <input 
+                              value={recoverySearch}
+                              onChange={e => setRecoverySearch(e.target.value)}
                               placeholder="Search Knowledge Base for Recovery Procedures..."
                               className="w-full bg-black/60 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-[11px] font-black uppercase outline-none focus:border-blue-500 transition-all shadow-2xl"
                             />
@@ -807,6 +902,7 @@ function MonitoringForm({ item, devices, onClose, onSuccess }: any) {
                             {filteredKnowledge?.map((entry: any) => (
                                <button
                                  key={entry.id}
+                                 type="button"
                                  onClick={() => toggleRecoveryDoc(entry.id)}
                                  className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group/item ${
                                    formData.recovery_docs?.includes(entry.id)
