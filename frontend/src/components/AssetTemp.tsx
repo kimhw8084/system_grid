@@ -854,23 +854,15 @@ export default function AssetTemp() {
   const gridRef = React.useRef<any>(null)
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(10)
-  const [activeTheme, setActiveTheme] = useState('industrial')
+  const [fontSize, setFontSize] = useState(11)
+  const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(true)
-
-  const themes: Record<string, any> = {
-    industrial: { name: 'Industrial', bg: '#1a1b26', header: '#24283b', accent: '#3b82f6', font: "'Inter', sans-serif", weight: '700' },
-    cyber: { name: 'Cyber', bg: '#050505', header: '#0f0f0f', accent: '#22c55e', font: "'JetBrains Mono', monospace", weight: '900' },
-    steel: { name: 'Steel', bg: '#1e293b', header: '#0f172a', accent: '#94a3b8', font: "'Inter', sans-serif", weight: '500' },
-    terminal: { name: 'Terminal', bg: '#0c0c0c', header: '#1a1a1a', accent: '#f59e0b', font: "'Fira Code', monospace", weight: '400' },
-    ocean: { name: 'Ocean', bg: '#082f49', header: '#0c4a6e', accent: '#06b6d4', font: "'Outfit', sans-serif", weight: '600' }
-  }
 
   useEffect(() => {
     if (gridRef.current?.api) {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 50)
     }
-  }, [fontSize, activeTheme])
+  }, [fontSize, rowDensity])
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [viewMode, setViewMode] = useState<'grid' | 'report'>('grid')
@@ -1222,10 +1214,8 @@ export default function AssetTemp() {
     }
   }
 
-  const currentTheme = themes[activeTheme]
-
   return (
-    <div className="h-full flex flex-col space-y-4" style={{ fontFamily: currentTheme.font, fontWeight: 700 }}>
+    <div className="h-full flex flex-col space-y-4">
       {/* STYLE LABORATORY BAR */}
       <AnimatePresence>
         {showStyleLab && (
@@ -1236,36 +1226,36 @@ export default function AssetTemp() {
             className="overflow-hidden"
           >
             <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-8">
+               <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Style Laboratory</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
-                  <div className="flex items-center space-x-4">
-                     <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                     <div className="flex items-center space-x-2">
-                        <input 
-                          type="range" min="8" max="16" step="1" 
-                          value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                          className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                        />
-                        <span className="text-[10px] text-white w-4">{fontSize}</span>
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
                      </div>
-                  </div>
 
-                  <div className="flex items-center space-x-2">
-                     <span className="text-[9px] font-black text-slate-500 uppercase mr-2">Presets</span>
-                     {Object.entries(themes).map(([key, t]: [string, any]) => (
-                       <button 
-                         key={key} 
-                         onClick={() => setActiveTheme(key)}
-                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${activeTheme === key ? 'bg-white text-black border-white shadow-lg' : 'bg-black/40 text-slate-400 border-white/5 hover:border-white/20'}`}
-                         style={activeTheme === key ? {} : { color: t.accent }}
-                       >
-                         {t.name}
-                       </button>
-                     ))}
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
                   </div>
                </div>
                <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
@@ -1277,8 +1267,8 @@ export default function AssetTemp() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Assets (Temp)</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry - Experimental</p>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Assets</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
            </div>
 
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
@@ -1373,8 +1363,8 @@ export default function AssetTemp() {
             rowData={assets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
-            headerHeight={fontSize + 18}
-            rowHeight={fontSize + 16}
+            headerHeight={fontSize + rowDensity + 8}
+            rowHeight={fontSize + rowDensity}
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
@@ -1560,12 +1550,12 @@ export default function AssetTemp() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: ${currentTheme.bg};
-          --ag-header-background-color: ${currentTheme.header};
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255,255,255,0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: ${currentTheme.accent};
-          --ag-font-family: ${currentTheme.font};
+          --ag-header-foreground-color: #3b82f6;
+          --ag-font-family: 'Inter', sans-serif;
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
@@ -1584,12 +1574,12 @@ export default function AssetTemp() {
         }
         
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: ${currentTheme.accent}20 !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
 
         /* Make filter popups non-transparent and on top */
         .ag-popup { z-index: 1000 !important; }
-        .ag-filter-wrapper { background-color: ${currentTheme.header} !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
-        .ag-filter-body { background-color: ${currentTheme.header} !important; padding: 12px !important; }
+        .ag-filter-wrapper { background-color: #24283b !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
+        .ag-filter-body { background-color: #24283b !important; padding: 12px !important; }
       `}</style>
     </div>
   )
