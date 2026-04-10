@@ -17,11 +17,11 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 
 const STATUSES = [
-  { value: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { value: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { value: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { value: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
-  { value: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
+  { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  { value: 'Cancelled', label: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  { value: 'Decommissioned', label: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
+  { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
 
 export default function MonitoringGrid() {
@@ -29,9 +29,9 @@ export default function MonitoringGrid() {
   const gridRef = React.useRef<any>(null)
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
-  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
+  const [showStyleLab, setShowStyleLab] = useState(true)
   const [showRegistry, setShowRegistry] = useState(false)
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
 
@@ -80,9 +80,9 @@ export default function MonitoringGrid() {
 
   useEffect(() => {
     if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 50)
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
-  }, [fontSize, rowDensity])
+  }, [fontSize, rowDensity, items])
 
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -145,6 +145,7 @@ export default function MonitoringGrid() {
       field: "device_name", 
       headerName: "Target Asset", 
       width: 140, 
+      filter: true,
       cellClass: "text-slate-200 font-bold text-center", 
       headerClass: 'text-center' 
     },
@@ -152,11 +153,12 @@ export default function MonitoringGrid() {
       field: "category", 
       headerName: "Category", 
       width: 110,
+      filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <span className="text-[9px] font-black uppercase tracking-tight text-white">{p.value}</span>
+          <span className="text-[9px] font-black tracking-tight text-white">{p.value}</span>
         </div>
       )
     },
@@ -164,13 +166,14 @@ export default function MonitoringGrid() {
       field: "status", 
       headerName: "Status", 
       width: 100,
+      filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const status = STATUSES.find(s => s.value === p.value)
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded border text-[8px] font-black tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`}>
               {p.value}
             </span>
           </div>
@@ -185,7 +188,7 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const isActive = p.value
-        const isDeleted = p.data.status === 'Deleted'
+        const isDeleted = p.data.is_deleted || p.data.status === 'Deleted'
         return (
           <div className="flex items-center justify-center h-full">
             <div className="relative">
@@ -202,6 +205,7 @@ export default function MonitoringGrid() {
       field: "owners", 
       headerName: "Owners", 
       width: 120, 
+      filter: true,
       cellClass: "text-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -223,6 +227,7 @@ export default function MonitoringGrid() {
       headerName: "Title", 
       minWidth: 180,
       flex: 1.5, 
+      filter: true,
       cellClass: "text-blue-400 font-bold text-left", 
       headerClass: 'text-left' 
     },
@@ -252,11 +257,12 @@ export default function MonitoringGrid() {
       field: "platform", 
       headerName: "Platform", 
       width: 100, 
+      filter: true,
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <span className="text-[9px] font-black uppercase text-slate-300">{p.value}</span>
+          <span className="text-[9px] font-black text-slate-300">{p.value}</span>
         </div>
       )
     },
@@ -264,6 +270,7 @@ export default function MonitoringGrid() {
       field: "severity", 
       headerName: "Severity", 
       width: 90,
+      filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -274,7 +281,7 @@ export default function MonitoringGrid() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded border text-[8px] font-black tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
               {p.value}
             </span>
           </div>
@@ -293,6 +300,7 @@ export default function MonitoringGrid() {
       field: "notification_method", 
       headerName: "Notify", 
       width: 100, 
+      filter: true,
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
@@ -301,7 +309,7 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <span className="text-[9px] font-black uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
+              <span className="text-[9px] font-black text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
            </button>
         </div>
       )
@@ -310,6 +318,7 @@ export default function MonitoringGrid() {
       field: "purpose", 
       headerName: "Purpose", 
       flex: 1, 
+      filter: true,
       cellClass: "text-slate-500 italic text-left truncate px-4 text-[10px]", 
       headerClass: 'text-left' 
     },
@@ -430,7 +439,7 @@ export default function MonitoringGrid() {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="SCAN MATRIX..."
-              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all"
+              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black outline-none focus:border-blue-500/50 w-64 transition-all"
             />
           </div>
 
@@ -853,6 +862,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
 
 function MonitoringDetailModal({ item, onClose }: any) {
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
+  const [showLineNumbers, setShowLineNumbers] = useState(true)
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-8">
@@ -908,9 +918,17 @@ function MonitoringDetailModal({ item, onClose }: any) {
 
                  {/* Logic Specification */}
                  <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center px-1">
-                       <Settings size={14} className="mr-3" /> Logic Specification
-                    </h3>
+                    <div className="flex items-center justify-between px-1">
+                      <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center">
+                         <Settings size={14} className="mr-3" /> Logic Specification
+                      </h3>
+                      <button 
+                         onClick={() => setShowLineNumbers(!showLineNumbers)}
+                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                      >
+                         {showLineNumbers ? 'Hide Line Numbers' : 'Show Line Numbers'}
+                      </button>
+                    </div>
                     <div className="space-y-3">
                        {item.logic_json?.map((log: any) => (
                          <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-2xl overflow-hidden transition-all hover:border-emerald-500/20">
@@ -932,9 +950,16 @@ function MonitoringDetailModal({ item, onClose }: any) {
                                     exit={{ height: 0 }} 
                                     className="overflow-hidden bg-black/40 border-t border-white/5"
                                  >
-                                    <pre className="p-5 font-mono text-[12px] text-blue-300 leading-relaxed overflow-x-auto custom-scrollbar">
-                                       {log.logic_info}
-                                    </pre>
+                                    <div className="flex font-mono text-[12px] leading-relaxed overflow-x-auto custom-scrollbar">
+                                       {showLineNumbers && (
+                                          <div className="bg-white/5 border-r border-white/10 px-3 py-5 text-slate-600 text-right select-none whitespace-pre min-w-[40px]">
+                                             {log.logic_info.split('\n').map((_: any, i: number) => i + 1).join('\n')}
+                                          </div>
+                                       )}
+                                       <pre className="p-5 text-blue-300 flex-1">
+                                          {log.logic_info}
+                                       </pre>
+                                    </div>
                                  </motion.div>
                                )}
                             </AnimatePresence>
@@ -1629,7 +1654,7 @@ function MonitoringForm({ item, devices, categories, severities, notificationMet
                               value={recoverySearch}
                               onChange={e => setRecoverySearch(e.target.value)}
                               placeholder="Search Knowledge Base for Recovery Procedures..."
-                              className="w-full bg-black/60 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-[11px] font-black uppercase outline-none focus:border-blue-500 transition-all shadow-2xl"
+                              className="w-full bg-black/60 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-[11px] font-black outline-none focus:border-blue-500 transition-all shadow-2xl"
                             />
                          </div>
 

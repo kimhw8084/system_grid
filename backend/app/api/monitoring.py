@@ -89,14 +89,23 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     owners_data = data.get("owners")
     clean_data = filter_valid_columns(models.MonitoringItem, data)
     
+    # Sync is_deleted with status
+    if "status" in clean_data:
+        if clean_data["status"] == "Deleted":
+            clean_data["is_deleted"] = True
+        elif clean_data["status"] == "Existing":
+            clean_data["is_deleted"] = False
+            
     for k, v in clean_data.items():
         setattr(item, k, v)
     
     if owners_data is not None:
-        # Simple replace for now
+        # Simple replace for now, but clean the data
         await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
         for owner in owners_data:
-            db_owner = models.MonitoringOwner(**owner, monitoring_item_id=item_id)
+            # Clean owner data to avoid extra fields like 'id'
+            owner_clean = {k: v for k, v in owner.items() if k in {"name", "external_id", "role"}}
+            db_owner = models.MonitoringOwner(**owner_clean, monitoring_item_id=item_id)
             db.add(db_owner)
             
     await db.commit()
@@ -135,6 +144,14 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
         await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=False, status="Existing"))
     elif action == "update":
         clean_update = filter_valid_columns(models.MonitoringItem, payload)
+        
+        # Sync is_deleted with status in bulk update
+        if "status" in clean_update:
+            if clean_update["status"] == "Deleted":
+                clean_update["is_deleted"] = True
+            elif clean_update["status"] == "Existing":
+                clean_update["is_deleted"] = False
+                
         if clean_update:
             await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(**clean_update))
     

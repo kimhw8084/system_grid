@@ -113,7 +113,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
           value={newValue} 
           onChange={e => setNewValue(e.target.value)} 
           placeholder={`Add ${title}...`} 
-          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] outline-none focus:border-blue-500 transition-all uppercase font-bold pr-10"
+          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] outline-none focus:border-blue-500 transition-all font-bold pr-10"
           onKeyDown={e => e.key === 'Enter' && newValue && addMutation.mutate()}
         />
         <button onClick={() => newValue && addMutation.mutate()} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-400 hover:text-white transition-colors">
