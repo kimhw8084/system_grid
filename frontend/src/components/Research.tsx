@@ -275,8 +275,9 @@ export default function Research() {
           rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
-          suppressCellFocus={true}
-        />      </div>
+          enableCellTextSelection={true}
+        />
+      </div>
 
       <AnimatePresence>
         {activeModal && (
@@ -531,6 +532,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
                       columnDefs={timelineColumnDefs as any}
                       headerHeight={fontSize + rowDensity + 10}
                       rowHeight={fontSize + rowDensity + 10}
+                      enableCellTextSelection={true}
                     />
                   </div>
                 </div>

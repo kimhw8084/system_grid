@@ -258,7 +258,7 @@ export default function ExternalIntelligence() {
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
-          suppressCellFocus={true}
+          enableCellTextSelection={true}
         />
       </div>
 

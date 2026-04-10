@@ -185,6 +185,43 @@ function MainLayout() {
     return () => window.removeEventListener('unhandledrejection', handleError);
   }, []);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Detect Ctrl+C or Cmd+C
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        const activeElement = document.activeElement as HTMLElement;
+        
+        // Check if the focused element is an AgGrid cell
+        if (activeElement && activeElement.classList.contains('ag-cell')) {
+          // If there is no active text selection by the user, we copy the cell content
+          const selection = window.getSelection();
+          if (!selection || selection.toString() === '') {
+            const textToCopy = activeElement.innerText;
+            if (textToCopy) {
+              navigator.clipboard.writeText(textToCopy).then(() => {
+                toast.success("Cell content copied", { 
+                  id: 'ag-grid-copy-toast', 
+                  duration: 800,
+                  style: {
+                    background: '#1e293b',
+                    color: '#3b82f6',
+                    fontSize: '10px',
+                    fontWeight: '900',
+                    textTransform: 'uppercase',
+                    border: '1px solid rgba(59, 130, 246, 0.2)'
+                  }
+                });
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   useEffect(() => { 
     document.documentElement.setAttribute('data-theme', currentTheme);
     const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1'].includes(currentTheme);

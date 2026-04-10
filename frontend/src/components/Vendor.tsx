@@ -268,7 +268,7 @@ export default function Vendor() {
           rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
-          suppressCellFocus={true}
+          enableCellTextSelection={true}
         />
         </div>
 

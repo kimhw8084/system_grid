@@ -300,6 +300,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                           ]}
                           headerHeight={40}
                           rowHeight={45}
+                          enableCellTextSelection={true}
                         />
                      </div>
                   </div>
@@ -605,6 +606,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                              )},
                              { headerName: 'PERSONNEL', width: 120, valueGetter: (p:any)=>p.data.personnel?.length || 0 }
                           ]}
+                          enableCellTextSelection={true}
                         />
                      </div>
                   </div>

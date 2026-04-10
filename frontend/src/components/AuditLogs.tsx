@@ -139,7 +139,7 @@ export default function AuditLogs() {
           columnDefs={columnDefs}
           defaultColDef={{ resizable: true, filter: true }}
           animateRows={true}
-          suppressCellFocus={true}
+          enableCellTextSelection={true}
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
         />

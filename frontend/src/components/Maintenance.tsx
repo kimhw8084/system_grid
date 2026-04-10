@@ -16,7 +16,11 @@ export default function Maintenance() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col space-y-4">
       <h1 className="text-2xl font-black uppercase italic">CP</h1>
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark">
-        <AgGridReact rowData={windows || []} columnDefs={columnDefs} />
+        <AgGridReact 
+          rowData={windows || []} 
+          columnDefs={columnDefs} 
+          enableCellTextSelection={true}
+        />
       </div>
       <style>{`
         .ag-theme-alpine-dark {

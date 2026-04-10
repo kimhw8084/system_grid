@@ -1368,6 +1368,7 @@ export default function AssetTemp() {
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
+            enableCellTextSelection={true}
           />
 
           <AnimatePresence>

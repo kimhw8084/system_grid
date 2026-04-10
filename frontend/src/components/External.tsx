@@ -228,7 +228,7 @@ export default function External() {
           headerHeight={50}
           rowHeight={60}
           quickFilterText={searchTerm}
-          suppressCellFocus={true}
+          enableCellTextSelection={true}
         />
       </div>
 

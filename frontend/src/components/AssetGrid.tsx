@@ -1103,7 +1103,7 @@ export default function AssetGrid() {
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
             animateRows={true}
-            suppressCellFocus={true}
+            enableCellTextSelection={true}
           />
         </div>
       ) : (

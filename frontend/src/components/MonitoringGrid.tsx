@@ -541,6 +541,7 @@ export default function MonitoringGrid() {
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
           suppressRowClickSelection={true}
+          enableCellTextSelection={true}
           sideBar={{
             toolPanels: [
               {
