@@ -31,6 +31,11 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
 
 export default function Research() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
@@ -117,29 +122,35 @@ export default function Research() {
     }
   }, [combinedData])
 
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, combinedData])
+
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "ID", width: 80, pinned: 'left', cellRenderer: (p: any) => (
-      <span className="text-[10px] font-mono font-black text-slate-500">{p.data.type === 'RCA' ? `RCA_${p.value}` : `RES_${p.value}`}</span>
+    { field: "id", headerName: "ID", width: 80, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellRenderer: (p: any) => (
+      <span className="font-mono font-black text-slate-500">{p.data.type === 'RCA' ? `RCA_${p.value}` : `RES_${p.value}`}</span>
     )},
-    { field: "category", headerName: "Category", width: 110, cellRenderer: (p: any) => (
-      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+    { field: "category", headerName: "Category", width: 110, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellRenderer: (p: any) => (
+      <span className={`font-black px-2 py-0.5 rounded border ${
         p.value === 'Troubleshooting' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
         p.value === 'Security' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500' :
         p.value === 'RCA' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 font-bold tracking-widest' :
         'bg-blue-500/20 border-blue-500/30 text-blue-400'
-      }`}>{p.value}</span>
+      }`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span>
     )},
-    { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
-    { field: "status", headerName: "Status", width: 100, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
-    { field: "severity", headerName: "Risk", width: 70, valueGetter: (p: any) => p.data.severity || p.data.priority, cellRenderer: (p: any) => (
-        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
+    { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-bold text-white tracking-tight' },
+    { field: "status", headerName: "Status", width: 100, filter: true, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
+    { field: "severity", headerName: "Risk", width: 70, filter: true, valueGetter: (p: any) => p.data.severity || p.data.priority, cellRenderer: (p: any) => (
+        <span className={`font-black px-1.5 py-0.5 rounded border ${
           (p.value === 'Urgent' || p.value === 'P1') ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse' :
           (p.value === 'High' || p.value === 'P2') ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
           'bg-blue-500/20 border-blue-500/30 text-blue-400'
-        }`}>{p.value}</span>
+        }`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span>
       )
     },
-    { field: "updated_at", headerName: "Last Pulse", width: 130, cellClass: 'font-mono text-[9px] text-slate-400', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : '---' },
+    { field: "updated_at", headerName: "Last Pulse", width: 130, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-mono text-slate-400', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : '---' },
     {
       headerName: "Action",
       width: 80,
@@ -156,7 +167,7 @@ export default function Research() {
         </div>
       )
     }
-  ], [])
+  ], [fontSize]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -169,16 +180,82 @@ export default function Research() {
         </div>
         <div className="flex items-center space-x-2">
           <div className="relative">
-            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search Research Matrix..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all shadow-inner text-white" />
+             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search Research Matrix..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all shadow-inner text-white" />
           </div>
-          <div className="flex gap-1">
-            <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={12}/> New RCA</button>
-            <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Launch Research</button>
+
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 ml-2">
+             <button 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
+                title="Style Laboratory"
+             >
+                <Zap size={16} />
+             </button>
+          </div>
+
+          <div className="flex gap-1 ml-2">
+             <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={12}/> New RCA</button>
+             <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Investigation</button>
           </div>
         </div>
-      </div>
+        </div>
 
+        <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
+               <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <Zap size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Research Density</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="8" max="14" step="1" 
+                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
+                              className="w-24 accent-blue-500"
+                           />
+                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                        <Layers size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="0" max="20" step="2" 
+                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
+                              className="w-24 accent-indigo-500"
+                           />
+                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <button 
+                  onClick={() => setShowStyleLab(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
+               >
+                  <X size={16} />
+               </button>
+            </div>
+          </motion.div>
+        )}
+        </AnimatePresence>
       <div className="grid grid-cols-4 gap-3">
         <CompactSummary label="Total Research" value={stats.total} icon={Activity} color="text-blue-400" />
         <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
@@ -193,14 +270,16 @@ export default function Research() {
              <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
           </div>
         )}
-        <AgGridReact 
-          rowData={combinedData} 
+        <AgGridReact
+          ref={gridRef}
+          rowData={combinedData}
           columnDefs={columnDefs as any}
           headerHeight={32}
-          rowHeight={32}
+          rowHeight={32 + rowDensity}
           quickFilterText={searchTerm}
-        />
-      </div>
+          animateRows={true}
+          suppressCellFocus={true}
+        />      </div>
 
       <AnimatePresence>
         {activeModal && (
@@ -251,17 +330,29 @@ export default function Research() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
+          --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05) !important; padding-left: 12px !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )

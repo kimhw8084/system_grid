@@ -35,6 +35,11 @@ const InfoCard = ({ label, value, icon: Icon }: any) => (
 
 export default function Vendor() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
@@ -44,6 +49,12 @@ export default function Vendor() {
     queryKey: ['vendors'], 
     queryFn: async () => (await apiFetch('/api/v1/vendors/')).json() 
   })
+
+  React.useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, vendors])
 
   const { data: devices } = useQuery({ 
     queryKey: ['devices'], 
@@ -73,53 +84,62 @@ export default function Vendor() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "name", headerName: "Vendor Name", flex: 1, pinned: 'left', cellClass: 'font-bold text-white uppercase tracking-tight' },
-    { field: "primary_email", headerName: "Primary Email", width: 180, cellClass: 'text-blue-400 font-mono text-[10px]' },
-    { field: "primary_phone", headerName: "Primary Phone", width: 130 },
-    { field: "country", headerName: "Country", width: 100, cellClass: 'text-center uppercase font-black text-slate-400' },
+    { field: "name", headerName: "Vendor Name", flex: 1, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-bold text-white tracking-tight' },
+    { field: "primary_email", headerName: "Primary Email", width: 180, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-blue-400 font-mono' },
+    { field: "primary_phone", headerName: "Primary Phone", width: 130, filter: true, cellStyle: { fontSize: `${fontSize}px` } },
+    { field: "country", headerName: "Country", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black text-slate-400' },
     { 
       headerName: "First Contract", 
       width: 120,
+      filter: true,
       valueGetter: (p: any) => {
         const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
         if (!dates || dates.length === 0) return null;
         return new Date(Math.min(...dates.map((d: any) => new Date(d).getTime())));
       },
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
-      cellClass: 'text-[10px] font-bold text-slate-400'
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'font-bold text-slate-400'
     },
     { 
       headerName: "Latest Contract", 
       width: 120,
+      filter: true,
       valueGetter: (p: any) => {
         const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
         if (!dates || dates.length === 0) return null;
         return new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
       },
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
-      cellClass: 'text-[10px] font-bold text-emerald-400'
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'font-bold text-emerald-400'
     },
     {
       headerName: "Active",
       width: 80,
+      filter: true,
       valueGetter: (p: any) => {
         const now = new Date();
         return p.data.contracts?.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > now).length || 0;
       },
+      cellStyle: { fontSize: `${fontSize}px` },
       cellClass: 'text-center font-black text-blue-400'
     },
     {
       headerName: "Historic",
       width: 80,
+      filter: true,
       valueGetter: (p: any) => {
         const now = new Date();
         return p.data.contracts?.filter((c: any) => c.expiry_date && new Date(c.expiry_date) <= now).length || 0;
       },
+      cellStyle: { fontSize: `${fontSize}px` },
       cellClass: 'text-center font-black text-slate-500'
     },
     {
       headerName: "Assets",
       width: 80,
+      filter: true,
       valueGetter: (p: any) => {
         const assets = new Set();
         p.data.contracts?.forEach((c: any) => {
@@ -129,6 +149,7 @@ export default function Vendor() {
         });
         return assets.size;
       },
+      cellStyle: { fontSize: `${fontSize}px` },
       cellClass: 'text-center font-black text-amber-500'
     },
     {
@@ -143,7 +164,7 @@ export default function Vendor() {
         </div>
       )
     }
-  ], [])
+  ], [fontSize]) as any
 
   return (
     <div className="h-full flex flex-col space-y-6">
@@ -159,9 +180,76 @@ export default function Vendor() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search partners..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
-          <button onClick={() => setActiveModal({ name: '', primary_email: '', primary_phone: '', country: '' })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Vendor</button>
+
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
+                title="Style Laboratory"
+             >
+                <Zap size={16} />
+             </button>
+          </div>
+
+          <button onClick={() => setActiveModal({ name: '', primary_email: '', primary_phone: '', country: '' })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Vendor</button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
+               <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <Zap size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Vendor Density</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="8" max="14" step="1" 
+                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
+                              className="w-24 accent-blue-500"
+                           />
+                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                        <Layers size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="0" max="20" step="2" 
+                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
+                              className="w-24 accent-indigo-500"
+                           />
+                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <button 
+                  onClick={() => setShowStyleLab(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
+               >
+                  <X size={16} />
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
         {isLoading && (
@@ -171,11 +259,14 @@ export default function Vendor() {
           </div>
         )}
         <AgGridReact 
+          ref={gridRef}
           rowData={vendors || []} 
           columnDefs={columnDefs as any}
           headerHeight={32}
-          rowHeight={32}
+          rowHeight={32 + rowDensity}
           quickFilterText={searchTerm}
+          animateRows={true}
+          suppressCellFocus={true}
         />
       </div>
 

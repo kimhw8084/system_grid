@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
@@ -14,6 +14,17 @@ import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, connections])
+
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [viewingLink, setViewingLink] = useState<any>(null)
   const [editingLink, setEditingLink] = useState<any>(null)
@@ -75,21 +86,27 @@ export default function NetworkFabric() {
       headerName: "Src Node", 
       field: "server_a", 
       flex: 1,
-      cellClass: 'text-center font-black text-blue-400 uppercase text-[10px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black text-blue-400',
       headerClass: 'text-center'
     },
     { 
       headerName: "Local Port", 
       field: "source_port", 
       width: 110,
-      cellClass: 'text-center font-bold text-slate-300 uppercase text-[9px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-bold text-slate-300',
       headerClass: 'text-center'
     },
     { 
       headerName: "Src IP", 
       field: "source_ip", 
       width: 130,
-      cellClass: 'text-center font-mono text-blue-400/80 text-[10px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-mono text-blue-400/80',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px]">Unassigned</span>
     },
@@ -97,21 +114,27 @@ export default function NetworkFabric() {
       headerName: "Peer Node", 
       field: "server_b", 
       flex: 1,
-      cellClass: 'text-center font-black text-emerald-400 uppercase text-[10px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black text-emerald-400',
       headerClass: 'text-center'
     },
     { 
       headerName: "Peer Port", 
       field: "target_port", 
       width: 110,
-      cellClass: 'text-center font-bold text-slate-300 uppercase text-[9px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-bold text-slate-300',
       headerClass: 'text-center'
     },
     { 
       headerName: "Peer IP", 
       field: "target_ip", 
       width: 130,
-      cellClass: 'text-center font-mono text-emerald-400/80 text-[10px]',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-mono text-emerald-400/80',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px]">Unassigned</span>
     },
@@ -119,14 +142,18 @@ export default function NetworkFabric() {
       field: "link_type", 
       headerName: "Type", 
       width: 120, 
-      cellClass: 'text-center uppercase font-black text-[9px] tracking-widest text-slate-500', 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black tracking-widest text-slate-500', 
       headerClass: 'text-center' 
     },
     { 
       field: "speed", 
       headerName: "Fabric Metric", 
       width: 110, 
-      cellClass: "font-black text-indigo-400 text-center text-[10px]", 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: "font-black text-indigo-400 text-center", 
       headerClass: 'text-center' 
     },
     {
@@ -155,7 +182,7 @@ export default function NetworkFabric() {
         </div>
       )
     }
-  ], [deleteMutation]) as any
+  ], [deleteMutation, fontSize]) as any
 
   const resetForm = () => {
     setConnData({
@@ -181,6 +208,13 @@ export default function NetworkFabric() {
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
+                title="Style Laboratory"
+             >
+                <Zap size={16} />
+             </button>
              <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Fabric Config">
                 <Settings size={16} />
              </button>
@@ -192,6 +226,62 @@ export default function NetworkFabric() {
         </div>
       </div>
 
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
+               <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <Zap size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Fabric Density</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="8" max="14" step="1" 
+                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
+                              className="w-24 accent-blue-500"
+                           />
+                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                        <Layers size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="0" max="20" step="2" 
+                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
+                              className="w-24 accent-indigo-500"
+                           />
+                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <button 
+                  onClick={() => setShowStyleLab(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
+               >
+                  <X size={16} />
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
@@ -200,11 +290,14 @@ export default function NetworkFabric() {
           </div>
         )}
         <AgGridReact 
+          ref={gridRef}
           rowData={connections || []} 
           columnDefs={columnDefs}
           headerHeight={32}
-          rowHeight={32}
+          rowHeight={32 + rowDensity}
           quickFilterText={searchTerm}
+          animateRows={true}
+          suppressCellFocus={true}
         />
       </div>
 
@@ -354,17 +447,29 @@ export default function NetworkFabric() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
+          --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )

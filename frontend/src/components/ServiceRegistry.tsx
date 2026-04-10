@@ -589,6 +589,11 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
 
 export default function ServiceRegistry() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -606,11 +611,11 @@ export default function ServiceRegistry() {
   }
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
-  const { data: allServices, isLoading } = useQuery({ 
-    queryKey: ["logical-services"], 
+  const { data: allServices, isLoading } = useQuery({
+    queryKey: ["logical-services"],
     queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json())
   })
-  
+
   const { activeServices, purgedServices } = useMemo(() => {
     if (!allServices) return { activeServices: [], purgedServices: [] }
     return {
@@ -620,7 +625,12 @@ export default function ServiceRegistry() {
   }, [allServices])
 
   const services = activeTab === 'active' ? activeServices : purgedServices
-  const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, services])  const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -672,7 +682,9 @@ export default function ServiceRegistry() {
       headerName: "Instance",
       flex: 1,
       pinned: 'left',
-      cellClass: 'text-center font-bold text-blue-100 uppercase',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-bold text-blue-100',
       headerClass: 'text-center',      cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-2 h-full">
            {p.data.service_type === 'Database' && <Database size={12} className="text-amber-400" />}
@@ -688,11 +700,20 @@ export default function ServiceRegistry() {
         </div>
       )
     },
-    { field: "service_type", headerName: "Type", width: 110, cellClass: 'text-center uppercase font-black text-[9px] tracking-widest text-slate-500', headerClass: 'text-center' },
+    { 
+      field: "service_type", 
+      headerName: "Type", 
+      width: 110, 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black tracking-widest text-slate-500', 
+      headerClass: 'text-center' 
+    },
     { 
       field: "status", 
       headerName: "Status", 
       width: 100, 
+      filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -703,22 +724,47 @@ export default function ServiceRegistry() {
           Stopped: 'text-slate-400 border-slate-500/30 bg-slate-500/5',
           Maintenance: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5'
         }
-        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`}>{p.value}</span></div>
+        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span></div>
       }
     },
-    { field: "device_name", headerName: "Host Node", width: 140, cellClass: "text-blue-400 font-black uppercase text-[10px] text-center", headerClass: 'text-center' },
-    { field: "environment", headerName: "Env", width: 90, cellClass: 'text-center font-bold text-slate-400 uppercase text-[9px]', headerClass: 'text-center' },
-    { field: "version", headerName: "Ver", width: 80, cellClass: "font-mono text-slate-500 text-center text-[10px]", headerClass: 'text-center' },
+    { 
+      field: "device_name", 
+      headerName: "Host Node", 
+      width: 140, 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: "text-blue-400 font-black text-center", 
+      headerClass: 'text-center' 
+    },
+    { 
+      field: "environment", 
+      headerName: "Env", 
+      width: 90, 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-bold text-slate-400', 
+      headerClass: 'text-center' 
+    },
+    { 
+      field: "version", 
+      headerName: "Ver", 
+      width: 80, 
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: "font-mono text-slate-500 text-center", 
+      headerClass: 'text-center' 
+    },
     { 
       field: "manufacturer", 
       headerName: "Manufacturer", 
       width: 150, 
+      filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex flex-col items-center justify-center leading-tight py-1 h-full">
-           <span className="text-[10px] font-black text-slate-300 uppercase truncate w-full">{p.value || 'N/A'}</span>
-           {p.data.supplier && <span className="text-[8px] font-bold text-slate-500 uppercase truncate w-full">via {p.data.supplier}</span>}
+           <span className="font-black text-slate-300 truncate w-full" style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>
+           {p.data.supplier && <span className="font-bold text-slate-500 truncate w-full" style={{ fontSize: `${fontSize-2}px` }}>via {p.data.supplier}</span>}
         </div>
       )
     },
@@ -727,6 +773,7 @@ export default function ServiceRegistry() {
       headerName: "Supplier", 
       width: 120, 
       hide: true,
+      filter: true,
       cellClass: 'text-center text-slate-400 font-medium',
       headerClass: 'text-center'
     },
@@ -734,12 +781,13 @@ export default function ServiceRegistry() {
       field: "cost", 
       headerName: "Cost", 
       width: 100, 
+      filter: true,
       cellClass: 'text-center font-mono',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         if (!p.value && p.value !== 0) return <span className="text-slate-700 italic text-[8px]">N/A</span>
         const symbol = p.data.currency === 'KRW' ? '₩' : '$'
-        return <span className="text-[10px] font-black text-emerald-400">{symbol}{p.value.toLocaleString()}</span>
+        return <span className="font-black text-emerald-400" style={{ fontSize: `${fontSize}px` }}>{symbol}{p.value.toLocaleString()}</span>
       }
     },
     {
@@ -764,7 +812,7 @@ export default function ServiceRegistry() {
         </div>
       )
     }
-  ], [selectedIds, activeTab]) as any
+  ], [selectedIds, activeTab, fontSize]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -786,6 +834,13 @@ export default function ServiceRegistry() {
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
+                title="Style Laboratory"
+             >
+                <Zap size={16} />
+             </button>
              <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
                 <Settings size={16} />
              </button>
@@ -813,9 +868,65 @@ export default function ServiceRegistry() {
             </AnimatePresence>
           </div>
 
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Service</button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Instance</button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
+               <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <Zap size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Service Density</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="8" max="14" step="1" 
+                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
+                              className="w-24 accent-blue-500"
+                           />
+                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                        <Layers size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="0" max="20" step="2" 
+                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
+                              className="w-24 accent-indigo-500"
+                           />
+                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <button 
+                  onClick={() => setShowStyleLab(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
+               >
+                  <X size={16} />
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
@@ -825,13 +936,16 @@ export default function ServiceRegistry() {
           </div>
         )}
         <AgGridReact 
+          ref={gridRef}
           rowData={services || []} 
           columnDefs={columnDefs} 
           rowSelection="multiple"
           headerHeight={32}
-          rowHeight={32}
+          rowHeight={32 + rowDensity}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
+          animateRows={true}
+          suppressCellFocus={true}
         />
       </div>
 
@@ -926,17 +1040,29 @@ export default function ServiceRegistry() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
+          --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 9px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )

@@ -661,6 +661,11 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
 
 export default function AssetGrid() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [viewMode, setViewMode] = useState<'grid' | 'report'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
@@ -677,6 +682,7 @@ export default function AssetGrid() {
   // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
+
   const { data: devices } = useQuery({ 
     queryKey: ["devices-list-all"], 
     queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
@@ -714,6 +720,12 @@ export default function AssetGrid() {
   }, [allAssets])
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, assets])
 
   const mutation = useMutation({
     mutationFn: async ({ data }: any) => {
@@ -774,24 +786,26 @@ export default function AssetGrid() {
     { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
     { 
       field: "name",
-      headerName: "name",
+      headerName: "Instance",
       flex: 1.2,
       pinned: 'left',
-      cellClass: 'text-center text-[11px] uppercase',
-      headerClass: 'text-center text-[11px]',      filter: 'agTextColumnFilter',
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-bold text-blue-400',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
-    { field: "system", headerName: "System", width: 110, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "system", headerName: "System", width: 110, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center', headerClass: 'text-center' },
     { 
       field: "type", 
       headerName: "Type", 
       width: 90,
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
       cellClass: 'text-center',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter',
-      
+      headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
           Physical: 'text-emerald-400',
@@ -801,16 +815,16 @@ export default function AssetGrid() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-black uppercase text-[11px] ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+        return <span className={`font-black ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       }
     },
     { 
       field: "status", 
       headerName: "Status", 
       width: 110,
+      filter: true,
       cellClass: 'text-center',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
           Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
@@ -823,7 +837,7 @@ export default function AssetGrid() {
         return (
           <div className="flex items-center justify-center h-full">
             <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
+              <span className="font-black tracking-tighter leading-none" style={{ fontSize: `${fontSize-1}px` }}>
                 {p.value}
               </span>
             </div>
@@ -832,55 +846,60 @@ export default function AssetGrid() {
       }
     },
 
-    { field: "environment", headerName: "Env", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "owner", headerName: "Owner", width: 100, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "manufacturer", headerName: "Make", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "model", headerName: "Model", width: 90, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "os_name", headerName: "OS", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "os_version", headerName: "Ver", width: 60, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "environment", headerName: "Env", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center' },
+    { field: "owner", headerName: "Owner", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "manufacturer", headerName: "Make", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "model", headerName: "Model", width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "os_name", headerName: "OS", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "os_version", headerName: "Ver", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
       width: 120, 
-      cellClass: 'text-center font-mono text-[11px] text-blue-400',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter'
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-mono text-blue-400',
+      headerClass: 'text-center'
     },
     { 
       field: "management_ip", 
       headerName: "Mgmt IP", 
       width: 120, 
-      cellClass: 'text-center font-mono text-[11px] text-indigo-400',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter'
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-mono text-indigo-400',
+      headerClass: 'text-center'
     },
     { 
       field: "hardware_summary", 
       headerName: "Resources", 
       width: 150, 
-      cellClass: 'text-center font-black uppercase text-[11px] text-slate-400',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter'
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black text-slate-400',
+      headerClass: 'text-center'
     },
     { 
       field: "hardware_age", 
       headerName: "Age", 
       width: 80, 
-      cellClass: 'text-center font-black text-[11px] text-slate-500',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter'
+      filter: true,
+      cellStyle: { fontSize: `${fontSize}px` },
+      cellClass: 'text-center font-black text-slate-500',
+      headerClass: 'text-center'
     },
     { 
       field: "open_incident_count", 
       headerName: "Health", 
       width: 80, 
+      filter: true,
       cellClass: 'text-center',
-      headerClass: 'text-center text-[11px]',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => p.value > 0 ? (
         <div className="flex items-center justify-center h-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="text-[11px] font-black">{p.value}</span>
+              <span className="font-black" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
            </div>
         </div>
       ) : (
@@ -888,36 +907,36 @@ export default function AssetGrid() {
       )
     },
 
-    { field: "site_name", headerName: "Site", width: 100, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
-    { field: "rack_name", headerName: "Rack", width: 80, cellClass: 'text-center text-[11px]', headerClass: 'text-center text-[11px]', filter: 'agTextColumnFilter' },
+    { field: "site_name", headerName: "Site", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "rack_name", headerName: "Rack", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
     { 
       field: "depth", 
       headerName: "Depth", 
       width: 70,
+      filter: true,
       cellClass: 'text-center',
-      headerClass: 'text-center text-[11px]',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-black text-slate-500 uppercase text-[11px]">{p.value || 'Full'}</span>
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span className="font-black text-slate-500" style={{ fontSize: `${fontSize}px` }}>{p.value || 'Full'}</span>
     },
     { 
       field: "mount_orientation", 
       headerName: "Mount", 
       width: 80, 
+      filter: true,
       cellClass: 'text-center', 
-      headerClass: 'text-center text-[11px]', 
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span className="text-[11px] font-black uppercase text-indigo-400">{p.value}</span> : <span className="text-slate-700 italic text-[10px]">registry</span>
+      headerClass: 'text-center', 
+      cellRenderer: (p: any) => p.value ? <span className="font-black text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize-1}px` }}>registry</span>
     },
-    { field: "u_start", headerName: "U Pos", width: 60, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', filter: 'agNumberColumnFilter' },
-    { field: "size_u", headerName: "Size", width: 60, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', filter: 'agNumberColumnFilter' },
-    { field: "power_typical_w", headerName: "Avg W", width: 70, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
-    { field: "power_max_w", headerName: "Max W", width: 70, cellClass: "font-mono text-center text-[11px]", headerClass: 'text-center text-[11px]', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "u_start", headerName: "U Pos", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
+    { field: "size_u", headerName: "Size", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
+    { field: "power_typical_w", headerName: "Avg W", width: 70, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
+    { field: "power_max_w", headerName: "Max W", width: 70, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–' },
     {
-      headerName: "Action",
+      headerName: "Ops",
       width: 140,
       pinned: 'right',
       cellClass: 'text-center',
-      headerClass: 'text-center text-[11px]',
+      headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
@@ -937,7 +956,7 @@ export default function AssetGrid() {
         </div>
       )
     }
-  ], [activeTab]) as any
+  ], [activeTab, fontSize]) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -977,6 +996,13 @@ export default function AssetGrid() {
             </div>
 
             <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+               <button 
+                  onClick={() => setShowStyleLab(!showStyleLab)} 
+                  className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
+                  title="Style Laboratory"
+               >
+                  <Zap size={16} />
+               </button>
                <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
                   <Settings size={16} />
                </button>
@@ -1007,10 +1033,66 @@ export default function AssetGrid() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Asset</button>
+            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
+               <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <Zap size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Inventory Density</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="8" max="14" step="1" 
+                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
+                              className="w-24 accent-blue-500"
+                           />
+                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
+                        <Layers size={16} />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
+                        <div className="flex items-center space-x-2 mt-1">
+                           <input 
+                              type="range" min="0" max="20" step="2" 
+                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
+                              className="w-24 accent-indigo-500"
+                           />
+                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <button 
+                  onClick={() => setShowStyleLab(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
+               >
+                  <X size={16} />
+               </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {viewMode === 'grid' ? (
         <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
@@ -1021,13 +1103,16 @@ export default function AssetGrid() {
             </div>
           )}
           <AgGridReact 
+            ref={gridRef}
             rowData={assets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
-            headerHeight={28}
-            rowHeight={28}
+            headerHeight={32}
+            rowHeight={32 + rowDensity}
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
+            animateRows={true}
+            suppressCellFocus={true}
           />
         </div>
       ) : (
@@ -1141,24 +1226,32 @@ export default function AssetGrid() {
         .ag-theme-alpine-dark {
           --ag-background-color: #1a1b26;
           --ag-header-background-color: #24283b;
-          --ag-border-color: #292e42;
+          --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
+          --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 11px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 11px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; padding-left: 8px !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
         
         /* Make filter popups non-transparent and on top */
         .ag-popup { z-index: 1000 !important; }
-        .ag-filter-wrapper { background-color: #24283b !important; border: 1px solid #414868 !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
+        .ag-filter-wrapper { background-color: #24283b !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
         .ag-filter-body { background-color: #24283b !important; padding: 12px !important; }
-        
-        /* Action buttons hover effect */
-        .ag-cell button { transition: transform 0.2s ease; }
-        .ag-cell button:hover { transform: scale(1.2); }
       `}</style>
     </div>
   )

@@ -78,12 +78,6 @@ export default function MonitoringGrid() {
     }
   }, [showBulkMenu])
 
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
-    }
-  }, [fontSize, rowDensity, items])
-
   const [searchTerm, setSearchTerm] = useState('')
 
   const { data: allItems, isLoading } = useQuery({
@@ -95,6 +89,12 @@ export default function MonitoringGrid() {
     if (!allItems) return []
     return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
   }, [allItems, activeTab])
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, items])
 
   const { data: devices } = useQuery({
     queryKey: ['devices'],
