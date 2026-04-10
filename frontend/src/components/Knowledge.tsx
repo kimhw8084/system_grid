@@ -7,7 +7,7 @@ import {
   Layers, Database, Server, RefreshCcw, Filter,
   ChevronDown, User, Calendar, ExternalLink, Clock,
   List, Shield, Target, Zap, Activity, Image as ImageIcon,
-  ChevronRight, AlertCircle, PlayCircle, History, Link as LinkIcon
+  ChevronRight, AlertCircle, PlayCircle, History, Link as LinkIcon, Lightbulb
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'

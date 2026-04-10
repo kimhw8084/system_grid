@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,12 +19,6 @@ export default function NetworkFabric() {
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
-    }
-  }, [fontSize, rowDensity, connections])
-
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [viewingLink, setViewingLink] = useState<any>(null)
   const [editingLink, setEditingLink] = useState<any>(null)
@@ -39,6 +33,12 @@ export default function NetworkFabric() {
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, connections])
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {

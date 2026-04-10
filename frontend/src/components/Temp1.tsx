@@ -513,11 +513,11 @@ export default function Temp1() {
                                 <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center space-x-3"><LinkIcon size={12} /><span>Relational Trace</span></h5>
                                 <div className="space-y-2">
                                    {graphData.links.filter(l => 
-                                     Number(typeof l.source === 'object' ? l.source.id : l.source) === rawDevice.id || 
-                                     Number(typeof l.target === 'object' ? l.target.id : l.target) === rawDevice.id
+                                     Number(l.source && typeof l.source === 'object' ? (l.source as any).id : l.source) === rawDevice.id || 
+                                     Number(l.target && typeof l.target === 'object' ? (l.target as any).id : l.target) === rawDevice.id
                                    ).map((link, idx) => {
-                                     const sId = Number(typeof link.source === 'object' ? link.source.id : link.source);
-                                     const tId = Number(typeof link.target === 'object' ? link.target.id : link.target);
+                                     const sId = Number(link.source && typeof link.source === 'object' ? (link.source as any).id : link.source);
+                                     const tId = Number(link.target && typeof link.target === 'object' ? (link.target as any).id : link.target);
                                      const isSource = sId === rawDevice.id;
                                      const partnerId = isSource ? tId : sId;
                                      const partner = (devices as any[]).find(d => Number(d.id) === partnerId);

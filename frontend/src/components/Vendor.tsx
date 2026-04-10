@@ -5,7 +5,7 @@ import {
   Save, X, PlusCircle, User, MessageSquare,
   MoreVertical, RefreshCcw, Shield, Eye,
   FileText, Briefcase, Calendar, LayoutGrid, List,
-  Terminal, Monitor, Key, Clock, ShieldCheck, Check, ArrowRight, Server, Phone, Flag, ExternalLink, Trash
+  Terminal, Monitor, Key, Clock, ShieldCheck, Check, ArrowRight, Server, Phone, Flag, ExternalLink, Trash, Zap, Layers
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
