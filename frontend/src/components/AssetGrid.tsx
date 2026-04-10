@@ -987,9 +987,7 @@ export default function AssetGrid() {
              </div>
            )}
         </div>
-      </div>
 
-      <div className="flex items-center justify-between">
         {viewMode === 'grid' && (
           <div className="flex items-center space-x-3">
             <div className="relative">
