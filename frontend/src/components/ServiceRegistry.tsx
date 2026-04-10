@@ -590,7 +590,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
 export default function ServiceRegistry() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -726,7 +726,7 @@ export default function ServiceRegistry() {
           Stopped: 'text-slate-400 border-slate-500/30 bg-slate-500/5',
           Maintenance: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5'
         }
-        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span></div>
+        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span></div>
       }
     },
     { 
@@ -766,7 +766,7 @@ export default function ServiceRegistry() {
       cellRenderer: (p: any) => (
         <div className="flex flex-col items-center justify-center leading-tight py-1 h-full">
            <span className="font-black text-slate-300 truncate w-full" style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>
-           {p.data.supplier && <span className="font-bold text-slate-500 truncate w-full" style={{ fontSize: `${fontSize-2}px` }}>via {p.data.supplier}</span>}
+           {p.data.supplier && <span className="font-bold text-slate-500 truncate w-full" style={{ fontSize: `${fontSize}px` }}>via {p.data.supplier}</span>}
         </div>
       )
     },
@@ -939,8 +939,8 @@ export default function ServiceRegistry() {
           rowData={services || []} 
           columnDefs={columnDefs} 
           rowSelection="multiple"
-          headerHeight={32}
-          rowHeight={32 + rowDensity}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
           animateRows={true}
@@ -1048,18 +1048,8 @@ export default function ServiceRegistry() {
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { 
-            font-weight: 900 !important; 
-            text-transform: uppercase !important; 
-            letter-spacing: 0.1em !important; 
-            font-size: ${fontSize}px !important; 
-            justify-content: center !important; 
-        }
-        .ag-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center !important; 
-        }
+        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
+        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>

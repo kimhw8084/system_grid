@@ -36,7 +36,7 @@ const InfoCard = ({ label, value, icon: Icon }: any) => (
 export default function Vendor() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -263,14 +263,42 @@ export default function Vendor() {
         <AgGridReact 
           ref={gridRef}
           rowData={vendors || []} 
-          columnDefs={columnDefs as any}
-          headerHeight={32}
-          rowHeight={32 + rowDensity}
+          columnDefs={columnDefs} 
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
           suppressCellFocus={true}
         />
-      </div>
+        </div>
+
+        <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
+          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-foreground-color: #f1f5f9;
+          --ag-header-foreground-color: #3b82f6;
+          --ag-font-family: 'Inter', sans-serif;
+          --ag-font-size: ${fontSize}px;
+        }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+            font-weight: 700 !important;
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+        `}</style>
 
       <AnimatePresence>
         {activeModal && (

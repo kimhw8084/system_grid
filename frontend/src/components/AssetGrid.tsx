@@ -662,7 +662,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
 export default function AssetGrid() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -837,7 +837,7 @@ export default function AssetGrid() {
         return (
           <div className="flex items-center justify-center h-full">
             <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="font-black tracking-tighter leading-none" style={{ fontSize: `${fontSize-1}px` }}>
+              <span className="font-black tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
                 {p.value}
               </span>
             </div>
@@ -925,7 +925,7 @@ export default function AssetGrid() {
       filter: true,
       cellClass: 'text-center', 
       headerClass: 'text-center', 
-      cellRenderer: (p: any) => p.value ? <span className="font-black text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize-1}px` }}>registry</span>
+      cellRenderer: (p: any) => p.value ? <span className="font-black text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize}px` }}>registry</span>
     },
     { field: "u_start", headerName: "U Pos", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
     { field: "size_u", headerName: "Size", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
@@ -989,53 +989,6 @@ export default function AssetGrid() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="0" max="20" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="flex items-center justify-between">
         {viewMode === 'grid' && (
           <div className="flex items-center space-x-3">
@@ -1087,6 +1040,53 @@ export default function AssetGrid() {
         )}
       </div>
 
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="0" max="20" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {viewMode === 'grid' ? (
         <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
@@ -1100,8 +1100,8 @@ export default function AssetGrid() {
             rowData={assets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
-            headerHeight={32}
-            rowHeight={32 + rowDensity}
+            headerHeight={fontSize + rowDensity + 10}
+            rowHeight={fontSize + rowDensity + 10}
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
             animateRows={true}

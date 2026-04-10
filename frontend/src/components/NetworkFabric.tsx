@@ -15,7 +15,7 @@ import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -291,8 +291,8 @@ export default function NetworkFabric() {
           ref={gridRef}
           rowData={connections || []} 
           columnDefs={columnDefs}
-          headerHeight={32}
-          rowHeight={32 + rowDensity}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
           suppressCellFocus={true}

@@ -94,7 +94,7 @@ export default function FAR() {
   const [showPreventionWizard, setShowPreventionWizard] = useState(false)
 
   // Style Lab State
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
   
@@ -423,9 +423,9 @@ export default function FAR() {
               <table className="w-full text-left border-collapse" style={{ fontSize: `${fontSize}px` }}>
                  <thead className="sticky top-0 bg-[#0a0c14] z-10">
                     <tr className="border-b border-white/5">
-                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${32 + rowDensity}px` }}>System / Lv</th>
-                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${32 + rowDensity}px` }}>Failure Mode</th>
-                       {!selectedModeId && <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-right" style={{ height: `${32 + rowDensity}px` }}>RPN</th>}
+                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${fontSize + rowDensity + 10}px` }}>System / Lv</th>
+                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${fontSize + rowDensity + 10}px` }}>Failure Mode</th>
+                       {!selectedModeId && <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-right" style={{ height: `${fontSize + rowDensity + 10}px` }}>RPN</th>}
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-white/[0.02]">
@@ -449,7 +449,7 @@ export default function FAR() {
                           key={mode.id} 
                           onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
                           className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedModeId === mode.id ? 'bg-rose-500/10' : ''}`}
-                          style={{ height: `${32 + rowDensity}px` }}
+                          style={{ height: `${fontSize + rowDensity + 10}px` }}
                         >
                            <td className="px-4 py-2 text-center">
                               <div className="flex flex-col items-center gap-1">
@@ -464,7 +464,7 @@ export default function FAR() {
                            </td>
                            {!selectedModeId && (
                              <td className="px-4 py-2 text-right">
-                                <span className={`font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} style={{ fontSize: `${fontSize + 1}px` }}>{mode.rpn}</span>
+                                <span className={`font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>{mode.rpn}</span>
                              </td>
                            )}
                         </tr>

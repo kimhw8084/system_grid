@@ -32,7 +32,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
 export default function Research() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -138,7 +138,7 @@ export default function Research() {
         p.value === 'Security' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500' :
         p.value === 'RCA' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 font-bold tracking-widest' :
         'bg-blue-500/20 border-blue-500/30 text-blue-400'
-      }`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span>
+      }`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
     )},
     { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-bold text-white tracking-tight' },
     { field: "status", headerName: "Status", width: 100, filter: true, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
@@ -147,7 +147,7 @@ export default function Research() {
           (p.value === 'Urgent' || p.value === 'P1') ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse' :
           (p.value === 'High' || p.value === 'P2') ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
           'bg-blue-500/20 border-blue-500/30 text-blue-400'
-        }`} style={{ fontSize: `${fontSize-2}px` }}>{p.value}</span>
+        }`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
       )
     },
     { field: "updated_at", headerName: "Last Pulse", width: 130, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-mono text-slate-400', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : '---' },
@@ -271,8 +271,8 @@ export default function Research() {
           ref={gridRef}
           rowData={combinedData}
           columnDefs={columnDefs as any}
-          headerHeight={32}
-          rowHeight={32 + rowDensity}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
           suppressCellFocus={true}
@@ -347,6 +347,7 @@ export default function Research() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
+            font-weight: 700 !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
@@ -528,8 +529,8 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
                     <AgGridReact 
                       rowData={formData.progress_logs || []} 
                       columnDefs={timelineColumnDefs as any}
-                      headerHeight={28}
-                      rowHeight={28}
+                      headerHeight={fontSize + rowDensity + 10}
+                      rowHeight={fontSize + rowDensity + 10}
                     />
                   </div>
                 </div>

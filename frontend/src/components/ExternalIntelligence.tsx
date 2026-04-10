@@ -26,7 +26,7 @@ export default function ExternalIntelligence() {
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
 
   // Style Lab State
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
 
@@ -255,8 +255,8 @@ export default function ExternalIntelligence() {
           ref={gridRef}
           rowData={activeTab === 'Registry' ? entities : links} 
           columnDefs={(activeTab === 'Registry' ? entityColumns : linkColumns) as any}
-          headerHeight={32}
-          rowHeight={32 + rowDensity}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           suppressCellFocus={true}
         />
@@ -314,10 +314,11 @@ export default function ExternalIntelligence() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
+            font-weight: 700 !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(99, 102, 241, 0.2) !important; }
-      `}</style>
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+        `}</style>
     </div>
   )
 }

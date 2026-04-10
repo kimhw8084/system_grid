@@ -29,7 +29,7 @@ export default function MonitoringGrid() {
   const gridRef = React.useRef<any>(null)
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(10)
+  const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(true)
   const [showRegistry, setShowRegistry] = useState(false)
@@ -152,7 +152,12 @@ export default function MonitoringGrid() {
       width: 140, 
       filter: true,
       cellClass: "text-slate-200 font-bold text-center", 
-      headerClass: 'text-center' 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+          <span className="font-bold text-slate-200" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+        </div>
+      )
     },
     { 
       field: "category", 
@@ -163,7 +168,7 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <span className="text-[9px] font-black tracking-tight text-white">{p.value}</span>
+          <span className="font-black tracking-tight text-white" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
         </div>
       )
     },
@@ -178,7 +183,7 @@ export default function MonitoringGrid() {
         const status = STATUSES.find(s => s.value === p.value)
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded border font-black tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>
               {p.value}
             </span>
           </div>
@@ -216,7 +221,8 @@ export default function MonitoringGrid() {
         <div className="flex items-center justify-center h-full">
           <button 
             onClick={() => setHistoryItem(p.data)}
-            className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[9px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+            style={{ fontSize: `${fontSize}px` }}
           >
             v{p.value || 1}
           </button>
@@ -233,12 +239,12 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const owners = p.value || []
         const count = owners.length
-        if (count === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
+        if (count === 0) return <span className="text-slate-600 italic" style={{ fontSize: `${fontSize}px` }}>None</span>
         return (
           <div className="flex items-center justify-center h-full">
             <div className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg flex items-center space-x-2">
                <User size={10} className="text-blue-400" />
-               <span className="text-[10px] font-black text-slate-300">{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
+               <span className="font-black text-slate-300" style={{ fontSize: `${fontSize}px` }}>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
             </div>
           </div>
         )
@@ -251,7 +257,8 @@ export default function MonitoringGrid() {
       flex: 1.5, 
       filter: true,
       cellClass: "text-blue-400 font-bold text-left", 
-      headerClass: 'text-left' 
+      headerClass: 'text-left',
+      cellStyle: { fontSize: `${fontSize}px` }
     },
     { 
       field: "monitored_service_names", 
@@ -262,12 +269,13 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const names = p.value || []
         const count = names.length
-        if (count === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
+        if (count === 0) return <span className="text-slate-600 italic" style={{ fontSize: `${fontSize}px` }}>None</span>
         return (
           <div className="flex items-center justify-center h-full">
             <button 
               onClick={() => setServicePopup({ names, title: p.data.title })}
-              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[9px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+              style={{ fontSize: `${fontSize}px` }}
             >
               {count}
             </button>
@@ -284,7 +292,7 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <span className="text-[9px] font-black text-slate-300">{p.value}</span>
+          <span className="font-black text-slate-300" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
         </div>
       )
     },
@@ -303,7 +311,7 @@ export default function MonitoringGrid() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border text-[8px] font-black tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`}>
+            <span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>
               {p.value}
             </span>
           </div>
@@ -314,9 +322,9 @@ export default function MonitoringGrid() {
       field: "check_interval", 
       headerName: "Freq", 
       width: 70, 
-      cellClass: 'text-center text-slate-400 font-mono text-[9px]', 
+      cellClass: 'text-center text-slate-400 font-mono', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span>{p.value}s</span>
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}s</span>
     },
     { 
       field: "notification_method", 
@@ -331,7 +339,7 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <span className="text-[9px] font-black text-slate-300 border-b border-dashed border-slate-700">{p.value}</span>
+              <span className="font-black text-slate-300 border-b border-dashed border-slate-700" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
            </button>
         </div>
       )
@@ -341,8 +349,9 @@ export default function MonitoringGrid() {
       headerName: "Purpose", 
       flex: 1, 
       filter: true,
-      cellClass: "text-slate-500 italic text-left truncate px-4 text-[10px]", 
-      headerClass: 'text-left' 
+      cellClass: "text-slate-500 italic text-left truncate px-4", 
+      headerClass: 'text-left',
+      cellStyle: { fontSize: `${fontSize}px` }
     },
     {
       headerName: "Actions",
@@ -500,7 +509,7 @@ export default function MonitoringGrid() {
                         <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
-                            type="range" min="4" max="24" step="2" 
+                            type="range" min="0" max="20" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
@@ -528,7 +537,7 @@ export default function MonitoringGrid() {
           columnDefs={columnDefs} 
           rowSelection="multiple"
           headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 8}
+          rowHeight={fontSize + rowDensity + 10}
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
           quickFilterText={searchTerm}
           suppressRowClickSelection={true}
