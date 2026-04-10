@@ -221,7 +221,7 @@ function MainLayout() {
           <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Server} label="Assets" path="/asset-temp" active={location.pathname === "/asset-temp"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
@@ -270,7 +270,7 @@ function MainLayout() {
             <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/racks" element={<RackTemp />} />
-            <Route path="/asset-temp" element={<AssetTemp />} />
+            <Route path="/asset" element={<AssetTemp />} />
             <Route path="/services" element={<ServiceRegistry />} />
             <Route path="/external" element={<External />} />
             <Route path="/network" element={<NetworkFabric />} />

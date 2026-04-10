@@ -855,7 +855,7 @@ export default function AssetTemp() {
   
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(8) // Extra padding per row
+  const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(true)
 
   useEffect(() => {
@@ -1216,54 +1216,6 @@ export default function AssetTemp() {
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      {/* STYLE LABORATORY BAR */}
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -1350,6 +1302,54 @@ export default function AssetTemp() {
         )}
       </div>
 
+      {/* STYLE LABORATORY BAR */}
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {viewMode === 'grid' ? (
         <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
@@ -1363,8 +1363,8 @@ export default function AssetTemp() {
             rowData={assets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
-            headerHeight={fontSize + rowDensity + 8}
-            rowHeight={fontSize + rowDensity}
+            headerHeight={fontSize + rowDensity + 10}
+            rowHeight={fontSize + rowDensity + 10}
             onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
             quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
