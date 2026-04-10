@@ -24,7 +24,7 @@ from app.models.models import (
     Site, Room, Rack, Device, DeviceLocation, HardwareComponent,
     DeviceSoftware, NetworkInterface, Subnet, PortConnection,
     DeviceRelationship, LogicalService, ServiceSecret, SecretVault,
-    MaintenanceWindow, MonitoringItem, IncidentLog, DataFlow,
+    MaintenanceWindow, MonitoringItem, MonitoringOwner, IncidentLog, DataFlow,
     AuditLog, SettingOption, FirewallRule, ExternalEntity, ExternalLink,
     Vendor, VendorPersonnel, VendorContract, KnowledgeEntry,
     Investigation, InvestigationProgress,
@@ -55,7 +55,11 @@ def seed():
             "Status": ["Planned", "Active", "Maintenance", "Standby", "Failed", "Decommissioned", "Provisioning", "Reserved"],
             "Environment": ["Production", "Staging", "QA", "Dev", "DR", "Lab", "Sandbox", "Legacy"],
             "BusinessUnit": ["Operations", "Finance", "Security", "Engineering", "R&D", "Marketing"],
-            "LinkPurpose": ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat", "Stacking"]
+            "LinkPurpose": ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat", "Stacking"],
+            "MonitoringCategory": ["Infrastructure", "Log", "Network", "Application", "Synthetic"],
+            "MonitoringSeverity": ["Critical", "Warning", "Info"],
+            "NotificationMethod": ["Email", "Slack", "Teams", "PagerDuty", "Webhook"],
+            "MonitoringOwnerRole": ["Primary Support", "Secondary Support", "Business Owner", "Notification Subscriber"]
         }
         for cat, vals in cats.items():
             for v in vals:
@@ -504,6 +508,38 @@ def seed():
             # Mitigations
             db.add(RcaMitigation(rca_id=rca.id, type="Workaround", action_description="Rolling restart of core services", status="Completed"))
             db.add(RcaMitigation(rca_id=rca.id, type="Preventive", action_description="Patching kernel to v5.15.2", status="Planned"))
+
+        # 14. Monitoring Matrix
+        print("Seeding Monitoring Matrix Records...")
+        monitored_apps = random.sample(all_workers, 20)
+        for i, app in enumerate(monitored_apps):
+            mon = MonitoringItem(
+                device_id=app.id,
+                category=random.choice(cats["MonitoringCategory"]),
+                status="Existing",
+                title=f"Health Check: {app.name}",
+                spec="CPU > 90% for 5m",
+                platform=random.choice(["Zabbix", "Prometheus", "Datadog"]),
+                monitoring_url=f"https://monitoring.corp/host/{app.name}",
+                purpose="Ensure core service availability",
+                impact="Critical production delay if node fails",
+                notification_method=random.choice(cats["NotificationMethod"]),
+                severity=random.choice(cats["MonitoringSeverity"]),
+                check_interval=60,
+                alert_duration=300,
+                is_active=True
+            )
+            db.add(mon)
+            db.flush()
+            
+            # Add Owners
+            for _ in range(random.randint(1, 3)):
+                db.add(MonitoringOwner(
+                    monitoring_item_id=mon.id,
+                    name=fake.name(),
+                    external_id=f"OWN-{random.randint(1000, 9999)}",
+                    role=random.choice(cats["MonitoringOwnerRole"])
+                ))
 
         db.commit()
         print("--- ULTIMATE SEED COMPLETE ---")

@@ -132,6 +132,9 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     elif opt.category == "NotificationMethod":
         res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.notification_method == opt.value, models.MonitoringItem.is_deleted == False))
         if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringOwnerRole":
+        res = await db.execute(select(models.MonitoringOwner).filter(models.MonitoringOwner.role == opt.value))
+        if res.scalars().first(): in_use = True
         
     if in_use:
         raise HTTPException(status_code=400, detail=f"Cannot delete '{opt.label}' because it is currently assigned to one or more assets or services.")
@@ -297,6 +300,10 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("NotificationMethod", "Teams", "Instant message alerts"),
         ("NotificationMethod", "PagerDuty", "High-priority on-call alerts"),
         ("NotificationMethod", "Webhook", "Custom automation triggers"),
+        ("MonitoringOwnerRole", "Primary Support", "Main POC for alerts"),
+        ("MonitoringOwnerRole", "Secondary Support", "Backup POC for alerts"),
+        ("MonitoringOwnerRole", "Business Owner", "Responsible for business impact"),
+        ("MonitoringOwnerRole", "Notification Subscriber", "CC only for information"),
         # Semiconductor Impact Categories
         ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
         ("ImpactCategory", "Yield Degradation", "Reduced output quality"),

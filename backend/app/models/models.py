@@ -258,7 +258,7 @@ class MonitoringItem(Base, BaseMixin):
     __tablename__ = "monitoring_items"
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True)
     category = Column(String, index=True) # Hardware, Log, Network, App, Synthetic
-    status = Column(String, index=True) # Existing, Planned, Cancelled
+    status = Column(String, index=True) # Existing, Planned, Cancelled, Deleted
     title = Column(String) # What's being monitored
     spec = Column(Text) # Details/Thresholds
     platform = Column(String) # Zabbix, Prometheus, Datadog, etc.
@@ -269,7 +269,6 @@ class MonitoringItem(Base, BaseMixin):
     notification_recipients = Column(JSON, default=list)
     logic = Column(Text) # For log-based: regex or query
     logic_json = Column(JSON, default=list) # Structured logic entries
-    owner = Column(String)
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
     
     # Reliability & Frequency Controls
@@ -280,9 +279,18 @@ class MonitoringItem(Base, BaseMixin):
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
     recovery_docs = Column(JSON, default=list) # List of KnowledgeEntry IDs
-    owner_id = Column(String)
     
     device = relationship("Device", back_populates="monitoring_items")
+    owners = relationship("MonitoringOwner", back_populates="monitoring_item", cascade="all, delete-orphan")
+
+class MonitoringOwner(Base, BaseMixin):
+    __tablename__ = "monitoring_owners"
+    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
+    name = Column(String)
+    external_id = Column(String) # Owner ID
+    role = Column(String) # From MonitoringOwnerRole enum
+    
+    monitoring_item = relationship("MonitoringItem", back_populates="owners")
 
 class FirewallRule(Base, BaseMixin):
     __tablename__ = "firewall_rules"

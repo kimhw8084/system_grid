@@ -20,7 +20,8 @@ const STATUSES = [
   { value: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { value: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { value: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' }
+  { value: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
+  { value: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
 
 export default function MonitoringGrid() {
@@ -58,6 +59,7 @@ export default function MonitoringGrid() {
   const categories = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringCategory") : [], [settingsOptions])
   const severities = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringSeverity") : [], [settingsOptions])
   const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
+  const ownerRoles = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringOwnerRole") : [], [settingsOptions])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -183,13 +185,34 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const isActive = p.value
+        const isDeleted = p.data.status === 'Deleted'
         return (
           <div className="flex items-center justify-center h-full">
             <div className="relative">
-              <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-700'}`} />
-              {isActive && (
+              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
+              {(isActive && !isDeleted) && (
                 <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-30" />
               )}
+            </div>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "owners", 
+      headerName: "Owners", 
+      width: 120, 
+      cellClass: "text-center", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const owners = p.value || []
+        const count = owners.length
+        if (count === 0) return <span className="text-slate-600 italic text-[9px]">None</span>
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg flex items-center space-x-2">
+               <User size={10} className="text-blue-400" />
+               <span className="text-[10px] font-black text-slate-300">{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
             </div>
           </div>
         )
@@ -526,6 +549,7 @@ export default function MonitoringGrid() {
             categories={categories}
             severities={severities}
             notificationMethods={notificationMethods}
+            ownerRoles={ownerRoles}
             onClose={() => setIsFormOpen(false)} 
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
@@ -546,6 +570,7 @@ export default function MonitoringGrid() {
                 { title: "Categories", category: "MonitoringCategory", icon: Layers },
                 { title: "Severity Levels", category: "MonitoringSeverity", icon: AlertCircle },
                 { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
+                { title: "Owner Roles", category: "MonitoringOwnerRole", icon: User },
             ]}
         />
       </AnimatePresence>
@@ -995,7 +1020,7 @@ const LOGIC_SUGGESTIONS: any = {
   'Custom': 'Enter full custom logic script or detailed specifications here...'
 }
 
-function MonitoringForm({ item, devices, categories, severities, notificationMethods, onClose, onSuccess }: any) {
+function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
   const [showLineNumbers, setShowLineNumbers] = useState(true)
@@ -1022,10 +1047,24 @@ function MonitoringForm({ item, devices, categories, severities, notificationMet
     severity: 'Warning',
     is_active: true,
     recovery_docs: [],
-    owner: '',
-    owner_id: '',
+    owners: [],
     ...item
   })
+
+  const [newOwner, setNewOwner] = useState({ name: '', external_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
+
+  const addOwner = () => {
+    if (newOwner.name && newOwner.external_id) {
+       setFormData({ ...formData, owners: [...formData.owners, newOwner] })
+       setNewOwner({ name: '', external_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
+    }
+  }
+
+  const removeOwner = (idx: number) => {
+    const next = [...formData.owners]
+    next.splice(idx, 1)
+    setFormData({ ...formData, owners: next })
+  }
 
   // Sync is_active with status
   useEffect(() => {
@@ -1246,24 +1285,56 @@ function MonitoringForm({ item, devices, categories, severities, notificationMet
                       />
                    </div>
                    
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Owner Name</label>
-                        <input 
-                          value={formData.owner}
-                          onChange={e => setFormData({...formData, owner: e.target.value})}
-                          placeholder="Name..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all"
-                        />
+                   <div className="space-y-4 p-4 bg-white/5 rounded-3xl border border-white/5">
+                      <div className="flex items-center justify-between px-1">
+                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Ownership Matrix</h3>
+                         <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Owner ID</label>
-                        <input 
-                          value={formData.owner_id}
-                          onChange={e => setFormData({...formData, owner_id: e.target.value})}
-                          placeholder="ID..."
-                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all"
-                        />
+                      
+                      <div className="grid grid-cols-12 gap-2">
+                         <div className="col-span-4">
+                            <input 
+                              value={newOwner.name}
+                              onChange={e => setNewOwner({...newOwner, name: e.target.value})}
+                              placeholder="Name..."
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
+                            />
+                         </div>
+                         <div className="col-span-3">
+                            <input 
+                              value={newOwner.external_id}
+                              onChange={e => setNewOwner({...newOwner, external_id: e.target.value})}
+                              placeholder="ID..."
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
+                            />
+                         </div>
+                         <div className="col-span-4">
+                            <select 
+                              value={newOwner.role}
+                              onChange={e => setNewOwner({...newOwner, role: e.target.value})}
+                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
+                            >
+                               {ownerRoles.map((r:any) => <option key={r.id} value={r.value}>{r.label}</option>)}
+                            </select>
+                         </div>
+                         <div className="col-span-1">
+                            <button onClick={addOwner} className="w-full h-full flex items-center justify-center bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all"><Plus size={14}/></button>
+                         </div>
+                      </div>
+
+                      <div className="space-y-1 mt-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                         {formData.owners?.map((o: any, idx: number) => (
+                           <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5 group">
+                              <div className="flex items-center space-x-3">
+                                 <User size={12} className="text-blue-500" />
+                                 <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-200 uppercase">{o.name}</span>
+                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{o.role} | ID: {o.external_id}</span>
+                                 </div>
+                              </div>
+                              <button onClick={() => removeOwner(idx)} className="p-1 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12}/></button>
+                           </div>
+                         ))}
                       </div>
                    </div>
                 </div>

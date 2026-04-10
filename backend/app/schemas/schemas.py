@@ -117,10 +117,18 @@ class MaintenanceWindowBase(BaseModel):
 class MaintenanceWindowCreate(MaintenanceWindowBase): pass
 class MaintenanceWindowResponse(MaintenanceWindowBase, BaseSchema): pass
 
+class MonitoringOwnerBase(BaseModel):
+    name: str
+    external_id: str
+    role: str
+
+class MonitoringOwnerCreate(MonitoringOwnerBase): pass
+class MonitoringOwnerResponse(MonitoringOwnerBase, BaseSchema): pass
+
 class MonitoringItemBase(BaseModel):
     device_id: Optional[int] = None
     category: str # Hardware, Log, Network, App, Synthetic
-    status: str # Existing, Planned, Cancelled
+    status: str # Existing, Planned, Cancelled, Deleted
     title: str # What's being monitored
     spec: Optional[str] = None # Details/Thresholds
     platform: Optional[str] = None # Zabbix, Prometheus, Datadog, etc.
@@ -131,7 +139,6 @@ class MonitoringItemBase(BaseModel):
     notification_recipients: Optional[List[str]] = []
     logic: Optional[str] = None # For log-based: regex or query
     logic_json: Optional[List[Dict[str, Any]]] = []
-    owner: Optional[str] = None
     monitored_services: List[int] = []
     
     # New Fields
@@ -142,14 +149,16 @@ class MonitoringItemBase(BaseModel):
     is_active: Optional[bool] = True
     is_deleted: Optional[bool] = False
     recovery_docs: Optional[List[int]] = []
-    owner_id: Optional[str] = None
 
-class MonitoringItemCreate(MonitoringItemBase): pass
+class MonitoringItemCreate(MonitoringItemBase):
+    owners: List[MonitoringOwnerCreate] = []
+
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     is_deleted: bool = False
     device_name: Optional[str] = None
     monitored_service_names: List[str] = [] # Optional, for UI convenience
     recovery_doc_titles: List[str] = [] # For UI convenience
+    owners: List[MonitoringOwnerResponse] = []
 
 class ServiceSecretBase(BaseModel):
     username: Optional[str] = None

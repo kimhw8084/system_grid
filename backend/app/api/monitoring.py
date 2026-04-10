@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
+from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
@@ -15,7 +16,7 @@ def filter_valid_columns(model, data):
 
 @router.get("/", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.MonitoringItem)
+    query = select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners))
     if not include_deleted:
         query = query.filter(models.MonitoringItem.is_deleted == False)
     
@@ -23,7 +24,7 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
         query = query.filter(models.MonitoringItem.device_id == device_id)
     
     result = await db.execute(query)
-    items = result.scalars().all()
+    items = result.unique().scalars().all()
     
     # Enrich with device name and service names
     res = []
@@ -47,10 +48,22 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
 
 @router.post("/", response_model=schemas.MonitoringItemResponse)
 async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSession = Depends(get_db)):
-    db_obj = models.MonitoringItem(**data.model_dump())
+    owners_data = data.owners
+    item_data = data.model_dump(exclude={"owners"})
+    
+    db_obj = models.MonitoringItem(**item_data)
     db.add(db_obj)
+    await db.flush() # To get db_obj.id
+    
+    for owner in owners_data:
+        db_owner = models.MonitoringOwner(**owner.model_dump(), monitoring_item_id=db_obj.id)
+        db.add(db_owner)
+        
     await db.commit()
-    await db.refresh(db_obj)
+    
+    # Reload with owners
+    result = await db.execute(select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners)).filter(models.MonitoringItem.id == db_obj.id))
+    db_obj = result.unique().scalar_one()
     
     resp = schemas.MonitoringItemResponse.model_validate(db_obj)
     if db_obj.device_id:
@@ -73,12 +86,24 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     item = result.scalar_one_or_none()
     if not item: raise HTTPException(404, "Monitoring item not found")
     
+    owners_data = data.get("owners")
     clean_data = filter_valid_columns(models.MonitoringItem, data)
+    
     for k, v in clean_data.items():
         setattr(item, k, v)
-        
+    
+    if owners_data is not None:
+        # Simple replace for now
+        await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
+        for owner in owners_data:
+            db_owner = models.MonitoringOwner(**owner, monitoring_item_id=item_id)
+            db.add(db_owner)
+            
     await db.commit()
-    await db.refresh(item)
+    
+    # Reload with owners
+    result = await db.execute(select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners)).filter(models.MonitoringItem.id == item_id))
+    item = result.unique().scalar_one()
     
     resp = schemas.MonitoringItemResponse.model_validate(item)
     if item.device_id:
@@ -103,11 +128,11 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     if not ids: return {"status": "no_op"}
     
     if action == "delete":
-        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=True))
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=True, status="Deleted"))
     elif action == "purge":
         await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
     elif action == "restore":
-        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=False))
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=False, status="Existing"))
     elif action == "update":
         clean_update = filter_valid_columns(models.MonitoringItem, payload)
         if clean_update:
@@ -123,5 +148,6 @@ async def delete_monitoring_item(item_id: int, db: AsyncSession = Depends(get_db
     if not item: raise HTTPException(404, "Monitoring item not found")
     
     item.is_deleted = True
+    item.status = "Deleted"
     await db.commit()
     return {"status": "success"}
