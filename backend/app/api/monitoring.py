@@ -14,6 +14,61 @@ def filter_valid_columns(model, data):
     exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
     return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
+async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None):
+    # Fetch the item with owners
+    result = await db.execute(
+        select(models.MonitoringItem)
+        .options(joinedload(models.MonitoringItem.owners))
+        .filter(models.MonitoringItem.id == item_id)
+    )
+    item = result.unique().scalar_one()
+    
+    # Create snapshot (convert to dict)
+    snapshot = {
+        "device_id": item.device_id,
+        "category": item.category,
+        "status": item.status,
+        "title": item.title,
+        "spec": item.spec,
+        "platform": item.platform,
+        "monitoring_url": item.monitoring_url,
+        "purpose": item.purpose,
+        "impact": item.impact,
+        "notification_method": item.notification_method,
+        "notification_recipients": item.notification_recipients,
+        "logic": item.logic,
+        "logic_json": item.logic_json,
+        "monitored_services": item.monitored_services,
+        "check_interval": item.check_interval,
+        "alert_duration": item.alert_duration,
+        "notification_throttle": item.notification_throttle,
+        "severity": item.severity,
+        "is_active": item.is_active,
+        "is_deleted": item.is_deleted,
+        "recovery_docs": item.recovery_docs,
+        "owners": [
+            {"name": o.name, "external_id": o.external_id, "role": o.role}
+            for o in item.owners
+        ]
+    }
+    
+    history_obj = models.MonitoringHistory(
+        monitoring_item_id=item_id,
+        version=version,
+        snapshot=snapshot,
+        change_summary=summary
+    )
+    db.add(history_obj)
+
+@router.get("/{item_id}/history", response_model=List[schemas.MonitoringHistoryResponse])
+async def get_monitoring_history(item_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(models.MonitoringHistory)
+        .filter(models.MonitoringHistory.monitoring_item_id == item_id)
+        .order_by(models.MonitoringHistory.version.desc())
+    )
+    return result.scalars().all()
+
 @router.get("/", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners))
@@ -60,6 +115,8 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
         db.add(db_owner)
         
     await db.commit()
+    await save_monitoring_history(db_obj.id, db_obj.version, db)
+    await db.commit()
     
     # Reload with owners
     result = await db.execute(select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners)).filter(models.MonitoringItem.id == db_obj.id))
@@ -99,6 +156,9 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     for k, v in clean_data.items():
         setattr(item, k, v)
     
+    # Increment version
+    item.version = (item.version or 0) + 1
+
     if owners_data is not None:
         # Simple replace for now, but clean the data
         await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
@@ -108,6 +168,8 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
             db_owner = models.MonitoringOwner(**owner_clean, monitoring_item_id=item_id)
             db.add(db_owner)
             
+    await db.commit()
+    await save_monitoring_history(item_id, item.version, db)
     await db.commit()
     
     # Reload with owners

@@ -39,6 +39,7 @@ export default function MonitoringGrid() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [detailItem, setDetailItem] = useState<any>(null)
+  const [historyItem, setHistoryItem] = useState<any>(null)
   const [servicePopup, setServicePopup] = useState<{ names: string[], title: string } | null>(null)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[] } | null>(null)
@@ -200,6 +201,23 @@ export default function MonitoringGrid() {
           </div>
         )
       }
+    },
+    { 
+      field: "version", 
+      headerName: "Ver", 
+      width: 60, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+          <button 
+            onClick={() => setHistoryItem(p.data)}
+            className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-[9px] font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+          >
+            v{p.value || 1}
+          </button>
+        </div>
+      )
     },
     { 
       field: "owners", 
@@ -567,6 +585,7 @@ export default function MonitoringGrid() {
           />
         )}
         {detailItem && <MonitoringDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
+        {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
         {servicePopup && <ServicesModal names={servicePopup.names} title={servicePopup.title} onClose={() => setServicePopup(null)} />}
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
@@ -1741,3 +1760,130 @@ function MonitoringForm({ item, devices, categories, severities, notificationMet
     </div>
   )
 }
+
+function MonitoringHistoryModal({ item, onClose }: any) {
+  const { data: history, isLoading } = useQuery({
+    queryKey: ['monitoring-history', item.id],
+    queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
+  })
+
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  const current = history?.[selectedIndex]
+  const previous = history?.[selectedIndex + 1]
+
+  const getDiff = (v1: any, v2: any) => {
+    if (!v1) return []
+    const s1 = v1.snapshot || {}
+    const s2 = v2?.snapshot || {}
+    const keys = Array.from(new Set([...Object.keys(s1), ...Object.keys(s2)]))
+    
+    return keys.filter(k => {
+      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted'].includes(k)) return false
+      return JSON.stringify(s1[k]) !== JSON.stringify(s2[k])
+    }).map(k => ({
+      field: k,
+      old: s2[k],
+      new: s1[k]
+    }))
+  }
+
+  const diffs = getDiff(current, previous)
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-8">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-[40px] border-blue-500/30">
+        <div className="flex items-center justify-between mb-8">
+           <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400">
+                <Clock size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Version History</h2>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</p>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+              <X size={24} />
+           </button>
+        </div>
+
+        <div className="flex-1 flex space-x-8 min-h-0">
+           {/* Version List */}
+           <div className="w-64 flex flex-col space-y-2 overflow-y-auto custom-scrollbar pr-2">
+              {isLoading ? (
+                <div className="flex-1 flex items-center justify-center">
+                   <RefreshCcw size={24} className="animate-spin text-blue-500" />
+                </div>
+              ) : (
+                history?.map((h: any, idx: number) => (
+                  <button 
+                    key={h.id}
+                    onClick={() => setSelectedIndex(idx)}
+                    className={`w-full p-4 rounded-2xl border text-left transition-all ${selectedIndex === idx ? 'bg-blue-600 border-blue-400 shadow-lg' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                       <span className={`text-[10px] font-black uppercase ${selectedIndex === idx ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
+                       <span className={`text-[8px] font-bold uppercase ${selectedIndex === idx ? 'text-blue-200' : 'text-slate-500'}`}>
+                          {new Date(h.created_at).toLocaleDateString()}
+                       </span>
+                    </div>
+                    <p className={`text-[9px] font-bold truncate ${selectedIndex === idx ? 'text-blue-100' : 'text-slate-400'}`}>
+                       {h.change_summary || 'Manual Edit'}
+                    </p>
+                  </button>
+                ))
+              )}
+           </div>
+
+           {/* Diff View */}
+           <div className="flex-1 bg-black/40 rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {previous ? `Comparing v${previous.version} → v${current?.version}` : `Initial Version v${current?.version}`}
+                 </h3>
+                 {diffs.length > 0 && <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{diffs.length} Changes Detected</span>}
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+                 {diffs.map((d: any, i: number) => (
+                    <div key={i} className="space-y-2">
+                       <div className="flex items-center space-x-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest">{d.field.replace(/_/g, ' ')}</span>
+                       </div>
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-3 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 px-2 py-0.5 bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase rounded-bl-lg">OLD</div>
+                             <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono">
+                                {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
+                             </pre>
+                          </div>
+                          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 relative overflow-hidden">
+                             <div className="absolute top-0 right-0 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-bl-lg">NEW</div>
+                             <pre className="text-[11px] text-emerald-300 whitespace-pre-wrap font-mono font-bold">
+                                {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}
+                             </pre>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+                 
+                 {diffs.length === 0 && !isLoading && (
+                    <div className="h-full flex flex-col items-center justify-center space-y-4">
+                       <div className="p-4 bg-white/5 rounded-full">
+                          <Check size={32} className="text-slate-700" />
+                       </div>
+                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic text-center">
+                          {previous ? 'No semantic differences detected between these versions' : 'This is the genesis version of this monitoring node'}
+                       </p>
+                    </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+

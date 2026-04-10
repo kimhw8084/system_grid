@@ -149,6 +149,7 @@ class MonitoringItemBase(BaseModel):
     is_active: Optional[bool] = True
     is_deleted: Optional[bool] = False
     recovery_docs: Optional[List[int]] = []
+    version: Optional[int] = 1
 
 class MonitoringItemCreate(MonitoringItemBase):
     owners: List[MonitoringOwnerCreate] = []
@@ -159,6 +160,12 @@ class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     monitored_service_names: List[str] = [] # Optional, for UI convenience
     recovery_doc_titles: List[str] = [] # For UI convenience
     owners: List[MonitoringOwnerResponse] = []
+
+class MonitoringHistoryResponse(BaseSchema):
+    monitoring_item_id: int
+    version: int
+    snapshot: Dict[str, Any]
+    change_summary: Optional[str] = None
 
 class ServiceSecretBase(BaseModel):
     username: Optional[str] = None

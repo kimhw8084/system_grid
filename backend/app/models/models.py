@@ -279,9 +279,19 @@ class MonitoringItem(Base, BaseMixin):
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
     recovery_docs = Column(JSON, default=list) # List of KnowledgeEntry IDs
-    
+    version = Column(Integer, default=1)
+
     device = relationship("Device", back_populates="monitoring_items")
     owners = relationship("MonitoringOwner", back_populates="monitoring_item", cascade="all, delete-orphan")
+
+class MonitoringHistory(Base, BaseMixin):
+    __tablename__ = "monitoring_history"
+    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
+    version = Column(Integer)
+    snapshot = Column(JSON) # Snapshot of fields + owners
+    change_summary = Column(Text, nullable=True)
+
+    monitoring_item = relationship("MonitoringItem")
 
 class MonitoringOwner(Base, BaseMixin):
     __tablename__ = "monitoring_owners"
