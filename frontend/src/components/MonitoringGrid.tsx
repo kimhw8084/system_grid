@@ -383,54 +383,6 @@ export default function MonitoringGrid() {
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      {/* STYLE LABORATORY BAR */}
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
@@ -510,6 +462,54 @@ export default function MonitoringGrid() {
           </button>
         </div>
       </div>
+
+      {/* STYLE LABORATORY BAR */}
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
@@ -1825,7 +1825,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     <div className="flex items-center justify-between mb-1">
                        <span className={`text-[10px] font-black uppercase ${selectedIndex === idx ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
                        <span className={`text-[8px] font-bold uppercase ${selectedIndex === idx ? 'text-blue-200' : 'text-slate-500'}`}>
-                          {new Date(h.created_at).toLocaleDateString()}
+                          {new Date(h.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                        </span>
                     </div>
                     <p className={`text-[9px] font-bold truncate ${selectedIndex === idx ? 'text-blue-100' : 'text-slate-400'}`}>

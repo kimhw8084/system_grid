@@ -172,90 +172,87 @@ export default function Research() {
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2 text-white">
-            <Shield size={24} className="text-blue-500" /> Research Matrix
-          </h1>
-          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold leading-none">Deep Forensics & Scientific Troubleshooting</p>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2 text-white">
+                <Shield size={24} className="text-blue-500" /> Research Matrix
+              </h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Deep Forensics & Scientific Troubleshooting</p>
+           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search Research Matrix..." className="bg-white/5 border border-white/5 rounded-lg pl-8 pr-4 py-1.5 text-[9px] font-black uppercase outline-none focus:border-blue-500/50 w-48 transition-all shadow-inner text-white" />
+        
+        <div className="flex items-center space-x-3">
+          <div className="relative group">
+             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 ml-2">
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
              <button 
                 onClick={() => setShowStyleLab(!showStyleLab)} 
-                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
-                title="Style Laboratory"
+                className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
+                title="Toggle Style Lab"
              >
-                <Zap size={16} />
+                <Activity size={16} />
+             </button>
+             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Research Config">
+                <Settings size={16} />
              </button>
           </div>
 
-          <div className="flex gap-1 ml-2">
-             <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={12}/> New RCA</button>
-             <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Investigation</button>
+          <div className="flex gap-2">
+             <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={14}/> New RCA</button>
+             <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Research</button>
           </div>
         </div>
-        </div>
+      </div>
 
-        <AnimatePresence>
+      <AnimatePresence>
         {showStyleLab && (
           <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-4"
+            className="overflow-hidden"
           >
-            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
-               <div className="flex items-center space-x-8">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                        <Zap size={16} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500">Research Density</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                           <input 
-                              type="range" min="8" max="14" step="1" 
-                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
-                              className="w-24 accent-blue-500"
-                           />
-                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
                         </div>
                      </div>
-                  </div>
 
-                  <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                        <Layers size={16} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                           <input 
-                              type="range" min="0" max="20" step="2" 
-                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
-                              className="w-24 accent-indigo-500"
-                           />
-                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
                </div>
-
-               <button 
-                  onClick={() => setShowStyleLab(false)}
-                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
-               >
-                  <X size={16} />
-               </button>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
             </div>
           </motion.div>
         )}
-        </AnimatePresence>
+      </AnimatePresence>
       <div className="grid grid-cols-4 gap-3">
         <CompactSummary label="Total Research" value={stats.total} icon={Activity} color="text-blue-400" />
         <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />

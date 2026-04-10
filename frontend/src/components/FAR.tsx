@@ -7,7 +7,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book
+  ChevronLeft, Book, Download, Copy
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -92,6 +92,11 @@ export default function FAR() {
   const [showMitigationWizard, setShowMitigationWizard] = useState(false)
   const [showResolutionWizard, setShowResolutionWizard] = useState(false)
   const [showPreventionWizard, setShowPreventionWizard] = useState(false)
+
+  // Style Lab State
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(false)
   
   // Queries
   const { data: modes, isLoading: modesLoading } = useQuery({ 
@@ -213,42 +218,99 @@ export default function FAR() {
   }
 
   return (
-    <div className="h-full flex flex-col space-y-3">
-      {/* ... header and ribbon ... */}
+    <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter italic flex items-center gap-2 text-white">
-            <Target size={24} className="text-rose-500" /> Failure Analysis & Resolution (FAR)
-          </h1>
-          <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold leading-none">Reliability Knowledge Engine & Risk Mitigation</p>
+        <div className="flex items-center space-x-6">
+           <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2">
+                <Target size={24} className="text-rose-500" /> Failure Matrix
+              </h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Reliability Knowledge Engine & Risk Mitigation</p>
+           </div>
         </div>
         
         <div className="flex items-center space-x-3">
-           <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+           <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
               <input 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                placeholder="Search..." 
-                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500/50 w-48 transition-all" 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="SCAN FAILURES..."
+                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black outline-none focus:border-rose-500/50 w-64 transition-all"
               />
            </div>
+
+           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-rose-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
+                <Activity size={16} />
+             </button>
+             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Reliability Config">
+                <Settings size={16} />
+             </button>
+          </div>
            
            <button 
-             onClick={() => setShowCauseWizard(true)}
-             className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/10 active:scale-95 transition-all flex items-center gap-2"
+             onClick={() => { setShowWizard(false); setShowCauseWizard(true); }}
+             className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
              <Zap size={14} /> Add Cause
            </button>
 
            <button 
-             onClick={() => setShowWizard(true)}
-             className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
+             onClick={() => { setShowCauseWizard(false); setShowWizard(true); }}
+             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
              <ShieldAlert size={14} /> Add Mode
            </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-rose-600/10 border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-rose-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* System Command Toggles */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
@@ -357,13 +419,13 @@ export default function FAR() {
               )}
            </div>
 
-           <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse">
+           <div className="flex-1 overflow-y-auto custom-scrollbar font-sans">
+              <table className="w-full text-left border-collapse" style={{ fontSize: `${fontSize}px` }}>
                  <thead className="sticky top-0 bg-[#0a0c14] z-10">
                     <tr className="border-b border-white/5">
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">System / Lv</th>
-                       <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">Failure Mode</th>
-                       {!selectedModeId && <th className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">RPN</th>}
+                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${32 + rowDensity}px` }}>System / Lv</th>
+                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${32 + rowDensity}px` }}>Failure Mode</th>
+                       {!selectedModeId && <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-right" style={{ height: `${32 + rowDensity}px` }}>RPN</th>}
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-white/[0.02]">
@@ -387,21 +449,22 @@ export default function FAR() {
                           key={mode.id} 
                           onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
                           className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedModeId === mode.id ? 'bg-rose-500/10' : ''}`}
+                          style={{ height: `${32 + rowDensity}px` }}
                         >
-                           <td className="px-4 py-2">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[8px] font-black uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit">{mode.system_name}</span>
+                           <td className="px-4 py-2 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="text-[8px] font-black uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit tracking-tighter">{mode.system_name}</span>
                                 <div className={`flex items-center gap-1 text-[8px] font-black uppercase ${ml.color.replace('bg-', 'text-')}`}>
                                    <Shield size={8} /> L{lv}
                                 </div>
                               </div>
                            </td>
                            <td className="px-4 py-2">
-                              <span className="text-[10px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2">{mode.title}</span>
+                              <span className="text-[10px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2" style={{ fontSize: `${fontSize}px` }}>{mode.title}</span>
                            </td>
                            {!selectedModeId && (
                              <td className="px-4 py-2 text-right">
-                                <span className={`text-[11px] font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>{mode.rpn}</span>
+                                <span className={`font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} style={{ fontSize: `${fontSize + 1}px` }}>{mode.rpn}</span>
                              </td>
                            )}
                         </tr>
@@ -422,99 +485,101 @@ export default function FAR() {
               className="flex-1 flex space-x-3 overflow-hidden"
             >
                {/* Detail Lab (Active Actions) */}
-               <div className="w-[65%] glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/60 flex flex-col overflow-hidden">
-                  <div className="p-6 border-b border-white/5 bg-gradient-to-r from-rose-500/10 to-transparent flex items-center justify-between">
-                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                           <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(244,63,94,0.2)]">Maturity Lab</span>
-                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedMode.system_name}</span>
+               <div className="w-[65%] glass-panel rounded-[40px] border border-rose-500/20 bg-black/90 flex flex-col overflow-hidden shadow-2xl">
+                  <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+                     <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                           <span className="px-3 py-1 rounded-lg bg-rose-600/20 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest">FAILURE_ID: {selectedMode.id}</span>
+                           <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">{selectedMode.system_name}</span>
                         </div>
-                        <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">{selectedMode.title}</h2>
+                        <h2 className="text-5xl font-black text-white uppercase tracking-tighter italic">{selectedMode.title}</h2>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Precision Reliability Maturity Lab Entry</p>
                      </div>
                      <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Score (RPN)</p>
-                        <p className={`text-3xl font-black italic leading-none ${selectedMode.rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{selectedMode.rpn}</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Score (RPN)</p>
+                        <p className={`text-6xl font-black italic leading-none tracking-tighter ${selectedMode.rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{selectedMode.rpn}</p>
                      </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-12">
                      {/* 1. Maturity Roadmap Checklist */}
-                     <section className="space-y-4">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
-                           <CheckCircle2 size={14} /> Reliability Roadmap
+                     <section className="space-y-6">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 flex items-center gap-2 border-l-2 border-rose-500 pl-4">
+                           RELIABILITY_ROADMAP
                         </h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                            {[
                              { label: 'Automated Monitoring', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Monitoring'), icon: Activity, color: 'text-sky-400', action: () => setShowMitigationWizard(true) },
                              { label: 'Immediate Workaround', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Workaround'), icon: Zap, color: 'text-amber-400', action: () => setShowMitigationWizard(true) },
                              { label: 'Permanent BKM', status: selectedMode.causes?.some((c:any) => c.resolutions?.length > 0), icon: Lightbulb, color: 'text-emerald-400', action: () => setShowResolutionWizard(true) },
                              { label: 'Engineering Fix', status: ['Eliminated', 'Prevented'].includes(selectedMode.status), icon: ShieldCheck, color: 'text-emerald-500', action: () => setShowPreventionWizard(true) }
                            ].map((item, i) => (
-                             <div key={i} className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${item.status ? 'bg-white/5 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/5 opacity-60 hover:opacity-100 hover:border-rose-500/20'}`}>
-                                <div className="flex items-center gap-3">
-                                   <div className={`p-2 rounded-xl bg-white/5 ${item.status ? item.color : 'text-slate-600'}`}>
-                                      <item.icon size={18} />
+                             <div key={i} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${item.status ? 'bg-white/5 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/5 opacity-60 hover:opacity-100 hover:border-rose-500/20'}`}>
+                                <div className="flex items-center gap-4">
+                                   <div className={`p-3 rounded-2xl bg-white/5 ${item.status ? item.color : 'text-slate-600'}`}>
+                                      <item.icon size={24} />
                                    </div>
                                    <div>
-                                      <p className={`text-[10px] font-black uppercase tracking-widest ${item.status ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
-                                      <p className="text-[8px] font-bold uppercase text-slate-600">{item.status ? 'Verified & Active' : 'Action Required'}</p>
+                                      <p className={`text-xs font-black uppercase tracking-widest ${item.status ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
+                                      <p className="text-[9px] font-bold uppercase text-slate-600">{item.status ? 'Verified & Active' : 'Action Required'}</p>
                                    </div>
                                 </div>
                                 {!item.status && (
-                                  <button onClick={item.action} className="p-2 hover:bg-white/5 rounded-lg text-rose-500 transition-colors">
-                                     <Plus size={16} />
+                                  <button onClick={item.action} className="p-2 hover:bg-white/5 rounded-xl text-rose-500 transition-colors">
+                                     <Plus size={20} />
                                   </button>
                                 )}
-                                {item.status && <CheckCircle2 size={16} className="text-emerald-500" />}
+                                {item.status && <CheckCircle2 size={20} className="text-emerald-500" />}
                              </div>
                            ))}
                         </div>
                      </section>
 
                      {/* 2. Resolutions / BKMs */}
-                     <section className="space-y-4">
+                     <section className="space-y-6">
                         <div className="flex items-center justify-between">
-                           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
-                              <Book size={14} /> Knowledge Alignment (BKM)
+                           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-2 border-l-2 border-emerald-500 pl-4">
+                              KNOWLEDGE_ALIGNMENT_BKM
                            </h3>
-                           <button onClick={() => setShowResolutionWizard(true)} className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:underline">+ Map Resolution</button>
+                           <button onClick={() => setShowResolutionWizard(true)} className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] hover:underline">+ MAP_RESOLUTION</button>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                            {selectedMode.causes?.map((cause: any) => cause.resolutions?.map((res: any, idx: number) => (
-                             <div key={idx} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-white/10 transition-all">
-                                <div className="flex items-center gap-4">
-                                   <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
-                                      <FileText size={20} />
+                             <div key={idx} className="bg-white/5 border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-white/10 transition-all">
+                                <div className="flex items-center gap-6">
+                                   <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                                      <FileText size={24} />
                                    </div>
                                    <div className="min-w-0">
-                                      <p className="text-[11px] font-black text-white uppercase tracking-tight truncate">{res.knowledge_bkm?.title || 'Relational BKM Link'}</p>
-                                      <div className="flex items-center gap-3 mt-0.5">
-                                         <p className="text-[9px] text-slate-500 font-bold uppercase">Team: {res.responsible_team}</p>
-                                         <p className="text-[9px] text-slate-600 font-bold uppercase">Source: {cause.cause_text.slice(0, 30)}...</p>
+                                      <p className="text-sm font-black text-white uppercase tracking-tight truncate">{res.knowledge_bkm?.title || 'Relational BKM Link'}</p>
+                                      <div className="flex items-center gap-4 mt-1">
+                                         <p className="text-[10px] text-slate-500 font-black uppercase">TEAM: {res.responsible_team}</p>
+                                         <span className="w-1 h-1 rounded-full bg-white/10" />
+                                         <p className="text-[10px] text-slate-600 font-bold uppercase truncate max-w-xs">SOURCE: {cause.cause_text}</p>
                                       </div>
                                    </div>
                                 </div>
-                                <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all"><ExternalLink size={14} /></button>
+                                <button className="opacity-0 group-hover:opacity-100 p-3 bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"><ExternalLink size={18} /></button>
                              </div>
                            )))}
                            {(!selectedMode.causes?.some((c:any) => c.resolutions?.length > 0)) && (
-                             <div className="py-10 text-center border-2 border-dashed border-white/5 rounded-3xl opacity-20">
-                                <p className="text-[10px] font-black uppercase tracking-widest italic">No Reliability BKMs Linked</p>
+                             <div className="py-16 text-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">No Reliability BKMs Linked</p>
                              </div>
                            )}
                         </div>
                      </section>
 
                      {/* 3. Affected Assets */}
-                     <section className="space-y-4">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2">
-                           <Box size={14} /> Affected Infrastructure
+                     <section className="space-y-6">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2 border-l-2 border-slate-500 pl-4">
+                           AFFECTED_INFRASTRUCTURE
                         </h3>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                            {selectedMode.affected_assets?.map((asset: any) => (
-                             <div key={asset.id} className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl flex items-center gap-2 group hover:border-rose-500/30 transition-all">
-                                <Server size={12} className="text-slate-500 group-hover:text-rose-500" />
-                                <span className="text-[10px] font-black text-white uppercase tracking-tighter">{asset.name}</span>
+                             <div key={asset.id} className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 group hover:border-rose-500/30 transition-all">
+                                <Server size={16} className="text-slate-500 group-hover:text-rose-500" />
+                                <span className="text-[11px] font-black text-white uppercase tracking-tighter">{asset.name}</span>
                              </div>
                            ))}
                         </div>
@@ -525,23 +590,23 @@ export default function FAR() {
                {/* Right Context (Root Causes & Status) */}
                <div className="w-[35%] flex flex-col space-y-3 overflow-hidden">
                   {/* Root Causes Stack */}
-                  <div className="flex-1 flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 overflow-hidden">
-                     <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                           <Zap size={14} className="text-amber-500" />
+                  <div className="flex-1 flex flex-col glass-panel rounded-[30px] border border-white/5 bg-black/40 overflow-hidden">
+                     <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <Zap size={16} className="text-amber-500" />
                            <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Attributed Causes</h3>
                         </div>
-                        <button onClick={() => setShowCauseWizard(true)} className="p-1 hover:bg-white/5 rounded-md text-amber-500 transition-colors"><Plus size={14}/></button>
+                        <button onClick={() => setShowCauseWizard(true)} className="p-2 hover:bg-white/5 rounded-xl text-amber-500 transition-all"><Plus size={18}/></button>
                      </div>
-                     <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
                         {selectedMode.causes?.map((cause: any) => (
-                          <div key={cause.id} className="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3 group hover:border-amber-500/30 transition-all">
-                             <p className="text-[11px] font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{cause.cause_text}</p>
-                             <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                <span className="text-[8px] font-black text-slate-500 uppercase">{cause.responsible_team}</span>
-                                <div className="flex items-center gap-1.5">
-                                   <div className={`w-1.5 h-1.5 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                                   <span className="text-[10px] font-black text-amber-500 italic">{cause.occurrence_level}/10</span>
+                          <div key={cause.id} className="p-6 rounded-[24px] bg-black/60 border border-white/5 space-y-4 group hover:border-amber-500/30 transition-all">
+                             <p className="text-xs font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{cause.cause_text}</p>
+                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{cause.responsible_team}</span>
+                                <div className="flex items-center gap-2">
+                                   <div className={`w-2 h-2 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-amber-500'}`} />
+                                   <span className="text-xs font-black text-amber-500 italic">{cause.occurrence_level}/10</span>
                                 </div>
                              </div>
                           </div>
@@ -550,18 +615,18 @@ export default function FAR() {
                   </div>
 
                   {/* Operational Status Panel */}
-                  <div className="h-[30%] glass-panel rounded-3xl border-white/5 bg-gradient-to-br from-[#0a0c14]/60 to-[#1a1c24]/60 p-5 flex flex-col justify-between relative overflow-hidden">
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500 blur-[60px] opacity-10" />
+                  <div className="h-[30%] glass-panel rounded-[30px] border border-white/5 bg-gradient-to-br from-black/60 to-slate-900/60 p-8 flex flex-col justify-between relative overflow-hidden">
+                     <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500 blur-[80px] opacity-10" />
                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Operational State</p>
-                        <div className="flex items-center gap-3">
-                           <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
-                           <h4 className="text-2xl font-black text-white uppercase italic tracking-tighter">{selectedMode.status}</h4>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">OPERATIONAL_STATE</p>
+                        <div className="flex items-center gap-4">
+                           <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.6)]" />
+                           <h4 className="text-4xl font-black text-white uppercase italic tracking-tighter">{selectedMode.status}</h4>
                         </div>
                      </div>
-                     <div className="flex gap-2 relative z-10">
-                        <button className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl py-2 text-[10px] font-black uppercase tracking-widest transition-all">Update Status</button>
-                        <button className="p-2 bg-white/5 hover:bg-rose-500/20 border border-white/5 rounded-xl text-rose-500 transition-all"><X size={16} onClick={() => setSelectedModeId(null)} /></button>
+                     <div className="flex gap-3 relative z-10">
+                        <button className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all">Update Status</button>
+                        <button onClick={() => setSelectedModeId(null)} className="px-4 bg-white/5 hover:bg-rose-500/20 border border-white/5 rounded-2xl text-rose-500 transition-all"><X size={20} /></button>
                      </div>
                   </div>
                </div>
@@ -575,27 +640,26 @@ export default function FAR() {
       {/* Addition Wizard Modals */}
       <AnimatePresence>
         {showWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-              className="glass-panel w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[32px] border border-rose-500/30 overflow-hidden"
+              initial={{ y: 20, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
+              exit={{ y: 20, opacity: 0 }} 
+              className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-[40px] border border-rose-500/20 overflow-hidden shadow-2xl"
             >
-               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-rose-500/5">
-                 <div className="flex items-center gap-3">
-                   <div className="p-2 rounded-xl bg-rose-500/20 text-rose-500">
-                     <ShieldAlert size={20} />
-                   </div>
-                   <div>
-                     <h2 className="text-lg font-black uppercase tracking-tight text-white italic">Failure Mode Registry</h2>
-                     <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Formal Risk Documentation & Analysis</p>
-                   </div>
+               <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                       <div className="px-3 py-1 rounded-lg bg-rose-600/20 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest">RISK_ENTRY</div>
+                       <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">FAILURE_MODE_REGISTRY</div>
+                    </div>
+                    <h1 className="text-5xl font-black uppercase italic tracking-tighter text-white">DOCUMENT_FAILURE</h1>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Formal Risk Documentation & Reliability Engineering Analysis</p>
                  </div>
-                 <button onClick={() => setShowWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+                 <button onClick={() => setShowWizard(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
                </div>
                
-               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-10">
                  <FARWizard onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
@@ -603,27 +667,26 @@ export default function FAR() {
         )}
 
         {showCauseWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-              className="glass-panel w-full max-w-4xl max-h-[90vh] flex flex-col rounded-[32px] border border-amber-500/30 overflow-hidden"
+              initial={{ y: 20, opacity: 0 }} 
+              animate={{ y: 0, opacity: 1 }} 
+              exit={{ y: 20, opacity: 0 }} 
+              className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-[40px] border border-amber-500/20 overflow-hidden shadow-2xl"
             >
-               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-amber-500/5">
-                 <div className="flex items-center gap-3">
-                   <div className="p-2 rounded-xl bg-amber-500/20 text-amber-500">
-                     <Zap size={20} />
-                   </div>
-                   <div>
-                     <h2 className="text-lg font-black uppercase tracking-tight text-white italic">Root Cause Investigation</h2>
-                     <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Source Identification & Attribution</p>
-                   </div>
+               <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                       <div className="px-3 py-1 rounded-lg bg-amber-600/20 border border-amber-500/30 text-[9px] font-black text-amber-500 uppercase tracking-widest">SOURCE_ENTRY</div>
+                       <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">ROOT_CAUSE_INVESTIGATION</div>
+                    </div>
+                    <h1 className="text-5xl font-black uppercase italic tracking-tighter text-white">TRACE_SOURCE</h1>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Failure Origin Identification & Technical Attribution</p>
                  </div>
-                 <button onClick={() => setShowCauseWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+                 <button onClick={() => setShowCauseWizard(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
                </div>
                
-               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-10">
                  <CauseWizard onComplete={() => { setShowCauseWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
@@ -633,19 +696,19 @@ export default function FAR() {
 
       <AnimatePresence>
         {showMitigationWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-sky-500/30 overflow-hidden">
-               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-sky-500/5">
-                 <div className="flex items-center gap-3">
-                   <Activity size={20} className="text-sky-500" />
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[40px] border border-sky-500/30 overflow-hidden shadow-2xl">
+               <div className="p-10 border-b border-white/5 bg-sky-500/5 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-4">
+                   <Activity size={32} className="text-sky-500" />
                    <div>
-                     <h2 className="text-lg font-black uppercase text-white italic">Mitigation Registry</h2>
-                     <p className="text-[9px] text-slate-500 font-black uppercase">Monitoring & Workaround Documentation</p>
+                     <h2 className="text-2xl font-black uppercase text-white italic tracking-tighter">MITIGATION_REGISTRY</h2>
+                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Monitoring & Workaround Documentation</p>
                    </div>
                  </div>
-                 <button onClick={() => setShowMitigationWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+                 <button onClick={() => setShowMitigationWizard(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
                </div>
-               <div className="p-8">
+               <div className="p-10">
                  <MitigationWizard modeId={selectedModeId!} onComplete={() => { setShowMitigationWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
@@ -653,19 +716,19 @@ export default function FAR() {
         )}
 
         {showResolutionWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-emerald-500/30 overflow-hidden">
-               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-emerald-500/5">
-                 <div className="flex items-center gap-3">
-                   <Lightbulb size={20} className="text-emerald-500" />
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[40px] border border-emerald-500/30 overflow-hidden shadow-2xl">
+               <div className="p-10 border-b border-white/5 bg-emerald-500/5 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-4">
+                   <Lightbulb size={32} className="text-emerald-500" />
                    <div>
-                     <h2 className="text-lg font-black uppercase text-white italic">Knowledge Alignment</h2>
-                     <p className="text-[9px] text-slate-500 font-black uppercase">Map Verified BKM to Failure Mode</p>
+                     <h2 className="text-2xl font-black uppercase text-white italic tracking-tighter">KNOWLEDGE_ALIGNMENT</h2>
+                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Map Verified BKM to Failure Mode</p>
                    </div>
                  </div>
-                 <button onClick={() => setShowResolutionWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+                 <button onClick={() => setShowResolutionWizard(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
                </div>
-               <div className="p-8">
+               <div className="p-10">
                  <ResolutionWizard mode={selectedMode!} onComplete={() => { setShowResolutionWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
@@ -673,19 +736,19 @@ export default function FAR() {
         )}
 
         {showPreventionWizard && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[32px] border border-emerald-600/30 overflow-hidden">
-               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-emerald-600/5">
-                 <div className="flex items-center gap-3">
-                   <ShieldCheck size={20} className="text-emerald-500" />
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="glass-panel w-full max-w-2xl flex flex-col rounded-[40px] border border-emerald-600/30 overflow-hidden shadow-2xl">
+               <div className="p-10 border-b border-white/5 bg-emerald-600/5 flex items-center justify-between shrink-0">
+                 <div className="flex items-center gap-4">
+                   <ShieldCheck size={32} className="text-emerald-500" />
                    <div>
-                     <h2 className="text-lg font-black uppercase text-white italic">Prevention Action</h2>
-                     <p className="text-[9px] text-slate-500 font-black uppercase">Engineering Hardening & Design Proofing</p>
+                     <h2 className="text-2xl font-black uppercase text-white italic tracking-tighter">PREVENTION_ACTION</h2>
+                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Engineering Hardening & Design Proofing</p>
                    </div>
                  </div>
-                 <button onClick={() => setShowPreventionWizard(false)} className="p-2 text-slate-500 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20}/></button>
+                 <button onClick={() => setShowPreventionWizard(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
                </div>
-               <div className="p-8">
+               <div className="p-10">
                  <PreventionWizard modeId={selectedModeId!} onComplete={() => { setShowPreventionWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
                </div>
             </motion.div>
@@ -708,17 +771,23 @@ function MitigationWizard({ modeId, onComplete }: { modeId: number, onComplete: 
     onSuccess: () => { toast.success('Mitigation Active'); onComplete() }
   })
   return (
-    <div className="space-y-6">
-       <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-8">
+       <div className="grid grid-cols-2 gap-6">
           {['Monitoring', 'Workaround'].map(t => (
-            <button key={t} onClick={() => setFormData({...formData, mitigation_type: t})} className={`p-4 rounded-2xl border transition-all text-center ${formData.mitigation_type === t ? 'bg-sky-500/20 border-sky-500 text-white' : 'bg-white/5 border-white/5 text-slate-500'}`}>
-               <p className="text-[10px] font-black uppercase tracking-widest">{t}</p>
+            <button key={t} onClick={() => setFormData({...formData, mitigation_type: t})} className={`p-6 rounded-[30px] border transition-all text-center ${formData.mitigation_type === t ? 'bg-sky-500/20 border-sky-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}>
+               <p className="text-[11px] font-black uppercase tracking-[0.2em]">{t}</p>
             </button>
           ))}
        </div>
-       <textarea value={formData.mitigation_steps} onChange={e => setFormData({...formData, mitigation_steps: e.target.value})} placeholder="Steps / Configuration Details..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[120px]" />
-       <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Responsible Team..." className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
-       <button onClick={() => mutation.mutate(formData)} className="w-full bg-sky-600 hover:bg-sky-500 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest">Commit Mitigation</button>
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Mitigation Protocol</label>
+          <textarea value={formData.mitigation_steps} onChange={e => setFormData({...formData, mitigation_steps: e.target.value})} placeholder="Technical steps / Monitoring configuration details..." className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 text-xs font-bold text-white min-h-[160px] outline-none focus:border-sky-500 transition-all" />
+       </div>
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Ownership</label>
+          <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Responsible Team (e.g., SRE / Network)..." className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black text-white outline-none focus:border-sky-500 transition-all" />
+       </div>
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-sky-600 hover:bg-sky-500 text-white py-5 rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-sky-500/20 transition-all">Commit Mitigation Entry</button>
     </div>
   )
 }
@@ -738,25 +807,29 @@ function ResolutionWizard({ mode, onComplete }: { mode: any, onComplete: () => v
   })
 
   return (
-    <div className="space-y-6">
-       <div className="space-y-1.5">
-          <label className="text-[9px] font-black uppercase text-slate-500 ml-1">Target Root Cause</label>
-          <select value={selectedCauseId} onChange={e => setSelectedCauseId(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none">
-             {mode.causes?.map((c:any) => <option key={c.id} value={c.id}>{c.cause_text.slice(0, 50)}...</option>)}
+    <div className="space-y-8">
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Target Root Cause</label>
+          <select value={selectedCauseId} onChange={e => setSelectedCauseId(Number(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-[20px] px-6 py-4 text-xs font-black text-white outline-none focus:border-emerald-500 transition-all appearance-none">
+             {mode.causes?.map((c:any) => <option key={c.id} value={c.id}>{c.cause_text.slice(0, 100)}...</option>)}
           </select>
        </div>
-       <div className="space-y-1.5">
-          <label className="text-[9px] font-black uppercase text-slate-500 ml-1">Select Verified BKM</label>
-          <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Select Verified BKM Alignment</label>
+          <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
              {bkms?.map((b:any) => (
-               <button key={b.id} onClick={() => setFormData({...formData, knowledge_id: b.id})} className={`p-3 rounded-xl border text-left transition-all ${formData.knowledge_id === b.id ? 'bg-emerald-500/20 border-emerald-500 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`}>
-                  <p className="text-[10px] font-black uppercase tracking-tight">{b.title}</p>
+               <button key={b.id} onClick={() => setFormData({...formData, knowledge_id: b.id})} className={`p-4 rounded-2xl border text-left transition-all ${formData.knowledge_id === b.id ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}>
+                  <p className="text-[11px] font-black uppercase tracking-tight">{b.title}</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">BKM_ID: {b.id}</p>
                </button>
              ))}
           </div>
        </div>
-       <textarea value={formData.preventive_follow_up} onChange={e => setFormData({...formData, preventive_follow_up: e.target.value})} placeholder="Preventive Follow-up Action..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[100px]" />
-       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest">Map BKM to Cause</button>
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Preventive Follow-up Protocol</label>
+          <textarea value={formData.preventive_follow_up} onChange={e => setFormData({...formData, preventive_follow_up: e.target.value})} placeholder="Detailed preventive actions to prevent recurrence..." className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 text-xs font-bold text-white min-h-[120px] outline-none focus:border-emerald-500 transition-all" />
+       </div>
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 transition-all">Map BKM Matrix Alignment</button>
     </div>
   )
 }
@@ -773,16 +846,25 @@ function PreventionWizard({ modeId, onComplete }: { modeId: number, onComplete: 
     onSuccess: () => { toast.success('System Permanently Hardened'); onComplete() }
   })
   return (
-    <div className="space-y-6">
-       <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 mb-4">
-          <p className="text-[10px] text-emerald-400 font-bold leading-relaxed uppercase tracking-tight">Warning: Logging a prevention action will promote this Failure Mode to "Prevented" status, indicating the risk is architecturaly eliminated.</p>
+    <div className="space-y-8">
+       <div className="bg-emerald-500/10 p-6 rounded-[30px] border border-emerald-500/20">
+          <p className="text-xs text-emerald-400 font-black leading-relaxed uppercase tracking-tight">Warning: Logging a prevention action will promote this Failure Mode to "Prevented" status, indicating the risk is architecturaly eliminated through engineering hardening.</p>
        </div>
-       <textarea value={formData.prevention_action} onChange={e => setFormData({...formData, prevention_action: e.target.value})} placeholder="Describe architectural/design proofing change..." className="w-full bg-black/40 border border-white/5 rounded-xl p-4 text-sm font-bold text-white min-h-[120px]" />
-       <div className="grid grid-cols-2 gap-4">
-          <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Hardening Team..." className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
-          <input type="date" value={formData.target_date} onChange={e => setFormData({...formData, target_date: e.target.value})} className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold text-white" />
+       <div className="space-y-2">
+          <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Hardening Description</label>
+          <textarea value={formData.prevention_action} onChange={e => setFormData({...formData, prevention_action: e.target.value})} placeholder="Describe architectural/design proofing change..." className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 text-xs font-bold text-white min-h-[160px] outline-none focus:border-emerald-500 transition-all" />
        </div>
-       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Finalize Design Proof</button>
+       <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+             <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Hardening Team</label>
+             <input value={formData.responsible_team} onChange={e => setFormData({...formData, responsible_team: e.target.value})} placeholder="Engineering Team..." className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black text-white outline-none focus:border-emerald-500 transition-all" />
+          </div>
+          <div className="space-y-2">
+             <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Completion Target</label>
+             <input type="date" value={formData.target_date} onChange={e => setFormData({...formData, target_date: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black text-white outline-none focus:border-emerald-500 transition-all" />
+          </div>
+       </div>
+       <button onClick={() => mutation.mutate(formData)} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-5 rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/20 transition-all">Finalize Architectural Design Proof</button>
     </div>
   )
 }
@@ -853,104 +935,104 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
   const rpn = formData.severity * formData.occurrence * formData.detection
 
   return (
-    <div className="grid grid-cols-12 gap-8">
+    <div className="grid grid-cols-12 gap-12">
       {/* Left: Metadata */}
-      <div className="col-span-7 space-y-6">
-        <section className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Logical System</label>
+      <div className="col-span-7 space-y-10">
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Logical System Alignment *</label>
             <StyledSelect 
               options={systems.map((s: any) => ({ label: s.label, value: s.value }))}
               value={formData.system_name}
               onChange={(e) => setFormData({ ...formData, system_name: e.target.value })}
-              placeholder="Select Logical System..."
+              placeholder="Select Target System..."
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Failure Title</label>
-            <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Memory Leak / Network Congestion" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase tracking-tight outline-none focus:border-rose-500/50 transition-all text-white" />
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Failure Mode Title *</label>
+            <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="e.g. CORE_NETWORK_CONGESTION" className="w-full bg-black/40 border border-white/10 rounded-[20px] px-6 py-4 text-sm font-black uppercase tracking-tight outline-none focus:border-rose-500 transition-all text-white" />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Impact / Effect Statement</label>
-            <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="What happens when this fails?" className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold tracking-tight outline-none focus:border-rose-500/50 transition-all min-h-[100px] text-white custom-scrollbar" />
+            <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="What are the downstream consequences when this failure mode activates?" className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 text-sm font-bold tracking-tight outline-none focus:border-rose-500 transition-all min-h-[140px] text-white custom-scrollbar" />
           </div>
         </section>
 
-        <section className="bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Asset Attribution</label>
+        <section className="bg-black/20 p-8 rounded-[40px] border border-white/5 space-y-6">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">ASSET_ATTRIBUTION</label>
             {formData.system_name && (
               <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input 
                   value={assetSearch}
                   onChange={e => setAssetSearch(e.target.value)}
-                  placeholder="Filter..."
-                  className="bg-black/60 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-rose-500/50 w-32 transition-all"
+                  placeholder="FILTER..."
+                  className="bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500 w-48 transition-all"
                 />
               </div>
             )}
           </div>
           
-          <div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-3 custom-scrollbar">
             {formData.system_name ? (
               filteredDevices.map((d: any) => (
-                <label key={d.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+                <label key={d.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}>
                   <input type="checkbox" className="hidden" checked={formData.affected_assets.includes(d.id)} onChange={() => {
                     const next = formData.affected_assets.includes(d.id) ? formData.affected_assets.filter((id: any) => id !== d.id) : [...formData.affected_assets, d.id]
                     setFormData({ ...formData, affected_assets: next })
                   }} />
-                  <Server size={14} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-600'} />
+                  <Server size={18} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-600'} />
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{d.name}</p>
-                    <p className="text-[8px] text-slate-500 font-bold uppercase truncate">{d.model}</p>
+                    <p className="text-[11px] font-black uppercase tracking-tight leading-none truncate">{d.name}</p>
+                    <p className="text-[9px] text-slate-500 font-black uppercase truncate mt-1">{d.model}</p>
                   </div>
                 </label>
               ))
             ) : (
-              <div className="col-span-2 py-8 text-center text-[10px] font-black uppercase text-slate-600 tracking-widest italic">
-                Select system to link assets
+              <div className="col-span-2 py-12 text-center text-[10px] font-black uppercase text-slate-600 tracking-[0.3em] italic">
+                Select system to link infrastructure assets
               </div>
             )}
           </div>
         </section>
 
-        <section className="bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Linked Root Causes</label>
+        <section className="bg-black/20 p-8 rounded-[40px] border border-white/5 space-y-6">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">ROOT_CAUSE_LINKAGE</label>
             <div className="relative">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
               <input 
                 value={causeSearch}
                 onChange={e => setCauseSearch(e.target.value)}
-                placeholder="Search causes..."
-                className="bg-black/60 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-rose-500/50 w-32 transition-all"
+                placeholder="SEARCH_CAUSES..."
+                className="bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500 w-48 transition-all"
               />
             </div>
           </div>
           
-          <div className="grid grid-cols-1 gap-2 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-1 gap-3 max-h-[220px] overflow-y-auto pr-3 custom-scrollbar">
             {filteredCauses.map((c: any) => (
-              <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.cause_ids.includes(c.id) ? 'bg-amber-500/20 border-amber-500 text-white shadow-lg shadow-amber-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+              <label key={c.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${formData.cause_ids.includes(c.id) ? 'bg-amber-500/20 border-amber-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}>
                 <input type="checkbox" className="hidden" checked={formData.cause_ids.includes(c.id)} onChange={() => {
                   const next = formData.cause_ids.includes(c.id) ? formData.cause_ids.filter((id: any) => id !== c.id) : [...formData.cause_ids, c.id]
                   setFormData({ ...formData, cause_ids: next })
                 }} />
-                <Zap size={14} className={formData.cause_ids.includes(c.id) ? 'text-amber-500' : 'text-slate-600'} />
+                <Zap size={18} className={formData.cause_ids.includes(c.id) ? 'text-amber-500' : 'text-slate-600'} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{c.cause_text}</p>
-                  <p className="text-[8px] text-slate-500 font-bold uppercase truncate">{c.responsible_team || 'General Ops'}</p>
+                  <p className="text-[11px] font-black uppercase tracking-tight leading-none truncate">{c.cause_text}</p>
+                  <p className="text-[9px] text-slate-500 font-black uppercase truncate mt-1">{c.responsible_team || 'GENERAL_OPS'}</p>
                 </div>
                 <div className="text-right">
-                   <p className="text-[10px] font-black text-amber-500 italic">{c.occurrence_level}/10</p>
+                   <p className="text-xs font-black text-amber-500 italic">{c.occurrence_level}/10</p>
                 </div>
               </label>
             ))}
             {filteredCauses.length === 0 && (
-              <div className="py-8 text-center text-[10px] font-black uppercase text-slate-600 tracking-widest italic">
-                No causes found. Add one first.
+              <div className="py-12 text-center text-[10px] font-black uppercase text-slate-600 tracking-[0.3em] italic">
+                No root causes identified. Add source documentation first.
               </div>
             )}
           </div>
@@ -958,8 +1040,8 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
       </div>
 
       {/* Right: Guided Scoring */}
-      <div className="col-span-5 space-y-6">
-        <div className="bg-rose-500/5 p-6 rounded-2xl border border-rose-500/10 space-y-6">
+      <div className="col-span-5 space-y-10">
+        <div className="bg-rose-500/5 p-8 rounded-[40px] border border-rose-500/10 space-y-10 shadow-inner">
           <ScoreSelector 
             label="Severity (S)" 
             value={formData.severity} 
@@ -983,24 +1065,27 @@ function FARWizard({ onComplete }: { onComplete: () => void }) {
           />
         </div>
 
-        <div className="bg-slate-900 rounded-2xl p-6 border border-white/10 flex items-center justify-between shadow-2xl overflow-hidden relative group">
-           <div className="absolute inset-0 bg-gradient-to-r from-rose-500/10 to-transparent pointer-events-none" />
+        <div className="bg-slate-900 rounded-[40px] p-10 border border-white/10 flex flex-col space-y-8 shadow-2xl overflow-hidden relative group">
+           <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent pointer-events-none" />
            <div className="relative z-10">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Calculated RPN</p>
-              <div className="flex items-baseline gap-2">
-                <h4 className={`text-5xl font-black tracking-tighter italic transition-colors ${rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{rpn}</h4>
-                <span className={`text-[10px] font-black uppercase tracking-tighter ${rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-emerald-500'}`}>
-                   {rpn > 100 ? 'Critical' : 'Nominal'}
-                </span>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">CALCULATED_RPN_INDEX</p>
+              <div className="flex items-baseline gap-4 mt-2">
+                <h4 className={`text-7xl font-black tracking-tighter italic transition-colors ${rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{rpn}</h4>
+                <div className="flex flex-col">
+                   <span className={`text-sm font-black uppercase tracking-widest ${rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-emerald-500'}`}>
+                      {rpn > 100 ? 'CRITICAL_RISK' : 'NOMINAL_RISK'}
+                   </span>
+                   <span className="text-[9px] text-slate-600 font-bold uppercase">Impact Factor</span>
+                </div>
               </div>
            </div>
            <button 
              disabled={!formData.system_name || !formData.title || mutation.isPending}
              onClick={() => mutation.mutate(formData)} 
-             className="relative z-10 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:grayscale text-white px-6 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+             className="relative z-10 bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:grayscale text-white py-6 rounded-[24px] text-[12px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-rose-500/20 active:scale-95 transition-all flex items-center justify-center gap-4"
            >
-             {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-             Submit
+             {mutation.isPending ? <RefreshCcw size={20} className="animate-spin" /> : <Save size={20} />} 
+             COMMIT_FAILURE_MODE
            </button>
         </div>
       </div>
@@ -1049,61 +1134,61 @@ function CauseWizard({ onComplete }: { onComplete: () => void }) {
   })
 
   return (
-    <div className="grid grid-cols-12 gap-8">
+    <div className="grid grid-cols-12 gap-12">
       {/* Left: Metadata */}
-      <div className="col-span-7 space-y-6">
-        <section className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Cause Description</label>
+      <div className="col-span-7 space-y-10">
+        <section className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Cause Description *</label>
             <textarea 
               value={formData.cause_text} 
-              onChange={e => setFormData({ ...formData, cause_text: e.target.value })} 
-              placeholder="Describe the technical origin of the failure..." 
-              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold tracking-tight outline-none focus:border-amber-500/50 transition-all min-h-[120px] text-white custom-scrollbar" 
+              onChange={e => setFormData({ ...formData, cause_text: e.target.value.toUpperCase() })} 
+              placeholder="TECHNICAL DESCRIPTION OF THE FAILURE ORIGIN..." 
+              className="w-full bg-black/40 border border-white/10 rounded-[30px] p-6 text-sm font-black tracking-tight outline-none focus:border-amber-500 transition-all min-h-[160px] text-white custom-scrollbar uppercase" 
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Responsible Team / POC</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Responsible POC / Team *</label>
             <input 
               value={formData.responsible_team} 
-              onChange={e => setFormData({ ...formData, responsible_team: e.target.value })} 
-              placeholder="e.g. SRE / Network Ops / Database Team" 
-              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-bold uppercase tracking-tight outline-none focus:border-amber-500/50 transition-all text-white" 
+              onChange={e => setFormData({ ...formData, responsible_team: e.target.value.toUpperCase() })} 
+              placeholder="e.g. CLOUD_SRE / NETWORK_OPS / DB_TEAM" 
+              className="w-full bg-black/40 border border-white/10 rounded-[20px] px-6 py-4 text-sm font-black uppercase tracking-tight outline-none focus:border-amber-500 transition-all text-white" 
             />
           </div>
         </section>
 
-        <section className="bg-black/20 p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Link Failure Modes</label>
+        <section className="bg-black/20 p-8 rounded-[40px] border border-white/5 space-y-6">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">FAILURE_MODE_LINKAGE</label>
             <div className="relative">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
               <input 
                 value={modeSearch}
                 onChange={e => setModeSearch(e.target.value)}
-                placeholder="Search modes..."
-                className="bg-black/60 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[9px] font-black uppercase outline-none focus:border-amber-500/50 w-32 transition-all"
+                placeholder="SEARCH_MODES..."
+                className="bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-amber-500 w-48 transition-all"
               />
             </div>
           </div>
           
-          <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid grid-cols-1 gap-3 max-h-[260px] overflow-y-auto pr-3 custom-scrollbar">
             {filteredModes.map((m: any) => (
-              <label key={m.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.mode_ids.includes(m.id) ? 'bg-rose-500/20 border-rose-500 text-white shadow-lg shadow-rose-500/10' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/20'}`}>
+              <label key={m.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${formData.mode_ids.includes(m.id) ? 'bg-amber-500/20 border-amber-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-400 hover:border-white/10'}`}>
                 <input type="checkbox" className="hidden" checked={formData.mode_ids.includes(m.id)} onChange={() => {
                   const next = formData.mode_ids.includes(m.id) ? formData.mode_ids.filter((id: any) => id !== m.id) : [...formData.mode_ids, m.id]
                   setFormData({ ...formData, mode_ids: next })
                 }} />
-                <ShieldAlert size={14} className={formData.mode_ids.includes(m.id) ? 'text-rose-500' : 'text-slate-600'} />
+                <ShieldAlert size={18} className={formData.mode_ids.includes(m.id) ? 'text-amber-500' : 'text-slate-600'} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[7px] font-black px-1 rounded bg-white/10">{m.system_name}</span>
-                    <p className="text-[10px] font-black uppercase tracking-tight leading-none truncate">{m.title}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[8px] font-black px-2 py-0.5 rounded-lg bg-white/10 tracking-widest uppercase">{m.system_name}</span>
+                    <p className="text-[11px] font-black uppercase tracking-tight leading-none truncate">{m.title}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                   <p className="text-[10px] font-black text-rose-500 italic">RPN {m.rpn}</p>
+                   <p className="text-xs font-black text-rose-500 italic">RPN {m.rpn}</p>
                 </div>
               </label>
             ))}
@@ -1112,8 +1197,8 @@ function CauseWizard({ onComplete }: { onComplete: () => void }) {
       </div>
 
       {/* Right: Occurrence & Submit */}
-      <div className="col-span-5 space-y-6">
-        <div className="bg-amber-500/5 p-6 rounded-2xl border border-amber-500/10">
+      <div className="col-span-5 space-y-10">
+        <div className="bg-amber-500/5 p-8 rounded-[40px] border border-amber-500/10 shadow-inner">
           <ScoreSelector 
             label="Occurrence Level (O)" 
             value={formData.occurrence_level} 
@@ -1123,21 +1208,21 @@ function CauseWizard({ onComplete }: { onComplete: () => void }) {
           />
         </div>
 
-        <div className="bg-slate-900 rounded-2xl p-6 border border-white/10 space-y-4 shadow-2xl overflow-hidden relative group">
-           <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 to-transparent pointer-events-none" />
-           <div className="relative z-10 space-y-4">
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Summary</p>
-                 <p className="text-[11px] font-bold text-white uppercase leading-tight">Linking to {formData.mode_ids.length} Failure Mode{formData.mode_ids.length !== 1 ? 's' : ''}</p>
+        <div className="bg-slate-900 rounded-[40px] p-10 border border-white/10 space-y-8 shadow-2xl overflow-hidden relative group">
+           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent pointer-events-none" />
+           <div className="relative z-10 space-y-6">
+              <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
+                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">LINKAGE_SUMMARY</p>
+                 <p className="text-sm font-black text-white uppercase tracking-tight">Associating with {formData.mode_ids.length} Failure Mode{formData.mode_ids.length !== 1 ? 's' : ''}</p>
               </div>
               
               <button 
                 disabled={!formData.cause_text || !formData.responsible_team || mutation.isPending}
                 onClick={() => mutation.mutate(formData)} 
-                className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:grayscale text-white px-6 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-30 disabled:grayscale text-white py-6 rounded-[24px] text-[12px] font-black uppercase tracking-[0.3em] shadow-2xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-4"
               >
-                {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-                Commit Root Cause
+                {mutation.isPending ? <RefreshCcw size={20} className="animate-spin" /> : <Save size={20} />} 
+                COMMIT_ROOT_CAUSE
               </button>
            </div>
         </div>
@@ -1151,21 +1236,21 @@ function ScoreSelector({ label, value, onChange, levels, color }: { label: strin
   const currentLevel = levels.find(l => l.value === value)
 
   return (
-    <div className="space-y-2 relative">
-      <div className="flex items-center justify-between">
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</label>
-        <span className={`text-xl font-black ${color} italic`}>{value}</span>
+    <div className="space-y-4 relative">
+      <div className="flex items-center justify-between px-1">
+        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">{label}</label>
+        <span className={`text-2xl font-black ${color} italic tracking-tighter`}>{value}</span>
       </div>
       
       <button 
         onClick={() => setShowOptions(!showOptions)}
-        className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-left hover:border-white/20 transition-all flex items-center justify-between"
+        className="w-full bg-black/40 border border-white/10 rounded-3xl p-5 text-left hover:border-white/20 transition-all flex items-center justify-between shadow-lg"
       >
         <div className="min-w-0">
-          <p className="text-[10px] font-black text-white uppercase truncate">{currentLevel?.label}</p>
-          <p className="text-[9px] text-slate-500 font-medium line-clamp-1">{currentLevel?.desc}</p>
+          <p className="text-xs font-black text-white uppercase tracking-tight truncate">{currentLevel?.label}</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 line-clamp-1">{currentLevel?.desc}</p>
         </div>
-        <ChevronRight size={14} className={`text-slate-600 transition-transform ${showOptions ? 'rotate-90' : ''}`} />
+        <ChevronRight size={18} className={`text-slate-600 transition-transform ${showOptions ? 'rotate-90' : ''}`} />
       </button>
 
       <AnimatePresence>
@@ -1174,19 +1259,19 @@ function ScoreSelector({ label, value, onChange, levels, color }: { label: strin
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-[160] left-0 right-0 top-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar"
+            className="absolute z-[160] left-0 right-0 top-full mt-3 bg-slate-900 border border-white/10 rounded-[30px] shadow-2xl max-h-60 overflow-y-auto custom-scrollbar overflow-hidden p-2"
           >
             {levels.map((level) => (
               <button
                 key={level.value}
                 onClick={() => { onChange(level.value); setShowOptions(false); }}
-                className={`w-full text-left p-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-all ${value === level.value ? 'bg-rose-500/10' : ''}`}
+                className={`w-full text-left p-4 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-2xl transition-all ${value === level.value ? 'bg-rose-500/10' : ''}`}
               >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className={`text-[10px] font-black uppercase tracking-tight ${value === level.value ? color : 'text-white'}`}>{level.label}</span>
-                  <span className={`text-[10px] font-black italic ${value === level.value ? color : 'text-slate-600'}`}>{level.value}</span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[11px] font-black uppercase tracking-tight ${value === level.value ? color : 'text-white'}`}>{level.label}</span>
+                  <span className={`text-xs font-black italic ${value === level.value ? color : 'text-slate-600'}`}>{level.value}</span>
                 </div>
-                <p className="text-[9px] text-slate-500 leading-tight">{level.desc}</p>
+                <p className="text-[10px] text-slate-500 leading-tight font-bold uppercase">{level.desc}</p>
               </button>
             ))}
           </motion.div>
@@ -1195,4 +1280,3 @@ function ScoreSelector({ label, value, onChange, levels, color }: { label: strin
     </div>
   )
 }
-

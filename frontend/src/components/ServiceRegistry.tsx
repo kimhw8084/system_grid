@@ -821,34 +821,35 @@ export default function ServiceRegistry() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Services</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Application Layer & Service Dependency Mapping</p>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">Service Registry</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Application Layer & Service Dependency Mapping</p>
            </div>
-           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 self-center">
-              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Existing</button>
-              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged</button>
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+              <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Existing</button>
+              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged</button>
            </div>
         </div>
+        
         <div className="flex items-center space-x-3">
-          <div className="relative">
+          <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SEARCH REGISTRY..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN SERVICES..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
              <button 
                 onClick={() => setShowStyleLab(!showStyleLab)} 
-                className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
-                title="Style Laboratory"
+                className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
+                title="Toggle Style Lab"
              >
-                <Zap size={16} />
+                <Activity size={16} />
              </button>
              <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
                 <Settings size={16} />
              </button>
           </div>
 
-          <div className="relative">
+          <div className="relative bulk-menu-container">
             <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
             <AnimatePresence>
               {showBulkMenu && (
@@ -860,7 +861,7 @@ export default function ServiceRegistry() {
                        <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Environment...</button>
                        <button onClick={() => { setIsBulkHostOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Host Node...</button>
                        <div className="h-px bg-white/5 mx-2 my-1" />
-                       <button onClick={() => openConfirm('Bulk Termination', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Terminate</button>
+                       <button onClick={() => openConfirm('Terminate Service', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Terminate</button>
                      </>
                    ) : (
                      <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
@@ -870,61 +871,57 @@ export default function ServiceRegistry() {
             </AnimatePresence>
           </div>
 
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Instance</button>
+          <button 
+            onClick={() => setActiveModal({})}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+          >
+            + Add Instance
+          </button>
         </div>
       </div>
 
       <AnimatePresence>
         {showStyleLab && (
           <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden mb-4"
+            className="overflow-hidden"
           >
-            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between border-blue-500/20">
-               <div className="flex items-center space-x-8">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                        <Zap size={16} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500">Service Density</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                           <input 
-                              type="range" min="8" max="14" step="1" 
-                              value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))}
-                              className="w-24 accent-blue-500"
-                           />
-                           <span className="text-[10px] font-mono text-blue-400 w-8">{fontSize}px</span>
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
                         </div>
                      </div>
-                  </div>
 
-                  <div className="flex items-center space-x-3">
-                     <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-400">
-                        <Layers size={16} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500">Row Spacing</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                           <input 
-                              type="range" min="0" max="20" step="2" 
-                              value={rowDensity} onChange={(e) => setRowDensity(parseInt(e.target.value))}
-                              className="w-24 accent-indigo-500"
-                           />
-                           <span className="text-[10px] font-mono text-indigo-400 w-8">+{rowDensity}px</span>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
                </div>
-
-               <button 
-                  onClick={() => setShowStyleLab(false)}
-                  className="p-2 hover:bg-white/5 rounded-xl text-slate-600 transition-all"
-               >
-                  <X size={16} />
-               </button>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
             </div>
           </motion.div>
         )}

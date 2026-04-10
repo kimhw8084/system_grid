@@ -105,7 +105,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
         <tbody className="divide-y divide-white/5">
           {services?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
+              <td className="px-4 py-3 font-black text-blue-400">{s.name}</td>
               <td className="px-4 py-3 text-slate-400 uppercase font-black text-[11px]">{s.service_type}</td>
               <td className="px-4 py-3 text-center">
                  <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase border ${
@@ -115,7 +115,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
                  }`}>{s.status}</span>
               </td>
-              <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold">{s.environment}</td>
+              <td className="px-4 py-3 text-center text-slate-500 uppercase font-black">{s.environment}</td>
               <td className="px-4 py-3 text-center font-mono text-slate-600">{s.version || 'N/A'}</td>
               <td className="px-4 py-3 text-center">
                  <div className="flex items-center justify-center space-x-1">
@@ -138,7 +138,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
             </tr>
           ))}
           {!services?.length && !isLoading && (
-            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
+            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-black uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
           )}
         </tbody>
       </table>
@@ -370,7 +370,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
               </tr>
             ))}
             {Object.keys(obj).length === 0 && (
-              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No additional payload data</td></tr>
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No additional payload data</td></tr>
             )}
           </tbody>
         </table>
@@ -459,7 +459,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   {a.status}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-[11px] font-bold opacity-60">
+              <div className="flex items-center space-x-2 text-[11px] font-black opacity-60">
                 <span>{a.system}</span>
                 <span className="w-1 h-1 rounded-full bg-current opacity-30" />
                 <span>{a.type}</span>
@@ -534,7 +534,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                           <Terminal size={24} className="text-indigo-400" />
                           <div>
                              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Management Console</p>
-                             <p className="text-xs font-bold text-white truncate max-w-[200px]">{selectedAsset.management_url}</p>
+                             <p className="text-xs font-black text-white truncate max-w-[200px]">{selectedAsset.management_url}</p>
                           </div>
                        </div>
                        <ArrowRightLeft size={16} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
@@ -606,22 +606,22 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <div className="space-y-6">
                         <div>
                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Commissioning</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-xs font-black text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
                            <p className="text-[9px] font-black text-blue-400 mt-1 uppercase tracking-tighter italic">Engine Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Warranty Term</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
+                           <p className="text-xs font-black text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
                         </div>
                      </div>
                      <div className="space-y-6 text-right">
                         <div>
                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Procurement</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-xs font-black text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div>
                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Retirement EOL</p>
-                           <p className="text-xs font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
+                           <p className="text-xs font-black text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
                         </div>
                      </div>
                   </div>
@@ -791,10 +791,10 @@ export default function AssetGrid() {
       pinned: 'left',
       filter: true,
       cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-bold text-blue-400',
+      cellClass: 'text-center font-black text-blue-400',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <span className="font-bold text-blue-400">{p.value}</span>
+        <span className="font-black text-blue-400">{p.value}</span>
       )
     },
     { field: "system", headerName: "System", width: 110, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center', headerClass: 'text-center' },
@@ -846,12 +846,12 @@ export default function AssetGrid() {
       }
     },
 
-    { field: "environment", headerName: "Env", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center' },
-    { field: "owner", headerName: "Owner", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
-    { field: "manufacturer", headerName: "Make", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
-    { field: "model", headerName: "Model", width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
-    { field: "os_name", headerName: "OS", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
-    { field: "os_version", headerName: "Ver", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black text-slate-400', headerClass: 'text-center' },
+    { field: "owner", headerName: "Owner", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "manufacturer", headerName: "Make", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "model", headerName: "Model", width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "os_name", headerName: "OS", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "os_version", headerName: "Ver", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
@@ -907,8 +907,8 @@ export default function AssetGrid() {
       )
     },
 
-    { field: "site_name", headerName: "Site", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
-    { field: "rack_name", headerName: "Rack", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "site_name", headerName: "Site", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "rack_name", headerName: "Rack", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
     { 
       field: "depth", 
       headerName: "Depth", 
@@ -964,7 +964,7 @@ export default function AssetGrid() {
         <div className="flex items-center space-x-6">
            <div>
               <h1 className="text-2xl font-black uppercase tracking-tight italic">Assets</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Infrastructure Asset Registry</p>
            </div>
 
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
@@ -1435,7 +1435,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                     <span className="font-black uppercase text-blue-400">{h.category}</span>
                 )}
               </td>
-              <td className="px-4 py-2 font-bold text-slate-200 text-center">
+              <td className="px-4 py-2 font-black text-slate-200 text-center">
                 {editingId === h.id ? (
                     <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
@@ -1465,7 +1465,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No hardware mappings found</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1590,7 +1590,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
                     />
                 ) : s.secret_type}
               </td>
-              <td className="px-4 py-2 font-bold text-slate-200">
+              <td className="px-4 py-2 font-black text-slate-200">
                 {editingId === s.id ? (
                     <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
@@ -1627,7 +1627,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No credentials stored</td></tr>}
+          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No credentials stored</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1900,7 +1900,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               </tr>
             )
           })}
-          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relationships defined</td></tr>}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No relationships defined</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -2157,9 +2157,9 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
         </div>
       )}
 
-      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add hardware components</div>)}
-      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add credentials</div>)}
-      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add relationships</div>)}
+      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add hardware components</div>)}
+      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add credentials</div>)}
+      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add relationships</div>)}
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button
