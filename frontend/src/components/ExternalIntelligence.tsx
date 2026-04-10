@@ -28,7 +28,7 @@ export default function ExternalIntelligence() {
   // Style Lab State
   const [fontSize, setFontSize] = useState(10)
   const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showStyleLab, setShowStyleLab] = useState(true)
 
   // Data fetching
   const { data: entities, isLoading: entLoading } = useQuery({ 

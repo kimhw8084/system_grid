@@ -138,8 +138,12 @@ export default function MonitoringGrid() {
     { 
       headerCheckboxSelection: true, 
       checkboxSelection: true, 
-      width: 50, 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'left',
+      suppressSizeToFit: true,
+      resizable: false,
       headerClass: 'ag-checkbox-header'
     },
     { 

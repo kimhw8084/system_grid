@@ -96,7 +96,7 @@ export default function FAR() {
   // Style Lab State
   const [fontSize, setFontSize] = useState(10)
   const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showStyleLab, setShowStyleLab] = useState(true)
   
   // Queries
   const { data: modes, isLoading: modesLoading } = useQuery({ 
