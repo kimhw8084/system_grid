@@ -35,9 +35,12 @@ const colors: any = {
   Minor: 'text-blue-600 dark:text-blue-400 border-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5',
 }
 
-export const StatusPill = ({ value }: { value: string }) => {
+export const StatusPill = ({ value, fontSize }: { value: string, fontSize?: number }) => {
   return (
-    <span className={`inline-flex items-center justify-center w-24 h-5 rounded text-[8px] font-black uppercase border tracking-tighter transition-colors duration-500 ${colors[value] || 'text-slate-600 dark:text-slate-400 border-slate-500/20 bg-slate-500/10 dark:bg-slate-500/5'}`}>
+    <span 
+      style={fontSize ? { fontSize: `${fontSize}px` } : {}}
+      className={`inline-flex items-center justify-center w-24 h-5 rounded ${!fontSize ? 'text-[8px]' : ''} font-black uppercase border tracking-tighter transition-colors duration-500 ${colors[value] || 'text-slate-600 dark:text-slate-400 border-slate-500/20 bg-slate-500/10 dark:bg-slate-500/5'}`}
+    >
       {value}
     </span>
   )

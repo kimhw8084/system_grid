@@ -118,6 +118,9 @@ export default function External() {
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [showConfig, setShowConfig] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
@@ -132,6 +135,31 @@ export default function External() {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
   }, [fontSize, rowDensity, entities])
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_External_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -196,7 +224,9 @@ export default function External() {
       pinned: 'left',
       flex: 1.5,
       cellClass: 'text-left font-bold uppercase tracking-tight',
-      headerClass: 'text-left'
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("name")
     },
     { 
       field: "type", 
@@ -212,12 +242,13 @@ export default function External() {
           'Network': 'text-rose-400',
           'PC': 'text-indigo-400'
         }
-        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-      }
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+      },
+      hide: hiddenColumns.includes("type")
     },
-    { field: "hostname", headerName: "Hostname", width: 200, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "ip_address", headerName: "IP Address", width: 150, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "owner_organization", headerName: "Organization", flex: 1, minWidth: 200, cellClass: 'text-center font-bold uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "hostname", headerName: "Hostname", width: 200, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("hostname") },
+    { field: "ip_address", headerName: "IP Address", width: 150, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("ip_address") },
+    { field: "owner_organization", headerName: "Organization", flex: 1, minWidth: 200, cellClass: 'text-center font-bold uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("owner_organization") },
     { 
       headerName: "Action",
       width: 100,
@@ -236,7 +267,7 @@ export default function External() {
       ),
       suppressHide: true
     }
-  ], [])
+  ], [fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -269,6 +300,18 @@ export default function External() {
                 title="Toggle Style Lab"
              >
                 <Activity size={16} />
+             </button>
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
+             </button>
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
+             </button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                <Settings size={16} />
              </button>
           </div>
           <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Entity</button>
@@ -340,6 +383,48 @@ export default function External() {
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
         />
+
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.includes(col.field)}
+                        onChange={() => {
+                          if (hiddenColumns.includes(col.field)) {
+                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                          } else {
+                            setHiddenColumns([...hiddenColumns, col.field])
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -373,6 +458,15 @@ export default function External() {
         variant="danger"
       />
 
+      <ConfigRegistryModal
+        isOpen={showConfig}
+        onClose={() => setShowConfig(false)}
+        title="External Registry Enumerations"
+        sections={[
+            { title: "Entity Types", category: "ExternalType", icon: Globe }
+        ]}
+      />
+
       <style>{`
         .ag-theme-alpine-dark {
           --ag-background-color: #1a1b26;
@@ -395,6 +489,7 @@ export default function External() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
+            font-weight: 700 !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
       `}</style>

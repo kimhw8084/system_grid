@@ -1015,7 +1015,7 @@ export default function AssetTemp() {
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("name")
     },
-    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("system") },
+    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("system") },
     { 
       field: "type", 
       headerName: "Type", 
@@ -1033,7 +1033,7 @@ export default function AssetTemp() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
       },
       hide: hiddenColumns.includes("type")
     },
@@ -1057,7 +1057,7 @@ export default function AssetTemp() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="font-bold uppercase tracking-tighter leading-none">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'Unknown'}
               </span>
             </div>
@@ -1067,12 +1067,12 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("status")
     },
 
-    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("environment") },
-    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("owner") },
-    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("manufacturer") },
-    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("model") },
-    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_name") },
-    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_version") },
+    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("environment") },
+    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("owner") },
+    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("manufacturer") },
+    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("model") },
+    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_name") },
+    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_version") },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
@@ -1081,7 +1081,7 @@ export default function AssetTemp() {
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("primary_ip")
     },
     { 
@@ -1092,7 +1092,7 @@ export default function AssetTemp() {
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("management_ip")
     },
     { 
@@ -1103,7 +1103,7 @@ export default function AssetTemp() {
       cellClass: 'text-center font-bold uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("hardware_summary")
     },
     { 
@@ -1114,7 +1114,7 @@ export default function AssetTemp() {
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("hardware_age")
     },
     { 
@@ -1128,7 +1128,7 @@ export default function AssetTemp() {
         <div className="flex items-center justify-center h-full w-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="font-bold">{p.value}</span>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold">{p.value}</span>
            </div>
         </div>
       ) : (
@@ -1137,8 +1137,8 @@ export default function AssetTemp() {
       hide: hiddenColumns.includes("open_incident_count")
     },
 
-    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("site_name") },
-    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("rack_name") },
+    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("site_name") },
+    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("rack_name") },
     { 
       field: "depth", 
       headerName: "Depth", 
@@ -1147,7 +1147,7 @@ export default function AssetTemp() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
       hide: hiddenColumns.includes("depth")
     },
     { 
@@ -1158,13 +1158,13 @@ export default function AssetTemp() {
       cellClass: 'text-center', 
       headerClass: 'text-center', 
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
       hide: hiddenColumns.includes("mount_orientation")
     },
-    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("u_start") },
-    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', hide: hiddenColumns.includes("size_u") },
-    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_typical_w") },
-    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.value.toFixed(0)}W` : '–', hide: hiddenColumns.includes("power_max_w") },
+    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("u_start") },
+    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("size_u") },
+    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value.toFixed(0)}W` : '–'}</span>, hide: hiddenColumns.includes("power_typical_w") },
+    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value.toFixed(0)}W` : '–'}</span>, hide: hiddenColumns.includes("power_max_w") },
     {
       headerName: "Action",
       width: 120,
@@ -1193,7 +1193,7 @@ export default function AssetTemp() {
       ),
       suppressHide: true
     }
-  ], [activeTab, hiddenColumns]) as any
+  ], [activeTab, hiddenColumns, fontSize]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -1213,7 +1213,7 @@ export default function AssetTemp() {
     if (gridRef.current?.api) {
       const csvData = gridRef.current.api.getDataAsCsv({
         allColumns: false,
-        onlySelected: false,
+        onlySelected: true,
         suppressQuotes: true
       })
       if (csvData) {
@@ -1261,12 +1261,6 @@ export default function AssetTemp() {
                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
-            <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
-               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                  <Settings size={16} />
-               </button>
-            </div>
-
             <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
                <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                   <Activity size={16} />
@@ -1279,6 +1273,9 @@ export default function AssetTemp() {
                </button>
                <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
                   <Clipboard size={16} />
+               </button>
+               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                  <Settings size={16} />
                </button>
             </div>
 

@@ -39,6 +39,9 @@ export default function Vendor() {
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [showConfig, setShowConfig] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -55,6 +58,31 @@ export default function Vendor() {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
   }, [fontSize, rowDensity, vendors])
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_Vendors_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
+  }
 
   const { data: devices } = useQuery({ 
     queryKey: ['devices'], 
@@ -117,7 +145,9 @@ export default function Vendor() {
       pinned: 'left', 
       filter: true, 
       cellClass: 'font-bold uppercase tracking-tight',
-      headerClass: 'text-left' 
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("name")
     },
     { 
       field: "primary_email", 
@@ -126,7 +156,8 @@ export default function Vendor() {
       filter: true, 
       cellClass: 'font-bold font-mono',
       headerClass: 'text-left',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("primary_email")
     },
     { 
       field: "primary_phone", 
@@ -135,7 +166,8 @@ export default function Vendor() {
       filter: true, 
       cellClass: 'font-bold',
       headerClass: 'text-left',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("primary_phone")
     },
     { 
       field: "country", 
@@ -144,7 +176,8 @@ export default function Vendor() {
       filter: true, 
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("country")
     },
     { 
       headerName: "First Contract", 
@@ -157,7 +190,8 @@ export default function Vendor() {
       },
       cellClass: 'text-center font-bold text-slate-400 uppercase',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("first_contract")
     },
     { 
       headerName: "Latest Contract", 
@@ -170,7 +204,8 @@ export default function Vendor() {
       },
       cellClass: 'text-center font-bold text-emerald-400 uppercase',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("latest_contract")
     },
     {
       headerName: "Active",
@@ -182,7 +217,8 @@ export default function Vendor() {
       },
       cellClass: 'text-center font-bold text-blue-400',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
+      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
+      hide: hiddenColumns.includes("active_contracts")
     },
     {
       headerName: "Historic",
@@ -194,7 +230,8 @@ export default function Vendor() {
       },
       cellClass: 'text-center font-bold text-slate-400',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
+      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
+      hide: hiddenColumns.includes("historic_contracts")
     },
     {
       headerName: "Assets",
@@ -211,7 +248,8 @@ export default function Vendor() {
       },
       cellClass: 'text-center font-bold text-amber-500',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
+      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
+      hide: hiddenColumns.includes("covered_assets")
     },
     {
       field: "actions",
@@ -233,7 +271,7 @@ export default function Vendor() {
       ),
       suppressHide: true
     }
-  ], [setActiveDetails, setActiveModal, deleteMutation]) as any
+  ], [setActiveDetails, setActiveModal, deleteMutation, fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -255,12 +293,6 @@ export default function Vendor() {
              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                <Settings size={16} />
-             </button>
-          </div>
-
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
              <button 
                 onClick={() => setShowStyleLab(!showStyleLab)} 
@@ -268,6 +300,18 @@ export default function Vendor() {
                 title="Toggle Style Lab"
              >
                 <Activity size={16} />
+             </button>
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
+             </button>
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
+             </button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                <Settings size={16} />
              </button>
           </div>
 
@@ -345,9 +389,61 @@ export default function Vendor() {
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
         />
-        </div>
 
-        <style>{`
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.includes(col.field)}
+                        onChange={() => {
+                          if (hiddenColumns.includes(col.field)) {
+                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                          } else {
+                            setHiddenColumns([...hiddenColumns, col.field])
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Vendor Matrix Config"
+        sections={[
+            { title: "Service Categories", category: "VendorCategory", icon: Layers },
+            { title: "Relationship Status", category: "Status", icon: RefreshCcw }
+        ]}
+      />
+
+      <style>{`
         .ag-theme-alpine-dark {
           --ag-background-color: #1a1b26;
           --ag-header-background-color: #24283b;
@@ -373,47 +469,6 @@ export default function Vendor() {
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-        `}</style>
-
-      <AnimatePresence>
-        {activeModal && (
-          <VendorForm 
-            item={activeModal} 
-            onClose={() => setActiveModal(null)} 
-            onSave={(d: any) => mutation.mutate(d)}
-            isSaving={mutation.isPending}
-          />
-        )}
-        {activeDetails && (
-          <VendorDetails 
-            vendor={activeDetails} 
-            devices={devices}
-            onClose={() => setActiveDetails(null)} 
-          />
-        )}
-      </AnimatePresence>
-
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen} 
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
-        onConfirm={confirmModal.onConfirm} 
-        title={confirmModal.title} 
-        message={confirmModal.message} 
-      />
-
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(15, 23, 42, 0.9);
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #94a3b8;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 10px;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: 9px !important; }
-        .ag-cell { display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05) !important; padding-left: 12px !important; }
       `}</style>
     </div>
   )

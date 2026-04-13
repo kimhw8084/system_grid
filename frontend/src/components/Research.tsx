@@ -35,6 +35,9 @@ export default function Research() {
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [showConfig, setShowConfig] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -62,6 +65,31 @@ export default function Research() {
     queryKey: ['settings-options'], 
     queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() 
   })
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_Research_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -169,8 +197,9 @@ export default function Research() {
           'RCA': 'text-purple-400',
           'General': 'text-blue-400'
         }
-        return <span className={`font-bold uppercase tracking-widest ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-      }
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase tracking-widest ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+      },
+      hide: hiddenColumns.includes("category")
     },
     { 
       field: "title", 
@@ -179,7 +208,9 @@ export default function Research() {
       pinned: 'left', 
       filter: true, 
       cellClass: 'text-left font-bold uppercase tracking-tight',
-      headerClass: 'text-left'
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("title")
     },
     { 
       field: "status", 
@@ -199,13 +230,14 @@ export default function Research() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="font-bold uppercase tracking-tighter leading-none">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'Unknown'}
               </span>
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("status")
     },
     { 
       field: "severity", 
@@ -222,13 +254,14 @@ export default function Research() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colorClass}`}>
-              <span className="font-bold uppercase tracking-tighter leading-none">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'N/A'}
               </span>
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("severity")
     },
     { 
       field: "updated_at", 
@@ -237,7 +270,8 @@ export default function Research() {
       filter: true, 
       cellClass: 'text-center font-bold text-slate-400 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : <span className="text-slate-500 font-bold uppercase">N/A</span> 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("updated_at")
     },
     {
       field: "actions",
@@ -264,7 +298,7 @@ export default function Research() {
       ),
       suppressHide: true
     }
-  ], [setActiveRcaDetails, setActiveDetails, setActiveRcaModal, setActiveModal, setConfirmModal, rcaDeleteMutation, deleteMutation]) as any
+  ], [setActiveRcaDetails, setActiveDetails, setActiveRcaModal, setActiveModal, setConfirmModal, rcaDeleteMutation, deleteMutation, fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -296,7 +330,16 @@ export default function Research() {
              >
                 <Activity size={16} />
              </button>
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Research Config">
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
+             </button>
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
+             </button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Research Config">
                 <Settings size={16} />
              </button>
           </div>
@@ -307,6 +350,131 @@ export default function Research() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="4" max="24" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="grid grid-cols-4 gap-3">
+        <CompactSummary label="Total Research" value={stats.total} icon={Activity} color="text-blue-400" />
+        <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
+        <CompactSummary label="Deep Troubleshooting" value={stats.troubleshooting} icon={AlertTriangle} color="text-amber-500" />
+        <CompactSummary label="Critical Alerts" value={stats.urgent} icon={ShieldAlert} color="text-rose-500" />
+      </div>
+
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
+        {(isLoading || rcaLoading) && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
+             <RefreshCcw size={32} className="animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
+          </div>
+        )}
+        <AgGridReact
+          ref={gridRef}
+          rowData={combinedData}
+          columnDefs={columnDefs as any}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
+          quickFilterText={searchTerm}
+          animateRows={true}
+          enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
+        />
+
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.includes(col.field)}
+                        onChange={() => {
+                          if (hiddenColumns.includes(col.field)) {
+                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                          } else {
+                            setHiddenColumns([...hiddenColumns, col.field])
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Research Matrix Config"
+        sections={[
+            { title: "Research Categories", category: "InvestigationCategory", icon: Layers },
+            { title: "Status Lifecycle", category: "Status", icon: RefreshCcw }
+        ]}
+      />
 
       <AnimatePresence>
         {showStyleLab && (

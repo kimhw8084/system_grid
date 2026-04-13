@@ -87,6 +87,7 @@ const DETECTION_LEVELS = [
 
 export default function FAR() {
   const queryClient = useQueryClient()
+  const gridRef = React.useRef<any>(null)
   const [showWizard, setShowWizard] = useState(false)
   const [showCauseWizard, setShowCauseWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
@@ -97,6 +98,14 @@ export default function FAR() {
   const [showResolutionWizard, setShowResolutionWizard] = useState(false)
   const [showPreventionWizard, setShowPreventionWizard] = useState(false)
 
+  // Column Picker & Style Lab State
+  const [fontSize, setFontSize] = useState(11)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [showConfig, setShowConfig] = useState(false)
+  
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void}>({
     show: false, title: '', message: '', onConfirm: () => {}
@@ -106,11 +115,31 @@ export default function FAR() {
     setConfirmModal({ show: true, title, message, onConfirm })
   }
 
-  // Style Lab State
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(true)
-  
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
+  }
+
   // Queries
   const { data: modes, isLoading: modesLoading } = useQuery({ 
     queryKey: ['far', 'modes'], 
@@ -166,23 +195,6 @@ export default function FAR() {
     return result
   }, [modes, searchTerm, selectedCauseId, selectedSystems])
 
-  const filteredCauses = useMemo(() => {
-    let result = causes || []
-    if (searchTerm) {
-      result = result.filter((c: any) => 
-        c.cause_text.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    // Contextual Filter: If mode is selected, show only its causes
-    if (selectedModeId) {
-      const mode = modes?.find((m: any) => m.id === selectedModeId)
-      if (mode) {
-        result = result.filter((c: any) => mode.causes?.some((mc: any) => mc.id === c.id))
-      }
-    }
-    return result
-  }, [causes, searchTerm, selectedModeId, modes])
-
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
 
   const columnDefs = useMemo(() => [
@@ -219,7 +231,8 @@ export default function FAR() {
       cellClass: 'text-center font-bold text-rose-400 uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("system_name")
     },
     { 
       field: "title", 
@@ -229,7 +242,8 @@ export default function FAR() {
       cellClass: 'text-left font-bold uppercase',
       headerClass: 'text-left',
       filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("title")
     },
     { 
       field: "severity", 
@@ -239,6 +253,8 @@ export default function FAR() {
       cellClass: 'text-center font-bold text-rose-500',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("severity")
     },
     { 
       field: "occurrence", 
@@ -248,6 +264,8 @@ export default function FAR() {
       cellClass: 'text-center font-bold text-amber-500',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("occurrence")
     },
     { 
       field: "detection", 
@@ -257,6 +275,8 @@ export default function FAR() {
       cellClass: 'text-center font-bold text-sky-400',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("detection")
     },
     { 
       field: "rpn", 
@@ -267,10 +287,11 @@ export default function FAR() {
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => (
-        <span className={p.value > 100 ? 'text-rose-500' : 'text-emerald-400'}>
+        <span style={{ fontSize: `${fontSize}px` }} className={p.value > 100 ? 'text-rose-500' : 'text-emerald-400'}>
           {p.value}
         </span>
-      )
+      ),
+      hide: hiddenColumns.includes("rpn")
     },
     { 
       field: "status", 
@@ -282,9 +303,10 @@ export default function FAR() {
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <StatusPill status={p.value} />
+          <StatusPill value={p.value} fontSize={fontSize} />
         </div>
-      )
+      ),
+      hide: hiddenColumns.includes("status")
     },
     {
       headerName: "Action",
@@ -305,7 +327,7 @@ export default function FAR() {
       ),
       suppressHide: true
     }
-  ], [selectedModeId])
+  ], [fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -399,7 +421,16 @@ export default function FAR() {
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-rose-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Reliability Config">
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-rose-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
+             </button>
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
+             </button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Reliability Config">
                 <Settings size={16} />
              </button>
           </div>
@@ -551,30 +582,28 @@ export default function FAR() {
          </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex space-x-3 overflow-hidden">
-        <div className={`flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 transition-all duration-500 ${selectedModeId ? 'w-[30%]' : 'w-full'}`}>
+      <div className="flex-1 min-h-0 flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 overflow-hidden relative">
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <ShieldAlert size={14} className="text-rose-500" />
                  <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Failure Inventory</h3>
               </div>
-              {!selectedModeId && (
-                <div className="flex items-end gap-1 h-6">
-                  {maturityLevels.slice().reverse().map((ml: any) => {
-                    const count = (metrics as any).maturityDist[ml.lv] || 0
-                    const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
-                    return (
-                      <div key={ml.lv} className="w-3 h-full relative group">
-                          <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-10' : 'opacity-80 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div className="flex items-end gap-1 h-6">
+                {maturityLevels.slice().reverse().map((ml: any) => {
+                  const count = (metrics as any).maturityDist[ml.lv] || 0
+                  const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
+                  return (
+                    <div key={ml.lv} className="w-3 h-full relative group">
+                        <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-10' : 'opacity-80 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                    </div>
+                  )
+                })}
+              </div>
            </div>
 
            <div className="flex-1 glass-panel overflow-hidden ag-theme-alpine-dark relative">
               <AgGridReact
+                ref={gridRef}
                 rowData={filteredModes || []}
                 columnDefs={columnDefs}
                 headerHeight={fontSize + rowDensity + 10}
@@ -583,172 +612,254 @@ export default function FAR() {
                 animateRows={true}
                 enableCellTextSelection={true}
                 autoSizeStrategy={autoSizeStrategy}
-                onRowClicked={(p: any) => setSelectedModeId(selectedModeId === p.data.id ? null : p.data.id)}
+                onRowClicked={(p: any) => setSelectedModeId(p.data.id)}
               />
+              
+              <AnimatePresence>
+                {showColumnPicker && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+                  >
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-rose-400 flex items-center space-x-2">
+                        <Sliders size={14} /> <span>Toggle Columns</span>
+                      </h3>
+                      <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                      {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                        <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                          <div className="relative flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={!hiddenColumns.includes(col.field)}
+                              onChange={() => {
+                                if (hiddenColumns.includes(col.field)) {
+                                  setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                                } else {
+                                  setHiddenColumns([...hiddenColumns, col.field])
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                               {!hiddenColumns.includes(col.field) && <CheckCircle2 size={12} className="text-white mx-auto" />}
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
            </div>
-        </div>
+      </div>
 
-        {/* PANE 2 & 3: War Room (Maturity Lab) */}
-        <AnimatePresence mode="wait">
-          {selectedModeId && selectedMode ? (
-            <motion.div 
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 20, opacity: 0 }}
-              className="flex-1 flex space-x-3 overflow-hidden"
-            >
-               {/* Detail Lab (Active Actions) */}
-               <div className="w-[65%] glass-panel rounded-[40px] border border-rose-500/20 bg-black/90 flex flex-col overflow-hidden shadow-2xl">
-                  <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
-                     <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                           <span className="px-3 py-1 rounded-lg bg-rose-600/20 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest">FAILURE_ID: {selectedMode.id}</span>
-                           <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">{selectedMode.system_name}</span>
-                        </div>
-                        <h2 className="text-5xl font-black text-white uppercase tracking-tighter italic">{selectedMode.title}</h2>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Precision Reliability Maturity Lab Entry</p>
-                     </div>
-                     <div className="text-right">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Score (RPN)</p>
-                        <p className={`text-6xl font-black italic leading-none tracking-tighter ${selectedMode.rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{selectedMode.rpn}</p>
-                     </div>
-                  </div>
+      {/* War Room Details Modal */}
+      <AnimatePresence>
+          {selectedModeId && selectedMode && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="glass-panel w-full max-w-7xl max-h-[90vh] flex flex-col rounded-[40px] border border-rose-500/20 bg-black overflow-hidden shadow-2xl"
+              >
+                 <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+                    <div className="space-y-4">
+                       <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 rounded-lg bg-rose-600/20 border border-rose-500/30 text-[9px] font-black text-rose-500 uppercase tracking-widest">FAILURE_ID: {selectedMode.id}</span>
+                          <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">{selectedMode.system_name}</span>
+                       </div>
+                       <h2 className="text-5xl font-black text-white uppercase tracking-tighter italic">{selectedMode.title}</h2>
+                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Precision Reliability Maturity Lab Entry</p>
+                    </div>
+                    <div className="flex items-start gap-6">
+                      <div className="text-right">
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Impact Score (RPN)</p>
+                          <p className={`text-6xl font-black italic leading-none tracking-tighter ${selectedMode.rpn > 100 ? 'text-rose-500' : 'text-white'}`}>{selectedMode.rpn}</p>
+                      </div>
+                      <button onClick={() => setSelectedModeId(null)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+                    </div>
+                 </div>
 
-                  <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-12">
-                     {/* 1. Maturity Roadmap Checklist */}
-                     <section className="space-y-6">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 flex items-center gap-2 border-l-2 border-rose-500 pl-4">
-                           RELIABILITY_ROADMAP
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                           {[
-                             { label: 'Automated Monitoring', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Monitoring'), icon: Activity, color: 'text-sky-400', action: () => setShowMitigationWizard(true) },
-                             { label: 'Immediate Workaround', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Workaround'), icon: Zap, color: 'text-amber-400', action: () => setShowMitigationWizard(true) },
-                             { label: 'Permanent BKM', status: selectedMode.causes?.some((c:any) => c.resolutions?.length > 0), icon: Lightbulb, color: 'text-emerald-400', action: () => setShowResolutionWizard(true) },
-                             { label: 'Engineering Fix', status: ['Eliminated', 'Prevented'].includes(selectedMode.status), icon: ShieldCheck, color: 'text-emerald-500', action: () => setShowPreventionWizard(true) }
-                           ].map((item, i) => (
-                             <div key={i} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${item.status ? 'bg-white/5 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/5 opacity-60 hover:opacity-100 hover:border-rose-500/20'}`}>
-                                <div className="flex items-center gap-4">
-                                   <div className={`p-3 rounded-2xl bg-white/5 ${item.status ? item.color : 'text-slate-600'}`}>
-                                      <item.icon size={24} />
-                                   </div>
-                                   <div>
-                                      <p className={`text-xs font-black uppercase tracking-widest ${item.status ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
-                                      <p className="text-[9px] font-bold uppercase text-slate-600">{item.status ? 'Verified & Active' : 'Action Required'}</p>
-                                   </div>
-                                </div>
-                                {!item.status && (
-                                  <button onClick={item.action} className="p-2 hover:bg-white/5 rounded-xl text-rose-500 transition-colors">
-                                     <Plus size={20} />
-                                  </button>
-                                )}
-                                {item.status && <CheckCircle2 size={20} className="text-emerald-500" />}
-                             </div>
-                           ))}
-                        </div>
-                     </section>
+                 <div className="flex-1 overflow-y-auto custom-scrollbar p-10 flex space-x-12">
+                    {/* Left Lab Pane */}
+                    <div className="flex-1 space-y-12">
+                       {/* 1. Maturity Roadmap Checklist */}
+                       <section className="space-y-6">
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 flex items-center gap-2 border-l-2 border-rose-500 pl-4">
+                             RELIABILITY_ROADMAP
+                          </h3>
+                          <div className="grid grid-cols-2 gap-4">
+                             {[
+                               { label: 'Automated Monitoring', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Monitoring'), icon: Activity, color: 'text-sky-400', action: () => setShowMitigationWizard(true) },
+                               { label: 'Immediate Workaround', status: selectedMode.mitigations?.some((m:any) => m.mitigation_type === 'Workaround'), icon: Zap, color: 'text-amber-400', action: () => setShowMitigationWizard(true) },
+                               { label: 'Permanent BKM', status: selectedMode.causes?.some((c:any) => c.resolutions?.length > 0), icon: Lightbulb, color: 'text-emerald-400', action: () => setShowResolutionWizard(true) },
+                               { label: 'Engineering Fix', status: ['Eliminated', 'Prevented'].includes(selectedMode.status), icon: ShieldCheck, color: 'text-emerald-500', action: () => setShowPreventionWizard(true) }
+                             ].map((item, i) => (
+                               <div key={i} className={`p-6 rounded-3xl border transition-all flex items-center justify-between ${item.status ? 'bg-white/5 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]' : 'bg-white/[0.02] border-white/5 opacity-60 hover:opacity-100 hover:border-rose-500/20'}`}>
+                                  <div className="flex items-center gap-4">
+                                     <div className={`p-3 rounded-2xl bg-white/5 ${item.status ? item.color : 'text-slate-600'}`}>
+                                        <item.icon size={24} />
+                                     </div>
+                                     <div>
+                                        <p className={`text-xs font-black uppercase tracking-widest ${item.status ? 'text-white' : 'text-slate-500'}`}>{item.label}</p>
+                                        <p className="text-[9px] font-bold uppercase text-slate-600">{item.status ? 'Verified & Active' : 'Action Required'}</p>
+                                     </div>
+                                  </div>
+                                  {!item.status && (
+                                    <button onClick={item.action} className="p-2 hover:bg-white/5 rounded-xl text-rose-500 transition-colors">
+                                       <Plus size={20} />
+                                    </button>
+                                  )}
+                                  {item.status && <CheckCircle2 size={20} className="text-emerald-500" />}
+                               </div>
+                             ))}
+                          </div>
+                       </section>
 
-                     {/* 2. Resolutions / BKMs */}
-                     <section className="space-y-6">
-                        <div className="flex items-center justify-between">
-                           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-2 border-l-2 border-emerald-500 pl-4">
-                              KNOWLEDGE_ALIGNMENT_BKM
-                           </h3>
-                           <button onClick={() => setShowResolutionWizard(true)} className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] hover:underline">+ MAP_RESOLUTION</button>
-                        </div>
-                        <div className="space-y-3">
-                           {selectedMode.causes?.map((cause: any) => cause.resolutions?.map((res: any, idx: number) => (
-                             <div key={idx} className="bg-white/5 border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-white/10 transition-all">
-                                <div className="flex items-center gap-6">
-                                   <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-2xl">
-                                      <FileText size={24} />
-                                   </div>
-                                   <div className="min-w-0">
-                                      <p className="text-sm font-black text-white uppercase tracking-tight truncate">{res.knowledge_bkm?.title || 'Relational BKM Link'}</p>
-                                      <div className="flex items-center gap-4 mt-1">
-                                         <p className="text-[10px] text-slate-500 font-black uppercase">TEAM: {res.responsible_team}</p>
-                                         <span className="w-1 h-1 rounded-full bg-white/10" />
-                                         <p className="text-[10px] text-slate-600 font-bold uppercase truncate max-w-xs">SOURCE: {cause.cause_text}</p>
+                       {/* 2. Resolutions / BKMs */}
+                       <section className="space-y-6">
+                          <div className="flex items-center justify-between">
+                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500 flex items-center gap-2 border-l-2 border-emerald-500 pl-4">
+                                KNOWLEDGE_ALIGNMENT_BKM
+                             </h3>
+                             <button onClick={() => setShowResolutionWizard(true)} className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] hover:underline">+ MAP_RESOLUTION</button>
+                          </div>
+                          <div className="space-y-3">
+                             {selectedMode.causes?.map((cause: any) => cause.resolutions?.map((res: any, idx: number) => (
+                               <div key={idx} className="bg-white/5 border border-white/5 p-6 rounded-3xl flex items-center justify-between group hover:border-white/10 transition-all">
+                                  <div className="flex items-center gap-6">
+                                     <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                                        <FileText size={24} />
+                                     </div>
+                                     <div className="min-w-0">
+                                        <p className="text-sm font-black text-white uppercase tracking-tight truncate">{res.knowledge_bkm?.title || 'Relational BKM Link'}</p>
+                                        <div className="flex items-center gap-4 mt-1">
+                                           <p className="text-[10px] text-slate-500 font-black uppercase">TEAM: {res.responsible_team}</p>
+                                           <span className="w-1 h-1 rounded-full bg-white/10" />
+                                           <p className="text-[10px] text-slate-600 font-bold uppercase truncate max-w-xs">SOURCE: {cause.cause_text}</p>
+                                        </div>
+                                     </div>
+                                  </div>
+                                  <button className="opacity-0 group-hover:opacity-100 p-3 bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"><ExternalLink size={18} /></button>
+                               </div>
+                             )))}
+                             {(!selectedMode.causes?.some((c:any) => c.resolutions?.length > 0)) && (
+                               <div className="py-16 text-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">No Reliability BKMs Linked</p>
+                               </div>
+                             )}
+                          </div>
+                       </section>
+
+                       {/* 3. Affected Assets */}
+                       <section className="space-y-6">
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2 border-l-2 border-slate-500 pl-4">
+                             AFFECTED_INFRASTRUCTURE
+                          </h3>
+                          <div className="flex flex-wrap gap-3">
+                             {selectedMode.affected_assets?.map((asset: any) => (
+                               <div key={asset.id} className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 group hover:border-rose-500/30 transition-all">
+                                  <Server size={16} className="text-slate-500 group-hover:text-rose-500" />
+                                  <span className="text-[11px] font-black text-white uppercase tracking-tighter">{asset.name}</span>
+                               </div>
+                             ))}
+                          </div>
+                       </section>
+                    </div>
+
+                    {/* Right Context Pane */}
+                    <div className="w-96 space-y-6">
+                        {/* Root Causes Stack */}
+                        <div className="flex-1 flex flex-col glass-panel rounded-[30px] border border-white/5 bg-black/40 overflow-hidden">
+                           <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                 <Zap size={16} className="text-amber-500" />
+                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Attributed Causes</h3>
+                              </div>
+                              <button onClick={() => setShowCauseWizard(true)} className="p-2 hover:bg-white/5 rounded-xl text-amber-500 transition-all"><Plus size={18}/></button>
+                           </div>
+                           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+                              {selectedMode.causes?.map((cause: any) => (
+                                <div key={cause.id} className="p-6 rounded-[24px] bg-black/60 border border-white/5 space-y-4 group hover:border-amber-500/30 transition-all">
+                                   <p className="text-xs font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{cause.cause_text}</p>
+                                   <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{cause.responsible_team}</span>
+                                      <div className="flex items-center gap-2">
+                                         <div className={`w-2 h-2 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-amber-500'}`} />
+                                         <span className="text-xs font-black text-amber-500 italic">{cause.occurrence_level}/10</span>
                                       </div>
                                    </div>
                                 </div>
-                                <button className="opacity-0 group-hover:opacity-100 p-3 bg-white/5 rounded-xl text-slate-500 hover:text-white transition-all"><ExternalLink size={18} /></button>
-                             </div>
-                           )))}
-                           {(!selectedMode.causes?.some((c:any) => c.resolutions?.length > 0)) && (
-                             <div className="py-16 text-center border-2 border-dashed border-white/5 rounded-[40px] opacity-20">
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">No Reliability BKMs Linked</p>
-                             </div>
-                           )}
+                              ))}
+                           </div>
                         </div>
-                     </section>
 
-                     {/* 3. Affected Assets */}
-                     <section className="space-y-6">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-2 border-l-2 border-slate-500 pl-4">
-                           AFFECTED_INFRASTRUCTURE
-                        </h3>
-                        <div className="flex flex-wrap gap-3">
-                           {selectedMode.affected_assets?.map((asset: any) => (
-                             <div key={asset.id} className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 group hover:border-rose-500/30 transition-all">
-                                <Server size={16} className="text-slate-500 group-hover:text-rose-500" />
-                                <span className="text-[11px] font-black text-white uppercase tracking-tighter">{asset.name}</span>
-                             </div>
-                           ))}
+                        {/* Operational Status Panel */}
+                        <div className="glass-panel rounded-[30px] border border-white/5 bg-gradient-to-br from-black/60 to-slate-900/60 p-8 flex flex-col justify-between relative overflow-hidden min-h-[250px]">
+                           <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500 blur-[80px] opacity-10" />
+                           <div className="relative z-10">
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">OPERATIONAL_STATE</p>
+                              <div className="flex items-center gap-4">
+                                 <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.6)]" />
+                                 <h4 className="text-4xl font-black text-white uppercase italic tracking-tighter">{selectedMode.status}</h4>
+                              </div>
+                           </div>
+                           <div className="flex gap-3 relative z-10">
+                              <button className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all">Update Status</button>
+                           </div>
                         </div>
-                     </section>
-                  </div>
-               </div>
-
-               {/* Right Context (Root Causes & Status) */}
-               <div className="w-[35%] flex flex-col space-y-3 overflow-hidden">
-                  {/* Root Causes Stack */}
-                  <div className="flex-1 flex flex-col glass-panel rounded-[30px] border border-white/5 bg-black/40 overflow-hidden">
-                     <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                           <Zap size={16} className="text-amber-500" />
-                           <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Attributed Causes</h3>
-                        </div>
-                        <button onClick={() => setShowCauseWizard(true)} className="p-2 hover:bg-white/5 rounded-xl text-amber-500 transition-all"><Plus size={18}/></button>
-                     </div>
-                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-                        {selectedMode.causes?.map((cause: any) => (
-                          <div key={cause.id} className="p-6 rounded-[24px] bg-black/60 border border-white/5 space-y-4 group hover:border-amber-500/30 transition-all">
-                             <p className="text-xs font-black text-white uppercase leading-tight group-hover:text-amber-400 transition-colors">{cause.cause_text}</p>
-                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{cause.responsible_team}</span>
-                                <div className="flex items-center gap-2">
-                                   <div className={`w-2 h-2 rounded-full ${cause.occurrence_level > 7 ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-amber-500'}`} />
-                                   <span className="text-xs font-black text-amber-500 italic">{cause.occurrence_level}/10</span>
-                                </div>
-                             </div>
-                          </div>
-                        ))}
-                     </div>
-                  </div>
-
-                  {/* Operational Status Panel */}
-                  <div className="h-[30%] glass-panel rounded-[30px] border border-white/5 bg-gradient-to-br from-black/60 to-slate-900/60 p-8 flex flex-col justify-between relative overflow-hidden">
-                     <div className="absolute top-0 right-0 w-48 h-48 bg-rose-500 blur-[80px] opacity-10" />
-                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">OPERATIONAL_STATE</p>
-                        <div className="flex items-center gap-4">
-                           <div className="w-4 h-4 rounded-full bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.6)]" />
-                           <h4 className="text-4xl font-black text-white uppercase italic tracking-tighter">{selectedMode.status}</h4>
-                        </div>
-                     </div>
-                     <div className="flex gap-3 relative z-10">
-                        <button className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all">Update Status</button>
-                        <button onClick={() => setSelectedModeId(null)} className="px-4 bg-white/5 hover:bg-rose-500/20 border border-white/5 rounded-2xl text-rose-500 transition-all"><X size={20} /></button>
-                     </div>
-                  </div>
-               </div>
-            </motion.div>
-          ) : (
-            <div className="hidden" />
+                    </div>
+                 </div>
+              </motion.div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
+      </AnimatePresence>
+
+      <ConfigRegistryModal
+        isOpen={showConfig}
+        onClose={() => setShowConfig(false)}
+        title="Reliability Matrix Enumerations"
+        sections={[
+            { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
+            { title: "Risk Categories", category: "RiskCategory", icon: Target },
+            { title: "Operational Teams", category: "BusinessUnit", icon: User }
+        ]}
+      />
+
+      <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: #0a0c14;
+          --ag-header-background-color: #141721;
+          --ag-border-color: rgba(255,255,255,0.05);
+          --ag-foreground-color: #f1f5f9;
+          --ag-header-foreground-color: #f43f5e;
+          --ag-font-family: 'Inter', sans-serif;
+          --ag-font-size: ${fontSize}px;
+        }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+            font-weight: 700 !important;
+        }
+        .ag-row-hover { background-color: rgba(244, 63, 94, 0.05) !important; }
+        .ag-row-selected { background-color: rgba(244, 63, 94, 0.2) !important; }
+      `}</style>
 
       {/* Addition Wizard Modals */}
       <AnimatePresence>

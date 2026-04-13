@@ -25,10 +25,13 @@ export default function ExternalIntelligence() {
   const [editingEntity, setEditingEntity] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
 
-  // Style Lab State
+  // Style Lab & Column Picker State
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [showConfig, setShowConfig] = useState(false)
 
   // Data fetching
   const { data: entities, isLoading: entLoading } = useQuery({ 
@@ -43,6 +46,37 @@ export default function ExternalIntelligence() {
     queryKey: ['devices'], 
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
   })
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, activeTab, entities, links])
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_Intelligence_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
+  }
 
   // Mutations
   const entityMutation = useMutation({
@@ -122,10 +156,42 @@ export default function ExternalIntelligence() {
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
     },
-    { field: "name", headerName: "System Name", flex: 1.5, cellClass: "font-bold uppercase tracking-tight text-left", headerClass: 'text-left' },
-    { field: "type", headerName: "Type", flex: 1, cellClass: "text-center font-bold text-slate-400 uppercase tracking-widest", headerClass: 'text-center' },
-    { field: "ip_address", headerName: "Primary IP", flex: 1, cellClass: "font-mono text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "owner_organization", headerName: "Partner / Owner", flex: 1.2, cellClass: "text-center font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { 
+      field: "name", 
+      headerName: "System Name", 
+      flex: 1.5, 
+      cellClass: "font-bold uppercase tracking-tight text-left", 
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("name")
+    },
+    { 
+      field: "type", 
+      headerName: "Type", 
+      flex: 1, 
+      cellClass: "text-center font-bold text-slate-400 uppercase tracking-widest", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("type")
+    },
+    { 
+      field: "ip_address", 
+      headerName: "Primary IP", 
+      flex: 1, 
+      cellClass: "font-mono text-center font-bold", 
+      headerClass: 'text-center', 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("ip_address")
+    },
+    { 
+      field: "owner_organization", 
+      headerName: "Partner / Owner", 
+      flex: 1.2, 
+      cellClass: "text-center font-bold uppercase", 
+      headerClass: 'text-center', 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("owner_organization")
+    },
     { 
       field: "actions",
       headerName: "Action",
@@ -145,7 +211,7 @@ export default function ExternalIntelligence() {
         </div>
       )
     }
-  ], [deleteEntityMutation])
+  ], [deleteEntityMutation, fontSize, hiddenColumns])
 
   const linkColumns = useMemo(() => [
     { 
@@ -174,7 +240,17 @@ export default function ExternalIntelligence() {
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
     },
-    { field: "external_entity_name", headerName: "External Peer", flex: 1, minWidth: 150, cellClass: "font-bold uppercase tracking-tight text-left", headerClass: 'text-left', filter: 'agTextColumnFilter' },
+    { 
+      field: "external_entity_name", 
+      headerName: "External Peer", 
+      flex: 1, 
+      minWidth: 150, 
+      cellClass: "font-bold uppercase tracking-tight text-left", 
+      headerClass: 'text-left', 
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("external_entity_name")
+    },
     { 
       field: "direction", 
       headerName: "Flow", 
@@ -184,17 +260,48 @@ export default function ExternalIntelligence() {
       filter: 'agTextColumnFilter',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
+          <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
             {p.value}
           </div>
         </div>
-      )
+      ),
+      hide: hiddenColumns.includes("direction")
     },
-    { field: "device_name", headerName: "Internal Asset", width: 150, minWidth: 150, cellClass: "font-bold text-center uppercase tracking-tight", headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "service_name", headerName: "Logical Service", width: 150, minWidth: 150, cellClass: "text-center uppercase text-slate-400 font-bold tracking-tight", headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "purpose", headerName: "Interconnect Purpose", flex: 1.5, minWidth: 200, headerClass: 'text-left', cellClass: 'font-bold uppercase', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: "protocol", headerName: "Prot", width: 80, minWidth: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', filter: 'agTextColumnFilter' },
-    { field: "port", headerName: "Port", width: 80, minWidth: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', filter: 'agTextColumnFilter' },
+    { 
+      field: "device_name", 
+      headerName: "Internal Asset", 
+      width: 150, 
+      minWidth: 150, 
+      cellClass: "font-bold text-center uppercase tracking-tight", 
+      headerClass: 'text-center', 
+      filter: 'agTextColumnFilter', 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("device_name")
+    },
+    { 
+      field: "service_name", 
+      headerName: "Logical Service", 
+      width: 150, 
+      minWidth: 150, 
+      cellClass: "text-center uppercase text-slate-400 font-bold tracking-tight", 
+      headerClass: 'text-center', 
+      filter: 'agTextColumnFilter', 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("service_name")
+    },
+    { 
+      field: "purpose", 
+      headerName: "Interconnect Purpose", 
+      flex: 1.5, 
+      minWidth: 200, 
+      headerClass: 'text-left', 
+      cellClass: 'font-bold uppercase', 
+      filter: 'agTextColumnFilter', 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("purpose")
+    },
+    { field: "protocol", headerName: "Prot", width: 80, minWidth: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("protocol") },
+    { field: "port", headerName: "Port", width: 80, minWidth: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("port") },
     { 
       field: "actions",
       headerName: "Action",
@@ -213,7 +320,7 @@ export default function ExternalIntelligence() {
         </div>
       )
     }
-  ], [deleteLinkMutation])
+  ], [deleteLinkMutation, fontSize, hiddenColumns])
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -259,10 +366,149 @@ export default function ExternalIntelligence() {
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
+             </button>
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
+             </button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
                 <Settings size={16} />
              </button>
           </div>
+
+          <button 
+             onClick={() => { setEditingEntity(null); activeTab === 'Registry' ? setShowEntityModal(true) : setShowLinkModal(true) }}
+             className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+          >
+             + {activeTab === 'Registry' ? 'Register' : 'Map Link'}
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: 'auto', opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="0" max="20" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
+        {(entLoading || linkLoading) && (
+           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm space-y-4">
+              <RefreshCcw size={32} className="text-indigo-400 animate-spin" />
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Synchronizing Global Matrix...</p>
+           </div>
+        )}
+        <AgGridReact 
+          ref={gridRef}
+          rowData={activeTab === 'Registry' ? entities : links} 
+          columnDefs={(activeTab === 'Registry' ? entityColumns : linkColumns) as any}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
+          quickFilterText={searchTerm}
+          enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
+        />
+
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {(activeTab === 'Registry' ? entityColumns : linkColumns).filter((c: any) => (c.field || c.headerName) && !c.suppressHide).map((col: any) => {
+                  const field = col.field || col.headerName
+                  return (
+                    <label key={field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                      <div className="relative flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={!hiddenColumns.includes(field)}
+                          onChange={() => {
+                            if (hiddenColumns.includes(field)) {
+                              setHiddenColumns(hiddenColumns.filter(f => f !== field))
+                            } else {
+                              setHiddenColumns([...hiddenColumns, field])
+                            }
+                          }}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                           {!hiddenColumns.includes(field) && <Check size={12} className="text-white mx-auto" />}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Intelligence Matrix Config"
+        sections={[
+            { title: "Entity Types", category: "ExternalType", icon: Globe },
+            { title: "Link Categories", category: "LinkType", icon: LinkIcon }
+        ]}
+      />
 
           <button 
              onClick={() => { setEditingEntity(null); activeTab === 'Registry' ? setShowEntityModal(true) : setShowLinkModal(true) }}

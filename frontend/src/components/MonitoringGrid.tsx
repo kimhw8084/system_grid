@@ -33,6 +33,8 @@ export default function MonitoringGrid() {
   const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(true)
   const [showRegistry, setShowRegistry] = useState(false)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
 
   // Modals state
@@ -64,6 +66,31 @@ export default function MonitoringGrid() {
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
+  }
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_Monitoring_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false
+      })
+    }
+  }
+
+  const handleCopyToClipboard = () => {
+    if (gridRef.current?.api) {
+      const csvData = gridRef.current.api.getDataAsCsv({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true
+      })
+      if (csvData) {
+        navigator.clipboard.writeText(csvData)
+          .then(() => toast.success("Table data copied to clipboard"))
+          .catch(() => toast.error("Failed to copy data"))
+      }
+    }
   }
 
   useEffect(() => {
@@ -124,16 +151,6 @@ export default function MonitoringGrid() {
     onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiFetch(`/api/v1/monitoring/${id}`, { method: 'DELETE' })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-      toast.success('Monitoring item de-activated')
-    }
-  })
-
   const columnDefs = useMemo(() => [
     { 
       headerName: "", 
@@ -168,6 +185,8 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: "font-bold text-center", 
       headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("device_name")
     },
     { 
       field: "category", 
@@ -184,8 +203,9 @@ export default function MonitoringGrid() {
           'Application': 'text-emerald-500',
           'Database': 'text-rose-500'
         }
-        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
-      }
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
+      },
+      hide: hiddenColumns.includes("category")
     },
     { 
       field: "status", 
@@ -205,13 +225,14 @@ export default function MonitoringGrid() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="font-bold uppercase tracking-tighter leading-none">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'Unknown'}
               </span>
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("status")
     },
     { 
       field: "is_active", 
@@ -232,7 +253,8 @@ export default function MonitoringGrid() {
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("is_active")
     },
     { 
       field: "version", 
@@ -246,10 +268,11 @@ export default function MonitoringGrid() {
             onClick={() => setHistoryItem(p.data)}
             className="flex items-center justify-center w-14 h-5 rounded-md border shadow-sm border-blue-500/40 bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 transition-all"
           >
-            <span className="font-bold uppercase tracking-tighter leading-none">v{p.value || 1}</span>
+            <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">v{p.value || 1}</span>
           </button>
         </div>
-      )
+      ),
+      hide: hiddenColumns.includes("version")
     },
     { 
       field: "owners", 
@@ -260,9 +283,10 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const owners = p.value || []
         const count = owners.length
-        if (count === 0) return <span className="text-slate-500">N/A</span>
-        return <span>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
-      }
+        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>
+        return <span style={{ fontSize: `${fontSize}px` }}>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
+      },
+      hide: hiddenColumns.includes("owners")
     },
 
     { 
@@ -273,6 +297,8 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: "font-bold text-left uppercase tracking-tight", 
       headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("title")
     },
     { 
       field: "monitored_service_names", 
@@ -283,18 +309,20 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const names = p.value || []
         const count = names.length
-        if (count === 0) return <span className="text-slate-500 font-bold uppercase">N/A</span>
+        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>
         return (
           <div className="flex items-center justify-center h-full">
             <button 
               onClick={() => setServicePopup({ names, title: p.data.title })}
               className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-bold text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+              style={{ fontSize: `${fontSize}px` }}
             >
               {count}
             </button>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("monitored_service_names")
     },
     { 
       field: "platform", 
@@ -303,7 +331,8 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: 'text-center font-bold uppercase text-slate-300', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("platform")
     },
     { 
       field: "severity", 
@@ -321,11 +350,12 @@ export default function MonitoringGrid() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'bg-slate-500/20 text-slate-400 border-white/10'}`}>
-              <span className="font-bold uppercase tracking-tighter leading-none">{p.value || 'N/A'}</span>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">{p.value || 'N/A'}</span>
             </div>
           </div>
         )
-      }
+      },
+      hide: hiddenColumns.includes("severity")
     },
     { 
       field: "check_interval", 
@@ -333,7 +363,8 @@ export default function MonitoringGrid() {
       width: 70, 
       cellClass: 'text-center font-bold uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? `${p.value}s` : <span className="text-slate-500 font-bold uppercase">N/A</span>
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
+      hide: hiddenColumns.includes("check_interval")
     },
     { 
       field: "notification_method", 
@@ -348,10 +379,11 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <span className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
            </button>
         </div>
-      )
+      ),
+      hide: hiddenColumns.includes("notification_method")
     },
     { 
       field: "purpose", 
@@ -360,6 +392,8 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4", 
       headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("purpose")
     },
     {
       headerName: "Action",
@@ -385,29 +419,11 @@ export default function MonitoringGrid() {
       ),
       suppressHide: true
     }
-  ], [activeTab, bulkMutation]) as any
+  ], [activeTab, bulkMutation, fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
   }), []);
-
-  const exportCsv = () => {
-    gridRef.current.api.exportDataAsCsv({
-      fileName: `monitoring_matrix_${new Date().toISOString().split('T')[0]}.csv`
-    })
-    toast.success('Matrix exported to CSV')
-  }
-
-  const copyToClipboard = () => {
-    const selectedRows = gridRef.current.api.getSelectedRows()
-    if (selectedRows.length === 0) {
-      toast.error('Select rows to copy')
-      return
-    }
-    const text = selectedRows.map((r: any) => `${r.device_name} | ${r.title} | ${r.status}`).join('\n')
-    navigator.clipboard.writeText(text)
-    toast.success('Copied to clipboard')
-  }
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -445,11 +461,14 @@ export default function MonitoringGrid() {
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
-             <button onClick={exportCsv} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Export CSV">
-                <Download size={16} />
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
+                <Sliders size={16} />
              </button>
-             <button onClick={copyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Copy Selected">
-                <Copy size={16} />
+             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Export CSV">
+                <FileText size={16} />
+             </button>
+             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Copy to Clipboard">
+                <Clipboard size={16} />
              </button>
              <button onClick={() => setShowRegistry(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
                 <Settings size={16} />
@@ -491,7 +510,6 @@ export default function MonitoringGrid() {
         </div>
       </div>
 
-      {/* STYLE LABORATORY BAR */}
       <AnimatePresence>
         {showStyleLab && (
           <motion.div 
@@ -558,24 +576,49 @@ export default function MonitoringGrid() {
           suppressRowClickSelection={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
-          sideBar={{
-            toolPanels: [
-              {
-                id: 'columns',
-                labelDefault: 'Columns',
-                labelKey: 'columns',
-                iconKey: 'columns',
-                toolPanel: 'agColumnsToolPanel',
-                toolPanelParams: {
-                  suppressRowGroups: true,
-                  suppressValues: true,
-                  suppressPivots: true,
-                  suppressPivotMode: true,
-                },
-              },
-            ],
-          }}
         />
+
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.includes(col.field)}
+                        onChange={() => {
+                          if (hiddenColumns.includes(col.field)) {
+                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                          } else {
+                            setHiddenColumns([...hiddenColumns, col.field])
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <BulkActionModals
