@@ -184,7 +184,7 @@ export default function MonitoringGrid() {
           'Application': 'text-emerald-500',
           'Database': 'text-rose-500'
         }
-        return <span className={`font-bold uppercase tracking-widest ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
+        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
       }
     },
     { 
@@ -254,24 +254,17 @@ export default function MonitoringGrid() {
     { 
       field: "owners", 
       headerName: "Owners", 
-      width: 120, 
       filter: true,
-      cellClass: "text-center", 
+      cellClass: "text-center font-bold uppercase", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const owners = p.value || []
         const count = owners.length
-        if (count === 0) return <span className="text-slate-500 font-bold uppercase">N/A</span>
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg flex items-center space-x-2">
-               <User size={10} className="text-blue-400" />
-               <span className="font-bold text-slate-300 uppercase">{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
-            </div>
-          </div>
-        )
+        if (count === 0) return <span className="text-slate-500">N/A</span>
+        return <span>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
       }
     },
+
     { 
       field: "title", 
       headerName: "Title", 
@@ -369,38 +362,34 @@ export default function MonitoringGrid() {
       headerClass: 'text-left',
     },
     {
-      field: "actions",
-      headerName: "",
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      headerName: "Action",
+      width: 150,
+      minWidth: 150,
       pinned: 'right',
-      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      suppressSizeToFit: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="relative group">
-          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
-            <Settings size={14} />
-          </button>
-          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[150px]">
-            <button onClick={() => setDetailItem(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Eye size={12}/> Inspect</button>
-            <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} className="w-full text-left px-3 py-2 hover:bg-amber-500/20 text-[10px] font-bold text-amber-500 uppercase rounded-md flex items-center gap-2 transition-colors"><BookOpen size={12}/> Recovery Docs</button>
-            <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
-            {activeTab === 'active' ? (
-              <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> De-activate</button>
-            ) : (
-              <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
-            )}
-          </div>
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
+               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               {activeTab === 'active' ? (
+                 <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               ) : (
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               )}
+           </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
   ], [activeTab, bulkMutation]) as any
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   const exportCsv = () => {
     gridRef.current.api.exportDataAsCsv({
@@ -568,6 +557,7 @@ export default function MonitoringGrid() {
           quickFilterText={searchTerm}
           suppressRowClickSelection={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
           sideBar={{
             toolPanels: [
               {

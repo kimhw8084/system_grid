@@ -166,42 +166,39 @@ export default function NetworkFabric() {
     },
     {
       field: "actions",
-      headerName: "",
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      headerName: "Action",
+      width: 120,
+      minWidth: 120,
       pinned: 'right',
-      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      suppressSizeToFit: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="relative group">
-          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
-            <Settings size={14} />
-          </button>
-          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
-            <button onClick={() => setViewingLink(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Info size={12}/> Forensics</button>
-            <button onClick={() => { 
-                setEditingLink(p.data); 
-                setConnData({
-                  ...p.data,
-                  device_a_id: String(p.data.source_device_id),
-                  device_b_id: String(p.data.target_device_id),
-                  port_a: p.data.source_port,
-                  port_b: p.data.target_port
-                }); 
-                setShowConnectModal(true) 
-              }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
-            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Physical Link', message: 'Sever this physical connection? This will impact data flows.', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Sever</button>
-          </div>
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setViewingLink(p.data)} title="Forensics Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Info size={14}/></button>
+               <button onClick={() => { 
+                   setEditingLink(p.data); 
+                   setConnData({
+                     ...p.data,
+                     device_a_id: String(p.data.source_device_id),
+                     device_b_id: String(p.data.target_device_id),
+                     port_a: p.data.source_port,
+                     port_b: p.data.target_port
+                   }); 
+                   setShowConnectModal(true) 
+                 }} title="Edit Interconnect" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Physical Link', message: 'Sever this physical connection? This will impact data flows.', onConfirm: () => deleteMutation.mutate(p.data.id) })} title="Sever Link" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+           </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
   ], [deleteMutation]) as any
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   const resetForm = () => {
     setConnData({
@@ -315,6 +312,7 @@ export default function NetworkFabric() {
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
         />
       </div>
 

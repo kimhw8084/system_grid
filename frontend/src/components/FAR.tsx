@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -7,7 +8,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book, Download, Copy
+  ChevronLeft, Book, Download, Copy, Terminal
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -15,6 +16,9 @@ import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
+
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 // --- Types ---
 interface FailureMode {
@@ -93,6 +97,15 @@ export default function FAR() {
   const [showResolutionWizard, setShowResolutionWizard] = useState(false)
   const [showPreventionWizard, setShowPreventionWizard] = useState(false)
 
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void}>({
+    show: false, title: '', message: '', onConfirm: () => {}
+  })
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({ show: true, title, message, onConfirm })
+  }
+
   // Style Lab State
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
@@ -107,6 +120,22 @@ export default function FAR() {
   const { data: causes, isLoading: causesLoading } = useQuery({
     queryKey: ['far', 'causes'],
     queryFn: async () => (await apiFetch('/api/v1/far/causes')).json()
+  })
+
+  // Mutations
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, ids }: { action: string, ids: number[] }) => {
+      if (action === 'delete') {
+        const res = await apiFetch('/api/v1/far/modes/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) })
+        return res.json()
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['far'] })
+      toast.success('Failure Modes Updated')
+      setConfirmModal({ ...confirmModal, show: false })
+    },
+    onError: (e: any) => toast.error(e.message)
   })
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
@@ -155,6 +184,132 @@ export default function FAR() {
   }, [causes, searchTerm, selectedModeId, modes])
 
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
+
+  const columnDefs = useMemo(() => [
+    { 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "system_name", 
+      headerName: "System", 
+      minWidth: 120,
+      cellClass: 'text-center font-bold text-rose-400 uppercase',
+      headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "title", 
+      headerName: "Failure Mode", 
+      minWidth: 250,
+      flex: 1,
+      cellClass: 'text-left font-bold uppercase',
+      headerClass: 'text-left',
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "severity", 
+      headerName: "S", 
+      width: 60,
+      minWidth: 60,
+      cellClass: 'text-center font-bold text-rose-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "occurrence", 
+      headerName: "O", 
+      width: 60,
+      minWidth: 60,
+      cellClass: 'text-center font-bold text-amber-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "detection", 
+      headerName: "D", 
+      width: 60,
+      minWidth: 60,
+      cellClass: 'text-center font-bold text-sky-400',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "rpn", 
+      headerName: "RPN", 
+      width: 80,
+      minWidth: 80,
+      cellClass: 'text-center font-black italic text-white',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+      cellRenderer: (p: any) => (
+        <span className={p.value > 100 ? 'text-rose-500' : 'text-emerald-400'}>
+          {p.value}
+        </span>
+      )
+    },
+    { 
+      field: "status", 
+      headerName: "Status", 
+      width: 130,
+      minWidth: 130,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      filter: 'agTextColumnFilter',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+          <StatusPill status={p.value} />
+        </div>
+      )
+    },
+    {
+      headerName: "Action",
+      width: 120,
+      minWidth: 120,
+      pinned: 'right',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      resizable: false,
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setSelectedModeId(p.data.id)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => openConfirm('Soft Delete', 'Move this failure mode to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+           </div>
+        </div>
+      ),
+      suppressHide: true
+    }
+  ], [selectedModeId])
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -397,7 +552,6 @@ export default function FAR() {
       </div>
 
       <div className="flex-1 min-h-0 flex space-x-3 overflow-hidden">
-        {/* PANE 1: Failure Modes (Left) */}
         <div className={`flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 transition-all duration-500 ${selectedModeId ? 'w-[30%]' : 'w-full'}`}>
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -419,59 +573,18 @@ export default function FAR() {
               )}
            </div>
 
-           <div className="flex-1 overflow-y-auto custom-scrollbar font-sans">
-              <table className="w-full text-left border-collapse">
-                 <thead className="sticky top-0 bg-[#0a0c14] z-10">
-                    <tr className="border-b border-white/5">
-                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${fontSize + rowDensity + 10}px` }}>System / Lv</th>
-                       <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${fontSize + rowDensity + 10}px` }}>Failure Mode</th>
-                       {!selectedModeId && <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-right" style={{ height: `${fontSize + rowDensity + 10}px` }}>RPN</th>}
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.02]">
-                    {filteredModes.map((mode: any) => {
-                      const hasM = mode.mitigations?.some((m: any) => m.mitigation_type === 'Monitoring');
-                      const hasW = mode.mitigations?.some((m: any) => m.mitigation_type === 'Workaround');
-                      const hasR = mode.causes?.some((c: any) => (c.resolutions?.length || 0) > 0);
-                      let lv = 0;
-                      if (['Eliminated', 'Prevented'].includes(mode.status)) lv = 8;
-                      else if (hasM && hasR && hasW) lv = 7;
-                      else if (hasM && hasR) lv = 6;
-                      else if (hasR && hasW) lv = 5;
-                      else if (hasR) lv = 4;
-                      else if (hasM && hasW) lv = 3;
-                      else if (hasW) lv = 2;
-                      else if (hasM) lv = 1;
-                      const ml = maturityLevels.find(l => l.lv === lv)!
-
-                      return (
-                        <tr 
-                          key={mode.id} 
-                          onClick={() => setSelectedModeId(selectedModeId === mode.id ? null : mode.id)}
-                          className={`hover:bg-white/[0.03] transition-colors cursor-pointer group ${selectedModeId === mode.id ? 'bg-rose-500/10' : ''}`}
-                          style={{ height: `${fontSize + rowDensity + 10}px` }}
-                        >
-                           <td className="px-4 py-2 text-center">
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="font-bold uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit tracking-tighter">{mode.system_name}</span>
-                                <div className={`flex items-center gap-1 font-bold uppercase ${ml.color.replace('bg-', 'text-')}`}>
-                                   <Shield size={10} /> L{lv}
-                                </div>
-                              </div>
-                           </td>
-                           <td className="px-4 py-2">
-                              <span className="font-bold text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2">{mode.title}</span>
-                           </td>
-                           {!selectedModeId && (
-                             <td className="px-4 py-2 text-right">
-                                <span className={`font-bold tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>{mode.rpn}</span>
-                             </td>
-                           )}
-                        </tr>
-                      )
-                    })}
-                 </tbody>
-              </table>
+           <div className="flex-1 glass-panel overflow-hidden ag-theme-alpine-dark relative">
+              <AgGridReact
+                rowData={filteredModes || []}
+                columnDefs={columnDefs}
+                headerHeight={fontSize + rowDensity + 10}
+                rowHeight={fontSize + rowDensity + 10}
+                quickFilterText={searchTerm}
+                animateRows={true}
+                enableCellTextSelection={true}
+                autoSizeStrategy={autoSizeStrategy}
+                onRowClicked={(p: any) => setSelectedModeId(selectedModeId === p.data.id ? null : p.data.id)}
+              />
            </div>
         </div>
 
@@ -755,6 +868,14 @@ export default function FAR() {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmationModal 
+        isOpen={confirmModal.show} 
+        onClose={() => setConfirmModal({ ...confirmModal, show: false })} 
+        onConfirm={confirmModal.onConfirm} 
+        title={confirmModal.title} 
+        message={confirmModal.message} 
+      />
     </div>
   )
 }

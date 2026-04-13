@@ -694,10 +694,9 @@ export default function ServiceRegistry() {
     {
       field: "name",
       headerName: "Instance",
-      flex: 1,
       pinned: 'left',
       filter: true,
-      cellClass: 'text-left font-bold uppercase',
+      cellClass: 'text-left font-bold uppercase text-blue-400',
       headerClass: 'text-left',
     },
     { 
@@ -775,9 +774,32 @@ export default function ServiceRegistry() {
       cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
+      field: "installation_date", 
+      headerName: "Installation Date", 
+      filter: 'agDateColumnFilter',
+      cellClass: 'text-center font-bold text-slate-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "purchase_type", 
+      headerName: "Purchase Model", 
+      filter: true,
+      cellClass: 'text-center font-bold text-slate-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "expiry_date", 
+      headerName: "Renewal Date", 
+      filter: 'agDateColumnFilter',
+      cellClass: 'text-center font-bold text-amber-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
       field: "manufacturer", 
       headerName: "Manufacturer", 
-      width: 150, 
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -791,7 +813,6 @@ export default function ServiceRegistry() {
     { 
       field: "supplier", 
       headerName: "Supplier", 
-      width: 120, 
       hide: true,
       filter: true,
       cellClass: 'text-center font-bold',
@@ -801,8 +822,7 @@ export default function ServiceRegistry() {
     { 
       field: "cost", 
       headerName: "Cost", 
-      width: 100, 
-      filter: true,
+      filter: 'agNumberColumnFilter',
       cellClass: 'text-center font-bold text-white',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -812,39 +832,33 @@ export default function ServiceRegistry() {
       }
     },
     {
-      field: "actions",
-      headerName: "",
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      headerName: "Action",
+      width: 120,
+      minWidth: 120,
       pinned: 'right',
-      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      suppressSizeToFit: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true,
-      cellRenderer: (params: any) => (
-        <div className="relative group">
-          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
-            <Settings size={14} />
-          </button>
-          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
-            <button onClick={() => setActiveDetails(params.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><List size={12}/> Details</button>
-            {activeTab === 'active' ? (
-              <>
-                <button onClick={() => setActiveModal(params.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
-                <button onClick={() => openConfirm('Terminate Service', 'Purge this service instance?', () => bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Delete</button>
-              </>
-            ) : (
-              <button onClick={() => bulkMutation.mutate({ action: 'restore', ids: [params.data.id] })} className="w-full text-left px-3 py-2 hover:bg-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase rounded-md flex items-center gap-2 transition-colors"><RefreshCcw size={12}/> Restore</button>
-            )}
-          </div>
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               {activeTab !== 'purged' ? (
+                 <button onClick={() => openConfirm('Terminate Service', 'Move this service to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               ) : (
+                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               )}
+           </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
   ], [selectedIds, activeTab, fontSize]) as any
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -975,6 +989,7 @@ export default function ServiceRegistry() {
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
         />
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud } from 'lucide-react'
+import { Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -115,6 +115,9 @@ export default function External() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   
+  const [fontSize, setFontSize] = useState(11)
+  const [rowDensity, setRowDensity] = useState(10)
+  const [showStyleLab, setShowStyleLab] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
@@ -123,6 +126,12 @@ export default function External() {
     queryKey: ['external-entities'],
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json())
   })
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    }
+  }, [fontSize, rowDensity, entities])
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -154,7 +163,7 @@ export default function External() {
     onError: (e: any) => toast.error(e.message)
   })
 
-  const columnDefs = [
+  const columnDefs = useMemo(() => [
     { 
       headerName: "", 
       width: 50,
@@ -189,66 +198,131 @@ export default function External() {
       cellClass: 'text-left font-bold uppercase tracking-tight',
       headerClass: 'text-left'
     },
-    { field: "type", headerName: "Type", width: 140, cellClass: 'text-center font-bold uppercase text-slate-500 tracking-widest', headerClass: 'text-center' },
+    { 
+      field: "type", 
+      headerName: "Type", 
+      width: 140, 
+      cellClass: 'text-center font-bold uppercase text-slate-500 tracking-widest', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Server': 'text-blue-400',
+          'DB': 'text-amber-400',
+          'Cloud Service': 'text-emerald-400',
+          'Network': 'text-rose-400',
+          'PC': 'text-indigo-400'
+        }
+        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+      }
+    },
     { field: "hostname", headerName: "Hostname", width: 200, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { field: "ip_address", headerName: "IP Address", width: 150, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { field: "owner_organization", headerName: "Organization", flex: 1, minWidth: 200, cellClass: 'text-center font-bold uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { 
-      field: "actions",
-      headerName: "",
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      headerName: "Action",
+      width: 100,
+      minWidth: 100,
       pinned: 'right',
-      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      suppressSizeToFit: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="relative group">
-          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
-            <Settings size={14} />
-          </button>
-          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
-            <button onClick={() => setActiveModal(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
-            <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
-          </div>
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id })} title="Purge Registry" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+           </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
-  ]
+  ], [])
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   return (
-    <div className="h-full flex flex-col space-y-6">
+    <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-           <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 border border-white/10">
-              <Share2 size={24} />
-           </div>
+        <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-3xl font-black uppercase tracking-tighter italic text-white">External Registry</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Manage third-party equipment, cloud nodes & vendor endpoints</p>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic text-white">External Registry</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black ml-1">Third-party equipment, cloud nodes & vendor endpoints</p>
            </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div className="relative">
-             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
              <input 
                value={searchTerm} 
                onChange={e => setSearchTerm(e.target.value)} 
                placeholder="Filter Registry..." 
-               className="bg-white/5 border border-white/5 rounded-2xl pl-12 pr-6 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-72 transition-all shadow-inner text-white" 
+               className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
              />
           </div>
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Entity</button>
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+             <button 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+                className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
+                title="Toggle Style Lab"
+             >
+                <Activity size={16} />
+             </button>
+          </div>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Entity</button>
         </div>
       </div>
 
-      <div className="flex-1 glass-panel rounded-[40px] overflow-hidden ag-theme-alpine-dark relative border border-white/5 shadow-2xl">
+      <AnimatePresence>
+        {showStyleLab && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+               <div className="flex items-center space-x-12">
+                  <div className="flex items-center space-x-3">
+                     <Activity size={16} className="text-blue-400" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-6">
+                     <div className="flex items-center space-x-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="8" max="14" step="1" 
+                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        </div>
+                     </div>
+
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
+                            <input 
+                            type="range" min="0" max="20" step="2" 
+                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            />
+                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
@@ -259,10 +333,12 @@ export default function External() {
           ref={gridRef}
           rowData={entities || []} 
           columnDefs={columnDefs as any} 
-          headerHeight={50}
-          rowHeight={60}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
+          animateRows={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
         />
       </div>
 
@@ -299,19 +375,28 @@ export default function External() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: transparent;
-          --ag-header-background-color: rgba(255,255,255,0.02);
-          --ag-border-color: rgba(255,255,255,0.05);
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
+          --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 11px;
+          --ag-font-size: ${fontSize}px;
         }
-        .ag-root-wrapper { border: none !important; background: transparent !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.2em !important; }
-        .ag-cell { display: flex; align-items: center; font-weight: 700 !important; }
-        .ag-row { border-bottom: 1px solid rgba(255,255,255,0.02) !important; transition: all 0.2s !important; }
-        .ag-row-hover { background-color: rgba(59,130,246,0.05) !important; }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: ${fontSize}px !important; 
+            justify-content: center !important; 
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
       `}</style>
     </div>
   )

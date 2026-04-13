@@ -149,7 +149,7 @@ export default function Vendor() {
     { 
       headerName: "First Contract", 
       width: 120,
-      filter: true,
+      filter: 'agDateColumnFilter',
       valueGetter: (p: any) => {
         const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
         if (!dates || dates.length === 0) return null;
@@ -162,7 +162,7 @@ export default function Vendor() {
     { 
       headerName: "Latest Contract", 
       width: 120,
-      filter: true,
+      filter: 'agDateColumnFilter',
       valueGetter: (p: any) => {
         const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
         if (!dates || dates.length === 0) return null;
@@ -215,49 +215,50 @@ export default function Vendor() {
     },
     {
       field: "actions",
-      headerName: "",
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      headerName: "Action",
+      width: 120,
+      minWidth: 120,
       pinned: 'right',
-      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
-      suppressSizeToFit: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="relative group">
-          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
-            <Settings size={14} />
-          </button>
-          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
-            <button onClick={() => setActiveDetails(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Eye size={12}/> Details</button>
-            <button onClick={() => setActiveModal(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
-            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
-          </div>
+        <div className="flex items-center justify-center space-x-1 h-full">
+           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+           </div>
         </div>
-      )
+      ),
+      suppressHide: true
     }
-  ], []) as any
+  ], [setActiveDetails, setActiveModal, deleteMutation]) as any
+
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
 
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2 text-white">
-                <Globe size={24} className="text-blue-500" /> Supplier Matrix
-              </h1>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic text-white">Vendors</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Vendor Capability & Contract Intelligence</p>
            </div>
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="relative group">
+          <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN VENDORS..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+          </div>
+
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
+                <Settings size={16} />
+             </button>
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
@@ -267,9 +268,6 @@ export default function Vendor() {
                 title="Toggle Style Lab"
              >
                 <Activity size={16} />
-             </button>
-             <button className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
-                <Settings size={16} />
              </button>
           </div>
 
@@ -345,6 +343,7 @@ export default function Vendor() {
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
         />
         </div>
 

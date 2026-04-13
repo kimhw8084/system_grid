@@ -93,6 +93,32 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     result = await db.execute(stmt)
     return result.unique().scalar_one()
 
+@router.delete("/modes/{mode_id}")
+async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+    result = await db.execute(stmt)
+    mode = result.scalar_one_or_none()
+    if not mode: raise HTTPException(404)
+    
+    mode.is_deleted = True
+    await db.commit()
+    return {"status": "success"}
+
+@router.post("/modes/bulk-delete")
+async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    if not ids: return {"status": "success", "count": 0}
+    
+    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(ids))
+    result = await db.execute(stmt)
+    modes = result.scalars().all()
+    
+    for mode in modes:
+        mode.is_deleted = True
+        
+    await db.commit()
+    return {"status": "success", "count": len(modes)}
+
 # --- CAUSES ---
 
 @router.get("/causes", response_model=List[schemas.FarFailureCauseResponse])
