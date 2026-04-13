@@ -5,7 +5,7 @@ import {
   Save, X, PlusCircle, User, MessageSquare,
   MoreVertical, RefreshCcw, Shield, Eye,
   FileText, Briefcase, Calendar, LayoutGrid, List,
-  Terminal, Monitor, Key, Clock, ShieldCheck, Check, ArrowRight, Server, Phone, Flag, ExternalLink, Trash, Zap, Layers, Activity, Settings
+  Terminal, Monitor, Key, Clock, ShieldCheck, Check, ArrowRight, Server, Phone, Flag, ExternalLink, Trash, Zap, Layers, Activity, Settings, Sliders, Clipboard
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -13,6 +13,7 @@ import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
+import { ConfigRegistryModal } from './ConfigRegistry'
 
 // --- Components ---
 

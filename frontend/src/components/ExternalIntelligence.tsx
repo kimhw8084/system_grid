@@ -4,7 +4,7 @@ import {
   Database, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Network, X, Check,
   ArrowRightLeft, Link as LinkIcon, Key, Info, Globe,
-  Activity, Download, Copy, Settings, RefreshCcw, Save, Layers
+  Activity, Download, Copy, Settings, RefreshCcw, Save, Layers, Sliders, Clipboard, FileText
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
@@ -14,6 +14,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from "../api/apiClient"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { ConfigRegistryModal } from "./ConfigRegistry"
 
 export default function ExternalIntelligence() {
   const queryClient = useQueryClient()
@@ -211,7 +212,7 @@ export default function ExternalIntelligence() {
         </div>
       )
     }
-  ], [deleteEntityMutation, fontSize, hiddenColumns])
+  ], [fontSize, hiddenColumns])
 
   const linkColumns = useMemo(() => [
     { 
@@ -320,7 +321,7 @@ export default function ExternalIntelligence() {
         </div>
       )
     }
-  ], [deleteLinkMutation, fontSize, hiddenColumns])
+  ], [fontSize, hiddenColumns])
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -421,136 +422,6 @@ export default function ExternalIntelligence() {
                         <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
-                            type="range" min="0" max="20" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
-        {(entLoading || linkLoading) && (
-           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm space-y-4">
-              <RefreshCcw size={32} className="text-indigo-400 animate-spin" />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Synchronizing Global Matrix...</p>
-           </div>
-        )}
-        <AgGridReact 
-          ref={gridRef}
-          rowData={activeTab === 'Registry' ? entities : links} 
-          columnDefs={(activeTab === 'Registry' ? entityColumns : linkColumns) as any}
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
-          quickFilterText={searchTerm}
-          enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
-        />
-
-        <AnimatePresence>
-          {showColumnPicker && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
-            >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                  <Sliders size={14} /> <span>Toggle Columns</span>
-                </h3>
-                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {(activeTab === 'Registry' ? entityColumns : linkColumns).filter((c: any) => (c.field || c.headerName) && !c.suppressHide).map((col: any) => {
-                  const field = col.field || col.headerName
-                  return (
-                    <label key={field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={!hiddenColumns.includes(field)}
-                          onChange={() => {
-                            if (hiddenColumns.includes(field)) {
-                              setHiddenColumns(hiddenColumns.filter(f => f !== field))
-                            } else {
-                              setHiddenColumns([...hiddenColumns, field])
-                            }
-                          }}
-                          className="sr-only"
-                        />
-                        <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                           {!hiddenColumns.includes(field) && <Check size={12} className="text-white mx-auto" />}
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <ConfigRegistryModal 
-        isOpen={showConfig} 
-        onClose={() => setShowConfig(false)} 
-        title="Intelligence Matrix Config"
-        sections={[
-            { title: "Entity Types", category: "ExternalType", icon: Globe },
-            { title: "Link Categories", category: "LinkType", icon: LinkIcon }
-        ]}
-      />
-
-          <button 
-             onClick={() => { setEditingEntity(null); activeTab === 'Registry' ? setShowEntityModal(true) : setShowLinkModal(true) }}
-             className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
-          >
-             + {activeTab === 'Registry' ? 'Register' : 'Map Link'}
-          </button>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
@@ -580,11 +451,64 @@ export default function ExternalIntelligence() {
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
+          animateRows={true}
           enableCellTextSelection={true}
+          autoSizeStrategy={autoSizeStrategy}
         />
+
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
+                </h3>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {(activeTab === 'Registry' ? entityColumns : linkColumns).filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={!hiddenColumns.includes(col.field)}
+                        onChange={() => {
+                          if (hiddenColumns.includes(col.field)) {
+                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                          } else {
+                            setHiddenColumns([...hiddenColumns, col.field])
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Modals */}
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Intelligence Matrix Config"
+        sections={[
+            { title: "Entity Types", category: "ExternalType", icon: Globe },
+            { title: "Link Categories", category: "LinkType", icon: LinkIcon }
+        ]}
+      />
+
       <AnimatePresence>
         {showEntityModal && (
           <EntityForm 
@@ -640,7 +564,7 @@ export default function ExternalIntelligence() {
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-        `}</style>
+      `}</style>
     </div>
   )
 }

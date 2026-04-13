@@ -6,7 +6,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, MoreVertical, List,
   BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"

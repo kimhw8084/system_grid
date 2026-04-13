@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
+import { ConfigRegistryModal } from './ConfigRegistry'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'

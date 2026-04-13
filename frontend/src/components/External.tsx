@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity } from 'lucide-react'
+import { Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity, Sliders, Settings } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { ConfigRegistryModal } from "./ConfigRegistry"
 
 const EntityForm = ({ initialData, onSave, isSaving }: any) => {
   const [formData, setFormData] = useState({
