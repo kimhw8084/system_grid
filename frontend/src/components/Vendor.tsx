@@ -84,10 +84,68 @@ export default function Vendor() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: "name", headerName: "Vendor Name", flex: 1, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-bold text-white tracking-tight' },
-    { field: "primary_email", headerName: "Primary Email", width: 180, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-blue-400 font-mono' },
-    { field: "primary_phone", headerName: "Primary Phone", width: 130, filter: true, cellStyle: { fontSize: `${fontSize}px` } },
-    { field: "country", headerName: "Country", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black text-slate-400' },
+    { 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "name", 
+      headerName: "Vendor Name", 
+      flex: 1, 
+      pinned: 'left', 
+      filter: true, 
+      cellClass: 'font-bold uppercase tracking-tight',
+      headerClass: 'text-left' 
+    },
+    { 
+      field: "primary_email", 
+      headerName: "Primary Email", 
+      width: 180, 
+      filter: true, 
+      cellClass: 'font-bold font-mono',
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "primary_phone", 
+      headerName: "Primary Phone", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'font-bold',
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
+    { 
+      field: "country", 
+      headerName: "Country", 
+      width: 100, 
+      filter: true, 
+      cellClass: 'text-center font-bold',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
+    },
     { 
       headerName: "First Contract", 
       width: 120,
@@ -97,9 +155,9 @@ export default function Vendor() {
         if (!dates || dates.length === 0) return null;
         return new Date(Math.min(...dates.map((d: any) => new Date(d).getTime())));
       },
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'font-bold text-slate-400'
+      cellClass: 'text-center font-bold text-slate-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       headerName: "Latest Contract", 
@@ -110,9 +168,9 @@ export default function Vendor() {
         if (!dates || dates.length === 0) return null;
         return new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
       },
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'font-bold text-emerald-400'
+      cellClass: 'text-center font-bold text-emerald-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     {
       headerName: "Active",
@@ -122,8 +180,9 @@ export default function Vendor() {
         const now = new Date();
         return p.data.contracts?.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > now).length || 0;
       },
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-blue-400'
+      cellClass: 'text-center font-bold text-blue-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
     },
     {
       headerName: "Historic",
@@ -133,8 +192,9 @@ export default function Vendor() {
         const now = new Date();
         return p.data.contracts?.filter((c: any) => c.expiry_date && new Date(c.expiry_date) <= now).length || 0;
       },
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-slate-500'
+      cellClass: 'text-center font-bold text-slate-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
     },
     {
       headerName: "Assets",
@@ -149,22 +209,38 @@ export default function Vendor() {
         });
         return assets.size;
       },
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-amber-500'
+      cellClass: 'text-center font-bold text-amber-500',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value > 0 ? p.value : <span className="text-slate-500 font-bold uppercase">0</span>
     },
     {
-      headerName: "Action",
-      width: 120,
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => setActiveDetails(p.data)} title="Details & Personnel" className="p-1.5 bg-blue-600/10 text-blue-400 rounded-lg hover:bg-blue-600/20 transition-all"><Eye size={14}/></button>
-           <button onClick={() => setActiveModal(p.data)} title="Edit Basic Info" className="p-1.5 bg-emerald-600/10 text-emerald-400 rounded-lg hover:bg-emerald-600/20 transition-all"><Edit2 size={14}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 bg-rose-600/10 text-rose-400 rounded-lg hover:bg-rose-600/20 transition-all"><Trash2 size={14}/></button>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => setActiveDetails(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Eye size={12}/> Details</button>
+            <button onClick={() => setActiveModal(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
+          </div>
         </div>
       )
     }
-  ], [fontSize]) as any
+  ], []) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">

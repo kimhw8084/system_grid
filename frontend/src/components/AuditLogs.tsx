@@ -33,9 +33,9 @@ export default function AuditLogs() {
   }, [fontSize, rowDensity, logs])
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: 'ID', width: 60, sortable: true, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-mono', headerClass: 'text-center' },
-    { field: 'timestamp', headerName: 'Time', width: 160, sortable: true, filter: 'agDateColumnFilter', cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center', headerClass: 'text-center' },
-    { field: 'user_id', headerName: 'Admin', width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: 'id', headerName: 'ID', width: 60, sortable: true, filter: true, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center' },
+    { field: 'timestamp', headerName: 'Time', width: 160, sortable: true, filter: 'agDateColumnFilter', cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: 'user_id', headerName: 'Admin', width: 90, filter: true, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { 
       field: 'action', 
       headerName: 'Ops', 
@@ -45,13 +45,13 @@ export default function AuditLogs() {
       headerClass: 'text-center',
       cellRenderer: (params: any) => {
         const colors: Record<string, string> = { CREATE: 'text-emerald-400', UPDATE: 'text-blue-400', DELETE: 'text-rose-400', MOUNT: 'text-indigo-400', LINK: 'text-amber-400' }
-        return <span className={`font-black tracking-widest ${colors[params.value] || 'text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>{params.value}</span>
+        return <span className={`font-bold uppercase tracking-widest ${colors[params.value] || 'text-slate-400'}`}>{params.value || 'N/A'}</span>
       }
     },
-    { field: 'target_table', headerName: 'Registry', width: 120, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-mono text-slate-400', headerClass: 'text-center' },
-    { field: 'target_id', headerName: 'Vector ID', width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-mono', headerClass: 'text-center' },
-    { field: 'description', headerName: 'Payload', flex: 1, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center', headerClass: 'text-center' }
-  ], [fontSize])
+    { field: 'target_table', headerName: 'Registry', width: 120, filter: true, cellClass: 'text-center font-mono font-bold text-slate-400 uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: 'target_id', headerName: 'Vector ID', width: 90, filter: true, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: 'description', headerName: 'Payload', flex: 1, filter: true, cellClass: 'text-left font-bold', headerClass: 'text-left', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> }
+  ], [])
 
   return (
     <div className="h-full flex flex-col space-y-4">

@@ -69,7 +69,6 @@ export default function NetworkFabric() {
 
   const columnDefs = useMemo(() => [
     { 
-      field: "id", 
       headerName: "", 
       width: 50,
       minWidth: 50,
@@ -77,96 +76,116 @@ export default function NetworkFabric() {
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
-      headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
       suppressSizeToFit: true,
-      resizable: false
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
     },
     { 
       headerName: "Src Node", 
       field: "server_a", 
       flex: 1,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-blue-400 uppercase tracking-tight',
-      headerClass: 'text-center'
+      cellClass: 'text-left font-bold uppercase tracking-tight',
+      headerClass: 'text-left'
     },
     { 
       headerName: "Local Port", 
       field: "source_port", 
       width: 110,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-slate-300 uppercase',
-      headerClass: 'text-center'
+      cellClass: 'text-center font-bold text-slate-300 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       headerName: "Src IP", 
       field: "source_ip", 
       width: 130,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-mono text-blue-400/80 font-black',
+      cellClass: 'text-center font-mono font-bold',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px] font-bold uppercase">Unassigned</span>
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       headerName: "Peer Node", 
       field: "server_b", 
       flex: 1,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-emerald-400 uppercase tracking-tight',
-      headerClass: 'text-center'
+      cellClass: 'text-left font-bold uppercase tracking-tight',
+      headerClass: 'text-left'
     },
     { 
       headerName: "Peer Port", 
       field: "target_port", 
       width: 110,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-slate-300 uppercase',
-      headerClass: 'text-center'
+      cellClass: 'text-center font-bold text-slate-300 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       headerName: "Peer IP", 
       field: "target_ip", 
       width: 130,
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-mono text-emerald-400/80 font-black',
+      cellClass: 'text-center font-mono font-bold',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || <span className="text-slate-700 italic text-[8px] font-bold uppercase">Unassigned</span>
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "link_type", 
       headerName: "Type", 
       width: 120, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black tracking-widest text-slate-500 uppercase', 
-      headerClass: 'text-center' 
+      cellClass: 'text-center font-bold text-slate-500 uppercase tracking-widest', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "speed", 
       headerName: "Fabric Metric", 
       width: 110, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: "font-black text-indigo-400 text-center uppercase", 
-      headerClass: 'text-center' 
+      cellClass: "text-center font-bold uppercase", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     {
-      headerName: "Ops",
-      width: 110,
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-              <button onClick={() => setViewingLink(p.data)} className="p-1.5 hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-400 rounded-md transition-all" title="Link Forensics"><Info size={14}/></button>
-              <button onClick={() => { 
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => setViewingLink(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Info size={12}/> Forensics</button>
+            <button onClick={() => { 
                 setEditingLink(p.data); 
                 setConnData({
                   ...p.data,
@@ -176,13 +195,13 @@ export default function NetworkFabric() {
                   port_b: p.data.target_port
                 }); 
                 setShowConnectModal(true) 
-              }} className="p-1.5 hover:bg-blue-600/20 text-slate-500 hover:text-blue-400 rounded-md transition-all" title="Edit Link"><Edit2 size={14}/></button>
-              <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Physical Link', message: 'Sever this physical connection? This will impact data flows.', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-600/20 text-slate-500 hover:text-rose-400 rounded-md transition-all" title="Sever Link"><Trash2 size={14}/></button>
-           </div>
+              }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Physical Link', message: 'Sever this physical connection? This will impact data flows.', onConfirm: () => deleteMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Sever</button>
+          </div>
         </div>
       )
     }
-  ], [deleteMutation, fontSize]) as any
+  ], [deleteMutation]) as any
 
   const resetForm = () => {
     setConnData({

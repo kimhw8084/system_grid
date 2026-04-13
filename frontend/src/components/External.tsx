@@ -156,32 +156,66 @@ export default function External() {
 
   const columnDefs = [
     { 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
       field: "name", 
       headerName: "Entity Name", 
       pinned: 'left',
-      width: 220,
-      cellClass: 'text-left font-bold uppercase',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center space-x-3 pl-2">
-           <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
-              {p.data.type === 'DB' ? <Database size={14}/> : p.data.type === 'Cloud Service' ? <Cloud size={14}/> : <Server size={14}/>}
-           </div>
-           <span className="text-blue-400 font-black">{p.value}</span>
-        </div>
-      )
+      flex: 1.5,
+      cellClass: 'text-left font-bold uppercase tracking-tight',
+      headerClass: 'text-left'
     },
-    { field: "type", headerName: "Type", width: 140, cellClass: 'text-center font-bold uppercase text-slate-500' },
-    { field: "hostname", headerName: "Hostname", width: 200, cellClass: 'text-center font-bold text-slate-300' },
-    { field: "ip_address", headerName: "IP Address", width: 150, cellClass: 'text-center font-bold text-indigo-400' },
-    { field: "owner_organization", headerName: "Organization", flex: 1, minWidth: 200, cellClass: 'text-center font-bold uppercase text-slate-400' },
+    { field: "type", headerName: "Type", width: 140, cellClass: 'text-center font-bold uppercase text-slate-500 tracking-widest', headerClass: 'text-center' },
+    { field: "hostname", headerName: "Hostname", width: 200, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "ip_address", headerName: "IP Address", width: 150, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "owner_organization", headerName: "Organization", flex: 1, minWidth: 200, cellClass: 'text-center font-bold uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { 
-      headerName: "Actions", 
-      width: 120, 
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-2 h-full">
-           <button onClick={() => setActiveModal(p.data)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"><Edit2 size={16}/></button>
-           <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id })} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><Trash2 size={16}/></button>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => setActiveModal(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+            <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
+          </div>
         </div>
       )
     }

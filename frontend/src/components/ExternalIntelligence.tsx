@@ -96,49 +96,132 @@ export default function ExternalIntelligence() {
 
   // Grid Definitions
   const entityColumns = useMemo(() => [
-    { field: "name", headerName: "System Name", flex: 1.5, cellClass: "text-blue-400 font-black uppercase tracking-tight", headerClass: 'text-center' },
-    { field: "type", headerName: "Type", flex: 1, cellClass: "text-center font-bold text-slate-400", headerClass: 'text-center' },
-    { field: "ip_address", headerName: "Primary IP", flex: 1, cellClass: "font-mono text-center text-emerald-400 font-bold", headerClass: 'text-center' },
-    { field: "owner_organization", headerName: "Partner / Owner", flex: 1.2, cellClass: "text-center font-bold text-slate-300", headerClass: 'text-center' },
     { 
-      headerName: "Ops", 
-      width: 100, 
-      pinned: 'right', 
-      cellClass: "text-center",
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { field: "name", headerName: "System Name", flex: 1.5, cellClass: "font-bold uppercase tracking-tight text-left", headerClass: 'text-left' },
+    { field: "type", headerName: "Type", flex: 1, cellClass: "text-center font-bold text-slate-400 uppercase tracking-widest", headerClass: 'text-center' },
+    { field: "ip_address", headerName: "Primary IP", flex: 1, cellClass: "font-mono text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "owner_organization", headerName: "Partner / Owner", flex: 1.2, cellClass: "text-center font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { 
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      pinned: 'right',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-          <button onClick={() => { setEditingEntity(p.data); setShowEntityModal(true) }} className="p-1.5 hover:bg-blue-500/10 text-slate-500 hover:text-blue-400 rounded transition-colors"><Edit2 size={12}/></button>
-          <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge System', message: 'Purge this external entity? All links must be severed first.', onConfirm: () => deleteEntityMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={12}/></button>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => { setEditingEntity(p.data); setShowEntityModal(true) }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge System', message: 'Purge this external entity? All links must be severed first.', onConfirm: () => deleteEntityMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
+          </div>
         </div>
       )
     }
   ], [deleteEntityMutation])
 
   const linkColumns = useMemo(() => [
-    { field: "external_entity_name", headerName: "External Peer", flex: 1, cellClass: "text-blue-400 font-black uppercase tracking-tight", headerClass: 'text-center' },
+    { 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { field: "external_entity_name", headerName: "External Peer", flex: 1, cellClass: "font-bold uppercase tracking-tight text-left", headerClass: 'text-left' },
     { 
       field: "direction", 
       headerName: "Flow", 
       width: 100, 
       cellClass: "text-center",
+      headerClass: "text-center",
       cellRenderer: (p: any) => (
-        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase inline-block ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-block ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
           {p.value}
         </div>
       )
     },
-    { field: "device_name", headerName: "Internal Asset", flex: 1, cellClass: "text-emerald-400 font-black text-center uppercase tracking-tight", headerClass: 'text-center' },
-    { field: "service_name", headerName: "Logical Service", flex: 1, cellClass: "text-center italic text-slate-400 font-bold", headerClass: 'text-center', cellRenderer: (p: any) => p.value || '-' },
-    { field: "purpose", headerName: "Interconnect Purpose", flex: 1.5, headerClass: 'text-left', cellClass: 'font-bold text-slate-500' },
-    { field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono text-[9px] font-black uppercase", headerClass: 'text-center' },
-    { field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono text-indigo-300 font-black", headerClass: 'text-center' },
+    { field: "device_name", headerName: "Internal Asset", flex: 1, cellClass: "font-bold text-center uppercase tracking-tight", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "service_name", headerName: "Logical Service", flex: 1, cellClass: "text-center uppercase text-slate-400 font-bold tracking-tight", headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "purpose", headerName: "Interconnect Purpose", flex: 1.5, headerClass: 'text-left', cellClass: 'font-bold uppercase', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center' },
+    { field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center' },
     { 
-      headerName: "Ops", 
-      width: 80, 
-      pinned: 'right', 
-      cellClass: "text-center",
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      pinned: 'right',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this interconnect?', onConfirm: () => deleteLinkMutation.mutate(p.data.id) })} className="p-1.5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition-colors"><Trash2 size={12}/></button>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => setConfirmModal({ isOpen: true, title: 'Sever Link', message: 'Sever this interconnect?', onConfirm: () => deleteLinkMutation.mutate(p.data.id) })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Sever</button>
+          </div>
+        </div>
       )
     }
   ], [deleteLinkMutation])

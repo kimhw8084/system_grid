@@ -666,7 +666,6 @@ export default function ServiceRegistry() {
 
   const columnDefs = useMemo(() => [
     { 
-      field: "id", 
       headerName: "", 
       width: 50,
       minWidth: 50,
@@ -674,10 +673,23 @@ export default function ServiceRegistry() {
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
-      headerClass: 'flex items-center justify-center pl-4 border-r border-white/5', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
       suppressSizeToFit: true,
-      resizable: false
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
     },
     {
       field: "name",
@@ -685,48 +697,54 @@ export default function ServiceRegistry() {
       flex: 1,
       pinned: 'left',
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-bold text-blue-100',
-      headerClass: 'text-center',      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-2 h-full">
-           {p.data.service_type === 'Database' && <Database size={12} className="text-amber-400" />}
-           {p.data.service_type === 'Web Server' && <Globe size={12} className="text-blue-400" />}
-           {p.data.service_type === 'Middleware' && <Workflow size={12} className="text-indigo-400" />}
-           {p.data.service_type === 'Container' && <Box size={12} className="text-emerald-400" />}
-           {p.data.service_type === 'OS' && <Cpu size={12} className="text-rose-400" />}
-           {p.data.service_type === 'Vendor Software' && <Package size={12} className="text-orange-400" />}
-           {p.data.service_type === 'Internal App' && <LayoutGrid size={12} className="text-pink-400" />}
-           {p.data.service_type === 'External App' && <ExternalLink size={12} className="text-cyan-400" />}
-           {['Database', 'Web Server', 'Middleware', 'Container', 'OS', 'Vendor Software', 'Internal App', 'External App'].indexOf(p.data.service_type) === -1 && <Layers size={12} className="text-slate-500" />}
-           <span>{p.value}</span>
-        </div>
-      )
+      cellClass: 'text-left font-bold uppercase',
+      headerClass: 'text-left',
     },
     { 
       field: "service_type", 
       headerName: "Type", 
       width: 110, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black tracking-widest text-slate-500', 
-      headerClass: 'text-center' 
+      cellClass: 'text-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Database': 'text-amber-400',
+          'Web Server': 'text-blue-400',
+          'Middleware': 'text-indigo-400',
+          'Container': 'text-emerald-400',
+          'OS': 'text-rose-400',
+          'Vendor Software': 'text-orange-400',
+          'Internal App': 'text-pink-400',
+          'External App': 'text-cyan-400'
+        }
+        return <span className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+      }
     },
     { 
       field: "status", 
       headerName: "Status", 
-      width: 100, 
+      width: 110, 
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = { 
-          Active: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5', 
-          Degraded: 'text-amber-400 border-amber-500/30 bg-amber-500/5', 
-          Critical: 'text-rose-400 border-rose-500/30 bg-rose-500/5', 
-          Stopped: 'text-slate-400 border-slate-500/30 bg-slate-500/5',
-          Maintenance: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/5'
+        const colors: any = {
+          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          Degraded: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          Critical: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          Stopped: 'text-slate-400 border-white/20 bg-white/10',
+          Maintenance: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20'
         }
-        return <div className="flex items-center justify-center h-full"><span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'text-slate-400 border-slate-500/30'}`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span></div>
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">
+                {p.value || 'Unknown'}
+              </span>
+            </div>
+          </div>
+        )
       }
     },
     { 
@@ -734,27 +752,27 @@ export default function ServiceRegistry() {
       headerName: "Host Node", 
       width: 140, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: "text-blue-400 font-black text-center", 
-      headerClass: 'text-center' 
+      cellClass: "font-bold text-center", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "environment", 
       headerName: "Env", 
       width: 90, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-bold text-slate-400', 
-      headerClass: 'text-center' 
+      cellClass: 'text-center font-bold', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "version", 
       headerName: "Ver", 
       width: 80, 
       filter: true,
-      cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: "font-mono text-slate-500 text-center", 
-      headerClass: 'text-center' 
+      cellClass: "font-bold text-center", 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "manufacturer", 
@@ -765,8 +783,8 @@ export default function ServiceRegistry() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex flex-col items-center justify-center leading-tight py-1 h-full">
-           <span className="font-black text-slate-300 truncate w-full" style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>
-           {p.data.supplier && <span className="font-bold text-slate-500 truncate w-full" style={{ fontSize: `${fontSize}px` }}>via {p.data.supplier}</span>}
+           <span className="font-bold uppercase w-full">{p.value || <span className="text-slate-500">N/A</span>}</span>
+           {p.data.supplier && <span className="font-bold text-slate-500 uppercase truncate w-full">via {p.data.supplier}</span>}
         </div>
       )
     },
@@ -776,41 +794,53 @@ export default function ServiceRegistry() {
       width: 120, 
       hide: true,
       filter: true,
-      cellClass: 'text-center text-slate-400 font-medium',
-      headerClass: 'text-center'
+      cellClass: 'text-center font-bold',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "cost", 
       headerName: "Cost", 
       width: 100, 
       filter: true,
-      cellClass: 'text-center font-mono',
+      cellClass: 'text-center font-bold text-white',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        if (!p.value && p.value !== 0) return <span className="text-slate-700 italic text-[8px]">N/A</span>
+        if (!p.value && p.value !== 0) return <span className="text-slate-500 font-bold uppercase">N/A</span>
         const symbol = p.data.currency === 'KRW' ? '₩' : '$'
-        return <span className="font-black text-emerald-400" style={{ fontSize: `${fontSize}px` }}>{symbol}{p.value.toLocaleString()}</span>
+        return <span className="font-bold uppercase text-white">{symbol}{p.value.toLocaleString()}</span>
       }
     },
     {
-      headerName: "Ops",
-      width: 110,
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (params: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               <button onClick={() => setActiveDetails(params.data)} title="Service Details" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><List size={14}/></button>
-               {activeTab === 'active' ? (
-                 <>
-                   <button onClick={() => setActiveModal(params.data)} title="Edit Configuration" className="p-1.5 hover:bg-blue-600 hover:text-white text-slate-500 rounded-md transition-all"><Edit2 size={14}/></button>
-                   <button onClick={() => openConfirm('Terminate Service', 'Purge this service instance?', () => bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }))} title="Terminate" className="p-1.5 hover:bg-rose-600 hover:text-white text-slate-500 rounded-md transition-all"><Trash2 size={14}/></button>
-                 </>
-               ) : (
-                 <button onClick={() => bulkMutation.mutate({ action: 'restore', ids: [params.data.id] })} title="Restore Service" className="p-1.5 hover:bg-emerald-600 hover:text-white text-slate-500 rounded-md transition-all"><RefreshCcw size={14}/></button>
-               )}
-           </div>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => setActiveDetails(params.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><List size={12}/> Details</button>
+            {activeTab === 'active' ? (
+              <>
+                <button onClick={() => setActiveModal(params.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+                <button onClick={() => openConfirm('Terminate Service', 'Purge this service instance?', () => bulkMutation.mutate({ action: 'delete', ids: [params.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Delete</button>
+              </>
+            ) : (
+              <button onClick={() => bulkMutation.mutate({ action: 'restore', ids: [params.data.id] })} className="w-full text-left px-3 py-2 hover:bg-emerald-500/20 text-[10px] font-bold text-emerald-500 uppercase rounded-md flex items-center gap-2 transition-colors"><RefreshCcw size={12}/> Restore</button>
+            )}
+          </div>
         </div>
       )
     }

@@ -420,7 +420,7 @@ export default function FAR() {
            </div>
 
            <div className="flex-1 overflow-y-auto custom-scrollbar font-sans">
-              <table className="w-full text-left border-collapse" style={{ fontSize: `${fontSize}px` }}>
+              <table className="w-full text-left border-collapse">
                  <thead className="sticky top-0 bg-[#0a0c14] z-10">
                     <tr className="border-b border-white/5">
                        <th className="px-4 py-3 font-black text-slate-500 uppercase tracking-widest text-center" style={{ height: `${fontSize + rowDensity + 10}px` }}>System / Lv</th>
@@ -453,18 +453,18 @@ export default function FAR() {
                         >
                            <td className="px-4 py-2 text-center">
                               <div className="flex flex-col items-center gap-1">
-                                <span className="text-[8px] font-black uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit tracking-tighter">{mode.system_name}</span>
-                                <div className={`flex items-center gap-1 text-[8px] font-black uppercase ${ml.color.replace('bg-', 'text-')}`}>
-                                   <Shield size={8} /> L{lv}
+                                <span className="font-bold uppercase text-rose-400 bg-rose-500/10 px-1 py-0.5 rounded w-fit tracking-tighter">{mode.system_name}</span>
+                                <div className={`flex items-center gap-1 font-bold uppercase ${ml.color.replace('bg-', 'text-')}`}>
+                                   <Shield size={10} /> L{lv}
                                 </div>
                               </div>
                            </td>
                            <td className="px-4 py-2">
-                              <span className="text-[10px] font-black text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2" style={{ fontSize: `${fontSize}px` }}>{mode.title}</span>
+                              <span className="font-bold text-white uppercase group-hover:text-rose-400 transition-colors leading-tight line-clamp-2">{mode.title}</span>
                            </td>
                            {!selectedModeId && (
                              <td className="px-4 py-2 text-right">
-                                <span className={`font-black tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>{mode.rpn}</span>
+                                <span className={`font-bold tracking-tighter ${mode.rpn > 100 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}>{mode.rpn}</span>
                              </td>
                            )}
                         </tr>

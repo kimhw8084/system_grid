@@ -129,45 +129,148 @@ export default function Research() {
   }, [fontSize, rowDensity, combinedData])
 
   const columnDefs = useMemo(() => [
-    { field: "id", headerName: "ID", width: 80, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellRenderer: (p: any) => (
-      <span className="font-mono font-black text-slate-500">{p.data.type === 'RCA' ? `RCA_${p.value}` : `RES_${p.value}`}</span>
-    )},
-    { field: "category", headerName: "Category", width: 110, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellRenderer: (p: any) => (
-      <span className={`font-black px-2 py-0.5 rounded border ${
-        p.value === 'Troubleshooting' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
-        p.value === 'Security' ? 'bg-rose-500/20 border-rose-500/30 text-rose-500' :
-        p.value === 'RCA' ? 'bg-purple-500/20 border-purple-500/30 text-purple-400 font-bold tracking-widest' :
-        'bg-blue-500/20 border-blue-500/30 text-blue-400'
-      }`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-    )},
-    { field: "title", headerName: "Research Title", flex: 1.5, pinned: 'left', filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-bold text-white tracking-tight' },
-    { field: "status", headerName: "Status", width: 100, filter: true, cellRenderer: (p: any) => <StatusPill value={p.value} /> },
-    { field: "severity", headerName: "Risk", width: 70, filter: true, valueGetter: (p: any) => p.data.severity || p.data.priority, cellRenderer: (p: any) => (
-        <span className={`font-black px-1.5 py-0.5 rounded border ${
-          (p.value === 'Urgent' || p.value === 'P1') ? 'bg-rose-500/20 border-rose-500/30 text-rose-500 animate-pulse' :
-          (p.value === 'High' || p.value === 'P2') ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' :
-          'bg-blue-500/20 border-blue-500/30 text-blue-400'
-        }`} style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-      )
+    { 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true
     },
-    { field: "updated_at", headerName: "Last Pulse", width: 130, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'font-mono text-slate-400', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : '---' },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
+    },
+    { 
+      field: "category", 
+      headerName: "Category", 
+      width: 110, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Troubleshooting': 'text-amber-500',
+          'Security': 'text-rose-500',
+          'RCA': 'text-purple-400',
+          'General': 'text-blue-400'
+        }
+        return <span className={`font-bold uppercase tracking-widest ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+      }
+    },
+    { 
+      field: "title", 
+      headerName: "Research Title", 
+      flex: 1.5, 
+      pinned: 'left', 
+      filter: true, 
+      cellClass: 'text-left font-bold uppercase tracking-tight',
+      headerClass: 'text-left'
+    },
+    { 
+      field: "status", 
+      headerName: "Status", 
+      width: 110, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          Analyzing: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          Open: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          Closed: 'text-slate-400 border-white/20 bg-white/10',
+          Resolved: 'text-blue-400 border-blue-500/40 bg-blue-500/20'
+        }
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">
+                {p.value || 'Unknown'}
+              </span>
+            </div>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "severity", 
+      headerName: "Risk", 
+      width: 100, 
+      filter: true, 
+      valueGetter: (p: any) => p.data.severity || p.data.priority, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const isHigh = p.value === 'Urgent' || p.value === 'P1' || p.value === 'High' || p.value === 'P2'
+        const isCritical = p.value === 'Urgent' || p.value === 'P1'
+        const colorClass = isCritical ? 'text-rose-500 border-rose-500/40 bg-rose-500/20 animate-pulse' : isHigh ? 'text-amber-500 border-amber-500/40 bg-amber-500/20' : 'text-blue-400 border-blue-500/40 bg-blue-500/20'
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colorClass}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">
+                {p.value || 'N/A'}
+              </span>
+            </div>
+          </div>
+        )
+      }
+    },
+    { 
+      field: "updated_at", 
+      headerName: "Last Pulse", 
+      width: 160, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-slate-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : <span className="text-slate-500 font-bold uppercase">N/A</span> 
+    },
     {
-      headerName: "Action",
-      width: 80,
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <button onClick={() => p.data.type === 'RCA' ? setActiveRcaDetails(p.data) : setActiveDetails(p.data)} className="p-1 bg-blue-600/10 text-blue-400 rounded hover:bg-blue-600/20 transition-all"><Eye size={12}/></button>
-           <button onClick={() => setConfirmModal({ 
-             isOpen: true, 
-             title: p.data.type === 'RCA' ? 'Purge RCA' : 'Purge Research', 
-             message: 'Permanently remove this record?', 
-             onConfirm: () => p.data.type === 'RCA' ? rcaDeleteMutation.mutate(p.data.id) : deleteMutation.mutate(p.data.id) 
-           })} className="p-1 bg-rose-600/10 text-rose-400 rounded hover:bg-rose-600/20 transition-all"><Trash2 size={12}/></button>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[120px]">
+            <button onClick={() => p.data.type === 'RCA' ? setActiveRcaDetails(p.data) : setActiveDetails(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Eye size={12}/> Inspect</button>
+            <button onClick={() => setConfirmModal({ 
+              isOpen: true, 
+              title: p.data.type === 'RCA' ? 'Purge RCA' : 'Purge Research', 
+              message: 'Permanently remove this record?', 
+              onConfirm: () => p.data.type === 'RCA' ? rcaDeleteMutation.mutate(p.data.id) : deleteMutation.mutate(p.data.id) 
+            })} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
+          </div>
         </div>
       )
     }
-  ], [fontSize]) as any
+  ], []) as any
 
   return (
     <div className="h-full flex flex-col space-y-4">

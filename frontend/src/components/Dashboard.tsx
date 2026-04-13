@@ -291,12 +291,28 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                         <AgGridReact 
                           rowData={devices}
                           columnDefs={[
-                             { field: 'name', headerName: 'HOSTNAME', flex: 1.5, cellStyle: { fontWeight: 900, color: '#60a5fa' } },
-                             { field: 'system', headerName: 'SYSTEM', flex: 1 },
-                             { field: 'type', headerName: 'CLASS', width: 100 },
-                             { field: 'status', headerName: 'PULSE', width: 120, cellRenderer: (p:any) => (
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-slate-500 border-white/5'}`}>{p.value}</span>
-                             )}
+                             { field: 'name', headerName: 'HOSTNAME', flex: 1.5, cellClass: 'font-bold uppercase tracking-tight' },
+                             { field: 'system', headerName: 'SYSTEM', flex: 1, cellClass: 'font-bold uppercase', cellRenderer: (p:any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+                             { field: 'type', headerName: 'CLASS', width: 100, cellClass: 'font-bold uppercase', cellRenderer: (p:any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+                             { field: 'status', headerName: 'PULSE', width: 120, cellClass: 'text-center', cellRenderer: (p:any) => {
+                                const colors: any = {
+                                  Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+                                  Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+                                  Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+                                  Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+                                  Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
+                                  Offline: 'text-slate-400 border-white/20 bg-white/10'
+                                }
+                                return (
+                                  <div className="flex items-center justify-center h-full w-full">
+                                    <div className={`flex items-center justify-center w-full h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+                                      <span className="font-bold uppercase tracking-tighter leading-none">
+                                        {p.value || 'Unknown'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )
+                             }}
                           ]}
                           headerHeight={40}
                           rowHeight={45}
@@ -594,17 +610,17 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                         <AgGridReact 
                           rowData={vendors}
                           columnDefs={[
-                             { field: 'name', headerName: 'COMPANY', flex: 1.5, cellStyle: { fontWeight: 900, color: '#a855f7' } },
-                             { field: 'country', headerName: 'HQ', width: 100 },
+                             { field: 'name', headerName: 'COMPANY', flex: 1.5, cellClass: 'font-bold uppercase tracking-tight' },
+                             { field: 'country', headerName: 'HQ', width: 100, cellClass: 'font-bold uppercase', cellRenderer: (p:any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
                              { headerName: 'SLA COMPLIANCE', width: 150, cellRenderer: () => (
-                                <div className="flex items-center space-x-1 h-full">
+                                <div className="flex items-center justify-center space-x-1 h-full w-full">
                                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                                       <div className="h-full bg-emerald-500 w-[98%]" />
                                    </div>
-                                   <span className="text-[10px] font-black text-emerald-400">98%</span>
+                                   <span className="font-bold text-emerald-400">98%</span>
                                 </div>
                              )},
-                             { headerName: 'PERSONNEL', width: 120, valueGetter: (p:any)=>p.data.personnel?.length || 0 }
+                             { headerName: 'PERSONNEL', width: 120, cellClass: 'text-center font-bold', cellRenderer: (p:any) => p.data.personnel?.length > 0 ? p.data.personnel?.length : <span className="text-slate-500 font-bold">0</span> }
                           ]}
                           enableCellTextSelection={true}
                         />

@@ -136,28 +136,38 @@ export default function MonitoringGrid() {
 
   const columnDefs = useMemo(() => [
     { 
-      headerCheckboxSelection: true, 
-      checkboxSelection: true, 
+      headerName: "", 
       width: 50,
       minWidth: 50,
       maxWidth: 50,
-      pinned: 'left',
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left', 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
       suppressSizeToFit: true,
       resizable: false,
-      headerClass: 'ag-checkbox-header'
+      sortable: false,
+      filter: false,
+      suppressHide: true
+    },
+    { 
+      field: "id", 
+      headerName: "ID", 
+      width: 70,
+      minWidth: 70,
+      pinned: 'left',
+      cellClass: 'text-center font-bold text-slate-500',
+      headerClass: 'text-center',
+      filter: 'agNumberColumnFilter',
     },
     { 
       field: "device_name", 
       headerName: "Target Asset", 
       width: 140, 
       filter: true,
-      cellClass: "text-slate-200 font-bold text-center", 
+      cellClass: "font-bold text-center", 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-          <span className="font-bold text-slate-200" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-        </div>
-      )
     },
     { 
       field: "category", 
@@ -166,26 +176,39 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-          <span className="font-black tracking-tight text-white" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-        </div>
-      )
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Hardware': 'text-amber-500',
+          'Network': 'text-blue-500',
+          'OS': 'text-purple-500',
+          'Application': 'text-emerald-500',
+          'Database': 'text-rose-500'
+        }
+        return <span className={`font-bold uppercase tracking-widest ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
+      }
     },
     { 
       field: "status", 
       headerName: "Status", 
-      width: 100,
+      width: 110,
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const status = STATUSES.find(s => s.value === p.value)
+        const colors: any = {
+          'Healthy': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          'Degraded': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          'Failing': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          'Maintenance': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          'Unknown': 'text-slate-400 border-white/20 bg-white/10'
+        }
         return (
-          <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border font-black tracking-widest ${status?.color || 'bg-slate-500/20 text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>
-              {p.value}
-            </span>
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">
+                {p.value || 'Unknown'}
+              </span>
+            </div>
           </div>
         )
       }
@@ -214,17 +237,16 @@ export default function MonitoringGrid() {
     { 
       field: "version", 
       headerName: "Ver", 
-      width: 60, 
+      width: 80, 
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full w-full">
           <button 
             onClick={() => setHistoryItem(p.data)}
-            className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-            style={{ fontSize: `${fontSize}px` }}
+            className="flex items-center justify-center w-14 h-5 rounded-md border shadow-sm border-blue-500/40 bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 transition-all"
           >
-            v{p.value || 1}
+            <span className="font-bold uppercase tracking-tighter leading-none">v{p.value || 1}</span>
           </button>
         </div>
       )
@@ -239,12 +261,12 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const owners = p.value || []
         const count = owners.length
-        if (count === 0) return <span className="text-slate-600 italic" style={{ fontSize: `${fontSize}px` }}>None</span>
+        if (count === 0) return <span className="text-slate-500 font-bold uppercase">N/A</span>
         return (
           <div className="flex items-center justify-center h-full">
             <div className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg flex items-center space-x-2">
                <User size={10} className="text-blue-400" />
-               <span className="font-black text-slate-300" style={{ fontSize: `${fontSize}px` }}>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
+               <span className="font-bold text-slate-300 uppercase">{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
             </div>
           </div>
         )
@@ -256,9 +278,8 @@ export default function MonitoringGrid() {
       minWidth: 180,
       flex: 1.5, 
       filter: true,
-      cellClass: "text-blue-400 font-bold text-left", 
+      cellClass: "font-bold text-left uppercase tracking-tight", 
       headerClass: 'text-left',
-      cellStyle: { fontSize: `${fontSize}px` }
     },
     { 
       field: "monitored_service_names", 
@@ -269,13 +290,12 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const names = p.value || []
         const count = names.length
-        if (count === 0) return <span className="text-slate-600 italic" style={{ fontSize: `${fontSize}px` }}>None</span>
+        if (count === 0) return <span className="text-slate-500 font-bold uppercase">N/A</span>
         return (
           <div className="flex items-center justify-center h-full">
             <button 
               onClick={() => setServicePopup({ names, title: p.data.title })}
-              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-black text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-              style={{ fontSize: `${fontSize}px` }}
+              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-bold text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
             >
               {count}
             </button>
@@ -288,32 +308,28 @@ export default function MonitoringGrid() {
       headerName: "Platform", 
       width: 100, 
       filter: true,
-      cellClass: 'text-center', 
+      cellClass: 'text-center font-bold uppercase text-slate-300', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-          <span className="font-black text-slate-300" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-        </div>
-      )
+      cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "severity", 
       headerName: "Severity", 
-      width: 90,
+      width: 110,
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
-          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-          'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-          'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/40',
+          'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/40',
+          'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/40'
         }
         return (
-          <div className="flex items-center justify-center h-full">
-            <span className={`px-2 py-0.5 rounded border font-black tracking-widest ${colors[p.value] || 'bg-slate-500/20 text-slate-400'}`} style={{ fontSize: `${fontSize}px` }}>
-              {p.value}
-            </span>
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'bg-slate-500/20 text-slate-400 border-white/10'}`}>
+              <span className="font-bold uppercase tracking-tighter leading-none">{p.value || 'N/A'}</span>
+            </div>
           </div>
         )
       }
@@ -322,9 +338,9 @@ export default function MonitoringGrid() {
       field: "check_interval", 
       headerName: "Freq", 
       width: 70, 
-      cellClass: 'text-center text-slate-400 font-mono', 
+      cellClass: 'text-center font-bold uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}s</span>
+      cellRenderer: (p: any) => p.value ? `${p.value}s` : <span className="text-slate-500 font-bold uppercase">N/A</span>
     },
     { 
       field: "notification_method", 
@@ -339,7 +355,7 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <span className="font-black text-slate-300 border-b border-dashed border-slate-700" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+              <span className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
            </button>
         </div>
       )
@@ -349,28 +365,38 @@ export default function MonitoringGrid() {
       headerName: "Purpose", 
       flex: 1, 
       filter: true,
-      cellClass: "text-slate-500 italic text-left truncate px-4", 
+      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4", 
       headerClass: 'text-left',
-      cellStyle: { fontSize: `${fontSize}px` }
     },
     {
-      headerName: "Actions",
-      width: 150,
+      field: "actions",
+      headerName: "",
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
       pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      headerClass: 'flex items-center justify-center border-l border-white/5 pr-2',
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+      suppressHide: true,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
-               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 hover:bg-slate-700 hover:text-white text-slate-400 rounded-md transition-all"><Eye size={12}/></button>
-               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery Procedures" className="p-1.5 hover:bg-amber-600/30 hover:text-amber-400 text-amber-500/70 rounded-md transition-all"><BookOpen size={12}/></button>
-               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 hover:bg-emerald-600 hover:text-white text-emerald-400 rounded-md transition-all"><Edit2 size={12}/></button>
-               {activeTab === 'active' ? (
-                 <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
-               ) : (
-                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 hover:bg-rose-600 hover:text-white text-rose-400 rounded-md transition-all"><Trash2 size={12}/></button>
-               )}
-           </div>
+        <div className="relative group">
+          <button className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all">
+            <Settings size={14} />
+          </button>
+          <div className="absolute right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl p-1 z-50 hidden group-hover:flex flex-col min-w-[150px]">
+            <button onClick={() => setDetailItem(p.data)} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Eye size={12}/> Inspect</button>
+            <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} className="w-full text-left px-3 py-2 hover:bg-amber-500/20 text-[10px] font-bold text-amber-500 uppercase rounded-md flex items-center gap-2 transition-colors"><BookOpen size={12}/> Recovery Docs</button>
+            <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} className="w-full text-left px-3 py-2 hover:bg-white/5 text-[10px] font-bold text-white uppercase rounded-md flex items-center gap-2 transition-colors"><Edit2 size={12}/> Edit</button>
+            {activeTab === 'active' ? (
+              <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> De-activate</button>
+            ) : (
+              <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} className="w-full text-left px-3 py-2 hover:bg-rose-500/20 text-[10px] font-bold text-rose-500 uppercase rounded-md flex items-center gap-2 transition-colors"><Trash2 size={12}/> Purge</button>
+            )}
+          </div>
         </div>
       )
     }
