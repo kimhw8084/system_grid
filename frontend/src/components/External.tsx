@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, 
   Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity, 
   Sliders, Settings, Check, User, Mail, Phone, Tag, Info, AlertCircle, Briefcase, 
-  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical
+  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -219,6 +219,110 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
   )
 }
 
+const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
+  const queryClient = useQueryClient()
+  const { data: entities } = useQuery({ queryKey: ['external-entities'] })
+  const entity = (entities as any[])?.find((e: any) => e.id === entityId)
+  const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({})
+
+  const addMutation = useMutation({
+    mutationFn: async (data: any) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets`, { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+      setNewSecret({ username: '', password: '', note: '' })
+      toast.success('Credential Added') 
+    }
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (secretId: number) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets/${secretId}`, { method: 'DELETE' }),
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+      toast.success('Credential Revoked') 
+    }
+  })
+
+  const togglePassword = (id: number) => {
+    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
+        <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
+          <Shield size={12}/> Register Access Credential
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Username / ID</label>
+            <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="E.G. ADMIN_SVC" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Access Password</label>
+            <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Purpose / Note</label>
+            <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="E.G. READ-ONLY API ACCESS" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+        </div>
+        <button 
+          disabled={!newSecret.username || !newSecret.password}
+          onClick={() => addMutation.mutate(newSecret)}
+          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+        >
+          {addMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Plus size={14} />}
+          Inject Secret into Vault
+        </button>
+      </div>
+
+      <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authorized Credential Matrix</span>
+          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{entity?.secrets?.length || 0} Entries</span>
+        </div>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-white/5 border-b border-white/5">
+              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Username</th>
+              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Password</th>
+              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Purpose</th>
+              <th className="px-4 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {entity?.secrets?.map((s: any) => (
+              <tr key={s.id} className="hover:bg-white/5 transition-colors group">
+                <td className="px-4 py-3 text-[10px] font-black text-white uppercase">{s.username}</td>
+                <td className="px-4 py-3 font-mono text-[10px]">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-blue-400/80">{visiblePasswords[s.id] ? s.password : '••••••••••••'}</span>
+                    <button onClick={() => togglePassword(s.id)} className="text-slate-500 hover:text-blue-400 transition-colors">
+                      {visiblePasswords[s.id] ? <EyeOff size={12}/> : <Eye size={12}/>}
+                    </button>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[10px] text-slate-400 font-medium italic">{s.note || 'N/A'}</td>
+                <td className="px-4 py-3 text-right">
+                  <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                    <Trash2 size={14}/>
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {(!entity?.secrets || entity.secrets.length === 0) && (
+              <tr>
+                <td colSpan={4} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest text-[9px]">No credentials stored for this identity</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -388,7 +492,8 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
         <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
           {[
             { id: 'metadata', label: 'Metadata View', icon: List },
-            { id: 'org', label: 'Organization & POCs', icon: Briefcase }
+            { id: 'org', label: 'Organization & POCs', icon: Briefcase },
+            { id: 'secrets', label: 'Credentials', icon: Tag }
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               <t.icon size={12} /> <span>{t.label}</span>
@@ -398,11 +503,17 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
       </div>
 
       <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
-        {tab === 'metadata' ? (
+        {tab === 'metadata' && (
           <div className="space-y-8">
              <MetadataViewer data={entity.metadata_json} />
           </div>
-        ) : (
+        )}
+        
+        {tab === 'secrets' && (
+          <ExternalSecretsTab entityId={entity.id} />
+        )}
+
+        {tab === 'org' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/10 relative overflow-hidden group">
                <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>

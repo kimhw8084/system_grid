@@ -386,6 +386,16 @@ class ExternalEntity(Base, BaseMixin):
     poc_json = Column(JSON, default=list) # Multi-add POCs: [{first_name, last_name, id, email, phone}]
     metadata_json = Column(JSON, default=dict) # Driven by ExternalType registry keys
     is_deleted = Column(Boolean, default=False)
+    
+    secrets = relationship("ExternalEntitySecret", back_populates="external_entity", cascade="all, delete-orphan")
+
+class ExternalEntitySecret(Base, BaseMixin):
+    __tablename__ = "external_entity_secrets"
+    external_entity_id = Column(Integer, ForeignKey("external_entities.id", ondelete="CASCADE"))
+    username = Column(String)
+    password = Column(String)
+    note = Column(Text)
+    external_entity = relationship("ExternalEntity", back_populates="secrets")
 
 class ExternalLink(Base, BaseMixin):
     __tablename__ = "external_links"

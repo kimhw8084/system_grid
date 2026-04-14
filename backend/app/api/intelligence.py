@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
+from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any, Dict
 from ..database import get_db
 from ..models import models
@@ -29,7 +30,7 @@ async def log_audit(db: AsyncSession, action: str, table: str, target_id: int, d
 
 @router.get("/entities", response_model=List[schemas.ExternalEntityResponse])
 async def get_entities(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.ExternalEntity)
+    query = select(models.ExternalEntity).options(selectinload(models.ExternalEntity.secrets))
     if not include_deleted:
         query = query.filter(models.ExternalEntity.is_deleted == False)
     result = await db.execute(query)
@@ -46,7 +47,7 @@ async def create_entity(data: schemas.ExternalEntityCreate, db: AsyncSession = D
 
 @router.put("/entities/{entity_id}", response_model=schemas.ExternalEntityResponse)
 async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id))
+    result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id).options(selectinload(models.ExternalEntity.secrets)))
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, "Entity not found")
     
@@ -88,6 +89,38 @@ async def delete_entity(entity_id: int, purge: bool = False, db: AsyncSession = 
         await log_audit(db, "DELETE", "external_entities", entity_id, f"Soft-deleted external entity: {obj.name}")
     
     await db.commit()
+    return {"status": "success"}
+
+# --- External Entity Secrets ---
+
+@router.post("/entities/{entity_id}/secrets", response_model=schemas.ExternalEntitySecretResponse)
+async def add_entity_secret(entity_id: int, data: schemas.ExternalEntitySecretBase, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id))
+    obj = result.scalar_one_or_none()
+    if not obj: raise HTTPException(404, "Entity not found")
+    
+    secret = models.ExternalEntitySecret(
+        external_entity_id=entity_id,
+        **data.model_dump()
+    )
+    db.add(secret)
+    await db.commit()
+    await db.refresh(secret)
+    await log_audit(db, "CREATE", "external_entity_secrets", secret.id, f"Added credential for external entity: {obj.name}")
+    return secret
+
+@router.delete("/entities/{entity_id}/secrets/{secret_id}")
+async def delete_entity_secret(entity_id: int, secret_id: int, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.ExternalEntitySecret).filter(
+        models.ExternalEntitySecret.id == secret_id,
+        models.ExternalEntitySecret.external_entity_id == entity_id
+    ))
+    secret = res.scalar_one_or_none()
+    if not secret: raise HTTPException(404, "Secret not found")
+    
+    await db.delete(secret)
+    await db.commit()
+    await log_audit(db, "DELETE", "external_entity_secrets", secret_id, f"Revoked credential for external entity ID: {entity_id}")
     return {"status": "success"}
 
 # --- External Links ---

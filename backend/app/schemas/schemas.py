@@ -228,6 +228,17 @@ class IncidentLogResponse(IncidentLogBase, BaseSchema):
     device_names: Optional[List[str]] = []
 
 # External Intelligence
+class ExternalEntitySecretBase(BaseModel):
+    username: Optional[str] = None
+    password: Optional[str] = None
+    note: Optional[str] = None
+
+class ExternalEntitySecretCreate(ExternalEntitySecretBase):
+    external_entity_id: int
+
+class ExternalEntitySecretResponse(ExternalEntitySecretBase, BaseSchema):
+    external_entity_id: int
+
 class ExternalEntityBase(BaseModel):
     name: str
     type: str
@@ -242,6 +253,7 @@ class ExternalEntityBase(BaseModel):
 class ExternalEntityCreate(ExternalEntityBase): pass
 class ExternalEntityResponse(ExternalEntityBase, BaseSchema):
     is_deleted: bool = False
+    secrets: List[ExternalEntitySecretResponse] = []
 
 class ExternalLinkBase(BaseModel):
     external_entity_id: int
