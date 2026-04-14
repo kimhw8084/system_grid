@@ -416,6 +416,10 @@ export default function ServiceRegistry() {
     }
   ], [selectedIds, activeTab, fontSize, hiddenColumns]) as any
 
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
+
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
