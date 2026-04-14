@@ -377,12 +377,12 @@ class DataFlow(Base, BaseMixin):
 class ExternalEntity(Base, BaseMixin):
     __tablename__ = "external_entities"
     name = Column(String, index=True)
-    type = Column(String) # Server, DB, PC, Network, Cloud Service
-    hostname = Column(String)
-    ip_address = Column(String)
+    type = Column(String) # Driven by ExternalType registry (e.g. Equipment, Physical Server, Virtual Server, Switch, Storage, DB, API, Script)
     owner_organization = Column(String)
     description = Column(Text)
-    contact_info = Column(String)
+    poc_json = Column(JSON, default=list) # Multi-add POCs: [{first_name, last_name, id, email, phone}]
+    metadata_json = Column(JSON, default=dict) # Driven by ExternalType registry keys
+    is_deleted = Column(Boolean, default=False)
 
 class ExternalLink(Base, BaseMixin):
     __tablename__ = "external_links"

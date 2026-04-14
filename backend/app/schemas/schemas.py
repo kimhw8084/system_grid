@@ -230,15 +230,15 @@ class IncidentLogResponse(IncidentLogBase, BaseSchema):
 # External Intelligence
 class ExternalEntityBase(BaseModel):
     name: str
-    type: Optional[str] = "Server"
-    hostname: Optional[str] = None
-    ip_address: Optional[str] = None
+    type: str
     owner_organization: Optional[str] = None
     description: Optional[str] = None
-    contact_info: Optional[str] = None
+    poc_json: Optional[List[Dict[str, Any]]] = []
+    metadata_json: Optional[Dict[str, Any]] = {}
 
 class ExternalEntityCreate(ExternalEntityBase): pass
-class ExternalEntityResponse(ExternalEntityBase, BaseSchema): pass
+class ExternalEntityResponse(ExternalEntityBase, BaseSchema):
+    is_deleted: bool = False
 
 class ExternalLinkBase(BaseModel):
     external_entity_id: int

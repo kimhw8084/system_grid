@@ -65,6 +65,19 @@ def seed():
             for v in vals:
                 db.add(SettingOption(category=cat, label=v, value=v, description=f"Standard {cat} entry: {v}"))
         
+        external_types = [
+            ("Equipment", ["manufacturer", "model", "os", "serial_number", "purpose"]),
+            ("Physical Server", ["rack_id", "unit_position", "cpu", "ram", "os", "warranty_end"]),
+            ("Virtual Server", ["hypervisor", "vcpu", "vram", "os", "storage_gb"]),
+            ("Switch", ["management_url", "ports", "firmware", "vlans"]),
+            ("Storage", ["capacity_tb", "raid_level", "controller", "volume_name"]),
+            ("DB", ["engine", "port", "instance_name", "schema_count", "max_connections"]),
+            ("API", ["base_url", "auth_type", "documentation_link", "version"]),
+            ("Script", ["runtime", "path", "schedule", "owner"])
+        ]
+        for val, keys in external_types:
+            db.add(SettingOption(category="ExternalType", label=val, value=val, metadata_keys=keys))
+
         service_types = [
             ("Database", ["engine", "instance_name", "port", "sid", "collation", "always_on", "data_path", "backup_policy"]),
             ("Web API", ["server_type", "url", "bindings", "app_pool", "ssl_expiry", "root_path"]),
@@ -509,7 +522,61 @@ def seed():
             db.add(RcaMitigation(rca_id=rca.id, type="Workaround", action_description="Rolling restart of core services", status="Completed"))
             db.add(RcaMitigation(rca_id=rca.id, type="Preventive", action_description="Patching kernel to v5.15.2", status="Planned"))
 
-        # 14. Monitoring Matrix
+        # 14. External Intelligence Matrix
+        print("Seeding 10 High-Fidelity External Entities (Overhauled Matrix)...")
+        external_seeds = [
+            ("CUST-DATA-FEED", "API", "Global Logistics", "Real-time shipping telemetry feed", 
+             [{"first_name": "Sarah", "last_name": "Connor", "id": "SC-9000", "email": "sconnor@logistics.com", "phone": "555-0101"}],
+             {"base_url": "https://api.customer-edge.com/v2", "auth_type": "OAuth2", "version": "2.4.1", "hostname": "api.customer-edge.com", "ip_address": "1.2.3.4"}),
+            
+            ("VENDOR-PROD-DB", "DB", "Vendor X", "Production database for vendor portal", 
+             [{"first_name": "John", "last_name": "Wick", "id": "JW-777", "email": "jwick@vendorx.net", "phone": "555-0700"}],
+             {"engine": "PostgreSQL 15", "port": "5432", "instance_name": "PROD-VEND-01", "hostname": "db-01.vendor-cloud.net", "ip_address": "10.50.40.12"}),
+            
+            ("SATELLITE-TRKR", "Equipment", "SpaceX", "Satellite tracking terminal", 
+             [{"first_name": "Elon", "last_name": "Musk", "id": "CEO-01", "email": "elon@spacex.com", "phone": "555-4242"}],
+             {"manufacturer": "SpaceX", "model": "Starlink-Gen2", "purpose": "Emergency Uplink", "serial_number": "ST-992288"}),
+            
+            ("CORE-GW-EXT", "Switch", "Level 3", "External gateway for facility network", 
+             [{"first_name": "Niobe", "last_name": "Ghost", "id": "OP-10", "email": "niobe@level3.net", "phone": "555-1010"}],
+             {"ports": "48x10GbE", "firmware": "v12.4.5", "vlans": "10,20,30,90", "management_url": "https://gw-ext.facility.net"}),
+            
+            ("VIRT-RENDER-01", "Virtual Server", "Autodesk", "Remote rendering node", 
+             [{"first_name": "Arthur", "last_name": "Dent", "id": "AD-42", "email": "adent@autodesk.com", "phone": "555-0042"}],
+             {"hypervisor": "ESXi 7.0", "vcpu": "32", "vram": "128GB", "os": "Ubuntu 22.04 LTS"}),
+            
+            ("PHYS-SCAN-01", "Physical Server", "ASML", "Lithography scanner controller", 
+             [{"first_name": "Rick", "last_name": "Deckard", "id": "RD-2049", "email": "rdeckard@asml.nl", "phone": "555-2019"}],
+             {"rack_id": "RK-FAB-01", "unit_position": "10", "os": "Windows Server 2019", "warranty_end": "2027-12-31"}),
+            
+            ("BKP-STORE-01", "Storage", "Iron Mountain", "Offsite backup storage target", 
+             [{"first_name": "Ellen", "last_name": "Ripley", "id": "ER-2122", "email": "ripley@ironmountain.com", "phone": "555-0909"}],
+             {"capacity_tb": "500", "raid_level": "RAID-6", "volume_name": "SECURE-BKP", "controller": "NetApp FAS8200"}),
+            
+            ("CLEAN-SCRPT-01", "Script", "Internal DevOps", "Database log rotation script", 
+             [{"first_name": "Linus", "last_name": "Torvalds", "id": "LT-01", "email": "linus@internal.net", "phone": "555-0001"}],
+             {"runtime": "Python 3.10", "path": "/opt/scripts/db_cleanup.py", "schedule": "0 0 * * *", "owner": "Ops-Team"}),
+            
+            ("PAY-PROC-GATE", "API", "Stripe", "Payment processing gateway", 
+             [{"first_name": "Patrick", "last_name": "Collison", "id": "PC-01", "email": "patrick@stripe.com", "phone": "555-9999"}],
+             {"auth_type": "API-Key", "documentation_link": "https://stripe.com/docs/api", "version": "2023-10-16"}),
+            
+            ("LEGACY-MAINF", "Equipment", "IBM", "Mainframe for historical records", 
+             [{"first_name": "Grace", "last_name": "Hopper", "id": "GH-00", "email": "ghopper@ibm.com", "phone": "555-1950"}],
+             {"manufacturer": "IBM", "model": "z15", "purpose": "Heritage Data Ledger", "os": "z/OS v2.4"})
+        ]
+        for name, etype, owner, desc, pcos, meta in external_seeds:
+            db.add(ExternalEntity(
+                name=name,
+                type=etype,
+                owner_organization=owner,
+                description=desc,
+                poc_json=pcos,
+                metadata_json=meta
+            ))
+        db.flush()
+
+        # 15. Monitoring Matrix
         print("Seeding Monitoring Matrix Records...")
         monitored_apps = random.sample(all_workers, 20)
         for i, app in enumerate(monitored_apps):
