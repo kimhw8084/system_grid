@@ -379,6 +379,9 @@ class ExternalEntity(Base, BaseMixin):
     name = Column(String, index=True)
     type = Column(String) # Driven by ExternalType registry (e.g. Equipment, Physical Server, Virtual Server, Switch, Storage, DB, API, Script)
     owner_organization = Column(String)
+    owner_team = Column(String)
+    status = Column(String, default="Planned")
+    environment = Column(String, default="Production")
     description = Column(Text)
     poc_json = Column(JSON, default=list) # Multi-add POCs: [{first_name, last_name, id, email, phone}]
     metadata_json = Column(JSON, default=dict) # Driven by ExternalType registry keys

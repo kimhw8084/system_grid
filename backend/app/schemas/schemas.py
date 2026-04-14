@@ -232,6 +232,9 @@ class ExternalEntityBase(BaseModel):
     name: str
     type: str
     owner_organization: Optional[str] = None
+    owner_team: Optional[str] = None
+    status: Optional[str] = "Planned"
+    environment: Optional[str] = "Production"
     description: Optional[str] = None
     poc_json: Optional[List[Dict[str, Any]]] = []
     metadata_json: Optional[Dict[str, Any]] = {}
