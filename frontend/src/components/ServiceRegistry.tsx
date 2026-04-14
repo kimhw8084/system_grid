@@ -28,7 +28,6 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     const obj: any = {}
     const keys = new Set()
     let hasDuplicate = false
-
     rows.forEach(r => {
       if (r.key) {
         if (keys.has(r.key)) hasDuplicate = true
@@ -36,7 +35,6 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
         obj[r.key] = r.value
       }
     })
-
     if (hasDuplicate) {
         setError("Duplicate keys detected")
         onError?.("Duplicate keys detected")
@@ -65,47 +63,48 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
         return false
     }
   }
+
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+    <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Configuration Metadata</span>
-            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Configuration Metadata</span>
+            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse italic">!! {error}</span>}
          </div>
-         <div className="flex bg-black/40 rounded-lg p-1">
-            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
-            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+         <div className="flex bg-black/40 rounded-lg p-0.5">
+            <button onClick={() => setMode('table')} className={`p-1.5 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={10}/></button>
+            <button onClick={() => setMode('json')} className={`p-1.5 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={10}/></button>
          </div>
       </div>
-      <div className="p-4 min-h-[120px]">
+      <div className="p-3 min-h-[100px]">
         {mode === 'table' ? (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {tableRows.map((row, i) => (
               <div key={i} className="flex items-center space-x-2">
                 <input value={row.key} onChange={e => {
                   const n = [...tableRows]; n[i].key = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
-                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500`} />
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-2 py-1 text-[10px] outline-none focus:border-blue-500 font-black uppercase italic`} />
                 <input value={row.value} onChange={e => {
                   const n = [...tableRows]; n[i].value = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
-                }} placeholder="Values" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-3 py-1.5 text-[11px] outline-none" />
+                }} placeholder="Value" className="flex-[2] bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[10px] outline-none font-bold text-slate-300" />
                 <button onClick={() => {
                     const n = tableRows.filter((_, idx) => idx !== i);
                     setTableRows(n); validateAndNotify(n);
-                }} className="text-slate-600 hover:text-rose-400"><X size={14}/></button>
+                }} className="text-slate-600 hover:text-rose-400"><X size={12}/></button>
               </div>
             ))}
             <button onClick={() => {
                 const n = [...tableRows, { key: '', value: '' }];
                 setTableRows(n);
-            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute</button>
+            }} className="text-[8px] font-black text-blue-400 uppercase tracking-widest mt-1 hover:text-blue-300 transition-colors italic">+ Append Attribute</button>
           </div>
         ) : (
           <textarea value={jsonValue} onChange={e => {
             setJsonValue(e.target.value);
             syncFromJSON(e.target.value);
-          }} className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`} />
+          }} className={`w-full h-24 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-3 py-2 text-[10px] font-mono text-blue-300 outline-none`} />
         )}
       </div>
     </div>
@@ -120,150 +119,29 @@ const MetadataViewer = ({ data }: { data: any }) => {
     obj = {}
   }
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Inspection</span>
+    <div className="bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+      <div className="px-3 py-1.5 bg-white/5 border-b border-white/5">
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Configuration Metadata</span>
       </div>
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Key</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Value</th>
+            <th className="px-4 py-1.5 text-left font-black uppercase tracking-widest text-slate-500 italic">Key</th>
+            <th className="px-4 py-1.5 text-left font-black uppercase tracking-widest text-slate-500 italic">Value</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {Object.entries(obj).map(([k, v]) => (
             <tr key={k} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-3 font-black uppercase text-blue-400 tracking-tighter w-1/3">{k}</td>
-              <td className="px-4 py-3 font-mono text-slate-300">{String(v)}</td>
+              <td className="px-4 py-2 font-black uppercase text-blue-400 italic w-1/3">{k}</td>
+              <td className="px-4 py-2 font-bold text-slate-300 truncate max-w-[200px]">{String(v)}</td>
             </tr>
           ))}
           {Object.keys(obj).length === 0 && (
-            <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No metadata keys defined</td></tr>
+            <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic tracking-widest">No metadata keys documented</td></tr>
           )}
         </tbody>
       </table>
-    </div>
-  )
-}
-
-const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOpen: boolean, onClose: () => void, onApply: (status: string) => void, options: any[], count?: number }) => {
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-
-  useEffect(() => {
-    if (isOpen) setSelectedStatus('')
-  }, [isOpen])
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
-          <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-               <Tag size={24}/> <span>Update Status</span>
-            </h2>
-            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} service{count !== 1 ? 's' : ''}</p>}
-          </div>
-          <StyledSelect
-            label="Target Operational State"
-            value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value)}
-            options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
-            placeholder="Select Status..."
-          />
-          <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-             <button 
-               disabled={!selectedStatus}
-               onClick={() => onApply(selectedStatus)} 
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-             >
-                Apply to Selection
-             </button>
-          </div>
-       </motion.div>
-    </div>
-  )
-}
-
-const EnvBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOpen: boolean, onClose: () => void, onApply: (env: string) => void, options: any[], count?: number }) => {
-  const [selectedEnv, setSelectedEnv] = useState('')
-  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-
-  useEffect(() => {
-    if (isOpen) setSelectedEnv('')
-  }, [isOpen])
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
-          <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-               <Globe size={24}/> <span>Update Environment</span>
-            </h2>
-            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} service{count !== 1 ? 's' : ''}</p>}
-          </div>
-          <StyledSelect
-            label="Target Environment"
-            value={selectedEnv}
-            onChange={e => setSelectedEnv(e.target.value)}
-            options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
-            placeholder="Select Environment..."
-          />
-          <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-             <button 
-               disabled={!selectedEnv}
-               onClick={() => onApply(selectedEnv)} 
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-             >
-                Apply to Selection
-             </button>
-          </div>
-       </motion.div>
-    </div>
-  )
-}
-
-const HostBulkUpdateModal = ({ isOpen, onClose, onApply, devices, count }: { isOpen: boolean, onClose: () => void, onApply: (deviceId: number | null) => void, devices: any[], count?: number }) => {
-  const [selectedHost, setSelectedHost] = useState<string>('')
-
-  useEffect(() => {
-    if (isOpen) setSelectedHost('')
-  }, [isOpen])
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
-          <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-               <Monitor size={24}/> <span>Update Host Node</span>
-            </h2>
-            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} service{count !== 1 ? 's' : ''}</p>}
-          </div>
-          <StyledSelect
-            label="Target Host Node"
-            value={selectedHost}
-            onChange={e => setSelectedHost(e.target.value)}
-            options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-            placeholder="Unassigned (Floating)"
-          />
-          <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-             <button 
-               onClick={() => onApply(selectedHost ? parseInt(selectedHost) : null)} 
-               className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-             >
-                Apply to Selection
-             </button>
-          </div>
-       </motion.div>
     </div>
   )
 }
@@ -285,41 +163,41 @@ const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
   })
 
   return (
-    <div className="space-y-6">
-      <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
-        <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Register Access Credential</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="Username / ID" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-          <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="Access Password" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-          <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Purpose / Note" className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
+    <div className="space-y-4">
+      <div className="bg-black/40 border border-white/5 rounded-2xl p-4 space-y-3">
+        <h3 className="text-[9px] font-black uppercase text-blue-400 tracking-widest italic">Identity Registry</h3>
+        <div className="grid grid-cols-3 gap-2">
+          <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="Username / ID" className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500 italic" />
+          <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="Access Password" className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black outline-none focus:border-blue-500" />
+          <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Purpose / Note" className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500 italic" />
         </div>
         <button 
           disabled={!newSecret.username || !newSecret.password}
           onClick={() => addMutation.mutate(newSecret)}
-          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30"
+          className="w-full py-2 bg-blue-600/10 text-blue-400 border border-blue-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30"
         >
           Inject Secret into Vault
         </button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         {service?.secrets?.map((s: any) => (
-          <div key={s.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl group">
-            <div className="flex items-center space-x-6">
-              <div className="bg-blue-600/20 p-2 rounded-lg text-blue-400"><Tag size={16}/></div>
-              <div>
-                <p className="text-[10px] font-black text-white uppercase">{s.username}</p>
-                <p className="text-[9px] font-mono text-slate-500">••••••••••••</p>
+          <div key={s.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl group transition-all hover:border-white/20">
+            <div className="flex items-center space-x-4">
+              <div className="bg-blue-600/10 p-1.5 rounded-lg text-blue-400"><Tag size={14}/></div>
+              <div className="min-w-[100px]">
+                <p className="text-[10px] font-black text-white uppercase italic">{s.username}</p>
+                <p className="text-[9px] font-mono text-slate-600">••••••••</p>
               </div>
-              <div className="border-l border-white/10 pl-6">
-                <p className="text-[8px] font-black text-slate-600 uppercase mb-0.5">Application Note</p>
-                <p className="text-[10px] text-slate-400 font-medium italic">{s.note || 'No contextual notes provided'}</p>
+              <div className="border-l border-white/10 pl-4 max-w-[300px] truncate">
+                <p className="text-[8px] font-black text-slate-600 uppercase mb-0.5 italic">Note</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase truncate italic tracking-tighter">{s.note || '---'}</p>
               </div>
             </div>
-            <button onClick={() => deleteMutation.mutate(s.id)} className="p-2 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+            <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
           </div>
         ))}
-        {!service?.secrets?.length && <div className="py-12 text-center text-slate-600 italic text-[10px] font-black uppercase tracking-widest">No vault entries for this service</div>}
+        {!service?.secrets?.length && <div className="py-10 text-center text-slate-700 italic text-[9px] font-black uppercase tracking-widest">No vault entries documented</div>}
       </div>
     </div>
   )
@@ -330,52 +208,40 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
     const [tab, setTab] = useState('metadata')
     const [metadataError, setMetadataError] = useState<string | null>(null)
     const [formData, setFormData] = useState({ ...service })
-    const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
     const updateMutation = useMutation({
         mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${service.id}`, { 
             method: 'PUT', body: JSON.stringify(data) 
         }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Configuration Updated') }
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Registry Synced') }
     })
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+                <div className="flex space-x-0.5 bg-black/40 p-0.5 rounded-xl w-fit border border-white/5">
                     {[
-                      {id: 'metadata', label: 'Metadata View', icon: List}, 
-                      {id: 'editor', label: 'Metadata Editor', icon: Edit2}, 
-                      {id: 'secrets', label: 'Credentials', icon: Tag}
+                      {id: 'metadata', label: 'Matrix', icon: List}, 
+                      {id: 'editor', label: 'Editor', icon: Edit2}, 
+                      {id: 'secrets', label: 'Vault', icon: Tag}
                     ].map(t => (
-                        <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                        <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                             <t.icon size={12}/> <span>{t.label}</span>
                         </button>
                     ))}
                 </div>
                 {tab === 'editor' && (
                   <button 
-                    onClick={() => {
-                      if (metadataError) {
-                        setConfirmModal({
-                          isOpen: true,
-                          title: 'Metadata Integrity Warning',
-                          message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
-                          onConfirm: () => updateMutation.mutate(formData),
-                          variant: 'warning'
-                        })
-                        return;
-                      }
-                      updateMutation.mutate(formData);
-                    }} 
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                    onClick={() => updateMutation.mutate(formData)} 
+                    disabled={!!metadataError}
+                    className="px-5 py-1.5 bg-emerald-600 disabled:opacity-30 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all italic"
                   >
-                    Save Changes
+                    Commit Metadata
                   </button>
                 )}
             </div>
             
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
+            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6 bg-black/20">
                 {tab === 'metadata' && <MetadataViewer data={formData.config_json} />}
                 {tab === 'editor' && (
                   <MetadataEditor 
@@ -386,22 +252,12 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
                 )}
                 {tab === 'secrets' && <ServiceSecretsTab serviceId={service.id} />}
             </div>
-
-            <ConfirmationModal 
-                isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                variant={confirmModal.variant}
-            />
         </div>
     )
 }
 
 export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [formData, setFormData] = useState({ 
     name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
     device_id: null, config_json: {}, 
@@ -415,13 +271,11 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
   useEffect(() => {
-    if (!initialData.id) { // Only for new services
+    if (!initialData.id) {
       const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
       if (selectedType?.metadata_keys) {
         const newConfig: any = {};
-        selectedType.metadata_keys.forEach((key: string) => {
-          newConfig[key] = "";
-        });
+        selectedType.metadata_keys.forEach((key: string) => { newConfig[key] = ""; });
         setFormData(prev => ({ ...prev, config_json: newConfig }));
       } else {
         setFormData(prev => ({ ...prev, config_json: {} }));
@@ -430,159 +284,46 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   }, [formData.service_type, options, initialData.id]);
 
   return (
-    <div className="space-y-8 py-6">
-      <div className="grid grid-cols-2 gap-8">
+    <div className="space-y-6 py-4 font-bold uppercase tracking-tight">
+      <div className="grid grid-cols-2 gap-6">
         <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Deployment</h3>
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">
-                {formData.service_type === 'OS' ? 'Operating System Name *' : 'Service Instance Name *'}
-              </label>
-              <input
-                value={formData.name}
-                onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})}
-                className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`}
-                placeholder={formData.service_type === 'OS' ? "e.g. Windows Server 2022" : "e.g. ERP-API-PROD"}
-              />           </div>
-           <StyledSelect
-                label="Target Host Node"
-                value={formData.device_id || ""}
-                onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})}
-                options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                placeholder="Unassigned (Floating)"
-           />
-           <div className="grid grid-cols-2 gap-4">
-             <StyledSelect
-                  label="Service Metadata Type"
-                  value={formData.service_type}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setFormData(prev => ({...prev, service_type: val}));
-                  }}
-                  options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App", "ToolStack"].map(t => ({ value: t, label: t }))}
-             />
-             <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
-                <input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
+           <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3 italic">Identity & Logical Deployment</h3>
+           <div className="grid grid-cols-2 gap-3">
+             <div className="col-span-2">
+                <label className="text-[8px] font-black text-slate-400 uppercase block mb-1 px-1 italic">Service Identifier *</label>
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-3 py-2 text-xs font-black uppercase italic text-white outline-none focus:border-blue-500`} placeholder="E.G. ERP_DB_PROD_01" />
              </div>
+             <StyledSelect label="Host Node" value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})} options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []} placeholder="Unassigned (Floating)" />
+             <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App", "ToolStack"].map(t => ({ value: t, label: t }))} />
            </div>
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Service Purpose / Mission</label>
-              <textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 h-20 resize-none" placeholder="e.g. Primary ERP Database for Financial Auditing..." />
+           <div className="grid grid-cols-2 gap-3">
+             <div><label className="text-[8px] font-black text-slate-400 uppercase block mb-1 px-1 italic">Deployment Date</label><input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black outline-none focus:border-blue-500" /></div>
+             <div><label className="text-[8px] font-black text-slate-400 uppercase block mb-1 px-1 italic">Software Version</label><input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black outline-none focus:border-blue-500" placeholder="v1.0.0" /></div>
            </div>
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Documentation / Source Link</label>
-              <div className="relative">
-                <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                <input value={formData.documentation_link || ""} onChange={e => setFormData({...formData, documentation_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="https://github.com/repo..." />
-              </div>
-           </div>
+           <div><label className="text-[8px] font-black text-slate-400 uppercase block mb-1 px-1 italic">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase italic outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
         </div>
 
         <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Operational Status</h3>
-           <StyledSelect
-                label="Runtime Status"
-                value={formData.status}
-                onChange={e => setFormData({...formData, status: e.target.value})}
-                options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}, {value: 'Maintenance', label: 'Maintenance'}]}
-           />
-           <StyledSelect
-                label="Environment"
-                value={formData.environment}
-                onChange={e => setFormData({...formData, environment: e.target.value})}
-                options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}, {value: 'Staging', label: 'Staging'}, {value: 'QA', label: 'QA'}, {value: 'Dev', label: 'Dev'}]}
-           />
-           <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">{formData.service_type === 'OS' ? 'Kernel / Version' : 'Software Version'}</label>
-              <input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/50" placeholder="v2.1.0" />
+           <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3 italic">Runtime Configuration</h3>
+           <div className="grid grid-cols-2 gap-3">
+             <StyledSelect label="Runtime State" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={getOptions('Status').length > 0 ? getOptions('Status') : [{value: 'Active', label: 'Active'}, {value: 'Stopped', label: 'Stopped'}]} />
+             <StyledSelect label="Environment" value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} options={getOptions('Environment').length > 0 ? getOptions('Environment') : [{value: 'Production', label: 'Production'}]} />
            </div>
+           <div className="col-span-2 mt-4"><MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} onError={setMetadataError} /></div>
         </div>
 
-        <div className="col-span-2 space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-500 pl-3">Licensing & Procurement</h3>
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Model</label>
-                <select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500">
-                  <option value="One-time">One-time Purchase</option>
-                  <option value="Subscription">Subscription / SaaS</option>
-                  <option value="Volume">Volume Licensing</option>
-                  <option value="OEM">OEM / Embedded</option>
-                  <option value="Free">Free / Open Source</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Manufacturer / Developer</label>
-                <input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Microsoft, Oracle" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Supplier / Reseller</label>
-                <input value={formData.supplier || ""} onChange={e => setFormData({...formData, supplier: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. AWS, Direct" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">License / Activation Key</label>
-                <input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" placeholder="XXXXX-XXXXX..." />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Purchase Date</label>
-                <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Expiry / Renewal Date</label>
-                <input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none focus:border-blue-500" />
-              </div>
-              <div className="space-y-1 col-span-2">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Procurement Cost</label>
-                <div className="flex space-x-2">
-                  <input type="number" value={formData.cost || 0} onChange={e => setFormData({...formData, cost: parseFloat(e.target.value) || 0})} className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" />
-                  <select value={formData.currency || "USD"} onChange={e => setFormData({...formData, currency: e.target.value})} className="w-24 bg-slate-900 border border-white/10 rounded-xl px-2 py-2 text-xs outline-none focus:border-blue-500">
-                    <option value="USD">USD</option>
-                    <option value="KRW">KRW</option>
-                  </select>
-                </div>
-              </div>
+        <div className="col-span-2 space-y-4 bg-white/5 p-4 rounded-3xl border border-white/5">
+           <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest italic">Licensing & Procurement Artifacts</h3>
+           <div className="grid grid-cols-4 gap-3">
+              <div className="space-y-1"><label className="text-[7px] font-black text-slate-500 uppercase px-1 italic">Purchase Model</label><select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-black uppercase italic outline-none focus:border-blue-500"><option value="One-time">Purchase</option><option value="Subscription">SaaS</option><option value="OEM">OEM</option><option value="Free">OpenSource</option></select></div>
+              <div className="space-y-1"><label className="text-[7px] font-black text-slate-500 uppercase px-1 italic">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-black uppercase italic outline-none focus:border-blue-500" placeholder="Developer" /></div>
+              <div className="space-y-1"><label className="text-[7px] font-black text-slate-500 uppercase px-1 italic">License Key</label><input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-mono outline-none focus:border-blue-500" placeholder="XXXX-XXXX" /></div>
+              <div className="space-y-1"><label className="text-[7px] font-black text-slate-500 uppercase px-1 italic">Expiry Date</label><input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-black outline-none focus:border-blue-500" /></div>
            </div>
-        </div>
-
-        <div className="col-span-2">
-           <MetadataEditor 
-             value={formData.config_json} 
-             onChange={v => setFormData({...formData, config_json: v})} 
-             onError={setMetadataError}
-           />
         </div>
       </div>
 
-      <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button 
-          onClick={() => { 
-            if (metadataError) {
-              setConfirmModal({
-                isOpen: true,
-                title: 'Metadata Integrity Warning',
-                message: `Metadata has errors (${metadataError}). Do you want to save anyway?`,
-                onConfirm: () => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) },
-                variant: 'warning'
-              })
-              return;
-            }
-            if(!formData.name) return toast.error("Instance name required"); 
-            onSave(formData) 
-          }} 
-          className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
-        >
-           {formData.id ? 'Update Service Matrix' : 'Register Service Instance'}
-        </button>
-      </div>
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-      />
+      <button onClick={() => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) }} disabled={!!metadataError} className="w-full py-4 bg-blue-600 disabled:opacity-30 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all italic">Commit Service Registration</button>
     </div>
   )
 }
@@ -612,301 +353,74 @@ export default function ServiceRegistry() {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
 
-  const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_Services_${new Date().toISOString().split('T')[0]}.csv`,
-        allColumns: false,
-        onlySelected: false
-      })
-    }
-  }
-
-  const handleCopyToClipboard = () => {
-    if (gridRef.current?.api) {
-      const csvData = gridRef.current.api.getDataAsCsv({
-        allColumns: false,
-        onlySelected: true,
-        suppressQuotes: true
-      })
-      if (csvData) {
-        navigator.clipboard.writeText(csvData)
-          .then(() => toast.success("Table data copied to clipboard"))
-          .catch(() => toast.error("Failed to copy data"))
-      }
-    }
-  }
-
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
-  const { data: allServices, isLoading } = useQuery({
-    queryKey: ["logical-services"],
-    queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json())
-  })
+  const { data: allServices, isLoading } = useQuery({ queryKey: ["logical-services"], queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json()) })
+  const services = useMemo(() => {
+    if (!allServices) return []
+    return activeTab === 'active' ? allServices.filter((s: any) => !s.is_deleted) : allServices.filter((s: any) => s.is_deleted)
+  }, [allServices, activeTab])
 
-  const { activeServices, purgedServices } = useMemo(() => {
-    if (!allServices) return { activeServices: [], purgedServices: [] }
-    return {
-      activeServices: allServices.filter((s: any) => !s.is_deleted),
-      purgedServices: allServices.filter((s: any) => s.is_deleted)
-    }
-  }, [allServices])
-
-  const services = activeTab === 'active' ? activeServices : purgedServices
-
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
-    }
-  }, [fontSize, rowDensity, services]);
-
+  useEffect(() => { if (gridRef.current?.api) setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100); }, [fontSize, rowDensity, services]);
   const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/logical-services/${data.id}` : "/api/v1/logical-services/"
-      const method = data.id ? "PUT" : "POST"
-      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      const res = await apiFetch(url, { method: data.id ? "PUT" : "POST", body: JSON.stringify(data) })
       return res.json()
     },
-    onSuccess: () => { 
-      queryClient.invalidateQueries({ queryKey: ["logical-services"] })
-      toast.success("Service Registry Updated")
-      setActiveModal(null)
-    },
-    onError: (e: any) => toast.error(e.message)
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); toast.success("Registry Updated"); setActiveModal(null); }
   })
 
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids = selectedIds }: any) => {
-      const res = await apiFetch('/api/v1/logical-services/bulk-action', { 
-        method: 'POST', body: JSON.stringify({ ids: ids.length ? ids : [], action, payload }) 
-      })
+      const res = await apiFetch('/api/v1/logical-services/bulk-action', { method: 'POST', body: JSON.stringify({ ids, action, payload }) })
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["logical-services"] })
-      setSelectedIds([]); setShowBulkMenu(false)
-      setIsBulkStatusOpen(false); setIsBulkEnvOpen(false); setIsBulkHostOpen(false)
-      toast.success('Operation Complete')
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); setSelectedIds([]); setShowBulkMenu(false); setIsBulkStatusOpen(false); setIsBulkEnvOpen(false); setIsBulkHostOpen(false); toast.success('Operation Complete') }
   })
 
   const columnDefs = useMemo(() => [
-    { 
-      headerName: "", 
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      suppressSizeToFit: true,
-      resizable: false,
-      sortable: false,
-      filter: false,
-      suppressHide: true
-    },
-    { 
-      field: "id", 
-      headerName: "ID", 
-      width: 70,
-      minWidth: 70,
-      pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-    },
-    {
-      field: "name",
-      headerName: "Instance",
-      pinned: 'left',
-      filter: true,
-      cellClass: 'text-left font-bold uppercase text-blue-400',
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("name")
-    },
+    { field: "id", headerName: "", width: 60, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'text-center pl-4', headerClass: 'text-center pl-4' },
+    { field: "id", headerName: "ID", width: 80, cellClass: 'text-center font-black text-slate-500', headerClass: 'text-center', filter: 'agNumberColumnFilter' },
+    { field: "name", headerName: "Instance Identifier", pinned: 'left', flex: 1.2, filter: true, cellClass: 'text-left font-black uppercase text-blue-400 italic', headerClass: 'text-left', hide: hiddenColumns.includes("name") },
     { 
       field: "service_type", 
-      headerName: "Type", 
-      width: 110, 
-      filter: true,
-      cellClass: 'text-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Database': 'text-amber-400',
-          'Web Server': 'text-blue-400',
-          'Middleware': 'text-indigo-400',
-          'Container': 'text-emerald-400',
-          'OS': 'text-rose-400',
-          'Vendor Software': 'text-orange-400',
-          'Internal App': 'text-pink-400',
-          'External App': 'text-cyan-400'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-      },
+      headerName: "Matrix Type", 
+      width: 120, filter: true, cellClass: 'text-center', headerClass: 'text-center',
+      cellRenderer: (p: any) => <span className={`font-black uppercase italic ${p.value === 'Database' ? 'text-amber-400' : p.value === 'OS' ? 'text-rose-400' : 'text-blue-400'}`}>{p.value || 'N/A'}</span>,
       hide: hiddenColumns.includes("service_type")
     },
     { 
       field: "status", 
-      headerName: "Status", 
-      width: 110, 
-      filter: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-          Degraded: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-          Critical: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-          Stopped: 'text-slate-400 border-white/20 bg-white/10',
-          Maintenance: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20'
-        }
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                {p.value || 'Unknown'}
-              </span>
-            </div>
-          </div>
-        )
-      },
+      headerName: "Runtime State", 
+      width: 130, filter: true, cellClass: 'text-center', headerClass: 'text-center',
+      cellRenderer: (p: any) => <div className="flex items-center justify-center h-full"><div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm font-black italic uppercase tracking-tighter ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20' : 'text-slate-400 border-white/20 bg-white/10'}`}>{p.value || 'Unknown'}</div></div>,
       hide: hiddenColumns.includes("status")
     },
-    { 
-      field: "device_name", 
-      headerName: "Host Node", 
-      width: 140, 
-      filter: true,
-      cellClass: "font-bold text-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("device_name")
-    },
-    { 
-      field: "environment", 
-      headerName: "Env", 
-      width: 90, 
-      filter: true,
-      cellClass: 'text-center font-bold', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("environment")
-    },
-    { 
-      field: "version", 
-      headerName: "Ver", 
-      width: 80, 
-      filter: true,
-      cellClass: "font-bold text-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("version")
-    },
-    { 
-      field: "installation_date", 
-      headerName: "Installation Date", 
-      filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-slate-400',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("installation_date")
-    },
-    { 
-      field: "purchase_type", 
-      headerName: "Purchase Model", 
-      filter: true,
-      cellClass: 'text-center font-bold text-slate-400 uppercase',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("purchase_type")
-    },
-    { 
-      field: "expiry_date", 
-      headerName: "Renewal Date", 
-      filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-amber-400',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("expiry_date")
-    },
-    { 
-      field: "manufacturer", 
-      headerName: "Manufacturer", 
-      filter: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex flex-col items-center justify-center leading-tight py-1 h-full">
-           <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase w-full">{p.value || <span className="text-slate-500">N/A</span>}</span>
-           {p.data.supplier && <span style={{ fontSize: `${Math.max(8, fontSize - 2)}px` }} className="font-bold text-slate-500 uppercase truncate w-full">via {p.data.supplier}</span>}
-        </div>
-      ),
-      hide: hiddenColumns.includes("manufacturer")
-    },
-    { 
-      field: "supplier", 
-      headerName: "Supplier", 
-      hide: true,
-      filter: true,
-      cellClass: 'text-center font-bold',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-    },
-    { 
-      field: "cost", 
-      headerName: "Cost", 
-      filter: 'agNumberColumnFilter',
-      cellClass: 'text-center font-bold text-white',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        if (!p.value && p.value !== 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>
-        const symbol = p.data.currency === 'KRW' ? '₩' : '$'
-        return <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase text-white">{symbol}{p.value.toLocaleString()}</span>
-      },
-      hide: hiddenColumns.includes("cost")
-    },
+    { field: "device_name", headerName: "Host Node", width: 140, filter: true, cellClass: "font-black text-center uppercase italic text-indigo-400", headerClass: 'text-center', hide: hiddenColumns.includes("device_name") },
+    { field: "environment", headerName: "Env", width: 90, filter: true, cellClass: 'text-center font-black uppercase text-slate-500 italic', headerClass: 'text-center', hide: hiddenColumns.includes("environment") },
+    { field: "version", headerName: "Version", width: 80, filter: true, cellClass: "font-black text-center text-slate-400", headerClass: 'text-center', hide: hiddenColumns.includes("version") },
+    { field: "cost", headerName: "Procurement", width: 110, filter: true, cellClass: 'text-center font-black text-white italic', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.data.currency === 'KRW' ? 'â‚©' : '$'}${p.value.toLocaleString()}` : <span className="text-slate-700">---</span>, hide: hiddenColumns.includes("cost") },
     {
-      headerName: "Action",
-      width: 120,
-      minWidth: 120,
-      pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      resizable: false,
+      headerName: "Ops", width: 140, pinned: 'right', cellClass: 'text-center', headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-               {activeTab !== 'purged' ? (
-                 <button onClick={() => openConfirm('Terminate Service', 'Move this service to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               ) : (
-                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               )}
+               <button onClick={() => setActiveDetails(p.data)} title="View Detail Matrix" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => setActiveModal(p.data)} title="Modify Config" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => openConfirm('Purge Registry', 'Terminate this service instance?', () => bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [p.data.id] }))} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
-      ),
-      suppressHide: true
+      )
     }
   ], [selectedIds, activeTab, fontSize, hiddenColumns]) as any
-
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
 
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Service Registry</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Application Layer & Service Dependency Mapping</p>
-           </div>
+           <div><h1 className="text-2xl font-black uppercase tracking-tight italic">Services</h1><p className="text-[10px] text-slate-500 uppercase tracking-widest font-black ml-1 italic">Logical Service Registry & Logic Matrix</p></div>
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
               <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Existing</button>
               <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged</button>
@@ -914,276 +428,67 @@ export default function ServiceRegistry() {
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="relative group">
-             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN SERVICES..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
-          </div>
-
+          <div className="relative group"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN LOGIC..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" /></div>
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
-             <button 
-                onClick={() => setShowStyleLab(!showStyleLab)} 
-                className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
-                title="Toggle Style Lab"
-             >
-                <Activity size={16} />
-             </button>
-             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
-                <Sliders size={16} />
-             </button>
-             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
-                <FileText size={16} />
-             </button>
-             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
-                <Clipboard size={16} />
-             </button>
-             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                <Settings size={16} />
-             </button>
+             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Lab"><Activity size={16} /></button>
+             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration"><Sliders size={16} /></button>
+             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Enums"><Settings size={16} /></button>
           </div>
-
           <div className="relative bulk-menu-container">
             <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
-            <AnimatePresence>
-              {showBulkMenu && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
-                   <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Services Selected</p>
-                   {activeTab === 'active' ? (
-                     <>
-                       <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                       <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Set Environment...</button>
-                       <button onClick={() => { setIsBulkHostOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Host Node...</button>
-                       <div className="h-px bg-white/5 mx-2 my-1" />
-                       <button onClick={() => openConfirm('Terminate Service', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">Bulk Terminate</button>
-                     </>
-                   ) : (
-                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
-                   )}
+            <AnimatePresence>{showBulkMenu && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1"><p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1 italic">{selectedIds.length} Services Selected</p>
+                   {activeTab === 'active' ? (<><button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 italic">Set Status...</button><button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 italic">Set Env...</button><button onClick={() => { setIsBulkHostOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 italic">Set Host...</button><div className="h-px bg-white/5 mx-2 my-1" /><button onClick={() => openConfirm('Bulk Terminate', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 italic">Bulk Purge</button></>) : (<button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 italic">Restore Selected</button>)}
                 </motion.div>
-              )}
-            </AnimatePresence>
+            )}</AnimatePresence>
           </div>
-
-          <button 
-            onClick={() => setActiveModal({})}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-          >
-            + Add Instance
-          </button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all italic">+ Register Service</button>
         </div>
       </div>
 
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
+      <AnimatePresence>{showStyleLab && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
+                  <div className="flex items-center space-x-3"><Activity size={16} className="text-blue-400" /><span className="text-[10px] font-black uppercase tracking-widest text-blue-400 italic">View Density Laboratory</span></div>
                   <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
+                     <div className="flex items-center space-x-4"><span className="text-[9px] font-black text-slate-500 uppercase italic">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-black">{fontSize}px</span></div></div>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-black text-slate-500 uppercase italic">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span></div></div>
                   </div>
                </div>
                <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}</AnimatePresence>
 
       <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
-        {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
-             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Application Layer...</p>
-          </div>
-        )}
-        <AgGridReact 
-          ref={gridRef}
-          rowData={services || []} 
-          columnDefs={columnDefs} 
-          rowSelection="multiple"
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
-          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
-          quickFilterText={searchTerm}
-          animateRows={true}
-          enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
-        />
-
-        <AnimatePresence>
-          {showColumnPicker && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
-            >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                  <Sliders size={14} /> <span>Toggle Columns</span>
-                </h3>
-                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
-                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={!hiddenColumns.includes(col.field)}
-                        onChange={() => {
-                          if (hiddenColumns.includes(col.field)) {
-                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
-                          } else {
-                            setHiddenColumns([...hiddenColumns, col.field])
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                  </label>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isLoading && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400"><RefreshCcw size={32} className="animate-spin" /><p className="text-[10px] font-black uppercase tracking-[0.3em] italic">Scanning Logic Matrix...</p></div>}
+        <AgGridReact ref={gridRef} rowData={services || []} columnDefs={columnDefs} rowSelection="multiple" headerHeight={fontSize + rowDensity + 10} rowHeight={fontSize + rowDensity + 10} onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))} quickFilterText={searchTerm} animateRows={true} enableCellTextSelection={true} autoSizeStrategy={autoSizeStrategy} />
       </div>
 
-      <StatusBulkUpdateModal
-        isOpen={isBulkStatusOpen}
-        onClose={() => setIsBulkStatusOpen(false)}
-        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
-        options={options || []}
-        count={selectedIds.length}
-      />
-
-      <EnvBulkUpdateModal
-        isOpen={isBulkEnvOpen}
-        onClose={() => setIsBulkEnvOpen(false)}
-        onApply={(e) => bulkMutation.mutate({ action: 'update', payload: { environment: e } })}
-        options={options || []}
-        count={selectedIds.length}
-      />
-
-      <HostBulkUpdateModal
-        isOpen={isBulkHostOpen}
-        onClose={() => setIsBulkHostOpen(false)}
-        onApply={(id) => bulkMutation.mutate({ action: 'update', payload: { device_id: id } })}
-        devices={devices || []}
-        count={selectedIds.length}
-      />
-
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        variant={confirmModal.variant}
-      />
-
-      <AnimatePresence>
-        {activeModal && (
+      <AnimatePresence>{activeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
-                     <Layers size={28}/> <span>{activeModal.id ? 'Modify Service Configuration' : 'Register New Service Instance'}</span>
-                  </h2>
-                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[850px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar shadow-2xl">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6"><h2 className="text-2xl font-black uppercase italic tracking-tighter text-blue-400 flex items-center space-x-4"><Layers size={28}/> <span>{activeModal.id ? 'Modify Logic Matrix' : 'Register Service Instance'}</span></h2><button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
                <ServiceForm initialData={activeModal} onSave={mutation.mutate} options={options} devices={devices} />
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+      )}</AnimatePresence>
 
-      <AnimatePresence>
-        {activeDetails && (
+      <AnimatePresence>{activeDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} · {activeDetails.environment}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">HOST: {activeDetails.device_name || 'UNASSIGNED'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">DEV: {activeDetails.manufacturer || 'UNKNOWN'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">VERSION: {activeDetails.version || 'UNKNOWN'}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
-               </div>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col shadow-2xl">
+               <div className="flex items-center justify-between border-b border-white/5 pb-6"><div><h2 className="text-3xl font-black uppercase text-blue-400 italic tracking-tighter">{activeDetails.name}</h2><div className="flex items-center space-x-3 mt-1"><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">{activeDetails.service_type} · {activeDetails.environment} · {activeDetails.device_name || 'FLOATING'}</p></div></div><button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
+               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6"><ServiceDetailsView service={activeDetails} options={options} devices={devices} /></div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+      )}</AnimatePresence>
 
-      <ConfigRegistryModal 
-        isOpen={showConfig} 
-        onClose={() => setShowConfig(false)} 
-        title="Service Registry Enumerations"
-        sections={[
-            { title: "Service Types", category: "ServiceType", icon: Database },
-            { title: "Status Options", category: "Status", icon: RefreshCcw },
-            { title: "Environments", category: "Environment", icon: Globe }
-        ]}
-      />
-
+      <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Service Matrix Registry" sections={[{ title: "Service Types", category: "ServiceType", icon: Database }, { title: "Status Options", category: "Status", icon: RefreshCcw }, { title: "Environments", category: "Environment", icon: Globe }]} />
       <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
-        }
+        .ag-theme-alpine-dark { --ag-background-color: #0a0c14; --ag-header-background-color: #141721; --ag-border-color: rgba(255, 255, 255, 0.05); --ag-foreground-color: #f1f5f9; --ag-header-foreground-color: #3b82f6; --ag-font-family: 'Inter', sans-serif; --ag-font-size: ${fontSize}px; }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
+        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; font-style: italic !important; }
         .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }

@@ -1230,6 +1230,7 @@ export default function AssetGrid() {
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
             justify-content: center !important; 
+            font-style: italic !important;
         }
         .ag-cell { 
             display: flex; 
