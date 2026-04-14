@@ -278,53 +278,84 @@ export default function FAR() {
     { 
       field: "severity", 
       headerName: "S", 
-      width: 60,
+      width: 50,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
         const val = p.value || 0;
-        const color = val >= 9 ? 'bg-rose-600 text-white' : val >= 7 ? 'bg-rose-500/60 text-white' : val >= 5 ? 'bg-amber-500/40 text-amber-200' : 'bg-emerald-500/20 text-emerald-400';
-        return <div className={`w-full h-full flex items-center justify-center font-black italic ${color}`}>{val}</div>
+        const color = val >= 8 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+                      val >= 5 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            </div>
+          </div>
+        )
       },
       hide: hiddenColumns.includes("severity")
     },
     { 
       field: "occurrence", 
       headerName: "O", 
-      width: 60,
+      width: 50,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
         const val = p.value || 0;
-        const color = val >= 8 ? 'bg-rose-600 text-white' : val >= 6 ? 'bg-rose-500/60 text-white' : val >= 4 ? 'bg-amber-500/40 text-amber-200' : 'bg-emerald-500/20 text-emerald-400';
-        return <div className={`w-full h-full flex items-center justify-center font-black italic ${color}`}>{val}</div>
+        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            </div>
+          </div>
+        )
       },
       hide: hiddenColumns.includes("occurrence")
     },
     { 
       field: "detection", 
       headerName: "D", 
-      width: 60,
+      width: 50,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
         const val = p.value || 0;
-        // Detection is inverse: 10 is bad (hard to detect), 1 is good
-        const color = val >= 8 ? 'bg-rose-600 text-white' : val >= 6 ? 'bg-rose-500/60 text-white' : val >= 4 ? 'bg-amber-500/40 text-amber-200' : 'bg-emerald-500/20 text-emerald-400';
-        return <div className={`w-full h-full flex items-center justify-center font-black italic ${color}`}>{val}</div>
+        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            </div>
+          </div>
+        )
       },
       hide: hiddenColumns.includes("detection")
     },
     { 
       field: "rpn", 
       headerName: "RPN", 
-      width: 80,
+      width: 70,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
         const val = p.value || 0;
-        const color = val > 200 ? 'bg-rose-600 text-white shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]' : val > 100 ? 'bg-rose-500/60 text-white' : val > 50 ? 'bg-amber-500/40 text-amber-200' : 'bg-emerald-500/20 text-emerald-400';
-        return <div className={`w-full h-full flex items-center justify-center font-black italic ${color}`}>{val}</div>
+        const color = val >= 150 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+                      val >= 80 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-12 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            </div>
+          </div>
+        )
       },
       hide: hiddenColumns.includes("rpn")
     },
@@ -608,8 +639,8 @@ export default function FAR() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: #0a0c14;
-          --ag-header-background-color: #141721;
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255,255,255,0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #f43f5e;
@@ -666,6 +697,7 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
 
 function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: () => void, onUpdate: () => void }) {
   const [activeTab, setActiveTab] = useState('causal')
+  const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()
   
   const { data: allModes } = useQuery({ 
@@ -682,71 +714,74 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6 font-bold uppercase tracking-tight">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1400px] h-[95vh] flex flex-col rounded-[40px] border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-[40px] border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
          
-         {/* HEADER SECTION - High Information Density */}
-         <div className="px-10 py-8 border-b border-white/5 bg-white/[0.02] flex flex-col shrink-0 relative overflow-hidden">
+         {/* HEADER SECTION */}
+         <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex flex-col shrink-0 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-96 h-96 bg-rose-600/5 blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
             
             <div className="flex items-start justify-between relative z-10">
-              <div className="space-y-4 flex-1">
-                  <div className="flex items-center gap-4">
-                      <div className="px-3 py-1 rounded-xl bg-rose-600/10 border border-rose-500/20 text-[10px] font-black text-rose-500 italic">ID: VECTOR_{mode.id}</div>
-                      <div className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-slate-400 italic uppercase tracking-widest">{mode.system_name}</div>
-                      <div className="px-3 py-1 rounded-xl bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-400 italic uppercase tracking-widest">RANK #{systemRank} IN SYSTEM</div>
+              <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-3">
+                      <div className="px-2 py-0.5 rounded-lg bg-rose-600/10 border border-rose-500/20 text-[9px] font-black text-rose-500 italic uppercase">VECTOR_{mode.id}</div>
+                      <div className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 italic uppercase tracking-widest">{mode.system_name}</div>
+                      <div className="px-2 py-0.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-[9px] font-black text-blue-400 italic uppercase tracking-widest">RANK #{systemRank}</div>
                   </div>
-                  <h2 className="text-5xl font-black text-white italic tracking-tighter leading-none uppercase">{mode.title}</h2>
-                  
-                  {/* IMPACT LIST IN HEADER */}
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                     <span className="text-[10px] text-slate-500 font-black italic mr-2 uppercase tracking-widest">Affected Infrastructure:</span>
-                     {mode.affected_assets?.slice(0, 3).map((a: any) => (
-                       <div key={a.id} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black text-slate-300 italic">
-                          <Server size={10} className="text-rose-500" /> {a.name}
-                       </div>
-                     ))}
-                     {mode.affected_assets?.length > 3 && (
-                       <button className="px-3 py-1 bg-rose-600/10 border border-rose-500/20 rounded-lg text-[10px] font-black text-rose-500 italic hover:bg-rose-600/20 transition-all">
-                          + {mode.affected_assets.length - 3} MORE ENTITIES
-                       </button>
-                     )}
-                     {(!mode.affected_assets || mode.affected_assets.length === 0) && <span className="text-[10px] text-slate-700 italic font-black uppercase tracking-widest">No infrastructure mappings established</span>}
-                  </div>
+                  <h2 className="text-3xl font-black text-white italic tracking-tighter leading-none uppercase">{mode.title}</h2>
               </div>
 
-              <div className="flex items-center gap-6">
-                  {/* S O D HEATMAP IN HEADER */}
-                  <div className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/5 shadow-xl">
+              <div className="flex items-center gap-4">
+                  <div className="flex gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-xl">
                       <HeaderScore label="S" value={mode.severity} color="rose" />
                       <HeaderScore label="O" value={mode.occurrence} color="amber" />
                       <HeaderScore label="D" value={mode.detection} color="sky" />
                   </div>
                   
                   <div className="text-right flex flex-col items-end">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 italic">Risk Priority</p>
-                      <div className="flex items-baseline gap-2 leading-none">
-                         <p className={`text-6xl font-black italic tracking-tighter ${mode.rpn > 150 ? 'text-rose-500 drop-shadow-[0_0_15px_rgba(244,63,94,0.3)]' : 'text-white'}`}>{mode.rpn}</p>
-                         <p className="text-[10px] font-black text-slate-500 italic uppercase">RPN</p>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">Risk Priority</p>
+                      <div className="flex items-baseline gap-1 leading-none">
+                         <p className={`text-4xl font-black italic tracking-tighter ${mode.rpn > 150 ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'text-white'}`}>{mode.rpn}</p>
+                         <p className="text-[8px] font-black text-slate-500 italic uppercase">RPN</p>
                       </div>
                   </div>
-                  <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all ml-4 border border-white/10"><X size={28}/></button>
+                  <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all ml-2 border border-white/10"><X size={20}/></button>
               </div>
             </div>
 
-            <div className="mt-8 flex items-center justify-between relative z-10">
-               <div className="flex space-x-1 bg-black/60 p-1 rounded-2xl border border-white/5">
-                 {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
-                   <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-8 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-2xl shadow-rose-600/40' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={14} /> {t.label}</button>
-                 ))}
+            {/* EFFECT & IMPACTS ON OWN ROW */}
+            <div className="mt-4 flex flex-col space-y-3 relative z-10">
+               <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl px-4 py-2 flex items-center gap-3">
+                  <p className="text-[9px] text-rose-500 font-black italic uppercase tracking-widest shrink-0">Effect Forensics:</p>
+                  <p className="text-[11px] text-slate-200 font-black uppercase italic tracking-tight leading-none truncate">{mode.effect || 'NULL_EFFECT_STATEMENT'}</p>
                </div>
-               <div className="bg-rose-500/5 border border-rose-500/20 rounded-2xl px-6 py-2.5 flex items-center gap-4">
-                  <p className="text-[10px] text-rose-500 font-black italic uppercase tracking-widest">Effect Forensics:</p>
-                  <p className="text-[12px] text-slate-200 font-black uppercase italic tracking-tight leading-none truncate max-w-2xl">{mode.effect || 'NULL_EFFECT_STATEMENT'}</p>
+
+               <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[9px] text-slate-500 font-black italic mr-2 uppercase tracking-widest">Affected Infrastructure:</span>
+                  {mode.affected_assets?.slice(0, showAllAssets ? undefined : 3).map((a: any) => (
+                    <div key={a.id} className="flex items-center gap-2 px-2 py-0.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black text-slate-400 italic">
+                       <Server size={10} className="text-rose-500" /> {a.name}
+                    </div>
+                  ))}
+                  {mode.affected_assets?.length > 3 && (
+                    <button onClick={() => setShowAllAssets(!showAllAssets)} className="px-2 py-0.5 bg-rose-600/10 border border-rose-500/20 rounded-lg text-[9px] font-black text-rose-500 italic hover:bg-rose-600/20 transition-all">
+                       {showAllAssets ? 'SHOW LESS' : `+ ${mode.affected_assets.length - 3} MORE ENTITIES`}
+                    </button>
+                  )}
+                  {(!mode.affected_assets || mode.affected_assets.length === 0) && <span className="text-[9px] text-slate-700 italic font-black uppercase tracking-widest">No infrastructure mappings established</span>}
+               </div>
+            </div>
+
+            {/* TABS ON OWN ROW */}
+            <div className="mt-6 flex items-center relative z-10">
+               <div className="flex space-x-1 bg-black/60 p-0.5 rounded-xl border border-white/5">
+                 {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
+                   <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
+                 ))}
                </div>
             </div>
          </div>
 
-         <div className="flex-1 overflow-hidden flex flex-col p-8">
+         <div className="flex-1 overflow-hidden flex flex-col p-6">
             <AnimatePresence mode="wait">
                {activeTab === 'causal' && <CausalTab mode={mode} onUpdate={onUpdate} />}
                {activeTab === 'roadmap' && <RoadmapTab mode={mode} onUpdate={onUpdate} />}
@@ -754,15 +789,14 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
             </AnimatePresence>
          </div>
 
-         {/* LAST ROW IMPACT DETAIL */}
-         <div className="px-10 py-3 bg-black/80 border-t border-white/5 flex items-center justify-between">
-            <p className="text-[10px] text-slate-600 font-black italic uppercase tracking-widest">System Integrity Vector Analysis // {mode.title}</p>
-            <div className="flex items-center gap-4 text-[10px] font-black italic text-slate-500 uppercase tracking-widest">
-               <span>Severity: {mode.severity}</span>
+         <div className="px-8 py-2 bg-black/80 border-t border-white/5 flex items-center justify-between shrink-0">
+            <p className="text-[9px] text-slate-600 font-black italic uppercase tracking-widest">System Integrity Vector Analysis // {mode.title}</p>
+            <div className="flex items-center gap-3 text-[9px] font-black italic text-slate-500 uppercase tracking-widest">
+               <span>S: {mode.severity}</span>
                <span className="w-1 h-1 rounded-full bg-slate-800" />
-               <span>Occurrence: {mode.occurrence}</span>
+               <span>O: {mode.occurrence}</span>
                <span className="w-1 h-1 rounded-full bg-slate-800" />
-               <span>Detection: {mode.detection}</span>
+               <span>D: {mode.detection}</span>
             </div>
          </div>
       </motion.div>
@@ -775,9 +809,9 @@ function HeaderScore({ label, value, color }: any) {
   const bgColors: any = { rose: 'bg-rose-500/10', amber: 'bg-amber-500/10', sky: 'bg-sky-500/10' }
   const borderColors: any = { rose: 'border-rose-500/20', amber: 'border-amber-500/20', sky: 'border-sky-500/20' }
   return (
-    <div className={`w-14 h-14 rounded-xl ${bgColors[color]} border ${borderColors[color]} flex flex-col items-center justify-center`}>
-       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
-       <p className={`text-2xl font-black italic leading-none ${textColors[color]}`}>{value}</p>
+    <div className={`w-10 h-10 rounded-lg ${bgColors[color]} border ${borderColors[color]} flex flex-col items-center justify-center`}>
+       <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
+       <p className={`text-lg font-black italic leading-none ${textColors[color]}`}>{value}</p>
     </div>
   )
 }
@@ -787,23 +821,25 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
   return (
     <div className="space-y-3">
        <div className="flex items-center justify-between">
-          <label className="text-[11px] font-black text-slate-400 italic tracking-widest uppercase">{label}</label>
+          <label className="text-[10px] font-black text-slate-400 italic tracking-widest uppercase">{label}</label>
           <div className="flex items-center gap-2">
-             <span className={`text-2xl font-black italic ${color}`}>{value}</span>
-             <span className="text-slate-700 text-[10px] font-black italic">/ 10</span>
+             <span className={`text-xl font-black italic ${color}`}>{value}</span>
+             <span className="text-slate-700 text-[9px] font-black italic">/ 10</span>
           </div>
        </div>
-       <div className="relative h-2 bg-black/40 rounded-full border border-white/5">
-          <div className={`absolute left-0 top-0 h-full rounded-full ${accent} transition-all duration-300 shadow-[0_0_10px_rgba(0,0,0,0.5)]`} style={{ width: `${(value / 10) * 100}%` }} />
+       <div className="relative h-1.5 bg-black/40 rounded-full border border-white/5">
+          <div className={`absolute left-0 top-0 h-full rounded-full ${accent} transition-all duration-300`} style={{ width: `${(value / 10) * 100}%` }} />
           <input 
             type="range" min="1" max="10" step="1" 
-            value={value} onChange={e => onChange(Number(e.target.value))}
+            value={value} 
+            onChange={e => onChange(Number(e.target.value))}
+            onClick={e => e.stopPropagation()}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
        </div>
-       <div className="bg-black/20 border border-white/5 rounded-2xl p-3 min-h-[50px]">
-          <p className={`text-[11px] font-black uppercase italic ${color} leading-none mb-1`}>{current?.label}</p>
-          <p className="text-[10px] text-slate-500 font-bold leading-tight italic lowercase">{current?.desc}</p>
+       <div className="bg-black/20 border border-white/5 rounded-xl p-2.5 min-h-[45px]">
+          <p className={`text-[10px] font-black uppercase italic ${color} leading-none mb-1`}>{current?.label}</p>
+          <p className="text-[9px] text-slate-500 font-bold leading-tight italic lowercase">{current?.desc}</p>
        </div>
     </div>
   )
@@ -833,68 +869,85 @@ function FARWizard({ initialData, onComplete }: any) {
        <div className="col-span-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 italic">System Realm *</label>
+                <label className="text-[9px] font-black text-slate-500 italic">System Realm *</label>
                 <StyledSelect options={systems.map((s: any) => ({ label: s.label, value: s.value }))} value={formData.system_name} onChange={e => setFormData({ ...formData, system_name: e.target.value })} />
              </div>
              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-500 italic">Failure Type *</label>
+                <label className="text-[9px] font-black text-slate-500 italic">Failure Type *</label>
                 <StyledSelect options={FAILURE_TYPES} value={formData.failure_type} onChange={e => setFormData({ ...formData, failure_type: e.target.value })} />
              </div>
           </div>
           <div className="space-y-1">
-             <label className="text-[10px] font-black text-slate-500 italic">Failure Mode Identity *</label>
-             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-black uppercase text-white outline-none focus:border-rose-500 italic placeholder:text-slate-700" />
+             <label className="text-[9px] font-black text-slate-500 italic">Failure Mode Identity *</label>
+             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-black uppercase text-white outline-none focus:border-rose-500 italic placeholder:text-slate-700" />
           </div>
           <div className="space-y-1">
-             <label className="text-[10px] font-black text-slate-500 italic">Impact Statement (Effect)</label>
-             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="DESCRIBE THE SYSTEMIC CONSEQUENCES..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-sm font-black uppercase text-white min-h-[80px] outline-none focus:border-rose-500 custom-scrollbar italic placeholder:text-slate-700" />
+             <label className="text-[9px] font-black text-slate-500 italic">Impact Statement (Effect)</label>
+             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="DESCRIBE THE SYSTEMIC CONSEQUENCES..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-black uppercase text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar italic placeholder:text-slate-700" />
           </div>
           <div className="bg-black/20 p-4 rounded-3xl border border-white/5 space-y-3">
              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-black text-slate-500 italic">Affected Infrastructure</label>
+                <label className="text-[9px] font-black text-slate-500 italic">Affected Infrastructure</label>
                 <div className="relative">
-                   <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
-                   <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[10px] font-black outline-none focus:border-rose-500 w-32" />
+                   <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
+                   <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[9px] font-black outline-none focus:border-rose-500 w-32" />
                 </div>
              </div>
-             <div className="grid grid-cols-2 gap-2 max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">
+             <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
                 {devices?.filter((d: any) => !assetSearch || d.name.toLowerCase().includes(assetSearch.toLowerCase())).map((d: any) => (
-                  <label key={d.id} className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}>
-                    <input type="checkbox" className="sr-only" checked={formData.affected_assets.includes(d.id)} onChange={() => setFormData({ ...formData, affected_assets: formData.affected_assets.includes(d.id) ? formData.affected_assets.filter((id: any) => id !== d.id) : [...formData.affected_assets, d.id] })} />
-                    <Server size={14} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
+                  <label key={d.id} 
+                    className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      checked={formData.affected_assets.includes(d.id)} 
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setFormData({ 
+                          ...formData, 
+                          affected_assets: formData.affected_assets.includes(d.id) 
+                            ? formData.affected_assets.filter((id: any) => id !== d.id) 
+                            : [...formData.affected_assets, d.id] 
+                        });
+                      }} 
+                    />
+                    <Server size={12} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
                     <div className="min-w-0">
-                       <p className="text-[11px] font-black truncate italic leading-none">{d.name}</p>
-                       <p className="text-[9px] text-slate-600 font-black truncate mt-1">{d.model}</p>
+                       <p className="text-[10px] font-black truncate italic leading-none">{d.name}</p>
+                       <p className="text-[8px] text-slate-600 font-black truncate mt-1">{d.model}</p>
                     </div>
                   </label>
                 ))}
-                {(!devices || devices.length === 0) && <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] font-black italic">Select a system to view assets</div>}
+                {(!devices || devices.length === 0) && <div className="col-span-2 py-8 text-center text-slate-600 text-[9px] font-black italic">Select a system to view assets</div>}
              </div>
           </div>
        </div>
 
        <div className="col-span-6 space-y-4">
-          <div className="bg-white/[0.02] p-6 rounded-[32px] border border-white/5 space-y-6">
+          <div className="bg-white/[0.02] p-5 rounded-[32px] border border-white/5 space-y-5">
              <GaugeSelector label="Severity" value={formData.severity} onChange={(v: any) => setFormData({ ...formData, severity: v })} levels={SEVERITY_LEVELS} color="text-rose-500" accent="bg-rose-500" />
              <GaugeSelector label="Occurrence" value={formData.occurrence} onChange={(v: any) => setFormData({ ...formData, occurrence: v })} levels={OCCURRENCE_LEVELS} color="text-amber-500" accent="bg-amber-500" />
              <GaugeSelector label="Detection" value={formData.detection} onChange={(v: any) => setFormData({ ...formData, detection: v })} levels={DETECTION_LEVELS} color="text-sky-400" accent="bg-sky-400" />
           </div>
 
-          <div className="bg-[#0f111a] rounded-[32px] p-6 border border-white/10 flex items-center justify-between relative overflow-hidden">
+          <div className="bg-[#0f111a] rounded-[32px] p-5 border border-white/10 flex items-center justify-between relative overflow-hidden">
              <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-[50px] pointer-events-none" />
              <div>
-                <p className="text-[10px] font-black text-slate-500 italic mb-1 uppercase tracking-widest">Risk Priority Number (RPN)</p>
-                <div className="flex items-baseline gap-2">
-                   <h4 className={`text-6xl font-black italic tracking-tighter ${rpn > 200 ? 'text-rose-600' : rpn > 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{rpn}</h4>
-                   <span className={`text-[12px] font-black ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL_RISK' : 'NOMINAL_RISK'}</span>
+                <p className="text-[9px] font-black text-slate-500 italic mb-1 uppercase tracking-widest leading-none">Risk Priority Number (RPN)</p>
+                <div className="flex items-baseline gap-1.5">
+                   <h4 className={`text-4xl font-black italic tracking-tighter ${rpn > 200 ? 'text-rose-600' : rpn > 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{rpn}</h4>
+                   <span className={`text-[10px] font-black ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL' : 'NOMINAL'}</span>
                 </div>
              </div>
              <button 
                disabled={!formData.system_name || !formData.title || mutation.isPending} 
                onClick={() => mutation.mutate(formData)} 
-               className="bg-rose-600 hover:bg-rose-500 text-white px-8 py-5 rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-3 italic"
+               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 italic"
              >
-               {mutation.isPending ? <RefreshCcw size={20} className="animate-spin" /> : <Save size={20} />} COMMIT_TO_MATRIX
+               {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} COMMIT
              </button>
           </div>
        </div>

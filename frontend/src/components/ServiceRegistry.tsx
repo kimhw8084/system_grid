@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText } from "lucide-react"
+import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
@@ -490,7 +490,7 @@ export default function ServiceRegistry() {
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Service Matrix Registry" sections={[{ title: "Service Types", category: "ServiceType", icon: Database }, { title: "Status Options", category: "Status", icon: RefreshCcw }, { title: "Environments", category: "Environment", icon: Globe }]} />
       <style>{`
-        .ag-theme-alpine-dark { --ag-background-color: #0a0c14; --ag-header-background-color: #141721; --ag-border-color: rgba(255, 255, 255, 0.05); --ag-foreground-color: #f1f5f9; --ag-header-foreground-color: #3b82f6; --ag-font-family: 'Inter', sans-serif; --ag-font-size: ${fontSize}px; }
+        .ag-theme-alpine-dark { --ag-background-color: #1a1b26; --ag-header-background-color: #24283b; --ag-border-color: rgba(255, 255, 255, 0.05); --ag-foreground-color: #f1f5f9; --ag-header-foreground-color: #3b82f6; --ag-font-family: 'Inter', sans-serif; --ag-font-size: ${fontSize}px; }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; font-style: italic !important; }
         .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }

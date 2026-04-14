@@ -1558,8 +1558,8 @@ export default function AssetTemp() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: #0a0c14;
-          --ag-header-background-color: #141721;
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255,255,255,0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #3b82f6;
