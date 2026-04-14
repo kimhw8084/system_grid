@@ -56,8 +56,8 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
     opt.description = data.get('description', opt.description)
     
     # Template Protection: If category is ServiceType or ExternalType, check if removing keys that are in use
-    if opt.category in ["ServiceType", "ExternalType"] and \'metadata_keys\' in data:
-        new_keys = set(data.get(\'metadata_keys\', []))
+    if opt.category in ["ServiceType", "ExternalType"] and 'metadata_keys' in data:
+        new_keys = set(data.get('metadata_keys', []))
         old_keys = set(opt.metadata_keys or [])
         removed_keys = old_keys - new_keys
         
@@ -71,18 +71,18 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
                 usage_query = select(models.ExternalEntity).filter(models.ExternalEntity.type == opt.value)
                 usage_res = await db.execute(usage_query)
                 in_use_items = usage_res.scalars().all()
-            
+
             for item in in_use_items:
                 config = item.config_json if opt.category == "ServiceType" else item.metadata_json
                 config = config or {}
                 for rk in removed_keys:
                     if rk in config and config[rk]: # If key exists and has a value
-                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key \'{rk}\' because it is in use by {opt.category.replace(\'Type\', \'\')} \'{item.name}\'")
-        
+                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key '{rk}' because it is in use by {opt.category.replace('Type', '')} '{item.name}'")
+
         opt.metadata_keys = list(new_keys)
-    elif \'metadata_keys\' in data:
-        opt.metadata_keys = data.get(\'metadata_keys\')
-    
+    elif 'metadata_keys' in data:
+        opt.metadata_keys = data.get('metadata_keys')
+
     await db.commit()
     await db.refresh(opt)
     return opt
