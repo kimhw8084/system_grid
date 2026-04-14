@@ -265,18 +265,23 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
     { value: 'Legacy', label: 'Legacy' }
   ]
 
+  // Fix: Metadata key replacement logic
   useEffect(() => {
-    if (!initialData.id) { // Only for new entities
-      const selectedType = types.find((t: any) => t.value === formData.type);
-      if (selectedType?.metadata_keys) {
-        const newMeta: any = { ...formData.metadata_json };
-        selectedType.metadata_keys.forEach((key: string) => {
-          if (!(key in newMeta)) newMeta[key] = "";
-        });
+    const selectedType = types.find((t: any) => t.value === formData.type);
+    if (selectedType?.metadata_keys) {
+      const newMeta: any = {};
+      selectedType.metadata_keys.forEach((key: string) => {
+        // Preserve existing value if key exists, otherwise empty string
+        newMeta[key] = formData.metadata_json?.[key] || "";
+      });
+      // Only update if keys have actually changed to avoid infinite loop
+      const currentKeys = Object.keys(formData.metadata_json || {}).sort().join(',');
+      const targetKeys = [...selectedType.metadata_keys].sort().join(',');
+      if (currentKeys !== targetKeys) {
         setFormData(prev => ({ ...prev, metadata_json: newMeta }));
       }
     }
-  }, [formData.type, types, initialData.id]);
+  }, [formData.type, types]);
 
   return (
     <div className="space-y-8 py-6">
@@ -293,7 +298,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               />
            </div>
            <StyledSelect
-                label="Architectural Class"
+                label="Type"
                 value={formData.type}
                 onChange={e => setFormData({...formData, type: e.target.value})}
                 options={types}
@@ -396,63 +401,45 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
         {tab === 'metadata' ? (
           <div className="space-y-8">
              <MetadataViewer data={entity.metadata_json} />
-             <div className="bg-slate-900/40 p-6 rounded-2xl border border-white/5">
-                <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4 flex items-center gap-2"><Info size={14}/> Forensic Description</h3>
-                <p className="text-sm text-slate-300 italic font-medium leading-relaxed">
-                   "{entity.description || 'No formal functional description provided for this architectural identity.'}"
-                </p>
-             </div>
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="grid grid-cols-2 gap-8">
-              <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 p-6 text-slate-800 opacity-20"><Briefcase size={60}/></div>
-                 <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4 flex items-center gap-2"><Target size={14}/> Organizational Context</h3>
-                 <div className="space-y-4 relative z-10">
-                    <div className="flex flex-col border-b border-white/5 pb-2">
-                       <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Owner Organization</span>
-                       <span className="text-lg font-black text-white tracking-tight italic">{entity.owner_organization || 'NO_OWNER_MAPPED'}</span>
-                    </div>
-                    <div className="flex flex-col border-b border-white/5 pb-2">
-                       <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Responsible Team</span>
-                       <span className="text-lg font-black text-emerald-400 tracking-tight italic">{entity.owner_team || 'NO_TEAM_MAPPED'}</span>
-                    </div>
-                 </div>
-              </div>
-              <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 flex flex-col justify-center items-center space-y-2 text-center">
-                 <Globe size={48} className="text-blue-500/20 mb-2" />
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Architectural Classification</p>
-                 <p className="text-2xl font-black text-blue-400 tracking-tighter uppercase">{entity.type}</p>
-                 <p className="text-[9px] font-black text-slate-600 uppercase mt-2">{entity.environment} // {entity.status}</p>
-              </div>
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/10 relative overflow-hidden group">
+               <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>
+               <div className="grid grid-cols-2 gap-6 relative z-10">
+                  <div className="flex flex-col border-l-2 border-white/5 pl-4">
+                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Owner Organization</span>
+                     <span className="text-sm font-black text-white tracking-tight italic">{entity.owner_organization || 'UNASSIGNED'}</span>
+                  </div>
+                  <div className="flex flex-col border-l-2 border-emerald-500/30 pl-4">
+                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Responsible Team</span>
+                     <span className="text-sm font-black text-emerald-400 tracking-tight italic">{entity.owner_team || 'UNASSIGNED'}</span>
+                  </div>
+               </div>
             </div>
 
             <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
+                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{entity.poc_json?.length || 0} Contacts</span>
               </div>
-              <div className="p-4 grid grid-cols-2 gap-4">
+              <div className="p-3 grid grid-cols-2 gap-3">
                    {entity.poc_json && entity.poc_json.length > 0 ? entity.poc_json.map((poc: any, idx: number) => (
-                     <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-2">
+                     <div key={idx} className="bg-black/40 p-3 rounded-xl border border-white/5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                           <div className="w-8 h-8 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-black text-xs">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
+                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-black text-[10px]">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
                            <div>
-                              <p className="text-[11px] font-black uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
-                              <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-1">{poc.id || 'NO_ID_REF'}</p>
+                              <p className="text-[10px] font-black uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
+                              <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-0.5">{poc.id || 'NO_ID'}</p>
                            </div>
                         </div>
-                        <div className="space-y-1 pt-2 border-t border-white/5">
-                           <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
-                              <Mail size={10} /> <span>{poc.email || 'NO_EMAIL'}</span>
-                           </div>
-                           <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
-                              <Phone size={10} /> <span>{poc.phone || 'NO_PHONE'}</span>
-                           </div>
+                        <div className="flex items-center space-x-3">
+                           <button onClick={() => window.location.href = `mailto:${poc.email}`} title={poc.email} className="text-slate-500 hover:text-amber-400 transition-colors"><Mail size={12}/></button>
+                           <button title={poc.phone} className="text-slate-500 hover:text-amber-400 transition-colors"><Phone size={12}/></button>
                         </div>
                      </div>
                    )) : (
-                     <div className="col-span-2 py-8 text-center text-slate-600 font-bold uppercase italic tracking-widest">No authorized POCs defined</div>
+                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase italic tracking-widest text-[9px]">No authorized POCs defined</div>
                    )}
               </div>
             </div>
@@ -474,19 +461,25 @@ export default function External() {
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false })
 
   const { data: options } = useQuery({ 
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
   })
 
-  const { data: entities, isLoading } = useQuery({
+  const { data: allEntities, isLoading } = useQuery({
     queryKey: ['external-entities'],
-    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json())
+    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
+
+  const entities = useMemo(() => {
+    if (!allEntities) return []
+    return allEntities.filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
+  }, [allEntities, activeTab])
 
   useEffect(() => {
     if (gridRef.current?.api) {
@@ -536,15 +529,29 @@ export default function External() {
   })
 
   const deleteMutation = useMutation({
+    mutationFn: async ({ id, purge }: { id: number, purge: boolean }) => {
+      const url = `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}`
+      const res = await apiFetch(url, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+      setConfirmModal({ isOpen: false, id: null, purge: false })
+      toast.success(variables.purge ? 'Entity Purged from Global Registry' : 'Entity Moved to Deleted Matrix')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const restoreMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
+      const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      setConfirmModal({ isOpen: false, id: null })
-      toast.success('Entity Purged from Global Registry')
+      toast.success('Entity Restored to Active Registry')
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -680,14 +687,23 @@ export default function External() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-               <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id })} title="Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               {activeTab === 'active' ? (
+                 <>
+                   <button onClick={() => setActiveModal(p.data)} title="Edit" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false })} title="Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                 </>
+               ) : (
+                 <>
+                   <button onClick={() => restoreMutation.mutate(p.data.id)} title="Restore" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><RefreshCcw size={14}/></button>
+                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: true })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                 </>
+               )}
            </div>
         </div>
       ),
       suppressHide: true
     }
-  ], [fontSize, hiddenColumns]) as any
+  ], [fontSize, hiddenColumns, activeTab]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -700,6 +716,15 @@ export default function External() {
            <div>
               <h1 className="text-2xl font-black uppercase tracking-tight italic">External</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Third-Party Asset Forensic</p>
+           </div>
+           
+           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+                <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Active
+                </button>
+                <button onClick={() => setActiveTab('deleted')} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Deleted
+                </button>
            </div>
         </div>
 
@@ -868,21 +893,26 @@ export default function External() {
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-black uppercase text-blue-400 leading-tight tracking-tighter italic">{activeDetails.name}</h2>
                     <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNKNOWN'}</p>
+                      <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className={`text-[10px] font-black uppercase tracking-widest ${
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${
                         activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
                       }`}>STATUS: {activeDetails.status}</p>
                     </div>
+                    <div className="mt-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 max-w-2xl">
+                       <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
+                          "{activeDetails.description || 'No formal functional description provided for this architectural identity.'}"
+                       </p>
+                    </div>
                   </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors p-2"><X size={28}/></button>
                </div>
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
                   <ExternalDetailsView entity={activeDetails} />
@@ -894,10 +924,12 @@ export default function External() {
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null })}
-        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
-        title="Sever External Manifest"
-        message="This will irrevocably purge the authorized identity from the global registry. All downstream forensics and connectivity mappings will lose context. Proceed with termination?"
+        onClose={() => setConfirmModal({ isOpen: false, id: null, purge: false })}
+        onConfirm={() => deleteMutation.mutate({ id: confirmModal.id, purge: confirmModal.purge })}
+        title={confirmModal.purge ? "Purge External Identity" : "Sever External Manifest"}
+        message={confirmModal.purge 
+          ? "This will IRREVOCABLY purge the identity from the global registry. Proceed with final termination?" 
+          : "This will move the authorized identity to the deleted matrix. All downstream forensics will be preserved. Proceed?"}
         variant="danger"
       />
 

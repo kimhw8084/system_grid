@@ -28,8 +28,11 @@ async def log_audit(db: AsyncSession, action: str, table: str, target_id: int, d
 # --- External Entities ---
 
 @router.get("/entities", response_model=List[schemas.ExternalEntityResponse])
-async def get_entities(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.ExternalEntity))
+async def get_entities(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+    query = select(models.ExternalEntity)
+    if not include_deleted:
+        query = query.filter(models.ExternalEntity.is_deleted == False)
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("/entities", response_model=schemas.ExternalEntityResponse)
@@ -56,20 +59,35 @@ async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(g
     await log_audit(db, "UPDATE", "external_entities", entity_id, f"Updated external entity: {obj.name}", clean_data)
     return obj
 
-@router.delete("/entities/{entity_id}")
-async def delete_entity(entity_id: int, db: AsyncSession = Depends(get_db)):
+@router.post("/entities/{entity_id}/restore")
+async def restore_entity(entity_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id))
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, "Entity not found")
     
-    # Check for links
-    link_check = await db.execute(select(models.ExternalLink).filter(models.ExternalLink.external_entity_id == entity_id))
-    if link_check.scalars().first():
-        raise HTTPException(400, "Cannot delete entity with active connectivity links")
-
-    await db.delete(obj)
+    obj.is_deleted = False
     await db.commit()
-    await log_audit(db, "DELETE", "external_entities", entity_id, f"Deleted external entity: {obj.name}")
+    await log_audit(db, "RESTORE", "external_entities", entity_id, f"Restored external entity: {obj.name}")
+    return {"status": "success"}
+
+@router.delete("/entities/{entity_id}")
+async def delete_entity(entity_id: int, purge: bool = False, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id))
+    obj = result.scalar_one_or_none()
+    if not obj: raise HTTPException(404, "Entity not found")
+    
+    if purge:
+        # Check for links
+        link_check = await db.execute(select(models.ExternalLink).filter(models.ExternalLink.external_entity_id == entity_id))
+        if link_check.scalars().first():
+            raise HTTPException(400, "Cannot purge entity with active connectivity links")
+        await db.delete(obj)
+        await log_audit(db, "PURGE", "external_entities", entity_id, f"Permanently purged external entity: {obj.name}")
+    else:
+        obj.is_deleted = True
+        await log_audit(db, "DELETE", "external_entities", entity_id, f"Soft-deleted external entity: {obj.name}")
+    
+    await db.commit()
     return {"status": "success"}
 
 # --- External Links ---
