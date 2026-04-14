@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, 
   Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity, 
   Sliders, Settings, Check, User, Mail, Phone, Tag, Info, AlertCircle, Briefcase, 
-  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson
+  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -15,70 +15,6 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 
 // --- Sub-components ---
-
-const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]) => void }) => {
-  const addPOC = () => {
-    onChange([...pocs, { first_name: '', last_name: '', id: '', email: '', phone: '' }])
-  }
-
-  const updatePOC = (index: number, field: string, value: string) => {
-    const newPocs = [...pocs]
-    newPocs[index] = { ...newPocs[index], [field]: value }
-    onChange(newPocs)
-  }
-
-  const removePOC = (index: number) => {
-    onChange(pocs.filter((_, i) => i !== index))
-  }
-
-  return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-        <div className="flex items-center space-x-3">
-          <User size={14} className="text-amber-400" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authorized Points of Contact</span>
-        </div>
-        <button onClick={addPOC} className="px-3 py-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/30 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all">+ Add POC</button>
-      </div>
-      <div className="p-4 space-y-3">
-        {pocs.length === 0 && (
-          <div className="py-8 text-center border border-dashed border-white/5 rounded-xl">
-            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">No POCs registered</p>
-          </div>
-        )}
-        {pocs.map((poc, idx) => (
-          <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-3 relative group">
-            <button onClick={() => removePOC(idx)} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><X size={14}/></button>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">First Name</label>
-                <input value={poc.first_name} onChange={e => updatePOC(idx, 'first_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane" />
-              </div>
-              <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Last Name</label>
-                <input value={poc.last_name} onChange={e => updatePOC(idx, 'last_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Doe" />
-              </div>
-              <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
-                <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value.toUpperCase())} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
-                <Mail size={10} className="text-slate-500" />
-                <input value={poc.email} onChange={e => updatePOC(idx, 'email', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="jane.doe@org.com" />
-              </div>
-              <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
-                <Phone size={10} className="text-slate-500" />
-                <input value={poc.phone} onChange={e => updatePOC(idx, 'phone', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="+1-555-0199" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
@@ -141,7 +77,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Structural Metadata Configuration</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">External Entity Metadata</span>
             {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
@@ -219,40 +155,71 @@ const MetadataViewer = ({ data }: { data: any }) => {
   )
 }
 
-const POCViewer = ({ pocs }: { pocs: any[] }) => {
+const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]) => void }) => {
+  const addPOC = () => {
+    onChange([...pocs, { first_name: '', last_name: '', id: '', email: '', phone: '' }])
+  }
+
+  const updatePOC = (index: number, field: string, value: string) => {
+    const newPocs = [...pocs]
+    newPocs[index] = { ...newPocs[index], [field]: value }
+    onChange(newPocs)
+  }
+
+  const removePOC = (index: number) => {
+    onChange(pocs.filter((_, i) => i !== index))
+  }
+
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden mt-6">
+    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
+        <div className="flex items-center space-x-3">
+          <User size={14} className="text-amber-400" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authorized Points of Contact</span>
+        </div>
+        <button onClick={addPOC} className="px-3 py-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/30 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all">+ Add POC</button>
       </div>
-      <div className="p-4 grid grid-cols-2 gap-4">
-           {pocs && pocs.length > 0 ? pocs.map((poc, idx) => (
-             <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-2">
-                <div className="flex items-center space-x-3">
-                   <div className="w-8 h-8 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-black text-xs">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
-                   <div>
-                      <p className="text-[11px] font-black uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
-                      <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-1">{poc.id || 'NO_ID_REF'}</p>
-                   </div>
-                </div>
-                <div className="space-y-1 pt-2 border-t border-white/5">
-                   <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
-                      <Mail size={10} /> <span>{poc.email || 'NO_EMAIL'}</span>
-                   </div>
-                   <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
-                      <Phone size={10} /> <span>{poc.phone || 'NO_PHONE'}</span>
-                   </div>
-                </div>
-             </div>
-           )) : (
-             <div className="col-span-2 py-8 text-center text-slate-600 font-bold uppercase italic tracking-widest">No authorized POCs defined</div>
-           )}
+      <div className="p-4 space-y-3">
+        {pocs.length === 0 && (
+          <div className="py-8 text-center border border-dashed border-white/5 rounded-xl">
+            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">No POCs registered</p>
+          </div>
+        )}
+        {pocs.map((poc, idx) => (
+          <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-3 relative group">
+            <button onClick={() => removePOC(idx)} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><X size={14}/></button>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">First Name</label>
+                <input value={poc.first_name} onChange={e => updatePOC(idx, 'first_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane" />
+              </div>
+              <div>
+                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Last Name</label>
+                <input value={poc.last_name} onChange={e => updatePOC(idx, 'last_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Doe" />
+              </div>
+              <div>
+                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
+                <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value.toUpperCase())} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
+                <Mail size={10} className="text-slate-500" />
+                <input value={poc.email} onChange={e => updatePOC(idx, 'email', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="jane.doe@org.com" />
+              </div>
+              <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
+                <Phone size={10} className="text-slate-500" />
+                <input value={poc.phone} onChange={e => updatePOC(idx, 'phone', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="+1-555-0199" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
+const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
   const [formData, setFormData] = useState({
     name: '',
     type: 'API',
@@ -268,16 +235,16 @@ const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
   const types = getOptions('ExternalType').length > 0 ? getOptions('ExternalType') : [
-    { value: 'Equipment', label: 'External Equipment', metadata_keys: ["manufacturer", "model", "serial_number"] },
+    { value: 'Equipment', label: 'Equipment', metadata_keys: ["manufacturer", "model", "serial_number"] },
     { value: 'Physical Server', label: 'Physical Server', metadata_keys: ["rack_id", "unit_position", "os"] },
     { value: 'Virtual Server', label: 'Virtual Server', metadata_keys: ["hypervisor", "vcpu", "vram", "os"] },
-    { value: 'Switch', label: 'Network Switch', metadata_keys: ["management_url", "ports", "firmware"] },
-    { value: 'DB', label: 'External Database', metadata_keys: ["engine", "port", "instance_name"] },
-    { value: 'API', label: 'External API', metadata_keys: ["base_url", "auth_type", "version"] },
-    { value: 'Script', label: 'External Script', metadata_keys: ["runtime", "path", "schedule"] }
+    { value: 'Switch', label: 'Switch', metadata_keys: ["management_url", "ports", "firmware"] },
+    { value: 'DB', label: 'DB', metadata_keys: ["engine", "port", "instance_name"] },
+    { value: 'API', label: 'API', metadata_keys: ["base_url", "auth_type", "version"] },
+    { value: 'Script', label: 'Script', metadata_keys: ["runtime", "path", "schedule"] }
   ]
 
-  const statusOptions = [
+  const statusOptions = getOptions('Status').length > 0 ? getOptions('Status') : [
     { value: 'Planned', label: 'Planned' },
     { value: 'Active', label: 'Active' },
     { value: 'Maintenance', label: 'Maintenance' },
@@ -288,7 +255,7 @@ const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
     { value: 'Reserved', label: 'Reserved' }
   ]
 
-  const envOptions = [
+  const envOptions = getOptions('Environment').length > 0 ? getOptions('Environment') : [
     { value: 'Production', label: 'Production' },
     { value: 'Staging', label: 'Staging' },
     { value: 'QA', label: 'QA' },
@@ -302,9 +269,9 @@ const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
     if (!initialData.id) { // Only for new entities
       const selectedType = types.find((t: any) => t.value === formData.type);
       if (selectedType?.metadata_keys) {
-        const newMeta: any = {};
+        const newMeta: any = { ...formData.metadata_json };
         selectedType.metadata_keys.forEach((key: string) => {
-          newMeta[key] = "";
+          if (!(key in newMeta)) newMeta[key] = "";
         });
         setFormData(prev => ({ ...prev, metadata_json: newMeta }));
       }
@@ -317,7 +284,7 @@ const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
         <div className="space-y-4">
            <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Entity Registry Name (UID) *</label>
+              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Entity Name (UID) *</label>
               <input 
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
@@ -402,6 +369,95 @@ const EntityForm = ({ initialData, onSave, isSaving, options }: any) => {
           {isSaving && <RefreshCcw size={18} className="animate-spin" />}
           <span>{initialData.id ? 'Synchronize Entity Manifest' : 'Authorize External Registry Admission'}</span>
         </button>
+      </div>
+    </div>
+  )
+}
+
+const ExternalDetailsView = ({ entity }: { entity: any }) => {
+  const [tab, setTab] = useState('metadata')
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+          {[
+            { id: 'metadata', label: 'Metadata View', icon: List },
+            { id: 'org', label: 'Organization & POCs', icon: Briefcase }
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+              <t.icon size={12} /> <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
+        {tab === 'metadata' ? (
+          <div className="space-y-8">
+             <MetadataViewer data={entity.metadata_json} />
+             <div className="bg-slate-900/40 p-6 rounded-2xl border border-white/5">
+                <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4 flex items-center gap-2"><Info size={14}/> Forensic Description</h3>
+                <p className="text-sm text-slate-300 italic font-medium leading-relaxed">
+                   "{entity.description || 'No formal functional description provided for this architectural identity.'}"
+                </p>
+             </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 gap-8">
+              <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 relative overflow-hidden group">
+                 <div className="absolute top-0 right-0 p-6 text-slate-800 opacity-20"><Briefcase size={60}/></div>
+                 <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4 flex items-center gap-2"><Target size={14}/> Organizational Context</h3>
+                 <div className="space-y-4 relative z-10">
+                    <div className="flex flex-col border-b border-white/5 pb-2">
+                       <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Owner Organization</span>
+                       <span className="text-lg font-black text-white tracking-tight italic">{entity.owner_organization || 'NO_OWNER_MAPPED'}</span>
+                    </div>
+                    <div className="flex flex-col border-b border-white/5 pb-2">
+                       <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Responsible Team</span>
+                       <span className="text-lg font-black text-emerald-400 tracking-tight italic">{entity.owner_team || 'NO_TEAM_MAPPED'}</span>
+                    </div>
+                 </div>
+              </div>
+              <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 flex flex-col justify-center items-center space-y-2 text-center">
+                 <Globe size={48} className="text-blue-500/20 mb-2" />
+                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Architectural Classification</p>
+                 <p className="text-2xl font-black text-blue-400 tracking-tighter uppercase">{entity.type}</p>
+                 <p className="text-[9px] font-black text-slate-600 uppercase mt-2">{entity.environment} // {entity.status}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-4">
+                   {entity.poc_json && entity.poc_json.length > 0 ? entity.poc_json.map((poc: any, idx: number) => (
+                     <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-2">
+                        <div className="flex items-center space-x-3">
+                           <div className="w-8 h-8 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-black text-xs">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
+                           <div>
+                              <p className="text-[11px] font-black uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
+                              <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-1">{poc.id || 'NO_ID_REF'}</p>
+                           </div>
+                        </div>
+                        <div className="space-y-1 pt-2 border-t border-white/5">
+                           <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
+                              <Mail size={10} /> <span>{poc.email || 'NO_EMAIL'}</span>
+                           </div>
+                           <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400">
+                              <Phone size={10} /> <span>{poc.phone || 'NO_PHONE'}</span>
+                           </div>
+                        </div>
+                     </div>
+                   )) : (
+                     <div className="col-span-2 py-8 text-center text-slate-600 font-bold uppercase italic tracking-widest">No authorized POCs defined</div>
+                   )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -516,16 +572,16 @@ export default function External() {
       width: 70,
       minWidth: 70,
       pinned: 'left',
-      cellClass: 'text-center font-black text-slate-500 opacity-50',
+      cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
     },
     { 
       field: "name", 
-      headerName: "Entity Identity", 
+      headerName: "Name", 
       pinned: 'left',
-      flex: 1.5,
-      cellClass: 'text-left font-black uppercase tracking-tight text-blue-400',
+      filter: true,
+      cellClass: 'text-left font-bold uppercase text-blue-400',
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("name")
@@ -534,7 +590,8 @@ export default function External() {
       field: "type", 
       headerName: "Type", 
       width: 140, 
-      cellClass: 'text-center font-black uppercase text-slate-500 tracking-widest', 
+      filter: true,
+      cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
@@ -547,7 +604,7 @@ export default function External() {
           'API': 'text-fuchsia-400',
           'Script': 'text-orange-400'
         }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-black uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
       },
       hide: hiddenColumns.includes("type")
     },
@@ -555,9 +612,10 @@ export default function External() {
       field: "owner_team", 
       headerName: "Owner Team", 
       width: 150, 
-      cellClass: 'text-center font-black uppercase text-slate-400', 
+      filter: true,
+      cellClass: 'text-center font-bold uppercase text-slate-400', 
       headerClass: 'text-center', 
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-700 font-bold uppercase italic opacity-50">UNMAPPED</span>, 
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, 
       hide: hiddenColumns.includes("owner_team") 
     },
     { 
@@ -581,7 +639,7 @@ export default function External() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-black uppercase tracking-tighter leading-none">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'Planned'}
               </span>
             </div>
@@ -592,27 +650,28 @@ export default function External() {
     },
     { 
       field: "environment", 
-      headerName: "Environment", 
-      width: 120, 
+      headerName: "Env", 
+      width: 100, 
       filter: true,
-      cellClass: 'text-center font-black text-slate-400 uppercase', 
+      cellClass: 'text-center font-bold text-slate-400 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("environment")
     },
     {
         field: "description",
         headerName: "Description",
         flex: 2,
-        cellClass: 'text-left font-medium text-slate-500 italic truncate',
+        filter: true,
+        cellClass: 'text-left font-bold text-slate-500 italic truncate',
         headerClass: 'text-left',
-        cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'No description provided'}</span>,
+        cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
         hide: hiddenColumns.includes("description")
     },
     { 
-      headerName: "Actions",
-      width: 140,
-      minWidth: 140,
+      headerName: "Action",
+      width: 120,
+      minWidth: 120,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -638,12 +697,9 @@ export default function External() {
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
-           <div className="p-2 bg-blue-600/10 border border-blue-500/20 rounded-xl">
-              <Globe size={24} className="text-blue-500" />
-           </div>
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic text-white leading-none">External Intelligence</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Global Entity Reference & Third-Party Asset Forensic</p>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">External</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Third-Party Asset Forensic</p>
            </div>
         </div>
 
@@ -678,7 +734,7 @@ export default function External() {
                 <Settings size={16} />
              </button>
           </div>
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">+ Admission</button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
         </div>
       </div>
 
@@ -697,9 +753,9 @@ export default function External() {
                      <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
-                  <div className="flex items-center space-x-10">
+                  <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Font Size</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
@@ -710,11 +766,11 @@ export default function External() {
                         </div>
                      </div>
 
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-10">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Row Density</span>
-                        <div className="flex items-center space-x-4">
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <div className="flex items-center space-x-2">
                             <input 
-                            type="range" min="0" max="30" step="2" 
+                            type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
@@ -723,25 +779,25 @@ export default function External() {
                      </div>
                   </div>
                </div>
-               <button onClick={() => setShowStyleLab(false)} className="bg-white/5 p-1.5 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
+               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-3xl border border-white/5 overflow-hidden ag-theme-alpine-dark relative shadow-2xl">
+      <div className="flex-1 glass-panel rounded-2xl border border-white/5 overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/90 backdrop-blur-md space-y-6 text-blue-400">
-             <RefreshCcw size={48} className="animate-spin" />
-             <p className="text-[12px] font-black uppercase tracking-[0.5em] animate-pulse">Synchronizing Intelligence Matrix...</p>
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>
           </div>
         )}
         <AgGridReact 
           ref={gridRef}
           rowData={entities || []} 
           columnDefs={columnDefs as any} 
-          headerHeight={fontSize + rowDensity + 15}
-          rowHeight={fontSize + rowDensity + 15}
+          headerHeight={fontSize + rowDensity + 10}
+          rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
@@ -751,20 +807,20 @@ export default function External() {
         <AnimatePresence>
           {showColumnPicker && (
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 30 }}
-              className="absolute top-0 right-0 bottom-0 w-80 bg-slate-950/95 backdrop-blur-2xl border-l border-white/10 z-[60] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
             >
-              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/5">
-                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-blue-400 flex items-center space-x-3">
-                  <Sliders size={18} /> <span>Toggle Attributes</span>
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                  <Sliders size={14} /> <span>Toggle Columns</span>
                 </h3>
-                <button onClick={() => setShowColumnPicker(false)} className="bg-white/5 p-2 rounded-full text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
               </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-1">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
                 {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
-                  <label key={col.field} className="flex items-center space-x-4 p-3 rounded-xl hover:bg-white/5 cursor-pointer group transition-all border border-transparent hover:border-white/5 shadow-inner">
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                     <div className="relative flex items-center">
                       <input
                         type="checkbox"
@@ -778,11 +834,11 @@ export default function External() {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded-md border-2 transition-all flex items-center justify-center ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white" />}
+                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-600'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -793,15 +849,15 @@ export default function External() {
 
       <AnimatePresence>
         {activeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
-                     <Globe size={28}/> <span>{activeModal.id ? 'Modify Entity Registry' : 'Admit External Identity'}</span>
+                     <Layers size={28}/> <span>{activeModal.id ? 'Modify Entity Registry' : 'Admit External Identity'}</span>
                   </h2>
                   <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>
-               <EntityForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} options={options} />
+               <ExternalForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} options={options} />
             </motion.div>
           </div>
         )}
@@ -809,41 +865,27 @@ export default function External() {
 
       <AnimatePresence>
         {activeDetails && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
                     <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">{activeDetails.type} // {activeDetails.status} // {activeDetails.environment}</p>
+                    <div className="flex items-center space-x-3 mt-1">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNKNOWN'}</p>
+                      <span className="w-1 h-1 rounded-full bg-white/20" />
+                      <p className={`text-[10px] font-black uppercase tracking-widest ${
+                        activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
+                      }`}>STATUS: {activeDetails.status}</p>
+                    </div>
                   </div>
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6 space-y-8">
-                  <div className="grid grid-cols-2 gap-8">
-                     <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-6 text-slate-800 opacity-20"><Briefcase size={60}/></div>
-                        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4 flex items-center gap-2"><Target size={14}/> Organizational Context</h3>
-                        <div className="space-y-4 relative z-10">
-                           <div className="flex flex-col border-b border-white/5 pb-2">
-                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Owner Organization</span>
-                              <span className="text-lg font-black text-white tracking-tight italic">{activeDetails.owner_organization || 'NO_OWNER_MAPPED'}</span>
-                           </div>
-                           <div className="flex flex-col border-b border-white/5 pb-2">
-                              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Responsible Team</span>
-                              <span className="text-lg font-black text-emerald-400 tracking-tight italic">{activeDetails.owner_team || 'NO_TEAM_MAPPED'}</span>
-                           </div>
-                        </div>
-                     </div>
-                     <div className="bg-slate-900/60 p-6 rounded-3xl border border-white/10 flex flex-col">
-                        <h3 className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-4 italic flex items-center gap-2"><Activity size={14}/> Functional Narrative</h3>
-                        <p className="text-base text-slate-300 leading-relaxed font-bold italic tracking-tight flex-1">
-                           "{activeDetails.description || 'No formal functional description provided for this architectural identity.'}"
-                        </p>
-                     </div>
-                  </div>
-
-                  <MetadataViewer data={activeDetails.metadata_json} />
-                  <POCViewer pocs={activeDetails.poc_json || []} />
+               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
+                  <ExternalDetailsView entity={activeDetails} />
                </div>
             </motion.div>
           </div>
@@ -864,14 +906,16 @@ export default function External() {
         onClose={() => setShowConfig(false)}
         title="External Intelligence Enumerations"
         sections={[
-            { title: "Entity Types", category: "ExternalType", icon: Globe }
+            { title: "Entity Types", category: "ExternalType", icon: Globe },
+            { title: "Status Options", category: "Status", icon: RefreshCcw },
+            { title: "Environments", category: "Environment", icon: Globe }
         ]}
       />
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: #0a0b14;
-          --ag-header-background-color: #121421;
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #3b82f6;
@@ -879,28 +923,10 @@ export default function External() {
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
-        .ag-header-cell-label { 
-            font-weight: 900 !important; 
-            text-transform: uppercase !important; 
-            letter-spacing: 0.15em !important; 
-            font-size: ${fontSize}px !important; 
-            justify-content: center !important; 
-        }
-        .ag-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center !important; 
-            font-weight: 800 !important;
-            border-right: 1px solid rgba(255,255,255,0.02) !important;
-        }
-        .ag-row { border-bottom: 1px solid rgba(255,255,255,0.03) !important; }
-        .ag-row-hover { background-color: rgba(59, 130, 246, 0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.1) !important; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.2); }
+        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
+        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )

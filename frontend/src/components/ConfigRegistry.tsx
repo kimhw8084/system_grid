@@ -86,7 +86,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                         </div>                    </>
                 )}
             </div>
-            {category === 'ServiceType' && (
+            {(category === 'ServiceType' || category === 'ExternalType') && (
                 <div className="mt-2 pl-6">
                     {editingId === opt.id ? (
                         <div className="space-y-1">

@@ -55,28 +55,33 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
     opt.label = new_label
     opt.description = data.get('description', opt.description)
     
-    # Template Protection: If category is ServiceType, check if removing keys that are in use
-    if opt.category == "ServiceType" and 'metadata_keys' in data:
-        new_keys = set(data.get('metadata_keys', []))
+    # Template Protection: If category is ServiceType or ExternalType, check if removing keys that are in use
+    if opt.category in ["ServiceType", "ExternalType"] and \'metadata_keys\' in data:
+        new_keys = set(data.get(\'metadata_keys\', []))
         old_keys = set(opt.metadata_keys or [])
         removed_keys = old_keys - new_keys
         
         if removed_keys:
-            # Check if any LogicalService of this type uses these keys
-            from sqlalchemy import and_
-            usage_query = select(models.LogicalService).filter(models.LogicalService.service_type == opt.value)
-            usage_res = await db.execute(usage_query)
-            in_use_services = usage_res.scalars().all()
+            # Check if any LogicalService or ExternalEntity of this type uses these keys
+            if opt.category == "ServiceType":
+                usage_query = select(models.LogicalService).filter(models.LogicalService.service_type == opt.value)
+                usage_res = await db.execute(usage_query)
+                in_use_items = usage_res.scalars().all()
+            else:
+                usage_query = select(models.ExternalEntity).filter(models.ExternalEntity.type == opt.value)
+                usage_res = await db.execute(usage_query)
+                in_use_items = usage_res.scalars().all()
             
-            for svc in in_use_services:
-                config = svc.config_json or {}
+            for item in in_use_items:
+                config = item.config_json if opt.category == "ServiceType" else item.metadata_json
+                config = config or {}
                 for rk in removed_keys:
                     if rk in config and config[rk]: # If key exists and has a value
-                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key '{rk}' because it is in use by service '{svc.name}'")
+                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key \'{rk}\' because it is in use by {opt.category.replace(\'Type\', \'\')} \'{item.name}\'")
         
         opt.metadata_keys = list(new_keys)
-    elif 'metadata_keys' in data:
-        opt.metadata_keys = data.get('metadata_keys')
+    elif \'metadata_keys\' in data:
+        opt.metadata_keys = data.get(\'metadata_keys\')
     
     await db.commit()
     await db.refresh(opt)
@@ -134,6 +139,9 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         if res.scalars().first(): in_use = True
     elif opt.category == "MonitoringOwnerRole":
         res = await db.execute(select(models.MonitoringOwner).filter(models.MonitoringOwner.role == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "ExternalType":
+        res = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.type == opt.value))
         if res.scalars().first(): in_use = True
         
     if in_use:
