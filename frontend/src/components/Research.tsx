@@ -478,79 +478,6 @@ export default function Research() {
       />
 
       <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="grid grid-cols-4 gap-3">
-        <CompactSummary label="Total Research" value={stats.total} icon={Activity} color="text-blue-400" />
-        <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
-        <CompactSummary label="Deep Troubleshooting" value={stats.troubleshooting} icon={AlertTriangle} color="text-amber-500" />
-        <CompactSummary label="Critical Alerts" value={stats.urgent} icon={ShieldAlert} color="text-rose-500" />
-      </div>
-
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
-        {(isLoading || rcaLoading) && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
-             <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
-          </div>
-        )}
-        <AgGridReact
-          ref={gridRef}
-          rowData={combinedData}
-          columnDefs={columnDefs as any}
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
-          quickFilterText={searchTerm}
-          animateRows={true}
-          enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
-        />
-      </div>
-
-      <AnimatePresence>
         {activeModal && (
           <ResearchForm 
             item={activeModal} 
@@ -567,6 +494,8 @@ export default function Research() {
             onClose={() => setActiveDetails(null)} 
             onSave={(d: any) => mutation.mutate(d)}
             setConfirmModal={setConfirmModal}
+            fontSize={fontSize}
+            rowDensity={rowDensity}
           />
         )}
         {activeRcaModal && (
@@ -688,7 +617,7 @@ function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any
   )
 }
 
-function ResearchDetails({ item, onClose, onSave, setConfirmModal }: any) {
+function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
