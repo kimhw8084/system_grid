@@ -541,7 +541,7 @@ export default function Research() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
@@ -552,6 +552,7 @@ export default function Research() {
             align-items: center; 
             justify-content: center !important; 
             font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
@@ -585,7 +586,7 @@ function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Research Title</label>
-            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-white font-bold" placeholder="E.G. CLUSTER LATENCY ANALYSIS" />
+            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-white font-bold" placeholder="E.G. CLUSTER LATENCY ANALYSIS" />
           </div>
 
           <StyledSelect label="Category" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} options={categories.map(c => ({value: c, label: c}))} />
@@ -869,7 +870,7 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
         <div className="grid grid-cols-2 gap-6">
           <div className="col-span-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Incident Title</label>
-            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-white font-bold shadow-inner" placeholder="E.G. FAB-2 LINE BLOCKAGE: SENSOR FAILURE" />
+            <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-white font-bold shadow-inner" placeholder="E.G. FAB-2 LINE BLOCKAGE: SENSOR FAILURE" />
           </div>
 
           <StyledSelect 

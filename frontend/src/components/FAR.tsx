@@ -17,6 +17,8 @@ import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
+import { MonitoringForm } from './MonitoringGrid'
+import { ProjectForm } from './Projects'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -575,6 +577,9 @@ export default function FAR() {
                 autoSizeStrategy={autoSizeStrategy}
                 rowSelection="multiple"
                 onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
+                onGridReady={(params: any) => {
+                  setTimeout(() => params.api.sizeColumnsToFit(), 100);
+                }}
               />
               <AnimatePresence>
                 {showColumnPicker && (
@@ -646,11 +651,11 @@ export default function FAR() {
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #f43f5e;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
+          --ag-font-size: 11px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; font-style:  !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; }
+        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: 11px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: 11px !important; }
         .ag-row-hover { background-color: rgba(244, 63, 94, 0.05) !important; }
         .ag-row-selected { background-color: rgba(244, 63, 94, 0.2) !important; }
       `}</style>
@@ -661,7 +666,7 @@ export default function FAR() {
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-[40px] border border-rose-500/20 overflow-hidden shadow-2xl">
                <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
                   <div>
-                    <h1 className="text-3xl font-bold uppercase  tracking-tighter text-white">DOCUMENT_FAILURE_VECTOR</h1>
+                    <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">New Failure Mode</h1>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Reliability Engineering Risk Documentation Studio</p>
                   </div>
                   <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={20}/></button>
@@ -810,9 +815,9 @@ function HeaderScore({ label, value, color }: any) {
   const bgColors: any = { rose: 'bg-rose-500/10', amber: 'bg-amber-500/10', sky: 'bg-sky-500/10' }
   const borderColors: any = { rose: 'border-rose-500/20', amber: 'border-amber-500/20', sky: 'border-sky-500/20' }
   return (
-    <div className={`w-10 h-10 rounded-lg ${bgColors[color]} border ${borderColors[color]} flex flex-col items-center justify-center`}>
-       <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
-       <p className={`text-lg font-bold leading-none ${textColors[color]}`}>{value}</p>
+    <div className={`w-11 h-11 rounded-lg ${bgColors[color]} border ${borderColors[color]} flex flex-col items-center justify-center`}>
+       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">{label}</p>
+       <p className={`text-xl font-bold leading-none ${textColors[color]}`}>{value}</p>
     </div>
   )
 }
@@ -822,13 +827,13 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
   return (
     <div className="space-y-3">
        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-bold text-slate-400  tracking-widest uppercase">{label}</label>
+          <label className="text-[11px] font-bold text-slate-400  tracking-widest uppercase">{label}</label>
           <div className="flex items-center gap-2">
-             <span className={`text-xl font-bold ${color}`}>{value}</span>
-             <span className="text-slate-700 text-[9px] font-bold">/ 10</span>
+             <span className={`text-2xl font-bold ${color}`}>{value}</span>
+             <span className="text-slate-700 text-[10px] font-bold">/ 10</span>
           </div>
        </div>
-       <div className="relative h-1.5 bg-black/40 rounded-full border border-white/5">
+       <div className="relative h-2 bg-black/40 rounded-full border border-white/5">
           <div className={`absolute left-0 top-0 h-full rounded-full ${accent} transition-all duration-300`} style={{ width: `${(value / 10) * 100}%` }} />
           <input 
             type="range" min="1" max="10" step="1" 
@@ -838,9 +843,9 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
        </div>
-       <div className="bg-black/20 border border-white/5 rounded-xl p-2.5 min-h-[45px]">
-          <p className={`text-[10px] font-bold uppercase  ${color} leading-none mb-1`}>{current?.label}</p>
-          <p className="text-[9px] text-slate-500 font-bold leading-tight  lowercase">{current?.desc}</p>
+       <div className="bg-black/20 border border-white/5 rounded-xl p-3 min-h-[50px]">
+          <p className={`text-[11px] font-bold uppercase  ${color} leading-none mb-1.5`}>{current?.label}</p>
+          <p className="text-[10px] text-slate-500 font-bold leading-tight lowercase">{current?.desc}</p>
        </div>
     </div>
   )
@@ -880,11 +885,11 @@ function FARWizard({ initialData, onComplete }: any) {
           </div>
           <div className="space-y-1">
              <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
-             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold uppercase text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
+             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
           </div>
           <div className="space-y-1">
              <label className="text-[9px] font-bold text-slate-500 ">Impact Statement (Effect)</label>
-             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="DESCRIBE THE SYSTEMIC CONSEQUENCES..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold uppercase text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
+             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
           </div>
           <div className="bg-black/20 p-4 rounded-3xl border border-white/5 space-y-3">
              <div className="flex items-center justify-between">
@@ -917,8 +922,8 @@ function FARWizard({ initialData, onComplete }: any) {
                     />
                     <Server size={12} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
                     <div className="min-w-0">
-                       <p className="text-[10px] font-bold truncate  leading-none">{d.name}</p>
-                       <p className="text-[8px] text-slate-600 font-bold truncate mt-1">{d.model}</p>
+                       <p className="text-[11px] font-bold truncate  leading-none">{d.name}</p>
+                       <p className="text-[9px] text-slate-600 font-bold truncate mt-1">{d.model}</p>
                     </div>
                   </label>
                 ))}
@@ -961,21 +966,21 @@ function CausalTab({ mode, onUpdate }: any) {
   const [newCause, setNewCause] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
   const mutation = useMutation({ 
     mutationFn: async (data: any) => (await apiFetch('/api/v1/far/causes', { method: 'POST', body: JSON.stringify({ ...data, mode_ids: [mode.id] }) })).json(), 
-    onSuccess: () => { toast.success('Trace Origin Logged'); setIsAdding(false); onUpdate(); } 
+    onSuccess: () => { toast.success('Root Cause Logged'); setIsAdding(false); onUpdate(); } 
   })
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
-          {!isAdding && <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Origin Trace</button>}
+          <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
        </div>
        
        <div className="flex-1 bg-black/40 border border-white/5 rounded-[32px] overflow-hidden flex flex-col shadow-2xl">
           <table className="w-full text-left border-collapse">
              <thead className="bg-white/[0.03] border-b border-white/10">
                 <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
-                   <th className="px-8 py-4">Trace Description (Logical Origin)</th>
+                   <th className="px-8 py-4">Root Cause Description (Logical Origin)</th>
                    <th className="px-8 py-4 text-center">Occur Lv</th>
                    <th className="px-8 py-4">Responsible Unit</th>
                    <th className="px-8 py-4 text-center">BKMs</th>
@@ -983,33 +988,18 @@ function CausalTab({ mode, onUpdate }: any) {
                 </tr>
              </thead>
              <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
-                {isAdding && (
-                  <tr className="bg-amber-500/5 animate-in fade-in slide-in-from-top-2">
-                     <td className="px-8 py-4">
-                        <input autoFocus value={newCause.cause_text} onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})} placeholder="ENTER LOGICAL TRACE ORIGIN..." className="w-full bg-black/40 border border-amber-500/30 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 " />
-                     </td>
-                     <td className="px-8 py-4">
-                        <select value={newCause.occurrence_level} onChange={e => setNewCause({...newCause, occurrence_level: Number(e.target.value)})} className="bg-black/40 border border-amber-500/30 rounded-lg px-2 py-2 text-white outline-none w-full text-center">
-                           {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                     </td>
-                     <td className="px-8 py-4">
-                        <input value={newCause.responsible_team} onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 " />
-                     </td>
-                     <td className="px-8 py-4 text-center">--</td>
-                     <td className="px-8 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                           <button onClick={() => setIsAdding(false)} className="p-2 text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-                           <button onClick={() => mutation.mutate(newCause)} className="p-2 text-amber-500 hover:text-amber-400 transition-colors"><Save size={16}/></button>
-                        </div>
-                     </td>
-                  </tr>
-                )}
                 {mode.causes?.map((c: any) => (
                   <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
                      <td className="px-8 py-5 text-white ">{c.cause_text}</td>
-                     <td className="px-8 py-5 text-center"><span className="text-amber-500  font-bold">{c.occurrence_level}/10</span></td>
-                     <td className="px-8 py-5 text-slate-400">{c.responsible_team}</td>
+                     <td className="px-8 py-5 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                           <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div className="h-full bg-amber-500" style={{ width: `${c.occurrence_level * 10}%` }} />
+                           </div>
+                           <span className="text-amber-500 w-4">{c.occurrence_level}</span>
+                        </div>
+                     </td>
+                     <td className="px-8 py-5 text-slate-400">{c.responsible_team || 'UNASSIGNED'}</td>
                      <td className="px-8 py-5 text-center">
                         <span className={`px-3 py-1 rounded-lg text-[9px] font-bold ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
                            {c.resolutions?.length || 0} BKMS
@@ -1020,12 +1010,74 @@ function CausalTab({ mode, onUpdate }: any) {
                      </td>
                   </tr>
                 ))}
-                {(!mode.causes?.length && !isAdding) && (
+                {(!mode.causes?.length) && (
                   <tr><td colSpan={5} className="py-32 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No attribution traces linked to this vector</td></tr>
                 )}
              </tbody>
           </table>
        </div>
+
+       <AnimatePresence>
+         {isAdding && (
+           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-lg p-10 rounded-[40px] border border-amber-500/30 space-y-8">
+                <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                   <div className="flex items-center gap-4">
+                      <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 border border-amber-500/20"><Zap size={24}/></div>
+                      <div>
+                         <h3 className="text-xl font-bold uppercase tracking-tighter text-white">Add Root Cause</h3>
+                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Attribute the technical origin of failure</p>
+                      </div>
+                   </div>
+                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Description</label>
+                      <textarea 
+                        autoFocus
+                        value={newCause.cause_text} 
+                        onChange={e => setNewCause({...newCause, cause_text: e.target.value})} 
+                        placeholder="ENTER LOGICAL TRACE ORIGIN..." 
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white outline-none focus:border-amber-500 min-h-[100px] resize-none" 
+                      />
+                   </div>
+
+                   <GaugeSelector 
+                      label="Occurrence Probability" 
+                      value={newCause.occurrence_level} 
+                      onChange={(v: number) => setNewCause({...newCause, occurrence_level: v})} 
+                      levels={OCCURRENCE_LEVELS} 
+                      color="text-amber-500" 
+                      accent="bg-amber-500" 
+                   />
+
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Responsible Team / Unit</label>
+                      <input 
+                        value={newCause.responsible_team} 
+                        onChange={e => setNewCause({...newCause, responsible_team: e.target.value})} 
+                        placeholder="E.G. PLATFORM INFRASTRUCTURE" 
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-amber-500 uppercase" 
+                      />
+                   </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                   <button onClick={() => setIsAdding(false)} className="flex-1 py-4 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+                   <button 
+                     disabled={!newCause.cause_text || mutation.isPending} 
+                     onClick={() => mutation.mutate(newCause)} 
+                     className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-amber-600/20 transition-all flex items-center justify-center gap-2"
+                   >
+                     {mutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />} LOG ROOT CAUSE
+                   </button>
+                </div>
+             </motion.div>
+           </div>
+         )}
+       </AnimatePresence>
     </motion.div>
   )
 }
@@ -1033,29 +1085,78 @@ function CausalTab({ mode, onUpdate }: any) {
 function RoadmapTab({ mode, onUpdate }: any) {
   const [isAdding, setIsAdding] = useState(false)
   const [actionType, setActionType] = useState('Workaround')
-  const [newAction, setNewAction] = useState<any>({ steps: '', team: '', status: 'Not Started', bkm_mode: 'input', bkm_content: '', bkm_id: null })
+  const [newAction, setNewAction] = useState<any>({ steps: '', team: '', status: 'Not Started', bkm_mode: 'link', bkm_content: '', bkm_id: null, monitoring_id: null })
+  const [monitoringSearch, setMonitoringSearch] = useState('')
+  const [showMonitoringCreate, setShowMonitoringCreate] = useState(false)
+  const [showProjectCreate, setShowProjectCreate] = useState(false)
   
   const queryClient = useQueryClient()
   const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await apiFetch('/api/v1/devices/')).json() })
+  const { data: settingsOptions } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+
+  const filteredMonitoring = useMemo(() => {
+    if (!monitoring) return []
+    const affectedIds = mode.affected_assets?.map((a: any) => a.id) || []
+    return monitoring.filter((m: any) => {
+      const matchesSearch = !monitoringSearch || m.title.toLowerCase().includes(monitoringSearch.toLowerCase()) || m.device_name?.toLowerCase().includes(monitoringSearch.toLowerCase())
+      const isAffected = affectedIds.includes(m.device_id)
+      return matchesSearch && isAffected
+    })
+  }, [monitoring, monitoringSearch, mode.affected_assets])
   
   const mutation = useMutation({ 
     mutationFn: async (data: any) => {
-      if (actionType === 'Prevention') {
-        // Prevention triggers Project addition
-        await apiFetch('/api/v1/projects/', { 
-          method: 'POST', 
-          body: JSON.stringify({ title: `PREVENTION: ${mode.title}`, status: data.status, owner_team: data.team, description: data.steps }) 
-        });
-        await apiFetch(`/api/v1/far/modes/${mode.id}`, { method: 'PUT', body: JSON.stringify({ status: 'Prevented' }) });
-      } else {
-        await apiFetch('/api/v1/far/mitigations', { 
-          method: 'POST', 
-          body: JSON.stringify({ mitigation_type: actionType, mitigation_steps: data.steps, responsible_team: data.team, mode_ids: [mode.id] }) 
-        });
+      let payload: any = { 
+        mitigation_type: actionType, 
+        responsible_team: data.team, 
+        mode_ids: [mode.id],
+        status: data.status
       }
+      
+      if (actionType === 'Monitoring') {
+        payload.monitoring_item_id = data.monitoring_id
+      } else if (actionType === 'Workaround') {
+        payload.mitigation_steps = data.steps
+        // Handle BKM linking/embedding
+        if (data.bkm_mode === 'link' && data.bkm_id) {
+          payload.metadata_json = { linked_bkm_id: data.bkm_id }
+        } else if (data.bkm_mode === 'input' && data.bkm_content) {
+          payload.metadata_json = { external_bkm_link: data.bkm_content }
+        }
+      }
+
+      const res = await apiFetch('/api/v1/far/mitigations', { 
+        method: 'POST', 
+        body: JSON.stringify(payload) 
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
     }, 
-    onSuccess: () => { toast.success('Strategic Action Deployed'); setIsAdding(false); onUpdate(); } 
+    onSuccess: () => { 
+      toast.success(`${actionType} Deployed Successfully`); 
+      setIsAdding(false); 
+      onUpdate(); 
+      queryClient.invalidateQueries({ queryKey: ['far'] });
+    },
+    onError: (err: any) => {
+      toast.error(`Deployment Failed: ${err.message}`);
+    }
+  })
+
+  const projectMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/projects/', { method: 'POST', body: JSON.stringify({ ...data, linked_device_ids: mode.affected_assets?.map((a:any)=>a.id) || [] }) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Prevention Project Initiated')
+      setShowProjectCreate(false)
+      setIsAdding(false)
+      onUpdate()
+    }
   })
 
   return (
@@ -1064,18 +1165,18 @@ function RoadmapTab({ mode, onUpdate }: any) {
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Defense Infrastructure Roadmap</h3>
           {!isAdding && (
             <div className="flex gap-2">
-               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); setNewAction({ ...newAction, steps: '', team: '', status: 'Not Started' }) }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
                <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); setShowProjectCreate(true); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
             </div>
           )}
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-          {isAdding && (
+          {isAdding && actionType !== 'Prevention' && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-[32px] p-8 space-y-6 relative">
                <div className="flex items-center justify-between">
-                  <h4 className={`text-xl font-bold uppercase  tracking-tighter ${actionType === 'Prevention' ? 'text-emerald-500' : actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
+                  <h4 className={`text-xl font-bold uppercase  tracking-tighter ${actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
                </div>
 
@@ -1083,51 +1184,93 @@ function RoadmapTab({ mode, onUpdate }: any) {
                   <div className="space-y-4">
                      {actionType === 'Workaround' && (
                         <div className="space-y-2">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase">Procedural Steps (Auto-Numbered)</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="STEP 1: ...\nSTEP 2: ..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500  uppercase leading-relaxed" />
+                           <label className="text-[10px] font-bold text-slate-500  uppercase">Procedural steps (Raw input - Manual Numbering)</label>
+                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value})} placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed" />
                         </div>
                      )}
                      {actionType === 'Monitoring' && (
                         <div className="space-y-4">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase">Link Active Monitor</label>
-                           <select value={newAction.monitoring_id} onChange={e => setNewAction({...newAction, monitoring_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500  uppercase">
-                              <option value="">SELECT EXISTING MONITOR...</option>
-                              {monitoring?.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
-                           </select>
-                           <p className="text-[10px] text-slate-500  text-center uppercase tracking-widest">OR</p>
-                           <button className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-[10px] font-bold text-slate-500 hover:border-sky-500/50 hover:text-sky-400 transition-all uppercase ">+ Create New Logic Node</button>
-                        </div>
-                     )}
-                     {actionType === 'Prevention' && (
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase">Architectural Hardening Plan</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="DESCRIBE DESIGN CHANGE OR ELIMINATION PROOF..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-emerald-500  uppercase leading-relaxed" />
+                           <div className="flex items-center justify-between px-1">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Link Active Monitor</label>
+                              <span className="text-[9px] font-bold text-sky-400 uppercase italic">Filtered by affected assets</span>
+                           </div>
+                           <div className="relative">
+                              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                              <input 
+                                value={monitoringSearch} 
+                                onChange={e => setMonitoringSearch(e.target.value)} 
+                                placeholder="Search monitors..." 
+                                className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500"
+                              />
+                           </div>
+                           <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                              {filteredMonitoring?.map((m: any) => (
+                                <button 
+                                  key={m.id} 
+                                  onClick={() => setNewAction({...newAction, monitoring_id: m.id})}
+                                  className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between group ${newAction.monitoring_id === m.id ? 'bg-sky-600/20 border-sky-500 shadow-lg shadow-sky-500/10' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                                >
+                                   <div>
+                                      <p className="text-[11px] font-bold text-white uppercase tracking-tight">{m.title}</p>
+                                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">{m.device_name} // {m.platform}</p>
+                                   </div>
+                                   {newAction.monitoring_id === m.id && <Check size={16} className="text-sky-400" />}
+                                </button>
+                              ))}
+                              {filteredMonitoring?.length === 0 && (
+                                <div className="py-10 text-center text-slate-700 text-[10px] font-bold border-2 border-dashed border-white/5 rounded-2xl">
+                                   No existing monitors found for affected assets
+                                </div>
+                              )}
+                           </div>
+                           <div className="text-[10px] text-slate-500 text-center uppercase tracking-widest">OR</div>
+                           <button onClick={() => setShowMonitoringCreate(true)} className="w-full py-4 bg-sky-600/10 border-2 border-dashed border-sky-500/30 rounded-2xl text-[10px] font-bold text-sky-400 hover:bg-sky-600/20 hover:border-sky-500/50 transition-all uppercase flex items-center justify-center gap-2">
+                              <Plus size={14} /> Create New Monitoring Node
+                           </button>
                         </div>
                      )}
                   </div>
 
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500  uppercase">Owner Team</label><input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-white/20  uppercase" /></div>
-                        <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500  uppercase">Initial Status</label><select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-white/20 uppercase"><option value="Not Started">NOT_STARTED</option><option value="In Progress">IN_PROGRESS</option><option value="On Hold">ON_HOLD</option><option value="Blocked">BLOCKED</option><option value="Completed">COMPLETED</option></select></div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Owner Team</label>
+                           <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value})} placeholder="e.g. Platform SRE" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20" />
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Initial Status</label>
+                           <select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-[11px] text-xs font-bold text-white outline-none focus:border-white/20 uppercase appearance-none">
+                              <option value="Not Started">Not Started</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="On Hold">On Hold</option>
+                              <option value="Blocked">Blocked</option>
+                              <option value="Completed">Completed</option>
+                           </select>
+                        </div>
                      </div>
 
                      {actionType === 'Workaround' && (
-                        <div className="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-4">
-                           <div className="flex items-center justify-between"><label className="text-[10px] font-bold text-slate-500  uppercase">BKM Alignment (Optional)</label><div className="flex gap-2"><button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`text-[8px] font-bold uppercase ${newAction.bkm_mode === 'input' ? 'text-amber-400' : 'text-slate-600'}`}>Direct</button><button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`text-[8px] font-bold uppercase ${newAction.bkm_mode === 'link' ? 'text-amber-400' : 'text-slate-600'}`}>Link</button></div></div>
+                        <div className="bg-black/20 p-6 rounded-3xl border border-white/5 space-y-5">
+                           <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">BKM Alignment</label>
+                              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'input' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Paste Link</button>
+                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'link' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Direct Link</button>
+                              </div>
+                           </div>
                            {newAction.bkm_mode === 'input' ? (
-                              <textarea value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value.toUpperCase()})} placeholder="PASTE RECOVERY INSTRUCTIONS HERE..." className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-slate-300 min-h-[100px] outline-none focus:border-amber-500  uppercase" />
+                              <input value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value})} placeholder="PASTE EXTERNAL KNOWLEDGE LINK..." className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-blue-400 outline-none focus:border-amber-500" />
                            ) : (
-                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none  uppercase">
+                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none uppercase appearance-none">
                                  <option value="">SELECT BKM ARTIFACT...</option>
                                  {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
                               </select>
                            )}
-                           <button className="w-full py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[9px] font-bold text-amber-500 hover:bg-amber-500 hover:text-white transition-all uppercase ">+ New BKM Document</button>
+                           <p className="text-[9px] text-slate-600 font-bold uppercase text-center italic tracking-widest">Ensures cross-referencing between FAR and BKM modules</p>
                         </div>
                      )}
 
-                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-4 rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all  ${actionType === 'Prevention' ? 'bg-emerald-600 shadow-emerald-600/20' : actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20' : 'bg-amber-600 shadow-amber-600/20'}`}>Commit Strategic Action</button>
+                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-5 rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 ${actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20 hover:bg-sky-500' : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-500'}`}>Commit Strategic Action</button>
                   </div>
                </div>
             </motion.div>
@@ -1152,12 +1295,18 @@ function RoadmapTab({ mode, onUpdate }: any) {
                         </td>
                         <td className="px-8 py-5 text-white  max-w-xl">
                            <div className="space-y-1">
-                              {m.mitigation_steps.split('\n').map((line: string, i: number) => (
+                              {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
                                    <span className="text-slate-600 text-[9px] font-bold">{i + 1}</span>
-                                   <span>{line}</span>
+                                   <span className="normal-case">{line}</span>
                                 </div>
                               ))}
+                              {m.monitoring_item && (
+                                 <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl mt-2 group/item hover:bg-sky-500/10 transition-all">
+                                    <Monitor size={14} className="text-sky-400" />
+                                    <span className="text-sky-400 tracking-tight normal-case">Linked Monitor: {m.monitoring_item.title}</span>
+                                 </div>
+                              )}
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
@@ -1169,29 +1318,174 @@ function RoadmapTab({ mode, onUpdate }: any) {
                         </td>
                      </tr>
                    ))}
+                   {mode.mitigations?.length === 0 && (
+                      <tr><td colSpan={5} className="py-20 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No mitigation shields active</td></tr>
+                   )}
                 </tbody>
              </table>
           </div>
        </div>
-    </motion.div>
-  )
-}
 
-function HistoryTab({ mode, onUpdate }: any) {
-  const { data: research } = useQuery({ queryKey: ['research-items'], queryFn: async () => (await apiFetch('/api/v1/research/')).json() })
-  
-  return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
-       <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500 ">Analytical Research History</h3>
-          <button className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
-       </div>
-       
-       <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-20 ">
-          <Activity size={48} className="text-slate-500" />
-          <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-center max-w-md">No historical research artifacts currently mapped to this failure vector</p>
-          <button className="text-[10px] font-bold uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
-       </div>
+       <AnimatePresence>
+          {showMonitoringCreate && (
+             <MonitoringForm 
+                item={null}
+                devices={devices}
+                categories={settingsOptions?.filter((o:any)=>o.category==="MonitoringCategory") || []}
+                severities={settingsOptions?.filter((o:any)=>o.category==="MonitoringSeverity") || []}
+                notificationMethods={settingsOptions?.filter((o:any)=>o.category==="NotificationMethod") || []}
+                ownerRoles={settingsOptions?.filter((o:any)=>o.category==="MonitoringOwnerRole") || []}
+                onClose={() => setShowMonitoringCreate(false)}
+                onSuccess={(newItem: any) => {
+                   setShowMonitoringCreate(false);
+                   queryClient.invalidateQueries({ queryKey: ['monitoring-items'] });
+                   if (newItem?.id) {
+                      setNewAction({ ...newAction, monitoring_id: newItem.id });
+                   }
+                }}
+             />
+          )}
+          {showProjectCreate && (
+             <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
+                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-y-auto p-12 rounded-[60px] border border-emerald-500/30 custom-scrollbar shadow-2xl">
+                   <div className="flex items-center justify-between border-b border-white/5 pb-8">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 rounded-[28px] bg-emerald-600 flex items-center justify-center text-white shadow-xl shadow-emerald-600/20">
+                           <ShieldCheck size={32}/>
+                        </div>
+                        <div>
+                          <h2 className="text-4xl font-bold uppercase text-white tracking-tighter">Initiate Prevention Project</h2>
+                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1 italic">Architectural Hardening & Risk Elimination</p>
+                        </div>
+                      </div>
+                      <button onClick={() => { setShowProjectCreate(false); setIsAdding(false); }} className="text-slate-500 hover:text-white transition-colors bg-white/5 p-4 rounded-full"><X size={32}/></button>
+                   </div>
+                   <ProjectForm 
+                      initialData={{ name: `PREVENTION: ${mode.title}`, description: mode.effect, status: 'Planning', priority: 'High' }} 
+                      onSave={projectMutation.mutate} 
+                      isSaving={projectMutation.isPending} 
+                   />
+                </motion.div>
+             </div>
+          )}
+       </AnimatePresence>
     </motion.div>
   )
 }
+  function HistoryTab({ mode, onUpdate }: any) {
+    const [isLinking, setIsLinking] = useState(false)
+    const [search, setSearch] = useState('')
+    const queryClient = useQueryClient()
+
+    const { data: research } = useQuery({ 
+      queryKey: ['research-items'], 
+      queryFn: async () => (await apiFetch('/api/v1/research/')).json() 
+    })
+
+    const filteredResearch = useMemo(() => {
+      if (!research) return []
+      return research.filter((r: any) => 
+        !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.summary?.toLowerCase().includes(search.toLowerCase())
+      )
+    }, [research, search])
+
+    const linkMutation = useMutation({
+      mutationFn: async (researchId: number) => {
+        const currentLinks = mode.metadata_json?.linked_research_ids || []
+        if (currentLinks.includes(researchId)) {
+          toast.error('Research artifact already linked')
+          return
+        }
+        const updatedMetadata = { ...mode.metadata_json, linked_research_ids: [...currentLinks, researchId] }
+        const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ metadata_json: updatedMetadata })
+        })
+        if (!res.ok) throw new Error(await res.text())
+        return res.json()
+      },
+      onSuccess: () => {
+        toast.success('Research Artifact Linked to Vector')
+        setIsLinking(false)
+        onUpdate()
+        queryClient.invalidateQueries({ queryKey: ['far'] })
+      },
+      onError: (err: any) => {
+        toast.error(`Linking Failed: ${err.message}`)
+      }
+    })
+
+    const linkedResearch = useMemo(() => {
+      if (!research || !mode.metadata_json?.linked_research_ids) return []
+      return research.filter((r: any) => mode.metadata_json.linked_research_ids.includes(r.id))
+    }, [research, mode.metadata_json])
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
+         <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500 ">Analytical Research History</h3>
+            <button onClick={() => setIsLinking(true)} className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
+         </div>
+
+         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+            {linkedResearch.map((r: any) => (
+               <div key={r.id} className="bg-white/5 border border-white/5 rounded-3xl p-6 flex items-center justify-between group hover:bg-white/10 transition-all">
+                  <div className="flex items-center gap-6">
+                     <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-400 border border-blue-500/20"><Activity size={24}/></div>
+                     <div>
+                        <h4 className="text-sm font-bold text-white uppercase tracking-tight">{r.title}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                           <span className="text-[9px] font-bold text-slate-500 uppercase">Status: {r.status}</span>
+                           <span className="text-[9px] font-bold text-slate-500 uppercase">ID: {r.id}</span>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="flex gap-3">
+                     <button onClick={() => window.location.hash = '#/research'} className="p-2.5 bg-white/5 rounded-xl text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
+                     <button className="p-2.5 bg-white/5 rounded-xl text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
+                  </div>
+               </div>
+            ))}
+            {linkedResearch.length === 0 && (
+               <div className="flex-1 flex flex-col items-center justify-center py-20 space-y-4 opacity-20 ">
+                  <Activity size={48} className="text-slate-500" />
+                  <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-center max-w-md">No historical research artifacts currently mapped to this failure vector</p>
+                  <button onClick={() => window.location.hash = '#/research'} className="text-[10px] font-bold uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
+               </div>
+            )}
+         </div>
+         <AnimatePresence>
+            {isLinking && (
+               <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-[40px] border border-white/10 space-y-6">
+                     <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                        <h3 className="text-xl font-bold uppercase text-white tracking-tighter">Link Research</h3>
+                        <button onClick={() => setIsLinking(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+                     </div>
+                     <div className="relative">
+                        <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                        <input 
+                          value={search} 
+                          onChange={e => setSearch(e.target.value)} 
+                          placeholder="Search research artifacts..." 
+                          className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-rose-500" 
+                        />
+                     </div>
+                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                        {filteredResearch?.map((r: any) => (
+                          <button 
+                            key={r.id} 
+                            onClick={() => linkMutation.mutate(r.id)}
+                            className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-rose-500/30 hover:bg-rose-500/5 transition-all group"
+                          >
+                             <p className="text-[11px] font-bold text-white uppercase">{r.title}</p>
+                             <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Status: {r.status}</p>
+                          </button>
+                        ))}
+                     </div>
+                  </motion.div>
+               </div>
+            )}
+         </AnimatePresence>
+      </motion.div>
+    )
+  }

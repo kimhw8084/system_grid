@@ -291,7 +291,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <div className="grid grid-cols-2 gap-3">
              <div className="col-span-2">
                 <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Service Identifier *</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-3 py-2 text-xs font-bold uppercase  text-white outline-none focus:border-blue-500`} placeholder="E.G. ERP_DB_PROD_01" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-3 py-2 text-xs font-bold uppercase  text-white outline-none focus:border-blue-500`} placeholder="E.G. ERP_DB_PROD_01" />
              </div>
              <StyledSelect label="Host Node" value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})} options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []} placeholder="Unassigned (Floating)" />
              <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App", "ToolStack"].map(t => ({ value: t, label: t }))} />
@@ -300,7 +300,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
              <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Deployment Date</label><input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" /></div>
              <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Software Version</label><input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" placeholder="v1.0.0" /></div>
            </div>
-           <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold uppercase  outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
+           <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold uppercase  outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
         </div>
 
         <div className="space-y-4">
@@ -316,7 +316,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest ">Licensing & Procurement Artifacts</h3>
            <div className="grid grid-cols-4 gap-3">
               <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Purchase Model</label><select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-bold uppercase  outline-none focus:border-blue-500"><option value="One-time">Purchase</option><option value="Subscription">SaaS</option><option value="OEM">OEM</option><option value="Free">OpenSource</option></select></div>
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-bold uppercase  outline-none focus:border-blue-500" placeholder="Developer" /></div>
+              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-bold uppercase  outline-none focus:border-blue-500" placeholder="Developer" /></div>
               <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">License Key</label><input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-mono outline-none focus:border-blue-500" placeholder="XXXX-XXXX" /></div>
               <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Expiry Date</label><input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500" /></div>
            </div>
@@ -507,10 +507,11 @@ export default function ServiceRegistry() {
       <style>{`
         .ag-theme-alpine-dark { --ag-background-color: #1a1b26; --ag-header-background-color: #24283b; --ag-border-color: rgba(255, 255, 255, 0.05); --ag-foreground-color: #f1f5f9; --ag-header-foreground-color: #3b82f6; --ag-font-family: 'Inter', sans-serif; --ag-font-size: ${fontSize}px; }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; font-style:  !important; }
-        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }
-        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
+        .ag-row-hover { background-color: rgba(255, 255, 255, 0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+
       `}</style>
     </div>
   )

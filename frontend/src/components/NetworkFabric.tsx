@@ -577,7 +577,7 @@ export default function NetworkFabric() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
@@ -587,6 +587,8 @@ export default function NetworkFabric() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
+            font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }

@@ -70,7 +70,7 @@ const GanttChart = ({ tasks }: { tasks: any[] }) => {
   )
 }
 
-const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
+export const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -104,7 +104,7 @@ const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
             <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest px-1 block mb-2">Project Identity *</label>
             <input 
               value={formData.name} 
-              onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
+              onChange={e => setFormData({...formData, name: e.target.value})} 
               className="w-full bg-slate-900 border border-white/10 rounded-2xl px-5 py-3 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all" 
               placeholder="E.G. DATA CENTER MIGRATION 2026" 
             />
@@ -145,7 +145,7 @@ const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
           </div>
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">Project Lead / Owner</label>
-            <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="E.G. JONATHAN REED" />
+            <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="E.G. JONATHAN REED" />
           </div>
         </div>
 
@@ -173,7 +173,7 @@ const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
          <div className="grid grid-cols-4 gap-4 items-end bg-white/5 p-6 rounded-3xl border border-white/5">
             <div className="col-span-1">
                <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Task Name</label>
-               <input value={newTask.name} onChange={e => setNewTask({...newTask, name: e.target.value.toUpperCase()})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="Phase 1: Analysis" />
+               <input value={newTask.name} onChange={e => setNewTask({...newTask, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="Phase 1: Analysis" />
             </div>
             <div>
                <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Start</label>

@@ -688,7 +688,7 @@ export default function MonitoringGrid() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
@@ -699,6 +699,9 @@ export default function MonitoringGrid() {
             align-items: center; 
             justify-content: center !important; 
             font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
+        }
+
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
@@ -1137,7 +1140,7 @@ const LOGIC_SUGGESTIONS: any = {
   'Custom': 'Enter full custom logic script or detailed specifications here...'
 }
 
-function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
+export function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
   const [showLineNumbers, setShowLineNumbers] = useState(true)

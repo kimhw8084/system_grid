@@ -33,7 +33,7 @@ export default function AuditLogs() {
   }, [fontSize, rowDensity, logs])
 
   const columnDefs = useMemo(() => [
-    { field: 'id', headerName: 'ID', width: 60, sortable: true, filter: true, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center' },
+    { field: 'id', headerName: 'ID', width: 60, sortable: true, filter: true, cellClass: 'text-center font-bold', headerClass: 'text-center' },
     { field: 'timestamp', headerName: 'Time', width: 160, sortable: true, filter: 'agDateColumnFilter', cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleString() : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { field: 'user_id', headerName: 'Admin', width: 90, filter: true, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { 
@@ -48,17 +48,24 @@ export default function AuditLogs() {
         return <span className={`font-bold uppercase tracking-widest ${colors[params.value] || 'text-slate-400'}`}>{params.value || 'N/A'}</span>
       }
     },
-    { field: 'target_table', headerName: 'Registry', width: 120, filter: true, cellClass: 'text-center font-mono font-bold text-slate-400 uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
-    { field: 'target_id', headerName: 'Vector ID', width: 90, filter: true, cellClass: 'text-center font-mono font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: 'target_table', headerName: 'Registry', width: 120, filter: true, cellClass: 'text-center font-bold text-slate-400 uppercase', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
+    { field: 'target_id', headerName: 'Vector ID', width: 90, filter: true, cellClass: 'text-center font-bold', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> },
     { field: 'description', headerName: 'Payload', flex: 1, filter: true, cellClass: 'text-left font-bold', headerClass: 'text-left', cellRenderer: (p: any) => p.value ? p.value : <span className="text-slate-500 font-bold uppercase">N/A</span> }
   ], [])
 
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight uppercase italic">Logs</h1>
-          <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
+        <div className="flex items-center space-x-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight uppercase ">Audit Logs</h1>
+            <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
+          </div>
+          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Density Laboratory">
+                <Activity size={16} />
+             </button>
+          </div>
         </div>
         
         <div className="flex items-center space-x-3 bg-slate-900/50 p-2 rounded-xl border border-white/5">
@@ -66,16 +73,6 @@ export default function AuditLogs() {
            <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-bold uppercase outline-none text-slate-300" />
            <span className="text-slate-600 font-bold">→</span>
            <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-bold uppercase outline-none text-slate-300" />
-           
-           <div className="w-px h-4 bg-white/5 mx-2" />
-           
-           <button 
-              onClick={() => setShowStyleLab(!showStyleLab)} 
-              className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
-              title="Style Laboratory"
-           >
-              <Activity size={16} />
-           </button>
         </div>
       </div>
 
@@ -87,35 +84,35 @@ export default function AuditLogs() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md mb-4">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md mb-2">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                             className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
                      </div>
 
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
-                            type="range" min="0" max="20" step="2" 
+                            type="range" min="0" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
@@ -130,7 +127,7 @@ export default function AuditLogs() {
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Reading Ledger...</p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Reading Ledger...</p>
           </div>
         )}
         <AgGridReact
@@ -140,6 +137,7 @@ export default function AuditLogs() {
           defaultColDef={{ resizable: true, filter: true }}
           animateRows={true}
           enableCellTextSelection={true}
+          rowSelection="multiple"
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
         />
@@ -157,7 +155,7 @@ export default function AuditLogs() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
@@ -167,6 +165,8 @@ export default function AuditLogs() {
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
+            font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }

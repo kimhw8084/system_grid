@@ -199,7 +199,7 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
               </div>
               <div>
                 <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
-                <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value.toUpperCase())} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
+                <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-1">
@@ -396,7 +396,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name (UID) *</label>
               <input 
                 value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
+                onChange={e => setFormData({...formData, name: e.target.value})} 
                 className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" 
                 placeholder="E.G. CUSTOMER-FEED-API" 
               />
@@ -429,7 +429,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Organization</label>
               <input 
                 value={formData.owner_organization} 
-                onChange={e => setFormData({...formData, owner_organization: e.target.value.toUpperCase()})} 
+                onChange={e => setFormData({...formData, owner_organization: e.target.value})} 
                 className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="GLOBAL LOGISTICS INC." 
               />
@@ -438,7 +438,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Team</label>
               <input 
                 value={formData.owner_team} 
-                onChange={e => setFormData({...formData, owner_team: e.target.value.toUpperCase()})} 
+                onChange={e => setFormData({...formData, owner_team: e.target.value})} 
                 className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="CORE-INFRA-TEAM" 
               />
@@ -1068,8 +1068,8 @@ export default function External() {
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
-        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; }
+        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
+        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; font-size: ${fontSize}px !important; }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>

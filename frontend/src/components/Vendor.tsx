@@ -458,7 +458,7 @@ export default function Vendor() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
@@ -469,6 +469,9 @@ export default function Vendor() {
             align-items: center; 
             justify-content: center !important; 
             font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
+        }
+
         }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
@@ -495,7 +498,7 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
@@ -777,7 +780,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Full Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Position</label>

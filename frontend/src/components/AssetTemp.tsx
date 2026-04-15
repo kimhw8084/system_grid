@@ -1568,18 +1568,18 @@ export default function AssetTemp() {
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
             justify-content: center !important; 
-            font-style:  !important;
         }
         .ag-cell { 
             display: flex; 
             align-items: center; 
             justify-content: center !important; 
             font-weight: 700 !important;
+            font-size: ${fontSize}px !important;
         }
         
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
@@ -2765,7 +2765,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Hostname</label>
                 <input 
                   value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
+                  onChange={e => setFormData({...formData, name: e.target.value})} 
                   className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
                   placeholder="SRV-NAME-01" 
                 />
@@ -2870,7 +2870,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
-                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value.toUpperCase()})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                    <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
