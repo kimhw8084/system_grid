@@ -7,7 +7,7 @@ import {
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
-  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check
+  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -27,6 +27,16 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
       <p className="text-xl font-bold text-white tracking-tighter">{value}</p>
     </div>
     <div className={`p-2 rounded-lg bg-white/5 ${color}`}><Icon size={18} /></div>
+  </div>
+)
+
+const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
+  <div className={`bg-white/5 border border-white/5 rounded-2xl p-3 space-y-2 ${className}`}>
+    <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-2">
+      <Icon size={14} className={color} />
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/70">{title}</h3>
+    </div>
+    {children}
   </div>
 )
 
@@ -443,6 +453,17 @@ export default function Research() {
       </AnimatePresence>
 
       <ConfirmationModal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} />
+      
+      <ConfigRegistryModal 
+        isOpen={showConfig} 
+        onClose={() => setShowConfig(false)} 
+        title="Research Configuration Matrix"
+        sections={[
+          { title: 'System Hierarchy', category: 'LogicalSystem', icon: Database },
+          { title: 'Research Domains', category: 'ResearchCategory', icon: LayoutGrid },
+          { title: 'Failure Domains', category: 'FailureCategory', icon: ShieldAlert }
+        ]}
+      />
 
       <style>{`
         .ag-theme-alpine-dark {
@@ -468,13 +489,27 @@ export default function Research() {
 function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [step, setStep] = useState(item.type ? 1 : 0)
+  
+  const systems = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])).filter(Boolean), [devices])
 
   const handleFinish = () => {
     if (!formData.title || !formData.type) {
       toast.error("Title and Type are required")
       return
     }
-    onSave(formData)
+    
+    if (formData.type === 'RCA' && !formData.target_system) {
+      toast.error("Target System is required for RCA")
+      return
+    }
+    
+    // Strategic Mapping: Convert numeric priority to string for Investigation module if needed
+    const finalData = { ...formData }
+    if (finalData.type === 'Research') {
+       finalData.priority = finalData.priority >= 8 ? 'Urgent' : finalData.priority >= 6 ? 'High' : finalData.priority >= 4 ? 'Medium' : 'Low'
+    }
+    
+    onSave(finalData)
   }
 
   return (
@@ -527,6 +562,18 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 />
               </div>
 
+              {formData.type === 'RCA' && (
+                <div>
+                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Target System Context</label>
+                   <StyledSelect 
+                      value={formData.target_system} 
+                      onChange={(e:any) => setFormData({...formData, target_system: e.target.value})} 
+                      options={systems.map(s => ({ value: s, label: s }))}
+                      placeholder="Identify Core System..."
+                   />
+                </div>
+              )}
+
               <PriorityGauge 
                 value={formData.priority || 1} 
                 onChange={(v: number) => setFormData({...formData, priority: v})} 
@@ -571,7 +618,6 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 }
 
 function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
-  const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
   const [activeTab, setActiveTab] = useState('overview')
   const [activeSubTab, setActiveSubTab] = useState('identification')
@@ -584,9 +630,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     return devices?.filter((d: any) => assetIds.includes(d.id)).flatMap((d: any) => d.logical_services || []) || []
   }, [devices, formData.impacted_asset_ids])
 
-  const handleSave = () => {
-    onSave(formData)
-  }
+  const handleSave = () => onSave(formData)
 
   const handlePaste = (e: React.ClipboardEvent, target: 'evidence' | 'identification' | 'rca', stepIdx?: number) => {
     const items = e.clipboardData.items
@@ -598,21 +642,18 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           reader.onload = (event: any) => {
             const base64 = event.target.result
             if (target === 'evidence') {
-              setFormData({ ...formData, evidence_json: [...(formData.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }] })
-            } else if (target === 'identification') {
-              const steps = [...(formData.identification_steps_json || [])]
-              if (stepIdx !== undefined) {
-                steps[stepIdx].images = [...(steps[stepIdx].images || []), base64]
-                setFormData({ ...formData, identification_steps_json: steps })
-              }
-            } else if (target === 'rca') {
-              const steps = [...(formData.rca_steps_json || [])]
-              if (stepIdx !== undefined) {
-                steps[stepIdx].images = [...(steps[stepIdx].images || []), base64]
-                setFormData({ ...formData, rca_steps_json: steps })
-              }
+              setFormData((prev: any) => ({ ...prev, evidence_json: [...(prev.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }] }))
+            } else {
+              setFormData((prev: any) => {
+                const key = target === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                const steps = [...(prev[key] || [])]
+                if (stepIdx !== undefined && steps[stepIdx]) {
+                  steps[stepIdx] = { ...steps[stepIdx], images: [...(steps[stepIdx].images || []), base64] }
+                }
+                return { ...prev, [key]: steps }
+              })
             }
-            toast.success('Evidence Captured')
+            toast.success('Capture Synchronized')
           }
           reader.readAsDataURL(file)
         }
@@ -621,202 +662,153 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   }
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-6" onPaste={(e) => activeTab === 'evidence' ? handlePaste(e, 'evidence') : null}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-[95vh] rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-2" onPaste={(e) => activeTab === 'overview' ? handlePaste(e, 'evidence') : null}>
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-[98vh] rounded-3xl border border-purple-500/20 overflow-hidden flex flex-col shadow-2xl">
         
-        {/* RCA Header - Dense */}
-        <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-5">
-            <div className="p-3 bg-purple-600/20 rounded-2xl text-purple-400 border border-purple-500/30 shadow-lg"><ShieldAlert size={24} /></div>
+        <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-purple-600/20 rounded-lg text-purple-400 border border-purple-500/30"><ShieldAlert size={16} /></div>
             <div>
-              <div className="flex items-center space-x-3 mb-0.5">
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">RCA-{formData.id || 'NEW'} // {formData.target_system || 'UNASSIGNED'}</span>
+              <div className="flex items-center space-x-2 mb-0.5">
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">RCA // {formData.target_system || 'UNASSIGNED'}</span>
                 <StatusPill value={formData.status} />
-                <div className="flex items-center gap-1">
-                   <div className={`w-2 h-2 rounded-full ${(formData.priority || 0) >= 8 ? 'bg-rose-500' : (formData.priority || 0) >= 5 ? 'bg-amber-500' : 'bg-blue-400'}`} />
-                   <span className="text-[9px] font-bold text-white uppercase">LVL {formData.priority}</span>
-                </div>
+                <span className="text-[8px] font-bold text-white uppercase bg-rose-600/20 px-1.5 py-0.5 rounded border border-rose-500/30">LVL {formData.priority}</span>
               </div>
-              <h1 className="text-xl font-bold uppercase tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-sm font-bold uppercase tracking-tight text-white leading-none">{formData.title}</h1>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <button onClick={handleSave} className="px-6 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2 tracking-widest font-bold"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="p-2 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={18}/></button>
+          <div className="flex items-center space-x-2">
+            <button onClick={handleSave} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
+            <button onClick={onClose} className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Vertical Nav - Slimmer */}
-          <div className="w-48 border-r border-white/5 bg-black/20 p-4 space-y-1 shrink-0">
-            <RcaTabBtn active={activeTab === 'overview'} icon={LayoutGrid} label="Overview" onClick={() => setActiveTab('overview')} />
-            <RcaTabBtn active={activeTab === 'timeline'} icon={History} label="Timeline" onClick={() => setActiveTab('timeline')} />
-            <RcaTabBtn active={activeTab === 'investigation'} icon={Terminal} label="Investigation" onClick={() => setActiveTab('investigation')} />
-            <RcaTabBtn active={activeTab === 'causes'} icon={Search} label="Causes / BKM" onClick={() => setActiveTab('causes')} />
-            <RcaTabBtn active={activeTab === 'mitigation'} icon={Shield} label="Mitigation" onClick={() => setActiveTab('mitigation')} />
-            <RcaTabBtn active={activeTab === 'evidence'} icon={Camera} label="Evidence" onClick={() => setActiveTab('evidence')} />
+          <div className="w-14 border-r border-white/5 bg-black/20 flex flex-col items-center py-4 space-y-4 shrink-0">
+            <RcaIconBtn active={activeTab === 'overview'} icon={LayoutGrid} onClick={() => setActiveTab('overview')} label="Overview" />
+            <RcaIconBtn active={activeTab === 'timeline'} icon={History} onClick={() => setActiveTab('timeline')} label="Timeline" />
+            <RcaIconBtn active={activeTab === 'investigation'} icon={Terminal} onClick={() => setActiveTab('investigation')} label="Forensics" />
+            <RcaIconBtn active={activeTab === 'causes'} icon={Search} onClick={() => setActiveTab('causes')} label="Causes" />
+            <RcaIconBtn active={activeTab === 'mitigation'} icon={ShieldCheck} onClick={() => setActiveTab('mitigation')} label="Mitigation" />
           </div>
 
-          {/* RCA Workspace - Dense Layout */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/50 p-6">
-            <div className="max-w-6xl mx-auto space-y-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/30 p-3">
+            <div className="max-w-full space-y-3">
                
                {activeTab === 'overview' && (
-                 <div className="grid grid-cols-12 gap-4">
-                    <div className="col-span-8 space-y-4">
-                       <SectionCard icon={FileText} title="Incident Narrative & Goal" color="text-slate-400">
-                          <textarea 
-                            value={formData.problem_statement} 
-                            onChange={e => setFormData({...formData, problem_statement: e.target.value})}
-                            className="w-full bg-slate-950 border border-white/5 rounded-xl p-4 text-[11px] font-bold text-slate-300 outline-none focus:border-purple-500/30 min-h-[120px] leading-relaxed"
-                            placeholder="Detailed problem statement..."
-                          />
+                 <div className="grid grid-cols-12 gap-3">
+                    <div className="col-span-4 space-y-3">
+                       <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400">
+                          <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-2 text-[10px] font-medium text-slate-300 outline-none focus:border-purple-500/30 min-h-[80px]" />
                        </SectionCard>
-
-                       <div className="grid grid-cols-2 gap-4">
-                          <SectionCard icon={Clock} title="Incident Timing" color="text-blue-400">
-                             <div className="grid grid-cols-1 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Occurrence Time</label>
-                                  <input type="datetime-local" value={formData.occurrence_at?.slice(0, 16)} onChange={e => setFormData({...formData, occurrence_at: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-blue-500/30 [color-scheme:dark]" />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Acknowledged Time</label>
-                                  <input type="datetime-local" value={formData.acknowledged_at?.slice(0, 16)} onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-emerald-500/30 [color-scheme:dark]" />
-                                </div>
-                             </div>
-                          </SectionCard>
-                          <SectionCard icon={User} title="Ownership & Intel" color="text-indigo-400">
-                             <div className="grid grid-cols-1 gap-3">
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Lead Investigator</label>
-                                  <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-indigo-500/30" placeholder="Owner Name..." />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Jira Correlation</label>
-                                  <input value={formData.jira_link} onChange={e => setFormData({...formData, jira_link: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-blue-400 outline-none focus:border-blue-500/30" placeholder="https://jira.com/..." />
-                                </div>
-                             </div>
-                          </SectionCard>
+                       <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Occurrence</label>
+                             <input type="datetime-local" value={formData.occurrence_at?.slice(0, 16)} onChange={e => setFormData({...formData, occurrence_at: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark]" />
+                          </div>
+                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Acknowledged</label>
+                             <input type="datetime-local" value={formData.acknowledged_at?.slice(0, 16)} onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark]" />
+                          </div>
                        </div>
-
-                       <SectionCard icon={ShieldAlert} title="FAB Impact Assessment" color="text-rose-400">
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="space-y-3">
-                                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Impact Categories</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                   {['Flow Halt', 'Scrap Risk', 'Quality Delta', 'Safety Trip', 'Data Loss', 'Tool Down'].map(c => (
-                                     <button 
-                                        key={c}
-                                        onClick={() => {
-                                          const cats = formData.fab_impact_json?.categories || []
-                                          setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, categories: cats.includes(c) ? cats.filter((i:string)=>i!==c) : [...cats, c] }})
-                                        }}
-                                        className={`px-3 py-1.5 rounded-lg border text-[9px] font-bold uppercase transition-all ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-500/20 border-rose-500 text-rose-500' : 'bg-white/5 border-white/5 text-slate-500'}`}
-                                     >
-                                        {c}
-                                     </button>
-                                   ))}
-                                </div>
+                       <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Owner</label>
+                             <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none" placeholder="Investigator..." />
+                          </div>
+                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Jira Link</label>
+                             <input value={formData.jira_link} onChange={e => setFormData({...formData, jira_link: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-blue-400 outline-none" placeholder="Jira Link..." />
+                          </div>
+                       </div>
+                       <SectionCard icon={ShieldAlert} title="FAB Impact" color="text-rose-400">
+                          <div className="space-y-2">
+                             <div className="flex flex-wrap gap-1">
+                                {['Flow Halt', 'Scrap Risk', 'Quality Delta', 'Safety Trip'].map(c => (
+                                  <button key={c} onClick={() => {
+                                    const cats = formData.fab_impact_json?.categories || []
+                                    setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, categories: cats.includes(c) ? cats.filter((i:string)=>i!==c) : [...cats, c] }})
+                                  }} className={`px-2 py-0.5 rounded text-[7px] font-bold uppercase transition-all ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-500'}`}>{c}</button>
+                                ))}
                              </div>
-                             <div className="space-y-3">
-                                <PriorityGauge 
-                                  value={formData.fab_impact_json?.severity || 1} 
-                                  onChange={(v:number) => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: v }})} 
-                                  label="Operational Severity Gauge"
-                                />
-                                <textarea 
-                                  value={formData.fab_impact_json?.explanation}
-                                  onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})}
-                                  className="w-full bg-slate-950 border border-white/5 rounded-lg p-3 text-[10px] font-bold text-slate-300 outline-none focus:border-rose-500/30 min-h-[60px]"
-                                  placeholder="Detailed impact explanation..."
-                                />
-                             </div>
+                             <PriorityGauge value={formData.fab_impact_json?.severity || 1} onChange={(v:number) => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: v }})} label="Impact Severity" />
+                             <textarea value={formData.fab_impact_json?.explanation} onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-1.5 text-[9px] font-medium text-slate-300 outline-none min-h-[40px]" placeholder="Impact details..." />
                           </div>
                        </SectionCard>
                     </div>
 
-                    <div className="col-span-4 space-y-4">
-                       <SectionCard icon={Database} title="Relational Blast Radius" color="text-amber-400">
-                          <div className="space-y-4">
-                             <div className="space-y-1.5">
-                                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Target System</label>
-                                <StyledSelect 
-                                  value={formData.target_system} 
-                                  onChange={e => setFormData({...formData, target_system: e.target.value, impacted_asset_ids: [], impacted_service_ids: []})}
-                                  options={systems.map(s => ({value:s, label:s}))}
-                                  placeholder="Select System..."
-                                />
-                             </div>
-                             <div className="space-y-1.5">
-                                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Impacted Assets ({formData.impacted_asset_ids?.length || 0})</label>
-                                <div className="h-32 bg-slate-950 border border-white/5 rounded-xl p-2 overflow-y-auto custom-scrollbar space-y-1">
+                    <div className="col-span-4 space-y-3">
+                       <SectionCard icon={Database} title="System Context" color="text-amber-400">
+                          <div className="space-y-2">
+                             <StyledSelect value={formData.target_system} onChange={e => setFormData({...formData, target_system: e.target.value, impacted_asset_ids: [], impacted_service_ids: []})} options={systems.map(s => ({value:s, label:s}))} placeholder="Select System..." />
+                             <div className="grid grid-cols-2 gap-2 h-44">
+                                <div className="bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-0.5">
+                                   <p className="text-[7px] font-bold text-slate-500 uppercase mb-1 px-1">Affected Assets</p>
                                    {filteredAssets.map((a: any) => (
-                                     <label key={a.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
-                                        <input 
-                                          type="checkbox" 
-                                          checked={formData.impacted_asset_ids?.includes(a.id)}
-                                          onChange={e => {
-                                            const ids = formData.impacted_asset_ids || []
-                                            setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
-                                          }}
-                                          className="sr-only"
-                                        />
-                                        <div className={`w-3 h-3 rounded border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/10'}`} />
-                                        <span className="text-[9px] font-bold uppercase text-slate-300">{a.name}</span>
+                                     <label key={a.id} className="flex items-center gap-2 p-1 rounded hover:bg-white/5 cursor-pointer">
+                                        <input type="checkbox" checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
+                                          const ids = formData.impacted_asset_ids || []
+                                          setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
+                                        }} className="sr-only" />
+                                        <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/10'}`} />
+                                        <span className="text-[8px] font-bold uppercase text-slate-400 truncate">{a.name}</span>
                                      </label>
                                    ))}
-                                   {filteredAssets.length === 0 && <p className="text-[8px] text-slate-600 text-center py-8 font-bold uppercase">Select System First</p>}
                                 </div>
-                             </div>
-                             <div className="space-y-1.5">
-                                <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Service Drill-down ({formData.impacted_service_ids?.length || 0})</label>
-                                <div className="h-32 bg-slate-950 border border-white/5 rounded-xl p-2 overflow-y-auto custom-scrollbar space-y-1">
+                                <div className="bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-0.5">
+                                   <p className="text-[7px] font-bold text-slate-500 uppercase mb-1 px-1">Service Drill-down</p>
                                    {filteredServices.map((s: any) => (
-                                     <label key={s.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
-                                        <input 
-                                          type="checkbox" 
-                                          checked={formData.impacted_service_ids?.includes(s.id)}
-                                          onChange={e => {
-                                            const ids = formData.impacted_service_ids || []
-                                            setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
-                                          }}
-                                          className="sr-only"
-                                        />
-                                        <div className={`w-3 h-3 rounded border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/10'}`} />
-                                        <span className="text-[9px] font-bold uppercase text-slate-300">{s.name}</span>
+                                     <label key={s.id} className="flex items-center gap-2 p-1 rounded hover:bg-white/5 cursor-pointer">
+                                        <input type="checkbox" checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
+                                          const ids = formData.impacted_service_ids || []
+                                          setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
+                                        }} className="sr-only" />
+                                        <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/10'}`} />
+                                        <span className="text-[8px] font-bold uppercase text-slate-400 truncate">{s.name}</span>
                                      </label>
                                    ))}
-                                   {filteredServices.length === 0 && <p className="text-[8px] text-slate-600 text-center py-8 font-bold uppercase">Select Assets First</p>}
                                 </div>
                              </div>
                           </div>
                        </SectionCard>
+                       <SectionCard icon={LinkIcon} title="FAR Linkage" color="text-purple-400">
+                          <div className="h-32 bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-1">
+                             {failureModes?.filter((fm:any) => fm.system_name === formData.target_system).map((fm: any) => (
+                               <label key={fm.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer border border-transparent hover:border-white/5">
+                                  <input type="checkbox" checked={formData.linked_failure_modes?.some((l:any)=>l.id === fm.id)} onChange={e => {
+                                    const modes = formData.linked_failure_modes || []
+                                    setFormData({...formData, linked_failure_modes: e.target.checked ? [...modes, fm] : modes.filter((m:any)=>m.id!==fm.id)})
+                                  }} className="sr-only" />
+                                  <div className={`w-2 h-2 rounded border ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-500 border-purple-500' : 'border-white/10'}`} />
+                                  <div>
+                                     <p className="text-[8px] font-bold uppercase text-slate-200 leading-tight">{fm.title}</p>
+                                     <p className="text-[6px] font-bold uppercase text-slate-500">RPN: {fm.rpn} // SEV: {fm.severity}</p>
+                                  </div>
+                               </label>
+                             ))}
+                          </div>
+                       </SectionCard>
+                    </div>
 
-                       <SectionCard icon={LinkIcon} title="Linked Failure Modes (FAR)" color="text-purple-400">
-                          <div className="space-y-3">
-                             <div className="h-40 bg-slate-950 border border-white/5 rounded-xl p-2 overflow-y-auto custom-scrollbar space-y-1">
-                                {failureModes?.filter((fm:any) => fm.system_name === formData.target_system).map((fm: any) => (
-                                  <label key={fm.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer border border-transparent hover:border-white/5">
-                                     <input 
-                                       type="checkbox" 
-                                       checked={formData.linked_failure_modes?.some((l:any)=>l.id === fm.id)}
-                                       onChange={e => {
-                                         const modes = formData.linked_failure_modes || []
-                                         setFormData({...formData, linked_failure_modes: e.target.checked ? [...modes, fm] : modes.filter((m:any)=>m.id!==fm.id)})
-                                       }}
-                                       className="sr-only"
-                                     />
-                                     <div className={`w-3 h-3 rounded border ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-500 border-purple-500' : 'border-white/10'}`} />
-                                     <div>
-                                        <p className="text-[9px] font-bold uppercase text-slate-200">{fm.title}</p>
-                                        <p className="text-[7px] font-bold uppercase text-slate-500">RPN: {fm.rpn} // SEV: {fm.severity}</p>
-                                     </div>
-                                  </label>
+                    <div className="col-span-4 space-y-3">
+                       <SectionCard icon={Camera} title="Evidence / Capture Hub" color="text-blue-400">
+                          <div className="space-y-2">
+                             <p className="text-[8px] font-bold text-slate-500 uppercase text-center py-2 border border-dashed border-white/10 rounded-xl">PASTE IMAGES OR TEXT LOGS HERE</p>
+                             <div className="grid grid-cols-2 gap-2 h-80 overflow-y-auto custom-scrollbar pr-1">
+                                {(formData.evidence_json || []).map((ev: any, i: number) => (
+                                  <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-xl overflow-hidden aspect-video">
+                                     {ev.type === 'image' ? (
+                                       <img src={ev.content} className="w-full h-full object-cover" />
+                                     ) : (
+                                       <div className="p-2 text-[8px] font-mono text-slate-300 overflow-hidden">{ev.content}</div>
+                                     )}
+                                     <button onClick={() => {
+                                       const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
+                                       setFormData({...formData, evidence_json: newEv})
+                                     }} className="absolute top-1 right-1 p-1 bg-black/80 rounded text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><X size={10}/></button>
+                                  </div>
                                 ))}
-                                {(!failureModes || failureModes.length === 0) && <p className="text-[8px] text-slate-600 text-center py-10 font-bold uppercase">No FM Linked</p>}
                              </div>
-                             <p className="text-[7px] text-slate-600 uppercase font-bold text-center italic">Establishing relational hooks to Failure Analysis matrix</p>
                           </div>
                        </SectionCard>
                     </div>
@@ -824,74 +816,46 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'timeline' && (
-                 <div className="space-y-6">
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-5 grid grid-cols-12 gap-4 items-end shadow-xl">
+                 <div className="space-y-4">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 grid grid-cols-12 gap-2 items-end">
                        <div className="col-span-4">
-                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Event Narrative</label>
-                          <input 
-                            value={newTimeline.description} 
-                            onChange={e => setNewTimeline({...newTimeline, description: e.target.value})}
-                            className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500"
-                            placeholder="E.G. ALERT FIRED: DB LATENCY EXCEEDED 500MS"
-                          />
+                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Event Narrative</label>
+                          <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none" placeholder="E.G. ALERT FIRED..." />
                        </div>
                        <div className="col-span-2">
-                         <StyledSelect 
-                          label="Type"
-                          value={newTimeline.event_type}
-                          onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})}
-                          options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}, {value:'Escalation', label:'Escalation'}]}
-                         />
+                         <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}]} />
                        </div>
                        <div className="col-span-2">
-                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">POC / Owner</label>
-                          <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500" placeholder="Name" />
+                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC / Team</label>
+                          <div className="flex gap-1">
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-1/2 bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none" placeholder="Name" />
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-1/2 bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none" placeholder="Team" />
+                          </div>
                        </div>
                        <div className="col-span-3">
-                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Event Time</label>
-                          <input 
-                            type="datetime-local"
-                            value={newTimeline.event_time.slice(0, 16)}
-                            onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})}
-                            className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-slate-400 outline-none focus:border-purple-500 [color-scheme:dark]"
-                          />
+                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Event Time</label>
+                          <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-slate-400 outline-none [color-scheme:dark]" />
                        </div>
-                       <button 
-                        onClick={() => {
+                       <button onClick={() => {
                           const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
                           setFormData({ ...formData, timeline })
                           setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
-                        }}
-                        className="p-2.5 bg-purple-600 text-white rounded-xl shadow-lg active:scale-95 transition-all"
-                      >
-                        <Plus size={20} />
-                      </button>
+                        }} className="p-2 bg-purple-600 text-white rounded-lg shadow-lg"><Plus size={16} /></button>
                     </div>
-
-                    <div className="relative pl-6 space-y-4">
-                       <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 via-blue-500 to-transparent opacity-30" />
+                    <div className="space-y-2 max-w-4xl mx-auto">
                        {(formData.timeline || []).sort((a:any, b:any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((e: any) => (
-                         <div key={e.id} className="relative bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between group hover:bg-white/10 transition-all">
-                            <div className="absolute -left-[23px] top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-950 border-2 border-purple-500 rounded-full z-10 shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
-                            <div className="flex items-center gap-6">
-                               <div className="w-32 shrink-0">
-                                  <p className="text-[10px] font-bold text-slate-200">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                  <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${
-                                    e.event_type === 'Detection' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
-                                    e.event_type === 'Resolution' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' :
-                                    'bg-blue-500/20 border-blue-500 text-blue-400'
-                                  }`}>{e.event_type}</span>
+                         <div key={e.id} className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between group">
+                            <div className="flex items-center gap-4">
+                               <div className="w-24 shrink-0">
+                                  <p className="text-[9px] font-bold text-slate-300">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                  <span className="text-[7px] font-bold uppercase text-purple-400">{e.event_type}</span>
                                </div>
                                <div>
-                                  <p className="text-[11px] font-bold text-white uppercase tracking-tight">{e.description}</p>
-                                  <div className="flex items-center gap-2 mt-0.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                     <User size={10} /> <span>{e.owner || 'Unknown'}</span>
-                                     <span className="opacity-30">|</span>
-                                     <Layers size={10} /> <span>{e.owner_team || 'N/A'}</span>
-                                  </div>
+                                  <p className="text-[10px] font-bold text-white uppercase">{e.description}</p>
+                                  <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">{e.owner} // {e.owner_team}</p>
                                </div>
                             </div>
-                            <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 text-slate-600 hover:text-rose-500 transition-all"><Trash2 size={14}/></button>
+                            <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-600 hover:text-rose-500"><Trash2 size={12}/></button>
                          </div>
                        ))}
                     </div>
@@ -899,198 +863,160 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'investigation' && (
-                 <div className="space-y-6">
-                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 w-fit">
-                       <button onClick={() => setActiveSubTab('identification')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-white'}`}>Identification Flow</button>
-                       <button onClick={() => setActiveSubTab('rca')} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-white'}`}>RCA Logic Ladder</button>
+                 <div className="space-y-4">
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 w-fit">
+                       <button onClick={() => setActiveSubTab('identification')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}>Identification Flow</button>
+                       <button onClick={() => setActiveSubTab('rca')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}>RCA Logic Ladder</button>
                     </div>
-
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                        {(activeSubTab === 'identification' ? formData.identification_steps_json : formData.rca_steps_json || []).map((step: any, idx: number) => (
-                         <div key={idx} className="bg-white/5 border border-white/5 rounded-3xl p-5 space-y-4 group relative">
+                         <div key={idx} className="bg-white/5 border border-white/5 rounded-2xl p-3 space-y-2 relative group">
                             <div className="flex items-center justify-between">
-                               <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-xs">{idx + 1}</div>
-                                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{activeSubTab === 'identification' ? 'Validation Step' : 'Logic Node'}</h4>
-                               </div>
+                               <div className="w-6 h-6 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-[10px]">{idx + 1}</div>
                                <button onClick={() => {
-                                 const steps = activeSubTab === 'identification' ? [...(formData.identification_steps_json || [])] : [...(formData.rca_steps_json || [])]
+                                 const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                 const steps = [...(formData[key] || [])]
                                  steps.splice(idx, 1)
-                                 setFormData({ ...formData, [activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json']: steps })
-                               }} className="p-2 text-slate-600 hover:text-rose-500"><Trash2 size={16}/></button>
+                                 setFormData({ ...formData, [key]: steps })
+                               }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-rose-500"><Trash2 size={14}/></button>
                             </div>
-                            <div className="grid grid-cols-12 gap-6">
-                               <div className="col-span-7">
-                                  <textarea 
-                                    onPaste={(e) => handlePaste(e, activeSubTab as any, idx)}
-                                    value={step.text} 
-                                    onChange={e => {
-                                      const steps = activeSubTab === 'identification' ? [...(formData.identification_steps_json || [])] : [...(formData.rca_steps_json || [])]
-                                      steps[idx].text = e.target.value
-                                      setFormData({ ...formData, [activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json']: steps })
-                                    }}
-                                    className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none focus:border-purple-500/30 min-h-[120px] leading-relaxed shadow-inner"
-                                    placeholder="Describe discovery, evidence captured, or logic applied. PASTE IMAGES HERE."
-                                  />
-                               </div>
-                               <div className="col-span-5 grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar">
-                                  {step.images?.map((img: string, i: number) => (
-                                    <div key={i} className="relative aspect-square bg-slate-950 rounded-xl overflow-hidden border border-white/10 group/img">
-                                       <img src={img} className="w-full h-full object-cover" />
-                                       <button onClick={() => {
-                                         const steps = activeSubTab === 'identification' ? [...(formData.identification_steps_json || [])] : [...(formData.rca_steps_json || [])]
-                                         steps[idx].images.splice(i, 1)
-                                         setFormData({ ...formData, [activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json']: steps })
-                                       }} className="absolute top-1 right-1 p-1 bg-black/80 rounded text-rose-500 opacity-0 group-hover/img:opacity-100 transition-all"><X size={10}/></button>
-                                    </div>
-                                  ))}
-                                  <div className="flex items-center justify-center border-2 border-dashed border-white/5 rounded-xl text-slate-700">
-                                     <Camera size={24} />
-                                  </div>
-                               </div>
+                            <textarea onPaste={(e) => handlePaste(e, activeSubTab as any, idx)} value={step.text} onChange={e => {
+                               const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                               const steps = [...(formData[key] || [])]
+                               steps[idx].text = e.target.value
+                               setFormData({ ...formData, [key]: steps })
+                            }} className="w-full bg-slate-950 border border-white/5 rounded-xl p-2 text-[10px] font-medium text-slate-300 outline-none min-h-[60px]" placeholder="Discovery/Evidence. PASTE IMAGES HERE." />
+                            <div className="flex gap-1 overflow-x-auto custom-scrollbar py-1">
+                               {step.images?.map((img: string, i: number) => (
+                                 <div key={i} className="relative w-12 h-12 shrink-0 bg-slate-950 rounded-lg overflow-hidden border border-white/10 group/img">
+                                    <img src={img} className="w-full h-full object-cover" />
+                                    <button onClick={() => {
+                                      const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                      const steps = [...(formData[key] || [])]
+                                      steps[idx].images.splice(i, 1)
+                                      setFormData({ ...formData, [key]: steps })
+                                    }} className="absolute top-0 right-0 p-0.5 bg-black/80 rounded text-rose-500"><X size={8}/></button>
+                                 </div>
+                               ))}
                             </div>
                          </div>
                        ))}
-                       <button 
-                        onClick={() => {
-                          const steps = activeSubTab === 'identification' ? [...(formData.identification_steps_json || [])] : [...(formData.rca_steps_json || [])]
-                          setFormData({ ...formData, [activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json']: [...steps, { text: '', images: [] }] })
-                        }}
-                        className="w-full py-4 border-2 border-dashed border-white/5 rounded-3xl text-[10px] font-bold uppercase text-slate-500 hover:text-purple-400 hover:border-purple-500/30 transition-all flex items-center justify-center gap-2"
-                       >
-                          <PlusCircle size={16} /> Add Investigation Node
+                       <button onClick={() => {
+                          const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                          const steps = [...(formData[key] || [])]
+                          setFormData({ ...formData, [key]: [...steps, { text: '', images: [] }] })
+                        }} className="border-2 border-dashed border-white/5 rounded-2xl p-6 text-[9px] font-bold uppercase text-slate-500 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
+                          <PlusCircle size={14} /> Add Step
                        </button>
                     </div>
                  </div>
                )}
 
                {activeTab === 'causes' && (
-                 <div className="space-y-6">
-                    <SectionCard icon={Search} title="Root Causes & BKMs" color="text-purple-400">
-                       <div className="space-y-4">
-                          {(formData.potential_causes_json || []).map((c: any, idx: number) => (
-                            <div key={idx} className="bg-slate-950 border border-white/5 rounded-3xl p-6 grid grid-cols-12 gap-6 items-start relative">
-                               <div className="col-span-5 space-y-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Potential Cause</label>
-                                    <textarea value={c.cause} onChange={e => {
-                                      const causes = [...formData.potential_causes_json]; causes[idx].cause = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                                    }} className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-[11px] font-bold text-white outline-none focus:border-purple-500/30 min-h-[80px]" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Indicator / Signature</label>
-                                    <textarea value={c.indicator} onChange={e => {
-                                      const causes = [...formData.potential_causes_json]; causes[idx].indicator = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                                    }} className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-[11px] font-mono font-bold text-amber-500 outline-none focus:border-amber-500/30 min-h-[60px]" placeholder="Specific log entry or metric spike..." />
-                                  </div>
-                               </div>
-                               <div className="col-span-5 space-y-4 border-l border-white/5 pl-6">
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Resolution BKM (Doc Hook)</label>
-                                    <StyledSelect value={c.bkm_id} onChange={e => {
-                                      const causes = [...formData.potential_causes_json]; causes[idx].bkm_id = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                                    }} options={[]} placeholder="Link Existing BKM..." />
-                                    <button className="text-[8px] font-bold uppercase text-blue-400 mt-1 hover:underline tracking-widest">+ Create New BKM from Intel</button>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
-                                    <div className="flex flex-wrap gap-2 pt-1">
-                                       {['Likely', 'Confirmed', 'Disproven', 'Under Review'].map(s => (
-                                         <button 
-                                            key={s}
-                                            onClick={() => {
-                                              const causes = [...formData.potential_causes_json]; causes[idx].status = s; setFormData({...formData, potential_causes_json: causes})
-                                            }}
-                                            className={`px-3 py-1 rounded-lg border text-[8px] font-bold uppercase transition-all ${c.status === s ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white/5 border-white/5 text-slate-600'}`}
-                                         >
-                                            {s}
-                                         </button>
-                                       ))}
-                                    </div>
-                                  </div>
-                               </div>
-                               <div className="col-span-2 flex justify-end gap-2">
-                                  <button onClick={() => {
-                                    const causes = [...formData.potential_causes_json]; causes.splice(idx, 1); setFormData({...formData, potential_causes_json: causes})
-                                  }} className="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20"><Trash2 size={16}/></button>
-                               </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    {(formData.potential_causes_json || []).map((c: any, idx: number) => (
+                      <div key={idx} className="bg-slate-950 border border-white/5 rounded-2xl p-4 space-y-3 relative group">
+                         <div className="flex justify-between items-center">
+                            <div className="flex gap-1">
+                               {['Likely', 'Confirmed', 'Disproven'].map(s => (
+                                 <button key={s} onClick={() => {
+                                   const causes = [...formData.potential_causes_json]; causes[idx].status = s; setFormData({...formData, potential_causes_json: causes})
+                                 }} className={`px-2 py-0.5 rounded text-[7px] font-bold uppercase transition-all ${c.status === s ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-500'}`}>{s}</button>
+                               ))}
                             </div>
-                          ))}
-                          <button 
-                            onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})}
-                            className="w-full py-4 bg-purple-600/10 border-2 border-dashed border-purple-500/20 rounded-3xl text-[10px] font-bold uppercase text-purple-400 hover:bg-purple-600/20 transition-all flex items-center justify-center gap-2"
-                          >
-                             <PlusCircle size={16} /> Add Cause Matrix Item
-                          </button>
-                       </div>
-                    </SectionCard>
+                            <button onClick={() => {
+                              const causes = [...formData.potential_causes_json]; causes.splice(idx, 1); setFormData({...formData, potential_causes_json: causes})
+                            }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-rose-500"><Trash2 size={14}/></button>
+                         </div>
+                         <textarea value={c.cause} onChange={e => {
+                            const causes = [...formData.potential_causes_json]; causes[idx].cause = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                         }} className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[10px] font-bold text-white outline-none min-h-[50px]" placeholder="Cause description..." />
+                         <textarea value={c.indicator} onChange={e => {
+                            const causes = [...formData.potential_causes_json]; causes[idx].indicator = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                         }} className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] font-mono font-bold text-amber-500 outline-none" placeholder="Signature/Log log..." />
+                         <div className="flex items-center gap-2">
+                            <div className="flex-1"><StyledSelect value={c.bkm_id} onChange={e => {
+                              const causes = [...formData.potential_causes_json]; causes[idx].bkm_id = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                            }} options={[]} placeholder="Link BKM..." /></div>
+                            <button className="p-1.5 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30"><Plus size={14}/></button>
+                         </div>
+                      </div>
+                    ))}
+                    <button onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})} className="border-2 border-dashed border-white/5 rounded-2xl p-10 text-[9px] font-bold uppercase text-slate-500 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
+                       <PlusCircle size={14} /> Add Potential Cause
+                    </button>
                  </div>
                )}
 
                {activeTab === 'mitigation' && (
-                 <div className="space-y-6">
-                    <div className="bg-emerald-600/10 border border-emerald-500/30 rounded-3xl p-8 text-center space-y-4">
-                       <div className="w-20 h-20 bg-slate-950 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 shadow-2xl text-emerald-400"><ShieldCheck size={36} /></div>
-                       <h3 className="text-xl font-bold text-white uppercase tracking-tighter ">Reliability Mitigation Strategy</h3>
-                       <p className="text-[10px] text-slate-500 uppercase tracking-widest max-w-lg mx-auto leading-relaxed">Select confirmed causes to generate failure analysis hooks for the FAR Matrix and long-term prevention planning.</p>
+                 <div className="space-y-4">
+                    <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between">
+                       <div className="flex items-center gap-4">
+                          <div className="p-3 bg-emerald-600/20 rounded-2xl text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/20"><ShieldCheck size={24} /></div>
+                          <div>
+                             <h3 className="text-sm font-bold text-white uppercase tracking-tight leading-none mb-1">Reliability Vector Synchronization</h3>
+                             <p className="text-[8px] text-slate-500 uppercase tracking-widest font-bold">Map confirmed root causes to failure modes in the FAR registry</p>
+                          </div>
+                       </div>
+                       <div className="text-right">
+                          <p className="text-[10px] font-bold text-white leading-none">{(formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').length || 0)} CONFIRMED</p>
+                          <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Awaiting FAR Hook</p>
+                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                       {formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').map((c: any, idx: number) => (
-                         <div key={idx} className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center justify-between group hover:bg-white/10 transition-all">
-                            <div className="flex items-center gap-6">
-                               <div className="p-4 bg-emerald-600/20 rounded-2xl text-emerald-400 border border-emerald-500/30 shadow-lg"><Zap size={24} /></div>
-                               <div>
-                                  <div className="flex items-center gap-3 mb-1">
-                                     <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Confirmed Root Cause</span>
-                                     <span className="text-[8px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Synced to FAR</span>
-                                  </div>
-                                  <p className="text-sm font-bold text-white uppercase tracking-tight max-w-2xl">{c.cause}</p>
-                                  <div className="flex items-center gap-4 mt-2">
-                                     <div className="flex items-center gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest"><Search size={12}/> {c.indicator || 'N/A Signature'}</div>
-                                     <div className="flex items-center gap-2 text-[9px] font-bold text-blue-400 uppercase tracking-widest hover:underline cursor-pointer"><LinkIcon size={12}/> View BKM</div>
+                    <div className="grid grid-cols-1 gap-3">
+                       {formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').map((c: any, cIdx: number) => (
+                         <div key={cIdx} className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-4 group hover:bg-white/[0.07] transition-all">
+                            <div className="flex items-start justify-between">
+                               <div className="flex items-center gap-4">
+                                  <div className="p-2 bg-emerald-600/20 rounded-lg text-emerald-400 border border-emerald-500/30"><Zap size={16} /></div>
+                                  <div>
+                                     <p className="text-[10px] font-bold text-white uppercase leading-tight max-w-xl">{c.cause}</p>
+                                     <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Signature:</span>
+                                        <span className="text-[7px] font-mono font-bold text-amber-500 uppercase truncate max-w-md">{c.indicator || 'N/A'}</span>
+                                     </div>
                                   </div>
                                </div>
+                               <button className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2">
+                                  <RefreshCcw size={12} /> Sync Vector
+                               </button>
                             </div>
-                            <button className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:text-white transition-all flex items-center gap-2">
-                               <Activity size={14} /> Update FAR View
-                            </button>
+
+                            <div className="pt-3 border-t border-white/5">
+                               <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Linked Failure Modes (N:N Mapping)</p>
+                               <div className="flex flex-wrap gap-2">
+                                  {(formData.linked_failure_modes || []).map((fm: any) => (
+                                    <button 
+                                       key={fm.id}
+                                       onClick={() => {
+                                         const newCauses = (formData.potential_causes_json || []).map((cause: any) => {
+                                            if (cause.cause === c.cause) {
+                                               const linkedIds = cause.linked_fm_ids || []
+                                               return { ...cause, linked_fm_ids: linkedIds.includes(fm.id) ? linkedIds.filter((id:number)=>id!==fm.id) : [...linkedIds, fm.id] }
+                                            }
+                                            return cause
+                                         })
+                                         setFormData({...formData, potential_causes_json: newCauses})
+                                       }}
+                                       className={`px-3 py-1.5 rounded-xl border text-[8px] font-bold uppercase transition-all flex items-center gap-2 ${c.linked_fm_ids?.includes(fm.id) ? 'bg-purple-600/20 border-purple-500 text-purple-400' : 'bg-white/5 border-white/5 text-slate-600 hover:text-slate-400'}`}
+                                    >
+                                       <Target size={10} /> {fm.title}
+                                    </button>
+                                  ))}
+                                  {(formData.linked_failure_modes || []).length === 0 && (
+                                    <p className="text-[8px] font-bold text-slate-700 italic px-1 uppercase tracking-widest">No Failure Modes linked in Overview tab</p>
+                                  )}
+                               </div>
+                            </div>
                          </div>
                        ))}
                        {(!formData.potential_causes_json || formData.potential_causes_json.filter((c:any)=>c.status === 'Confirmed').length === 0) && (
-                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl opacity-30">
-                            <AlertTriangle size={48} className="mx-auto text-slate-500 mb-4" />
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">No Confirmed Causes for Mitigation Planning</p>
+                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl opacity-30 flex flex-col items-center gap-3">
+                            <Zap size={32} className="text-slate-500" />
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Awaiting Confirmed Findings for Strategic Mapping</p>
                          </div>
                        )}
-                    </div>
-                 </div>
-               )}
-
-               {activeTab === 'evidence' && (
-                 <div className="space-y-6">
-                    <div className="bg-purple-600/10 border border-purple-500/30 rounded-3xl p-10 text-center space-y-4">
-                       <div className="w-20 h-20 bg-slate-950 rounded-full flex items-center justify-center mx-auto border border-purple-500/30 shadow-2xl text-purple-400"><Clipboard size={32} /></div>
-                       <h3 className="text-xl font-bold text-white uppercase tracking-tighter ">Deep Forensic Evidence Vault</h3>
-                       <p className="text-[10px] text-slate-500 uppercase tracking-widest max-w-sm mx-auto">Click here and press <kbd className="bg-slate-950 px-2 py-1 rounded border border-white/10 text-slate-300">Ctrl+V</kbd> to capture screenshots, logs, or evidence directly into the RCA Intelligence Hub.</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                       {(formData.evidence_json || []).map((ev: any, i: number) => (
-                         <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl aspect-square transition-all hover:scale-[1.02]">
-                            {ev.type === 'image' && <img src={ev.content} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all" />}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
-                               <p className="text-[9px] font-bold text-white uppercase tracking-widest mb-3">{new Date(ev.timestamp).toLocaleString()}</p>
-                               <div className="flex gap-2">
-                                  <button onClick={() => {
-                                    const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
-                                    setFormData({...formData, evidence_json: newEv})
-                                  }} className="p-2.5 bg-rose-600/20 text-rose-500 rounded-xl border border-rose-500/30 backdrop-blur-md hover:bg-rose-600/40"><Trash2 size={16}/></button>
-                                  <button className="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30 backdrop-blur-md flex-1 flex items-center justify-center gap-2 font-bold text-[9px] uppercase tracking-widest"><Eye size={16} /> Inspect</button>
-                               </div>
-                            </div>
-                         </div>
-                       ))}
                     </div>
                  </div>
                )}
@@ -1103,9 +1029,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   )
 }
 
-const RcaTabBtn = ({ active, icon: Icon, label, onClick }: any) => (
-  <button onClick={onClick} className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-2xl transition-all ${active ? 'bg-purple-600 text-white shadow-xl shadow-purple-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
-    <Icon size={16} /> <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+const RcaIconBtn = ({ active, icon: Icon, onClick, label }: any) => (
+  <button onClick={onClick} className={`p-2.5 rounded-xl transition-all relative group ${active ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:bg-white/10'}`}>
+    <Icon size={20} />
+    <span className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold uppercase rounded opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none whitespace-nowrap">{label}</span>
   </button>
 )
 
@@ -1113,7 +1040,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
-  const [activeTab, setActiveTab] = useState('timeline')
 
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
@@ -1123,192 +1049,92 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
       })
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investigations'] })
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, progress_logs: [data, ...(prev.progress_logs || [])] }))
       setNewLog({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
-      toast.success('Activity Recorded')
+      toast.success('Pulse Captured')
     }
   })
 
-  const timelineColumnDefs = [
-    { field: "timestamp", headerName: "Time", width: 140, cellRenderer: (p: any) => new Date(p.value).toLocaleString() },
-    { field: "entry_type", headerName: "Type", width: 100, cellRenderer: (p: any) => (
-      <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-        p.value === 'Action' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
-        p.value === 'Diagnosis' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' :
-        'bg-slate-500/20 border-slate-500/30 text-slate-400'
-      }`}>{p.value}</span>
-    )},
-    { field: "entry_text", headerName: "Description", flex: 1 },
-    { field: "poc", headerName: "POC", width: 100, cellClass: 'font-bold text-blue-400 uppercase tracking-tighter' }
-  ]
+  const handleSave = () => onSave(formData)
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 md:p-8">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-[90vh] rounded-[32px] border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl shadow-black">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1400px] h-[95vh] rounded-[32px] border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
         
-        {/* Header - More Compact */}
-        <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+        <div className="px-5 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
-            <div className="p-2 bg-blue-600/20 rounded-xl text-blue-400 border border-blue-500/30"><Shield size={20} /></div>
+            <div className="p-2 bg-blue-600/20 rounded-xl text-blue-400 border border-blue-500/30"><Search size={20} /></div>
             <div>
               <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">{formData.category} // ID: RES_{formData.id}</span>
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">RES // ID: {formData.id}</span>
                 <StatusPill value={formData.status} />
               </div>
-              <h1 className="text-xl font-bold uppercase  tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-lg font-bold uppercase tracking-tight text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button onClick={() => onSave(formData)} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
+            <button onClick={handleSave} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
             <button onClick={onClose} className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar Nav */}
-          <div className="w-40 border-r border-white/5 bg-black/20 p-4 space-y-1">
-            <NavBtn active={activeTab === 'timeline'} icon={Clock} label="Timeline" onClick={() => setActiveTab('timeline')} />
-            <NavBtn active={activeTab === 'findings'} icon={Search} label="Findings" onClick={() => setActiveTab('findings')} />
-            <NavBtn active={activeTab === 'actions'} icon={ShieldCheck} label="Actions" onClick={() => setActiveTab('actions')} />
-            <NavBtn active={activeTab === 'context'} icon={Database} label="Context" onClick={() => setActiveTab('context')} />
-            <NavBtn active={activeTab === 'settings'} icon={Sliders} label="Control" onClick={() => setActiveTab('settings')} />
+        <div className="flex-1 flex overflow-hidden p-4 gap-4">
+          <div className="w-1/3 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+             <SectionCard icon={FileText} title="Problem Context" color="text-blue-400">
+                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] font-medium text-slate-300 outline-none min-h-[100px]" />
+             </SectionCard>
+             <div className="grid grid-cols-2 gap-3">
+                <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
+                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-2 text-[9px] outline-none min-h-[60px]" />
+                </SectionCard>
+                <SectionCard icon={AlertTriangle} title="Impact" color="text-rose-400">
+                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-2 text-[9px] outline-none min-h-[60px]" />
+                </SectionCard>
+             </div>
+             <SectionCard icon={Search} title="Investigation Findings" color="text-indigo-400">
+                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] outline-none min-h-[120px]" />
+             </SectionCard>
+             <SectionCard icon={ShieldCheck} title="Resolution / Strategy" color="text-emerald-400">
+                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] outline-none min-h-[120px]" />
+             </SectionCard>
           </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-950/50 p-6">
-            <div className="max-w-5xl mx-auto space-y-6">
-              
-              {activeTab === 'timeline' && (
-                <div className="space-y-6">
-                  {/* Compact Quick Add Pulse */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 grid grid-cols-4 gap-3 items-end">
-                    <div className="col-span-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Record Activity / Observation</label>
-                      <input 
-                        value={newLog.entry_text} 
-                        onChange={e => setNewLog({...newLog, entry_text: e.target.value})}
-                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500 text-white"
-                        placeholder="Detailed log entry..."
-                      />
-                    </div>
-                    <StyledSelect 
-                      label="Type" 
-                      value={newLog.entry_type} 
-                      onChange={e => setNewLog({...newLog, entry_type: e.target.value})} 
-                      options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Communication', label:'Communication'}, {value:'Milestone', label:'Milestone'}]} 
-                    />
-                    <div className="flex items-center gap-2">
-                       <div className="flex-1">
-                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC</label>
-                          <input 
-                            value={newLog.poc} 
-                            onChange={e => setNewLog({...newLog, poc: e.target.value})}
-                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[11px] outline-none focus:border-blue-500 text-white font-bold"
-                            placeholder="Owner"
-                          />
-                       </div>
-                       <button 
-                        disabled={!newLog.entry_text || logMutation.isPending}
-                        onClick={() => logMutation.mutate(newLog)}
-                        className="p-2 bg-emerald-600 text-white rounded-lg shadow-lg active:scale-95 transition-all disabled:opacity-50"
-                      >
-                        <PlusCircle size={20} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden h-[400px] ag-theme-alpine-dark">
-                    <AgGridReact 
-                      rowData={formData.progress_logs || []} 
-                      columnDefs={timelineColumnDefs as any}
-                      headerHeight={fontSize + rowDensity + 10}
-                      rowHeight={fontSize + rowDensity + 10}
-                      enableCellTextSelection={true}
-                    />
-                  </div>
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end shrink-0 shadow-lg">
+                <div className="col-span-6">
+                   <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Live Intelligence Pulse</label>
+                   <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-4 py-2 text-[11px] text-white outline-none focus:border-blue-500" placeholder="Record observation..." />
                 </div>
-              )}
-
-              {activeTab === 'findings' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <SectionCard icon={AlertTriangle} title="Impact Description" color="text-rose-400">
-                    <textarea value={formData.impact || ''} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-rose-500/30 text-slate-300 min-h-[120px]" placeholder="Detailed impact analysis..." />
-                  </SectionCard>
-                  <SectionCard icon={Zap} title="Trigger Event" color="text-amber-400">
-                    <textarea value={formData.trigger_event || ''} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-amber-500/30 text-slate-300 min-h-[120px]" placeholder="What started this?" />
-                  </SectionCard>
-                  <SectionCard icon={Search} title="Root Cause Analysis" color="text-blue-400" className="md:col-span-2">
-                    <textarea value={formData.root_cause || ''} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-blue-500/30 text-slate-300 min-h-[150px]" placeholder="Deep dive analysis of the core issue..." />
-                  </SectionCard>
-                  <SectionCard icon={CheckCircle2} title="Resolution Steps" color="text-emerald-400" className="md:col-span-2">
-                    <textarea value={formData.resolution_steps || ''} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-emerald-500/30 text-slate-300 min-h-[150px]" placeholder="How was it fixed?" />
-                  </SectionCard>
+                <div className="col-span-3">
+                   <StyledSelect label="Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}]} />
                 </div>
-              )}
+                <div className="col-span-2">
+                   <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC</label>
+                   <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white outline-none" placeholder="Name" />
+                </div>
+                <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg active:scale-95 transition-all"><Plus size={20} /></button>
+             </div>
 
-              {activeTab === 'actions' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <SectionCard icon={Shield} title="Mitigation Items" color="text-cyan-400">
-                      <ListInput 
-                        items={formData.mitigation_items || []} 
-                        onChange={items => setFormData({...formData, mitigation_items: items})} 
-                        placeholder="Action taken to stabilize..."
-                      />
-                    </SectionCard>
-                    <SectionCard icon={Activity} title="Monitoring Items" color="text-indigo-400">
-                      <ListInput 
-                        items={formData.monitoring_items || []} 
-                        onChange={items => setFormData({...formData, monitoring_items: items})} 
-                        placeholder="What to watch for..."
-                      />
-                    </SectionCard>
+             <div className="flex-1 bg-slate-950/50 border border-white/5 rounded-2xl overflow-y-auto custom-scrollbar p-3 space-y-2">
+                {(formData.progress_logs || []).map((l: any, i: number) => (
+                  <div key={i} className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-start justify-between group">
+                     <div className="flex gap-4">
+                        <div className="w-24 shrink-0 pt-1">
+                           <p className="text-[9px] font-bold text-slate-400">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                           <span className="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{l.entry_type}</span>
+                        </div>
+                        <div>
+                           <p className="text-[11px] font-bold text-slate-200 leading-relaxed uppercase">{l.entry_text}</p>
+                           <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">{l.poc} // {new Date(l.timestamp).toLocaleDateString()}</p>
+                        </div>
+                     </div>
                   </div>
-                  <SectionCard icon={ShieldCheck} title="Prevention Method / Long-term Strategy" color="text-purple-400">
-                    <textarea value={formData.prevention_method || ''} onChange={e => setFormData({...formData, prevention_method: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-purple-500/30 text-slate-300 min-h-[120px]" placeholder="How to prevent recurrence..." />
-                  </SectionCard>
-                  <SectionCard icon={Lightbulb} title="Lessons Learned" color="text-amber-200">
-                    <textarea value={formData.lessons_learned || ''} onChange={e => setFormData({...formData, lessons_learned: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[11px] outline-none focus:border-amber-500/20 text-slate-300 min-h-[100px]" placeholder="Knowledge gained..." />
-                  </SectionCard>
-                </div>
-              )}
-
-              {activeTab === 'context' && (
-                <div className="grid grid-cols-2 gap-6">
-                   <div className="space-y-4">
-                      <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-500 pl-3">Initial Problem Statement</h3>
-                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-slate-300 ">
-                         {formData.problem_statement}
-                      </div>
-                   </div>
-                </div>
-              )}
-
-              {activeTab === 'settings' && (
-                <div className="max-w-xl space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-white/20 pl-3">Research Parameters</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <StyledSelect label="Current Phase" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={[{value:'Analyzing', label:'Analyzing'}, {value:'Escalated', label:'Escalated'}, {value:'Monitoring', label:'Monitoring'}, {value:'Resolved', label:'Resolved'}, {value:'Closed', label:'Closed'}]} />
-                    <StyledSelect label="Priority Rating" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} options={[{value:'Urgent', label:'Urgent'}, {value:'High', label:'High'}, {value:'Medium', label:'Medium'}, {value:'Low', label:'Low'}]} />
-                  </div>
-                  <div className="pt-6 border-t border-white/5">
-                    <button onClick={() => setConfirmModal({ isOpen: true, title: 'Archive Research', message: 'Move this investigation to history?', onConfirm: () => { /* archive logic */ } })} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Archive Record</button>
-                  </div>
-                </div>
-              )}
-            </div>
+                ))}
+             </div>
           </div>
         </div>
       </motion.div>
     </div>
   )
 }
-
-function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
-  const [formData, setFormData] = useState({ 
-    ...item 
-  })
-
-  // Cascading Logic
-  const systems = useMemo(() => {
