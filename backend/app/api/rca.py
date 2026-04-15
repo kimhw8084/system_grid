@@ -20,7 +20,8 @@ async def get_rca_records(db: AsyncSession = Depends(get_db)):
         joinedload(models.RcaRecord.timeline),
         joinedload(models.RcaRecord.mitigations),
         joinedload(models.RcaRecord.knowledge_bkm),
-        joinedload(models.RcaRecord.monitoring_config)
+        joinedload(models.RcaRecord.monitoring_config),
+        joinedload(models.RcaRecord.linked_failure_modes)
     ).filter(models.RcaRecord.is_deleted == False)
     result = await db.execute(query)
     return result.unique().scalars().all()
@@ -31,7 +32,8 @@ async def get_rca_detail(rca_id: int, db: AsyncSession = Depends(get_db)):
         joinedload(models.RcaRecord.timeline),
         joinedload(models.RcaRecord.mitigations),
         joinedload(models.RcaRecord.knowledge_bkm),
-        joinedload(models.RcaRecord.monitoring_config)
+        joinedload(models.RcaRecord.monitoring_config),
+        joinedload(models.RcaRecord.linked_failure_modes)
     ).filter(models.RcaRecord.id == rca_id)
     result = await db.execute(query)
     record = result.scalar_one_or_none()
@@ -40,8 +42,22 @@ async def get_rca_detail(rca_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/")
 async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
+    linked_modes_data = data.pop("linked_failure_modes", [])
     clean_data = filter_valid_columns(models.RcaRecord, data)
+    
+    # Handle ISO dates
+    for date_field in ["occurrence_at", "acknowledged_at"]:
+        if date_field in clean_data and isinstance(clean_data[date_field], str):
+            clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+
     record = models.RcaRecord(**clean_data)
+    
+    if linked_modes_data:
+        mode_ids = [m.get("id") for m in linked_modes_data if m.get("id")]
+        if mode_ids:
+            modes_result = await db.execute(select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(mode_ids)))
+            record.linked_failure_modes = list(modes_result.scalars().all())
+
     db.add(record)
     await db.commit()
     await db.refresh(record)
@@ -49,13 +65,28 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/{rca_id}")
 async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.RcaRecord).filter(models.RcaRecord.id == rca_id))
-    record = result.scalar_one_or_none()
+    result = await db.execute(select(models.RcaRecord).options(joinedload(models.RcaRecord.linked_failure_modes)).filter(models.RcaRecord.id == rca_id))
+    record = result.unique().scalar_one_or_none()
     if not record: raise HTTPException(404, "RCA Record not found")
     
+    linked_modes_data = data.pop("linked_failure_modes", None)
     clean_data = filter_valid_columns(models.RcaRecord, data)
+    
+    # Handle ISO dates
+    for date_field in ["occurrence_at", "acknowledged_at"]:
+        if date_field in clean_data and isinstance(clean_data[date_field], str):
+            clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+
     for k, v in clean_data.items():
         setattr(record, k, v)
+    
+    if linked_modes_data is not None:
+        mode_ids = [m.get("id") for m in linked_modes_data if m.get("id")]
+        if mode_ids:
+            modes_result = await db.execute(select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(mode_ids)))
+            record.linked_failure_modes = list(modes_result.scalars().all())
+        else:
+            record.linked_failure_modes = []
         
     await db.commit()
     await db.refresh(record)

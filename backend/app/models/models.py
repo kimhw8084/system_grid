@@ -667,19 +667,42 @@ class Project(Base, BaseMixin):
 
 # --- INCIDENT RCA (ROOT CAUSE ANALYSIS) MODULE ---
 
+# Join table for RcaRecord <-> FarFailureMode N:N relationship
+rca_failure_mode_links = Table(
+    "rca_failure_mode_links", Base.metadata,
+    Column("rca_id", Integer, ForeignKey("rca_records.id", ondelete="CASCADE")),
+    Column("failure_mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+)
+
 class RcaRecord(Base, BaseMixin):
     __tablename__ = "rca_records"
     title = Column(String, index=True)
+    problem_statement = Column(Text) # Added problem statement
     trigger_source = Column(String) # e.g. "Auto Alert", "Manual Report", "Customer Escalation"
     severity = Column(String) # Auto-calculated: P1, P2, P3, P4
+    priority = Column(Integer, default=1) # 1-10 priority gauge
     severity_logic = Column(JSON, default=dict) # { flow_halted: bool, scrap_risk: bool, etc }
     initial_symptoms = Column(Text)
+    
+    # Timing & Ownership
+    occurrence_at = Column(DateTime)
+    acknowledged_at = Column(DateTime)
+    owner = Column(String)
+    jira_link = Column(String)
     
     # Cascading selection context
     target_system = Column(String) # System name
     impacted_asset_ids = Column(JSON, default=list) # List of device IDs within that system
+    impacted_service_ids = Column(JSON, default=list) # List of service IDs within those assets
+    
+    # FAB Impact
+    fab_impact_json = Column(JSON, default=lambda: {"categories": [], "explanation": "", "severity": 1})
     
     # Investigation Flow
+    identification_steps_json = Column(JSON, default=list) # [{step, text, images: []}]
+    rca_steps_json = Column(JSON, default=list) # [{step, text, images: []}]
+    potential_causes_json = Column(JSON, default=list) # [{cause, indicator, bkm_id, status}]
+    
     narrative_summary = Column(Text) # Step-by-step narrative
     evidence_json = Column(JSON, default=list) # [{ type: 'image|log|text', content: '...', timestamp: '...' }]
     
@@ -700,6 +723,7 @@ class RcaRecord(Base, BaseMixin):
     mitigations = relationship("RcaMitigation", back_populates="rca", cascade="all, delete-orphan")
     knowledge_bkm = relationship("KnowledgeEntry")
     monitoring_config = relationship("MonitoringItem")
+    linked_failure_modes = relationship("FarFailureMode", secondary=rca_failure_mode_links)
 
 class RcaTimelineEvent(Base, BaseMixin):
     __tablename__ = "rca_timeline_events"
@@ -707,6 +731,8 @@ class RcaTimelineEvent(Base, BaseMixin):
     event_time = Column(DateTime)
     event_type = Column(String) # e.g. "Detection", "Mitigation", "Observation", "Resolution"
     description = Column(Text)
+    owner = Column(String) # Added owner
+    owner_team = Column(String) # Added owner_team
     involved_pocs = Column(JSON, default=list) # List of names/IDs
     
     rca = relationship("RcaRecord", back_populates="timeline")
