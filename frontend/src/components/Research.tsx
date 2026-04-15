@@ -23,8 +23,8 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-inner">
     <div>
-      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
-      <p className="text-xl font-black text-white tracking-tighter">{value}</p>
+      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
+      <p className="text-xl font-bold text-white tracking-tighter">{value}</p>
     </div>
     <div className={`p-2 rounded-lg bg-white/5 ${color}`}><Icon size={18} /></div>
   </div>
@@ -46,6 +46,7 @@ export default function Research() {
   const [activeRcaModal, setActiveRcaModal] = useState<any>(null)
   const [activeRcaDetails, setActiveRcaDetails] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const { data: investigations, isLoading } = useQuery({ 
     queryKey: ['investigations'], 
@@ -310,7 +311,7 @@ export default function Research() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2 text-white">
+              <h1 className="text-2xl font-bold uppercase tracking-tight  flex items-center gap-2 text-white">
                 <Shield size={24} className="text-blue-500" /> Research Matrix
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Deep Forensics & Scientific Troubleshooting</p>
@@ -320,7 +321,7 @@ export default function Research() {
         <div className="flex items-center space-x-3">
           <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
@@ -346,8 +347,8 @@ export default function Research() {
           </div>
 
           <div className="flex gap-2">
-             <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={14}/> New RCA</button>
-             <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Research</button>
+             <button onClick={() => setActiveRcaModal({ title: '', status: 'Open', target_system: '', impacted_asset_ids: [], severity_logic: { flow_halted: false, scrap_risk: false, quality_impact: false, global_outage: false } })} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><ShieldAlert size={14}/> New RCA</button>
+             <button onClick={() => setActiveModal({ title: '', category: 'General', status: 'Analyzing', priority: 'Medium', systems: [], impacted_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Research</button>
           </div>
         </div>
       </div>
@@ -364,31 +365,31 @@ export default function Research() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                             className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
                      </div>
 
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
@@ -409,7 +410,7 @@ export default function Research() {
         {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing Research Matrix...</p>
           </div>
         )}
         <AgGridReact
@@ -422,6 +423,8 @@ export default function Research() {
           animateRows={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
+          rowSelection="multiple"
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
         />
 
         <AnimatePresence>
@@ -433,7 +436,7 @@ export default function Research() {
               className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2">
                   <Sliders size={14} /> <span>Toggle Columns</span>
                 </h3>
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -458,7 +461,7 @@ export default function Research() {
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -573,7 +576,7 @@ function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-6 rounded-3xl border border-blue-500/30 space-y-4">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
-          <h2 className="text-xl font-black uppercase text-blue-400 flex items-center gap-2 tracking-tighter">
+          <h2 className="text-xl font-bold uppercase text-blue-400 flex items-center gap-2 tracking-tighter">
             <PlusCircle size={20} /> Initialize Research
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
@@ -581,7 +584,7 @@ function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any
 
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Research Title</label>
+            <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Research Title</label>
             <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-white font-bold" placeholder="E.G. CLUSTER LATENCY ANALYSIS" />
           </div>
 
@@ -593,21 +596,21 @@ function ResearchForm({ item, options, devices, onClose, onSave, isSaving }: any
           </div>
 
           <div className="col-span-2">
-            <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Preliminary Problem Statement</label>
+            <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Preliminary Problem Statement</label>
             <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[60px]" placeholder="Briefly describe the issue..." />
           </div>
 
           {formData.category === 'Troubleshooting' && (
             <div className="col-span-2 bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
-              <label className="text-[8px] font-black text-blue-400 uppercase tracking-widest block mb-1">Initial Impact Assessment</label>
+              <label className="text-[8px] font-bold text-blue-400 uppercase tracking-widest block mb-1">Initial Impact Assessment</label>
               <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-900/50 border border-white/5 rounded-lg px-3 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[40px]" placeholder="What is currently affected?" />
             </div>
           )}
         </div>
 
         <div className="flex space-x-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-2 text-[9px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 tracking-widest">
+          <button onClick={onClose} className="flex-1 py-2 text-[9px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-2 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 tracking-widest">
             {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Zap size={12} />} 
             Launch {formData.category} Tracker
           </button>
@@ -641,7 +644,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const timelineColumnDefs = [
     { field: "timestamp", headerName: "Time", width: 140, cellRenderer: (p: any) => new Date(p.value).toLocaleString() },
     { field: "entry_type", headerName: "Type", width: 100, cellRenderer: (p: any) => (
-      <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
+      <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded border ${
         p.value === 'Action' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
         p.value === 'Diagnosis' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' :
         'bg-slate-500/20 border-slate-500/30 text-slate-400'
@@ -661,14 +664,14 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
             <div className="p-2 bg-blue-600/20 rounded-xl text-blue-400 border border-blue-500/30"><Shield size={20} /></div>
             <div>
               <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">{formData.category} // ID: RES_{formData.id}</span>
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">{formData.category} // ID: RES_{formData.id}</span>
                 <StatusPill value={formData.status} />
               </div>
-              <h1 className="text-xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-xl font-bold uppercase  tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button onClick={() => onSave(formData)} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
+            <button onClick={() => onSave(formData)} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
             <button onClick={onClose} className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
           </div>
         </div>
@@ -692,7 +695,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                   {/* Compact Quick Add Pulse */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-4 grid grid-cols-4 gap-3 items-end">
                     <div className="col-span-2">
-                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Record Activity / Observation</label>
+                      <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Record Activity / Observation</label>
                       <input 
                         value={newLog.entry_text} 
                         onChange={e => setNewLog({...newLog, entry_text: e.target.value})}
@@ -708,7 +711,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                     />
                     <div className="flex items-center gap-2">
                        <div className="flex-1">
-                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">POC</label>
+                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC</label>
                           <input 
                             value={newLog.poc} 
                             onChange={e => setNewLog({...newLog, poc: e.target.value})}
@@ -785,8 +788,8 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
               {activeTab === 'context' && (
                 <div className="grid grid-cols-2 gap-6">
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-500 pl-3">Initial Problem Statement</h3>
-                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-slate-300 italic">
+                      <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-500 pl-3">Initial Problem Statement</h3>
+                      <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-xs text-slate-300 ">
                          {formData.problem_statement}
                       </div>
                    </div>
@@ -795,13 +798,13 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
               {activeTab === 'settings' && (
                 <div className="max-w-xl space-y-4">
-                  <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-white/20 pl-3">Research Parameters</h3>
+                  <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-white/20 pl-3">Research Parameters</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <StyledSelect label="Current Phase" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={[{value:'Analyzing', label:'Analyzing'}, {value:'Escalated', label:'Escalated'}, {value:'Monitoring', label:'Monitoring'}, {value:'Resolved', label:'Resolved'}, {value:'Closed', label:'Closed'}]} />
                     <StyledSelect label="Priority Rating" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} options={[{value:'Urgent', label:'Urgent'}, {value:'High', label:'High'}, {value:'Medium', label:'Medium'}, {value:'Low', label:'Low'}]} />
                   </div>
                   <div className="pt-6 border-t border-white/5">
-                    <button onClick={() => setConfirmModal({ isOpen: true, title: 'Archive Research', message: 'Move this investigation to history?', onConfirm: () => { /* archive logic */ } })} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Archive Record</button>
+                    <button onClick={() => setConfirmModal({ isOpen: true, title: 'Archive Research', message: 'Move this investigation to history?', onConfirm: () => { /* archive logic */ } })} className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Archive Record</button>
                   </div>
                 </div>
               )}
@@ -857,7 +860,7 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl p-8 rounded-[32px] border border-purple-500/30 space-y-6">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
-          <h2 className="text-2xl font-black uppercase text-purple-400 flex items-center gap-3 tracking-tighter">
+          <h2 className="text-2xl font-bold uppercase text-purple-400 flex items-center gap-3 tracking-tighter">
             <ShieldAlert size={24} /> New Incident RCA
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -865,7 +868,7 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
 
         <div className="grid grid-cols-2 gap-6">
           <div className="col-span-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Incident Title</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Incident Title</label>
             <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-white font-bold shadow-inner" placeholder="E.G. FAB-2 LINE BLOCKAGE: SENSOR FAILURE" />
           </div>
 
@@ -878,7 +881,7 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
           />
 
           <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest px-1">Target Assets</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block tracking-widest px-1">Target Assets</label>
             <div className={`h-11 bg-slate-950 border border-white/10 rounded-xl flex items-center px-4 overflow-hidden ${!formData.target_system ? 'opacity-50 cursor-not-allowed' : ''}`}>
                <select 
                 disabled={!formData.target_system}
@@ -896,12 +899,12 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
                </select>
             </div>
             {formData.target_system && (
-              <p className="text-[8px] text-slate-600 mt-1 uppercase italic px-1">Hold Ctrl/Cmd to multi-select</p>
+              <p className="text-[8px] text-slate-600 mt-1 uppercase  px-1">Hold Ctrl/Cmd to multi-select</p>
             )}
           </div>
 
           <div className="col-span-2 space-y-3">
-             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block px-1">Severity Auto-Calculator (FAB Operational Flow)</label>
+             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block px-1">Severity Auto-Calculator (FAB Operational Flow)</label>
              <div className="grid grid-cols-2 gap-3">
                 <SeverityToggle label="Process Flow Halted?" active={formData.severity_logic.flow_halted} onClick={() => toggleLogic('flow_halted')} />
                 <SeverityToggle label="Scrap Risk?" active={formData.severity_logic.scrap_risk} onClick={() => toggleLogic('scrap_risk')} />
@@ -910,10 +913,10 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
              </div>
              <div className="mt-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Calculated Severity Level</p>
+                  <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Calculated Severity Level</p>
                   <p className="text-[8px] text-slate-500 uppercase">Based on operational impact questionnaire</p>
                 </div>
-                <div className={`text-3xl font-black px-6 py-2 rounded-xl border-2 ${
+                <div className={`text-3xl font-bold px-6 py-2 rounded-xl border-2 ${
                   formData.severity === 'P1' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
                   formData.severity === 'P2' ? 'bg-amber-500/20 border-amber-500 text-amber-500' :
                   'bg-blue-500/20 border-blue-500 text-blue-400'
@@ -924,14 +927,14 @@ function RcaForm({ item, options, devices, onClose, onSave, isSaving }: any) {
           </div>
 
           <div className="col-span-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Initial Symptoms</label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Initial Symptoms</label>
             <textarea value={formData.initial_symptoms} onChange={e => setFormData({...formData, initial_symptoms: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-purple-500 text-slate-300 min-h-[80px]" placeholder="Describe what was observed at time of failure..." />
           </div>
         </div>
 
         <div className="flex space-x-4 pt-4">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 tracking-widest">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 tracking-widest">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <ShieldAlert size={16} />} 
             Initialize RCA Flow
           </button>
@@ -1005,25 +1008,25 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
             <div className="p-4 bg-purple-600/20 rounded-2xl text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10"><ShieldAlert size={28} /></div>
             <div>
               <div className="flex items-center space-x-3 mb-1">
-                <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-[9px] font-black text-purple-400 uppercase tracking-widest">RCA_{item.id}</span>
-                <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase ${
+                <span className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-[9px] font-bold text-purple-400 uppercase tracking-widest">RCA_{item.id}</span>
+                <span className={`px-2 py-0.5 rounded border text-[9px] font-bold uppercase ${
                   formData.severity === 'P1' ? 'bg-rose-500/20 border-rose-500 text-rose-500' : 'bg-slate-500/20 border-white/10 text-slate-400'
                 }`}>{formData.severity}</span>
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formData.target_system}</span>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{formData.target_system}</span>
               </div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-bold uppercase  tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
              <div className="text-right mr-4">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Incident Lifecycle</p>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Incident Lifecycle</p>
                 <div className="flex items-center gap-1 mt-1">
                    {['Open', 'Investigation', 'Resolved', 'Closed'].map(s => (
                      <div key={s} className={`h-1.5 w-8 rounded-full ${formData.status === s ? 'bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'bg-white/10'}`} />
                    ))}
                 </div>
              </div>
-            <button onClick={() => onSave(formData)} className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={16}/> Sync State</button>
+            <button onClick={() => onSave(formData)} className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={16}/> Sync State</button>
             <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={20}/></button>
           </div>
         </div>
@@ -1046,7 +1049,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                {activeTab === 'investigation' && (
                  <div className="space-y-8">
                    <SectionCard icon={Info} title="Initial Symptoms" color="text-slate-400">
-                     <p className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 italic leading-relaxed">
+                     <p className="bg-slate-900/50 border border-white/5 rounded-2xl p-6 text-sm text-slate-300  leading-relaxed">
                         {formData.initial_symptoms || 'No symptoms recorded at initialization.'}
                      </p>
                    </SectionCard>
@@ -1067,7 +1070,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                  <div className="space-y-8">
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-4 gap-4 items-end shadow-xl">
                        <div className="col-span-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Chronological Event Description</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Chronological Event Description</label>
                           <input 
                             value={newTimeline.description} 
                             onChange={e => setNewTimeline({...newTimeline, description: e.target.value})}
@@ -1083,7 +1086,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                        />
                        <div className="flex gap-2">
                           <div className="flex-1">
-                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Backdate Time</label>
+                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Backdate Time</label>
                              <input 
                               type="datetime-local"
                               value={newTimeline.event_time.slice(0, 16)}
@@ -1110,7 +1113,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                             </div>
                             <div className="flex items-center justify-between mb-2">
                                <div className="flex items-center gap-3">
-                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                  <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${
                                     e.event_type === 'Detection' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
                                     e.event_type === 'Resolution' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' :
                                     'bg-blue-500/20 border-blue-500 text-blue-400'
@@ -1125,7 +1128,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                        {(!formData.timeline || formData.timeline.length === 0) && (
                          <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl">
                             <History size={40} className="mx-auto text-slate-800 mb-4" />
-                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">No timeline events recorded</p>
+                            <p className="text-[10px] font-bold text-slate-700 uppercase tracking-[0.3em]">No timeline events recorded</p>
                          </div>
                        )}
                     </div>
@@ -1138,7 +1141,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                        <div className="w-20 h-20 bg-slate-950 rounded-full flex items-center justify-center mx-auto border border-purple-500/30 shadow-2xl text-purple-400">
                           <Clipboard size={32} />
                        </div>
-                       <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">Clipboard Image Hook</h3>
+                       <h3 className="text-xl font-bold text-white uppercase tracking-tighter ">Clipboard Image Hook</h3>
                        <p className="text-[10px] text-slate-500 uppercase tracking-widest max-w-sm mx-auto">Click here and press <kbd className="bg-slate-950 px-2 py-1 rounded border border-white/10 text-slate-300">Ctrl+V</kbd> to capture screenshots, logs, or evidence directly into the RCA.</p>
                     </div>
 
@@ -1149,13 +1152,13 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                               <img src={ev.content} alt="Evidence" className="w-full h-48 object-cover opacity-80 group-hover:opacity-100 transition-all" />
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-4">
-                               <p className="text-[8px] font-black text-white uppercase tracking-widest">{new Date(ev.timestamp).toLocaleString()}</p>
+                               <p className="text-[8px] font-bold text-white uppercase tracking-widest">{new Date(ev.timestamp).toLocaleString()}</p>
                                <div className="flex gap-2 mt-2">
                                   <button onClick={() => {
                                     const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
                                     setFormData({...formData, evidence_json: newEv})
                                   }} className="p-2 bg-rose-600/20 text-rose-500 rounded-lg border border-rose-500/30"><Trash2 size={14}/></button>
-                                  <button className="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 flex-1 flex items-center justify-center gap-2"><Eye size={14} /><span className="text-[8px] font-black uppercase">Inspect</span></button>
+                                  <button className="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 flex-1 flex items-center justify-center gap-2"><Eye size={14} /><span className="text-[8px] font-bold uppercase">Inspect</span></button>
                                </div>
                             </div>
                          </div>
@@ -1191,7 +1194,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                  <div className="space-y-8">
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-4 gap-4 items-end shadow-xl">
                        <div className="col-span-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Action Description</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Action Description</label>
                           <input 
                             value={newMitigation.action_description} 
                             onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value})}
@@ -1208,7 +1211,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                        <button 
                         disabled={!newMitigation.action_description || mitigationMutation.isPending}
                         onClick={() => mitigationMutation.mutate(newMitigation)}
-                        className="w-full py-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest"
+                        className="w-full py-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest"
                       >
                         <PlusCircle size={16} /> Deploy Plan
                       </button>
@@ -1225,8 +1228,8 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                                }`}><Shield size={20} /></div>
                                <div>
                                   <div className="flex items-center gap-3 mb-1">
-                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{m.type} Plan</span>
-                                     <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-white/10 text-slate-400">{m.status}</span>
+                                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{m.type} Plan</span>
+                                     <span className="text-[8px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-slate-400">{m.status}</span>
                                   </div>
                                   <p className="text-sm font-bold text-white">{m.action_description}</p>
                                </div>
@@ -1253,7 +1256,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                         placeholder="Choose manual..."
                        />
                        <div className="mt-6 p-4 border border-dashed border-white/10 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-slate-600 uppercase">No BKM Link Established</p>
+                          <p className="text-[9px] font-bold text-slate-600 uppercase">No BKM Link Established</p>
                        </div>
                     </SectionCard>
                     <SectionCard icon={Activity} title="Monitoring Sync" color="text-indigo-400">
@@ -1266,7 +1269,7 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
                         placeholder="Choose telemetry..."
                        />
                        <div className="mt-6 p-4 border border-dashed border-white/10 rounded-2xl text-center">
-                          <p className="text-[9px] font-black text-slate-600 uppercase">No Telemetry Link Established</p>
+                          <p className="text-[9px] font-bold text-slate-600 uppercase">No Telemetry Link Established</p>
                        </div>
                     </SectionCard>
                  </div>
@@ -1282,19 +1285,19 @@ function RcaDetails({ item, devices, onClose, onSave }: any) {
 
 const RcaNavBtn = ({ active, icon: Icon, label, onClick }: any) => (
   <button onClick={onClick} className={`w-full flex items-center space-x-4 px-4 py-3.5 rounded-2xl transition-all ${active ? 'bg-purple-600 text-white shadow-xl shadow-purple-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
-    <Icon size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    <Icon size={16} /> <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
   </button>
 )
 
 const NavBtn = ({ active, icon: Icon, label, onClick }: any) => (
   <button onClick={onClick} className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all ${active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-white/5'}`}>
-    <Icon size={14} /> <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+    <Icon size={14} /> <span className="text-[9px] font-bold uppercase tracking-widest">{label}</span>
   </button>
 )
 
 const SectionCard = ({ icon: Icon, title, children, color, className }: any) => (
   <div className={`bg-white/5 border border-white/5 rounded-3xl p-6 space-y-4 ${className}`}>
-    <div className={`flex items-center gap-3 ${color}`}><Icon size={18} /><h3 className="text-[10px] font-black uppercase tracking-widest">{title}</h3></div>
+    <div className={`flex items-center gap-3 ${color}`}><Icon size={18} /><h3 className="text-[10px] font-bold uppercase tracking-widest">{title}</h3></div>
     {children}
   </div>
 )

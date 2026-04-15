@@ -77,8 +77,8 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">External Entity Metadata</span>
-            {error && <span className="text-[8px] font-black text-rose-500 uppercase animate-pulse">!! {error}</span>}
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">External Entity Metadata</span>
+            {error && <span className="text-[8px] font-bold text-rose-500 uppercase animate-pulse">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
             <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
@@ -107,7 +107,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
             <button onClick={() => {
                 const n = [...tableRows, { key: '', value: '' }];
                 setTableRows(n);
-            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute</button>
+            }} className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute</button>
           </div>
         ) : (
           <textarea value={jsonValue} onChange={e => {
@@ -130,24 +130,24 @@ const MetadataViewer = ({ data }: { data: any }) => {
   return (
     <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Metadata Inspection</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Metadata Inspection</span>
       </div>
       <table className="w-full text-[10px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Key</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Value</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Key</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Value</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {Object.entries(obj).map(([k, v]) => (
             <tr key={k} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-3 font-black uppercase text-blue-400 tracking-tighter w-1/3">{k}</td>
+              <td className="px-4 py-3 font-bold uppercase text-blue-400 tracking-tighter w-1/3">{k}</td>
               <td className="px-4 py-3 font-mono text-slate-300">{String(v)}</td>
             </tr>
           ))}
           {Object.keys(obj).length === 0 && (
-            <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No metadata keys defined</td></tr>
+            <tr><td colSpan={2} className="px-4 py-12 text-center text-slate-600 font-bold uppercase  tracking-widest">No metadata keys defined</td></tr>
           )}
         </tbody>
       </table>
@@ -175,14 +175,14 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
         <div className="flex items-center space-x-3">
           <User size={14} className="text-amber-400" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authorized Points of Contact</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Authorized Points of Contact</span>
         </div>
-        <button onClick={addPOC} className="px-3 py-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/30 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all">+ Add POC</button>
+        <button onClick={addPOC} className="px-3 py-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-600/30 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all">+ Add POC</button>
       </div>
       <div className="p-4 space-y-3">
         {pocs.length === 0 && (
           <div className="py-8 text-center border border-dashed border-white/5 rounded-xl">
-            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">No POCs registered</p>
+            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ">No POCs registered</p>
           </div>
         )}
         {pocs.map((poc, idx) => (
@@ -190,15 +190,15 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
             <button onClick={() => removePOC(idx)} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><X size={14}/></button>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">First Name</label>
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">First Name</label>
                 <input value={poc.first_name} onChange={e => updatePOC(idx, 'first_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane" />
               </div>
               <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Last Name</label>
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Last Name</label>
                 <input value={poc.last_name} onChange={e => updatePOC(idx, 'last_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Doe" />
               </div>
               <div>
-                <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
                 <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value.toUpperCase())} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
               </div>
             </div>
@@ -250,27 +250,27 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
   return (
     <div className="space-y-6">
       <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
-        <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
+        <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-widest flex items-center gap-2">
           <Shield size={12}/> Register Access Credential
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Username / ID</label>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Username / ID</label>
             <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="E.G. ADMIN_SVC" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Access Password</label>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Access Password</label>
             <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Purpose / Note</label>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Purpose / Note</label>
             <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="E.G. READ-ONLY API ACCESS" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
         </div>
         <button 
           disabled={!newSecret.username || !newSecret.password}
           onClick={() => addMutation.mutate(newSecret)}
-          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
           {addMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Plus size={14} />}
           Inject Secret into Vault
@@ -279,22 +279,22 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
 
       <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Authorized Credential Matrix</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Authorized Credential Matrix</span>
           <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{entity?.secrets?.length || 0} Entries</span>
         </div>
         <table className="w-full text-left">
           <thead>
             <tr className="bg-white/5 border-b border-white/5">
-              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Username</th>
-              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Password</th>
-              <th className="px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Purpose</th>
-              <th className="px-4 py-3 text-right text-[9px] font-black uppercase tracking-widest text-slate-500">Actions</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Username</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Password</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Purpose</th>
+              <th className="px-4 py-3 text-right text-[9px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {entity?.secrets?.map((s: any) => (
               <tr key={s.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-4 py-3 text-[10px] font-black text-white uppercase">{s.username}</td>
+                <td className="px-4 py-3 text-[10px] font-bold text-white uppercase">{s.username}</td>
                 <td className="px-4 py-3 font-mono text-[10px]">
                   <div className="flex items-center space-x-2">
                     <span className="text-blue-400/80">{visiblePasswords[s.id] ? s.password : '••••••••••••'}</span>
@@ -303,7 +303,7 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
                     </button>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[10px] text-slate-400 font-medium italic">{s.note || 'N/A'}</td>
+                <td className="px-4 py-3 text-[10px] text-slate-400 font-medium ">{s.note || 'N/A'}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={14}/>
@@ -313,7 +313,7 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
             ))}
             {(!entity?.secrets || entity.secrets.length === 0) && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest text-[9px]">No credentials stored for this identity</td>
+                <td colSpan={4} className="px-4 py-12 text-center text-slate-600 font-bold uppercase  tracking-widest text-[9px]">No credentials stored for this identity</td>
               </tr>
             )}
           </tbody>
@@ -391,13 +391,13 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
     <div className="space-y-8 py-6">
       <div className="grid grid-cols-2 gap-8">
         <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
+           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Entity Name (UID) *</label>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name (UID) *</label>
               <input 
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-black text-white outline-none focus:border-blue-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" 
                 placeholder="E.G. CUSTOMER-FEED-API" 
               />
            </div>
@@ -424,27 +424,27 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
         </div>
 
         <div className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Organizational Authority</h3>
+           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Organizational Authority</h3>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Owner Organization</label>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Organization</label>
               <input 
                 value={formData.owner_organization} 
                 onChange={e => setFormData({...formData, owner_organization: e.target.value.toUpperCase()})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-black text-white outline-none focus:border-emerald-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="GLOBAL LOGISTICS INC." 
               />
            </div>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Owner Team</label>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Team</label>
               <input 
                 value={formData.owner_team} 
                 onChange={e => setFormData({...formData, owner_team: e.target.value.toUpperCase()})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-black text-white outline-none focus:border-emerald-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="CORE-INFRA-TEAM" 
               />
            </div>
            <div>
-              <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Functional Description</label>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Functional Description</label>
               <textarea 
                 value={formData.description} 
                 onChange={e => setFormData({...formData, description: e.target.value})} 
@@ -473,7 +473,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
         <button 
           disabled={isSaving || !formData.name} 
           onClick={() => onSave(formData)} 
-          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
+          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
         >
           {isSaving && <RefreshCcw size={18} className="animate-spin" />}
           <span>{initialData.id ? 'Synchronize Entity Manifest' : 'Authorize External Registry Admission'}</span>
@@ -495,7 +495,7 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
             { id: 'org', label: 'Organization & POCs', icon: Briefcase },
             { id: 'secrets', label: 'Credentials', icon: Tag }
           ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               <t.icon size={12} /> <span>{t.label}</span>
             </button>
           ))}
@@ -516,32 +516,32 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
         {tab === 'org' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/10 relative overflow-hidden group">
-               <h3 className="text-[9px] font-black uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>
+               <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>
                <div className="grid grid-cols-2 gap-6 relative z-10">
                   <div className="flex flex-col border-l-2 border-white/5 pl-4">
-                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Owner Organization</span>
-                     <span className="text-sm font-black text-white tracking-tight italic">{entity.owner_organization || 'UNASSIGNED'}</span>
+                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Owner Organization</span>
+                     <span className="text-sm font-bold text-white tracking-tight ">{entity.owner_organization || 'UNASSIGNED'}</span>
                   </div>
                   <div className="flex flex-col border-l-2 border-emerald-500/30 pl-4">
-                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-0.5">Responsible Team</span>
-                     <span className="text-sm font-black text-emerald-400 tracking-tight italic">{entity.owner_team || 'UNASSIGNED'}</span>
+                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Responsible Team</span>
+                     <span className="text-sm font-bold text-emerald-400 tracking-tight ">{entity.owner_team || 'UNASSIGNED'}</span>
                   </div>
                </div>
             </div>
 
             <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
                 <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{entity.poc_json?.length || 0} Contacts</span>
               </div>
               <div className="p-3 grid grid-cols-2 gap-3">
                    {entity.poc_json && entity.poc_json.length > 0 ? entity.poc_json.map((poc: any, idx: number) => (
                      <div key={idx} className="bg-black/40 p-3 rounded-xl border border-white/5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-black text-[10px]">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
+                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-bold text-[10px]">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
                            <div>
-                              <p className="text-[10px] font-black uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
-                              <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mt-0.5">{poc.id || 'NO_ID'}</p>
+                              <p className="text-[10px] font-bold uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
+                              <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">{poc.id || 'NO_ID'}</p>
                            </div>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -550,7 +550,7 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
                         </div>
                      </div>
                    )) : (
-                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase italic tracking-widest text-[9px]">No authorized POCs defined</div>
+                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase  tracking-widest text-[9px]">No authorized POCs defined</div>
                    )}
               </div>
             </div>
@@ -781,7 +781,7 @@ export default function External() {
         headerName: "Description",
         flex: 2,
         filter: true,
-        cellClass: 'text-left font-bold text-slate-500 italic truncate',
+        cellClass: 'text-left font-bold text-slate-500  truncate',
         headerClass: 'text-left',
         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
         hide: hiddenColumns.includes("description")
@@ -825,15 +825,15 @@ export default function External() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">External</h1>
+              <h1 className="text-2xl font-bold uppercase tracking-tight ">External</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Third-Party Asset Forensic</p>
            </div>
            
            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
-                <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     Active
                 </button>
-                <button onClick={() => setActiveTab('deleted')} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                <button onClick={() => setActiveTab('deleted')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     Deleted
                 </button>
            </div>
@@ -846,7 +846,7 @@ export default function External() {
                value={searchTerm} 
                onChange={e => setSearchTerm(e.target.value)} 
                placeholder="SCAN REGISTRY..." 
-               className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
+               className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
              />
           </div>
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
@@ -870,7 +870,7 @@ export default function External() {
                 <Settings size={16} />
              </button>
           </div>
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
         </div>
       </div>
 
@@ -886,31 +886,31 @@ export default function External() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                             className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
                      </div>
 
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
@@ -925,7 +925,7 @@ export default function External() {
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>
           </div>
         )}
         <AgGridReact 
@@ -938,6 +938,8 @@ export default function External() {
           animateRows={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
+          rowSelection="multiple"
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
         />
 
         <AnimatePresence>
@@ -949,7 +951,7 @@ export default function External() {
               className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2">
                   <Sliders size={14} /> <span>Toggle Columns</span>
                 </h3>
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -974,7 +976,7 @@ export default function External() {
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -988,7 +990,7 @@ export default function External() {
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Layers size={28}/> <span>{activeModal.id ? 'Modify Entity Registry' : 'Admit External Identity'}</span>
                   </h2>
                   <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -1005,20 +1007,20 @@ export default function External() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div className="flex-1">
-                    <h2 className="text-2xl font-black uppercase text-blue-400 leading-tight tracking-tighter italic">{activeDetails.name}</h2>
+                    <h2 className="text-2xl font-bold uppercase text-blue-400 leading-tight tracking-tighter ">{activeDetails.name}</h2>
                     <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
+                      <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNASSIGNED'}</p>
+                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className={`text-[9px] font-black uppercase tracking-widest ${
+                      <p className={`text-[9px] font-bold uppercase tracking-widest ${
                         activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
                       }`}>STATUS: {activeDetails.status}</p>
                     </div>
                     <div className="mt-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 max-w-2xl">
-                       <p className="text-[10px] font-bold text-slate-400 italic leading-relaxed">
+                       <p className="text-[10px] font-bold text-slate-400  leading-relaxed">
                           "{activeDetails.description || 'No formal functional description provided for this architectural identity.'}"
                        </p>
                     </div>

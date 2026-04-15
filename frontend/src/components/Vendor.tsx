@@ -20,7 +20,7 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 const SectionHeader = ({ icon: Icon, title, color = "text-blue-400" }: any) => (
   <div className="flex items-center space-x-3 border-b border-white/5 pb-2 mb-4">
     <Icon size={16} className={color} />
-    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</h3>
+    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{title}</h3>
   </div>
 )
 
@@ -28,7 +28,7 @@ const InfoCard = ({ label, value, icon: Icon }: any) => (
   <div className="bg-white/5 border border-white/5 p-4 rounded-2xl space-y-1">
     <div className="flex items-center space-x-2 text-slate-500">
       <Icon size={12} />
-      <span className="text-[8px] font-black uppercase tracking-widest">{label}</span>
+      <span className="text-[8px] font-bold uppercase tracking-widest">{label}</span>
     </div>
     <p className="text-xs font-bold text-white uppercase tracking-tight">{value || '---'}</p>
   </div>
@@ -283,7 +283,7 @@ export default function Vendor() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic text-white">Vendors</h1>
+              <h1 className="text-2xl font-bold uppercase tracking-tight  text-white">Vendors</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Vendor Capability & Contract Intelligence</p>
            </div>
         </div>
@@ -291,7 +291,7 @@ export default function Vendor() {
         <div className="flex items-center space-x-3">
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
@@ -318,7 +318,7 @@ export default function Vendor() {
 
           <button 
             onClick={() => setActiveModal({ name: '', primary_email: '', primary_phone: '', country: '' })}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             + Add Vendor
           </button>
@@ -337,31 +337,31 @@ export default function Vendor() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                             className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
                      </div>
 
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
@@ -376,7 +376,7 @@ export default function Vendor() {
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing partner data...</p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing partner data...</p>
           </div>
         )}
         <AgGridReact 
@@ -389,6 +389,8 @@ export default function Vendor() {
           animateRows={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
+          rowSelection="multiple"
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
         />
 
         <AnimatePresence>
@@ -400,7 +402,7 @@ export default function Vendor() {
               className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2">
                   <Sliders size={14} /> <span>Toggle Columns</span>
                 </h3>
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -425,7 +427,7 @@ export default function Vendor() {
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -482,7 +484,7 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-black uppercase text-blue-400 flex items-center gap-3">
+          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3">
             <Briefcase size={24} /> Vendor Entry
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -492,27 +494,27 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
             <SectionHeader icon={User} title="Basic Information" />
             <div className="space-y-4">
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
                 <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
                 <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Primary Phone</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Phone</label>
                 <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Country</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Country</label>
                 <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
             </div>
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Save Vendor
           </button>
@@ -563,10 +565,10 @@ function VendorDetails({ vendor, devices, onClose }: any) {
         <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
           <div className="space-y-4">
              <div className="flex items-center space-x-3">
-                <div className="px-3 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-[9px] font-black text-blue-400 uppercase tracking-widest">VENDOR_ID: {vendor.id}</div>
-                <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest">{vendor.country}</div>
+                <div className="px-3 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-[9px] font-bold text-blue-400 uppercase tracking-widest">VENDOR_ID: {vendor.id}</div>
+                <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{vendor.country}</div>
              </div>
-             <h1 className="text-5xl font-black uppercase italic tracking-tighter text-white">{vendor.name}</h1>
+             <h1 className="text-5xl font-bold uppercase  tracking-tighter text-white">{vendor.name}</h1>
              <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-2 text-slate-400 font-mono text-xs"><Globe size={14} className="text-blue-500" /> <span>{vendor.primary_email}</span></div>
                 <div className="flex items-center space-x-2 text-slate-400 font-mono text-xs"><Phone size={14} className="text-amber-500" /> <span>{vendor.primary_phone}</span></div>
@@ -582,7 +584,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
                  {tab === 'Personnel' && <User size={16} />}
                  {tab === 'Contracts' && <FileText size={16} />}
-                 <span className="text-[10px] font-black uppercase tracking-widest">{tab}</span>
+                 <span className="text-[10px] font-bold uppercase tracking-widest">{tab}</span>
                </button>
              ))}
           </div>
@@ -593,7 +595,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <SectionHeader icon={User} title="Vendor Personnel" />
-                  <button onClick={() => setShowPersonnelModal({ name: '', position: '', team: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                  <button onClick={() => setShowPersonnelModal({ name: '', position: '', team: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
                     <Plus size={14} /> Add Personnel
                   </button>
                 </div>
@@ -607,8 +609,8 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                             <User size={20} />
                           </div>
                           <div>
-                            <h4 className="text-sm font-black text-white uppercase tracking-tight">{p.name}</h4>
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{p.position} // {p.team}</p>
+                            <h4 className="text-sm font-bold text-white uppercase tracking-tight">{p.name}</h4>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{p.position} // {p.team}</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -617,23 +619,23 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                       </div>
                       <div className="grid grid-cols-3 gap-4 mt-6">
                         <div className="space-y-2">
-                          <p className="text-[8px] font-black text-slate-600 uppercase">Contact</p>
+                          <p className="text-[8px] font-bold text-slate-600 uppercase">Contact</p>
                           <p className="text-[10px] text-slate-300 font-mono">{p.company_email}</p>
                           <p className="text-[10px] text-slate-300 font-mono">{p.phone}</p>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-[8px] font-black text-slate-600 uppercase">Accounts ({p.accounts?.length || 0})</p>
+                          <p className="text-[8px] font-bold text-slate-600 uppercase">Accounts ({p.accounts?.length || 0})</p>
                           <div className="flex flex-wrap gap-1">
                             {p.accounts?.map((acc: any, i: number) => (
-                              <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-black uppercase">{acc.name}</span>
+                              <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-bold uppercase">{acc.name}</span>
                             ))}
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <p className="text-[8px] font-black text-slate-600 uppercase">PCs ({p.pcs?.length || 0})</p>
+                          <p className="text-[8px] font-bold text-slate-600 uppercase">PCs ({p.pcs?.length || 0})</p>
                           <div className="flex flex-wrap gap-1">
                             {p.pcs?.map((pc: any, i: number) => (
-                              <span key={i} className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded text-[8px] font-black uppercase">{pc.name} ({pc.type})</span>
+                              <span key={i} className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded text-[8px] font-bold uppercase">{pc.name} ({pc.type})</span>
                             ))}
                           </div>
                         </div>
@@ -641,7 +643,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                     </div>
                   ))}
                   {(!vendor.personnel || vendor.personnel.length === 0) && (
-                    <div className="py-20 text-center text-slate-600 italic text-[10px] font-black uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No personnel records found</div>
+                    <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No personnel records found</div>
                   )}
                 </div>
               </div>
@@ -651,7 +653,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
               <div className="space-y-6">
                  <div className="flex items-center justify-between">
                     <SectionHeader icon={FileText} title="Vendor Service Contracts" />
-                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_assets: [], scope_of_work: [], schedule: {} })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_assets: [], scope_of_work: [], schedule: {} })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
                        <Plus size={14} /> Register Contract
                     </button>
                  </div>
@@ -665,11 +667,11 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                    <FileText size={20} />
                                 </div>
                                 <div>
-                                   <h4 className="text-sm font-black text-white uppercase tracking-tight">{c.title}</h4>
+                                   <h4 className="text-sm font-bold text-white uppercase tracking-tight">{c.title}</h4>
                                    <div className="flex items-center space-x-3 mt-1">
-                                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">ID: {c.contract_id}</span>
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ID: {c.contract_id}</span>
                                       <span className="text-slate-700">•</span>
-                                      <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">EXPIRES: {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'N/A'}</span>
+                                      <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">EXPIRES: {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'N/A'}</span>
                                    </div>
                                 </div>
                              </div>
@@ -683,7 +685,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                           
                           <div className="grid grid-cols-3 gap-6 mt-6 border-t border-white/5 pt-6">
                              <div>
-                                <p className="text-[8px] font-black text-slate-600 uppercase mb-2">Covered Assets</p>
+                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Covered Assets</p>
                                 <div className="space-y-1">
                                   {c.covered_assets?.map((asset: any, i: number) => {
                                     const dev = devices?.find((d: any) => d.id === asset.device_id)
@@ -697,17 +699,17 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                 </div>
                              </div>
                              <div>
-                                <p className="text-[8px] font-black text-slate-600 uppercase mb-2">Scope Summary</p>
+                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Scope Summary</p>
                                 <div className="space-y-2">
                                   {c.scope_of_work?.slice(0, 2).map((s: any, i: number) => (
-                                    <div key={i} className="bg-white/5 p-2 rounded text-[9px] text-slate-300 italic">
+                                    <div key={i} className="bg-white/5 p-2 rounded text-[9px] text-slate-300 ">
                                       {s.deliverable}
                                     </div>
                                   ))}
                                 </div>
                              </div>
                              <div>
-                                <p className="text-[8px] font-black text-slate-600 uppercase mb-2">Schedule</p>
+                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Schedule</p>
                                 <div className="text-[10px] text-slate-400 font-bold">
                                   {c.schedule?.work_schedule || 'No schedule set'}
                                 </div>
@@ -716,7 +718,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                        </div>
                     ))}
                     {(!vendor.contracts || vendor.contracts.length === 0) && (
-                       <div className="py-20 text-center text-slate-600 italic text-[10px] font-black uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No active service contracts found for this vendor</div>
+                       <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No active service contracts found for this vendor</div>
                     )}
                  </div>
               </div>
@@ -765,7 +767,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] p-10 rounded-[40px] border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-black uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Details</h2>
+          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Details</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
@@ -774,27 +776,27 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
             <SectionHeader icon={User} title="Core Info" />
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Full Name</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Full Name</label>
                 <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Position</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Position</label>
                 <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Team</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Team</label>
                 <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Company Email</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Company Email</label>
                 <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Internal Email</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Internal Email</label>
                 <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
               <div className="col-span-2">
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Phone</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Phone</label>
                 <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
               </div>
             </div>
@@ -847,8 +849,8 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Sync Personnel
           </button>
@@ -879,7 +881,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[95vh] p-10 rounded-[40px] border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-black uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Service Contract</h2>
+          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Service Contract</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
@@ -889,23 +891,23 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
               <SectionHeader icon={Info} title="Contract Basics" />
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Contract Title</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
                   <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Contract ID</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
                   <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Doc Link</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
                   <input value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Effective Date</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
                   <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white [color-scheme:dark]" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Expiry Date</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
                   <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white [color-scheme:dark]" />
                 </div>
               </div>
@@ -951,7 +953,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
                       <div className="flex items-center space-x-3">
                         <input type="checkbox" checked={!!asset} onChange={() => toggleAsset(d.id)} className="w-4 h-4 rounded bg-slate-900 border-white/10" />
                         <div>
-                          <p className="text-[10px] font-black uppercase text-white">{d.name}</p>
+                          <p className="text-[10px] font-bold uppercase text-white">{d.name}</p>
                           <p className="text-[8px] text-slate-500 uppercase">{d.system}</p>
                         </div>
                       </div>
@@ -975,11 +977,11 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
               <SectionHeader icon={Clock} title="Schedule & Policy" color="text-emerald-400" />
               <div className="space-y-4">
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Work Schedule</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Work Schedule</label>
                   <input value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" placeholder="e.g. 24/7 or 9-5" />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Holiday Policy</label>
+                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Holiday Policy</label>
                   <textarea value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white min-h-[80px]" />
                 </div>
               </div>
@@ -988,8 +990,8 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Sync Contract
           </button>

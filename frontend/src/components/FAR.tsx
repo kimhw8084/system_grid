@@ -131,26 +131,26 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-10 rounded-[40px] border border-blue-500/30 space-y-6">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
-          <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 italic flex items-center space-x-3">
+          <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400  flex items-center space-x-3">
              <Info size={24}/> <span>{def.title}</span>
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
         </div>
         <div className="space-y-4">
           <div>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Mathematical Derivation</p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Mathematical Derivation</p>
             <div className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-blue-300">
                {def.formula}
             </div>
           </div>
           <div>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Functional Definition</p>
-            <p className="text-[12px] text-slate-300 leading-relaxed font-bold uppercase tracking-tight italic">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Functional Definition</p>
+            <p className="text-[12px] text-slate-300 leading-relaxed font-bold uppercase tracking-tight ">
               {def.description}
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-500/20">Acknowledge</button>
+        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-500/20">Acknowledge</button>
       </motion.div>
     </div>
   )
@@ -244,7 +244,7 @@ export default function FAR() {
       headerName: "ID", 
       width: 70,
       pinned: 'left',
-      cellClass: 'text-center font-black text-slate-500',
+      cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
     },
@@ -252,7 +252,7 @@ export default function FAR() {
       field: "system_name", 
       headerName: "System", 
       width: 120,
-      cellClass: 'text-center font-black text-rose-400 uppercase italic',
+      cellClass: 'text-center font-bold text-rose-400 uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("system_name")
@@ -261,7 +261,7 @@ export default function FAR() {
       field: "failure_type", 
       headerName: "Type", 
       width: 100,
-      cellClass: 'text-center font-bold text-slate-400 uppercase italic',
+      cellClass: 'text-center font-bold text-slate-400 uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("failure_type")
@@ -270,7 +270,7 @@ export default function FAR() {
       field: "title", 
       headerName: "Failure Mode", 
       flex: 2,
-      cellClass: 'text-left font-black uppercase italic text-white pl-4',
+      cellClass: 'text-left font-bold uppercase text-white pl-4',
       headerClass: 'text-left pl-4',
       filter: 'agTextColumnFilter',
       hide: hiddenColumns.includes("title")
@@ -288,8 +288,8 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
         )
@@ -309,8 +309,8 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
         )
@@ -330,8 +330,8 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-8 h-5 rounded-md border shadow-sm ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
         )
@@ -351,8 +351,8 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-12 h-5 rounded-md border shadow-sm ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-black italic leading-none">{val}</span>
+            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
         )
@@ -392,7 +392,7 @@ export default function FAR() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colorClass}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none italic">
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 Lv{ml.lv} {ml.label}
               </span>
             </div>
@@ -463,10 +463,10 @@ export default function FAR() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2">
+              <h1 className="text-2xl font-bold uppercase tracking-tight  flex items-center gap-2">
                 <Target size={24} className="text-rose-500" /> Failure Matrix
               </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black ml-1">Reliability Knowledge Engine // FMEA Studio</p>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Reliability Knowledge Engine // FMEA Studio</p>
            </div>
         </div>
         
@@ -477,7 +477,7 @@ export default function FAR() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Scan risk vectors..."
-                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-rose-500/50 w-64 transition-all"
+                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-rose-500/50 w-64 transition-all"
               />
            </div>
 
@@ -495,7 +495,7 @@ export default function FAR() {
 
            <button 
              onClick={() => { setSelectedModeId(null); setShowWizard(true); }}
-             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
+             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
              <ShieldAlert size={14} /> Add Failure Mode
            </button>
@@ -509,11 +509,11 @@ export default function FAR() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-rose-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">View Density Laboratory</span>
                   </div>
                   <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4"><span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-black">{fontSize}px</span></div></div>
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span></div></div>
+                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
                   </div>
                </div>
                <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
@@ -523,9 +523,9 @@ export default function FAR() {
       </AnimatePresence>
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>GLOBAL_REALM</button>
+         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>GLOBAL_REALM</button>
          {availableSystems.map(sys => (
-           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
+           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
          ))}
       </div>
 
@@ -540,7 +540,7 @@ export default function FAR() {
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <ShieldAlert size={14} className="text-rose-500" />
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Failure Inventory Maturity Profile</h3>
+                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-white ">Failure Inventory Maturity Profile</h3>
               </div>
               <div className="flex items-center gap-3">
                  <div className="flex items-end gap-1 h-8">
@@ -550,7 +550,7 @@ export default function FAR() {
                       return (
                         <div key={ml.lv} className="w-4 h-full relative group cursor-help">
                             <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded text-[8px] font-bold uppercase tracking-widest">
                                {ml.label}: {count}
                             </div>
                         </div>
@@ -573,18 +573,19 @@ export default function FAR() {
                 animateRows={true}
                 enableCellTextSelection={true}
                 autoSizeStrategy={autoSizeStrategy}
-                onRowClicked={(p: any) => setSelectedModeId(p.data.id)}
+                rowSelection="multiple"
+                onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
               />
               <AnimatePresence>
                 {showColumnPicker && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
                       {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
                         <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                           <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
                           <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                         </label>
                       ))}
                     </div>
@@ -605,23 +606,23 @@ export default function FAR() {
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl rounded-[40px] border border-white/10 bg-slate-900 overflow-hidden shadow-2xl">
                 <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                   <h2 className="text-xl font-black uppercase tracking-widest text-white italic">Maturity Matrix Glossary</h2>
+                   <h2 className="text-xl font-bold uppercase tracking-widest text-white ">Maturity Matrix Glossary</h2>
                    <button onClick={() => setShowMaturityHelp(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                 </div>
                 <div className="p-4 space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
                    <table className="w-full text-[10px]">
                       <thead className="bg-white/5 border-b border-white/5">
                          <tr>
-                            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Lv</th>
-                            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Status Title</th>
-                            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Architecture Definition</th>
+                            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Lv</th>
+                            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Status Title</th>
+                            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Architecture Definition</th>
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                          {maturityLevels.map(ml => (
                            <tr key={ml.lv} className="hover:bg-white/5 transition-colors">
-                              <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded font-black italic text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
-                              <td className="px-4 py-3 font-black text-white uppercase italic">{ml.label}</td>
+                              <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded font-bold text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
+                              <td className="px-4 py-3 font-bold text-white uppercase ">{ml.label}</td>
                               <td className="px-4 py-3 text-slate-400 font-bold uppercase tracking-tight">{ml.tooltip}</td>
                            </tr>
                          ))}
@@ -648,7 +649,7 @@ export default function FAR() {
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; font-style: italic !important; }
+        .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; font-style:  !important; }
         .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; }
         .ag-row-hover { background-color: rgba(244, 63, 94, 0.05) !important; }
         .ag-row-selected { background-color: rgba(244, 63, 94, 0.2) !important; }
@@ -660,7 +661,7 @@ export default function FAR() {
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-[40px] border border-rose-500/20 overflow-hidden shadow-2xl">
                <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
                   <div>
-                    <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white">DOCUMENT_FAILURE_VECTOR</h1>
+                    <h1 className="text-3xl font-bold uppercase  tracking-tighter text-white">DOCUMENT_FAILURE_VECTOR</h1>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Reliability Engineering Risk Documentation Studio</p>
                   </div>
                   <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={20}/></button>
@@ -684,12 +685,12 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   return (
     <div className={`glass-panel p-4 rounded-2xl border-white/5 ${bgColors[color]} flex flex-col justify-between group overflow-hidden relative min-h-[90px]`}>
       <div className="flex items-center justify-between relative z-10">
-         <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
          <button onClick={onHelp} className="p-1 text-slate-600 hover:text-white transition-colors"><HelpCircle size={12}/></button>
       </div>
       <div className="flex items-baseline gap-1 relative z-10 leading-none mt-2">
-         <h4 className={`text-2xl font-black tracking-tighter italic ${textColors[color]}`}>{value}</h4>
-         <span className="text-[9px] font-black text-slate-600 uppercase italic tracking-tighter">{suffix}</span>
+         <h4 className={`text-2xl font-bold tracking-tighter  ${textColors[color]}`}>{value}</h4>
+         <span className="text-[9px] font-bold text-slate-600 uppercase  tracking-tighter">{suffix}</span>
       </div>
     </div>
   )
@@ -723,11 +724,11 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
             <div className="flex items-start justify-between relative z-10">
               <div className="space-y-3 flex-1">
                   <div className="flex items-center gap-3">
-                      <div className="px-2 py-0.5 rounded-lg bg-rose-600/10 border border-rose-500/20 text-[9px] font-black text-rose-500 italic uppercase">VECTOR_{mode.id}</div>
-                      <div className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-slate-400 italic uppercase tracking-widest">{mode.system_name}</div>
-                      <div className="px-2 py-0.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-[9px] font-black text-blue-400 italic uppercase tracking-widest">RANK #{systemRank}</div>
+                      <div className="px-2 py-0.5 rounded-lg bg-rose-600/10 border border-rose-500/20 text-[9px] font-bold text-rose-500  uppercase">VECTOR_{mode.id}</div>
+                      <div className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400  uppercase tracking-widest">{mode.system_name}</div>
+                      <div className="px-2 py-0.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-[9px] font-bold text-blue-400  uppercase tracking-widest">RANK #{systemRank}</div>
                   </div>
-                  <h2 className="text-3xl font-black text-white italic tracking-tighter leading-none uppercase">{mode.title}</h2>
+                  <h2 className="text-3xl font-bold text-white  tracking-tighter leading-none uppercase">{mode.title}</h2>
               </div>
 
               <div className="flex items-center gap-4">
@@ -738,10 +739,10 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
                   </div>
                   
                   <div className="text-right flex flex-col items-end">
-                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">Risk Priority</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 ">Risk Priority</p>
                       <div className="flex items-baseline gap-1 leading-none">
-                         <p className={`text-4xl font-black italic tracking-tighter ${mode.rpn > 150 ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'text-white'}`}>{mode.rpn}</p>
-                         <p className="text-[8px] font-black text-slate-500 italic uppercase">RPN</p>
+                         <p className={`text-4xl font-bold tracking-tighter ${mode.rpn > 150 ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(244,63,94,0.3)]' : 'text-white'}`}>{mode.rpn}</p>
+                         <p className="text-[8px] font-bold text-slate-500  uppercase">RPN</p>
                       </div>
                   </div>
                   <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all ml-2 border border-white/10"><X size={20}/></button>
@@ -751,23 +752,23 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
             {/* EFFECT & IMPACTS ON OWN ROW */}
             <div className="mt-4 flex flex-col space-y-3 relative z-10">
                <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl px-4 py-2 flex items-center gap-3">
-                  <p className="text-[9px] text-rose-500 font-black italic uppercase tracking-widest shrink-0">Effect Forensics:</p>
-                  <p className="text-[11px] text-slate-200 font-black uppercase italic tracking-tight leading-none truncate">{mode.effect || 'NULL_EFFECT_STATEMENT'}</p>
+                  <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest shrink-0">Effect Forensics:</p>
+                  <p className="text-[11px] text-slate-200 font-bold uppercase  tracking-tight leading-none truncate">{mode.effect || 'NULL_EFFECT_STATEMENT'}</p>
                </div>
 
                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[9px] text-slate-500 font-black italic mr-2 uppercase tracking-widest">Affected Infrastructure:</span>
+                  <span className="text-[9px] text-slate-500 font-bold mr-2 uppercase tracking-widest">Affected Infrastructure:</span>
                   {mode.affected_assets?.slice(0, showAllAssets ? undefined : 3).map((a: any) => (
-                    <div key={a.id} className="flex items-center gap-2 px-2 py-0.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black text-slate-400 italic">
+                    <div key={a.id} className="flex items-center gap-2 px-2 py-0.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold text-slate-400 ">
                        <Server size={10} className="text-rose-500" /> {a.name}
                     </div>
                   ))}
                   {mode.affected_assets?.length > 3 && (
-                    <button onClick={() => setShowAllAssets(!showAllAssets)} className="px-2 py-0.5 bg-rose-600/10 border border-rose-500/20 rounded-lg text-[9px] font-black text-rose-500 italic hover:bg-rose-600/20 transition-all">
+                    <button onClick={() => setShowAllAssets(!showAllAssets)} className="px-2 py-0.5 bg-rose-600/10 border border-rose-500/20 rounded-lg text-[9px] font-bold text-rose-500  hover:bg-rose-600/20 transition-all">
                        {showAllAssets ? 'SHOW LESS' : `+ ${mode.affected_assets.length - 3} MORE ENTITIES`}
                     </button>
                   )}
-                  {(!mode.affected_assets || mode.affected_assets.length === 0) && <span className="text-[9px] text-slate-700 italic font-black uppercase tracking-widest">No infrastructure mappings established</span>}
+                  {(!mode.affected_assets || mode.affected_assets.length === 0) && <span className="text-[9px] text-slate-700  font-bold uppercase tracking-widest">No infrastructure mappings established</span>}
                </div>
             </div>
 
@@ -775,7 +776,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
             <div className="mt-6 flex items-center relative z-10">
                <div className="flex space-x-1 bg-black/60 p-0.5 rounded-xl border border-white/5">
                  {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
-                   <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
+                   <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
                  ))}
                </div>
             </div>
@@ -790,8 +791,8 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
          </div>
 
          <div className="px-8 py-2 bg-black/80 border-t border-white/5 flex items-center justify-between shrink-0">
-            <p className="text-[9px] text-slate-600 font-black italic uppercase tracking-widest">System Integrity Vector Analysis // {mode.title}</p>
-            <div className="flex items-center gap-3 text-[9px] font-black italic text-slate-500 uppercase tracking-widest">
+            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">System Integrity Vector Analysis // {mode.title}</p>
+            <div className="flex items-center gap-3 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                <span>S: {mode.severity}</span>
                <span className="w-1 h-1 rounded-full bg-slate-800" />
                <span>O: {mode.occurrence}</span>
@@ -810,8 +811,8 @@ function HeaderScore({ label, value, color }: any) {
   const borderColors: any = { rose: 'border-rose-500/20', amber: 'border-amber-500/20', sky: 'border-sky-500/20' }
   return (
     <div className={`w-10 h-10 rounded-lg ${bgColors[color]} border ${borderColors[color]} flex flex-col items-center justify-center`}>
-       <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
-       <p className={`text-lg font-black italic leading-none ${textColors[color]}`}>{value}</p>
+       <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-0.5">{label}</p>
+       <p className={`text-lg font-bold leading-none ${textColors[color]}`}>{value}</p>
     </div>
   )
 }
@@ -821,10 +822,10 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
   return (
     <div className="space-y-3">
        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-black text-slate-400 italic tracking-widest uppercase">{label}</label>
+          <label className="text-[10px] font-bold text-slate-400  tracking-widest uppercase">{label}</label>
           <div className="flex items-center gap-2">
-             <span className={`text-xl font-black italic ${color}`}>{value}</span>
-             <span className="text-slate-700 text-[9px] font-black italic">/ 10</span>
+             <span className={`text-xl font-bold ${color}`}>{value}</span>
+             <span className="text-slate-700 text-[9px] font-bold">/ 10</span>
           </div>
        </div>
        <div className="relative h-1.5 bg-black/40 rounded-full border border-white/5">
@@ -838,8 +839,8 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
           />
        </div>
        <div className="bg-black/20 border border-white/5 rounded-xl p-2.5 min-h-[45px]">
-          <p className={`text-[10px] font-black uppercase italic ${color} leading-none mb-1`}>{current?.label}</p>
-          <p className="text-[9px] text-slate-500 font-bold leading-tight italic lowercase">{current?.desc}</p>
+          <p className={`text-[10px] font-bold uppercase  ${color} leading-none mb-1`}>{current?.label}</p>
+          <p className="text-[9px] text-slate-500 font-bold leading-tight  lowercase">{current?.desc}</p>
        </div>
     </div>
   )
@@ -869,28 +870,28 @@ function FARWizard({ initialData, onComplete }: any) {
        <div className="col-span-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-500 italic">System Realm *</label>
+                <label className="text-[9px] font-bold text-slate-500 ">System Realm *</label>
                 <StyledSelect options={systems.map((s: any) => ({ label: s.label, value: s.value }))} value={formData.system_name} onChange={e => setFormData({ ...formData, system_name: e.target.value })} />
              </div>
              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-500 italic">Failure Type *</label>
+                <label className="text-[9px] font-bold text-slate-500 ">Failure Type *</label>
                 <StyledSelect options={FAILURE_TYPES} value={formData.failure_type} onChange={e => setFormData({ ...formData, failure_type: e.target.value })} />
              </div>
           </div>
           <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-500 italic">Failure Mode Identity *</label>
-             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-black uppercase text-white outline-none focus:border-rose-500 italic placeholder:text-slate-700" />
+             <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
+             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold uppercase text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
           </div>
           <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-500 italic">Impact Statement (Effect)</label>
-             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="DESCRIBE THE SYSTEMIC CONSEQUENCES..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-black uppercase text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar italic placeholder:text-slate-700" />
+             <label className="text-[9px] font-bold text-slate-500 ">Impact Statement (Effect)</label>
+             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="DESCRIBE THE SYSTEMIC CONSEQUENCES..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold uppercase text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
           </div>
           <div className="bg-black/20 p-4 rounded-3xl border border-white/5 space-y-3">
              <div className="flex items-center justify-between">
-                <label className="text-[9px] font-black text-slate-500 italic">Affected Infrastructure</label>
+                <label className="text-[9px] font-bold text-slate-500 ">Affected Infrastructure</label>
                 <div className="relative">
                    <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
-                   <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[9px] font-black outline-none focus:border-rose-500 w-32" />
+                   <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[9px] font-bold outline-none focus:border-rose-500 w-32" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
@@ -916,12 +917,12 @@ function FARWizard({ initialData, onComplete }: any) {
                     />
                     <Server size={12} className={formData.affected_assets.includes(d.id) ? 'text-rose-500' : 'text-slate-700'} />
                     <div className="min-w-0">
-                       <p className="text-[10px] font-black truncate italic leading-none">{d.name}</p>
-                       <p className="text-[8px] text-slate-600 font-black truncate mt-1">{d.model}</p>
+                       <p className="text-[10px] font-bold truncate  leading-none">{d.name}</p>
+                       <p className="text-[8px] text-slate-600 font-bold truncate mt-1">{d.model}</p>
                     </div>
                   </label>
                 ))}
-                {(!devices || devices.length === 0) && <div className="col-span-2 py-8 text-center text-slate-600 text-[9px] font-black italic">Select a system to view assets</div>}
+                {(!devices || devices.length === 0) && <div className="col-span-2 py-8 text-center text-slate-600 text-[9px] font-bold">Select a system to view assets</div>}
              </div>
           </div>
        </div>
@@ -936,16 +937,16 @@ function FARWizard({ initialData, onComplete }: any) {
           <div className="bg-[#0f111a] rounded-[32px] p-5 border border-white/10 flex items-center justify-between relative overflow-hidden">
              <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-[50px] pointer-events-none" />
              <div>
-                <p className="text-[9px] font-black text-slate-500 italic mb-1 uppercase tracking-widest leading-none">Risk Priority Number (RPN)</p>
+                <p className="text-[9px] font-bold text-slate-500  mb-1 uppercase tracking-widest leading-none">Risk Priority Number (RPN)</p>
                 <div className="flex items-baseline gap-1.5">
-                   <h4 className={`text-4xl font-black italic tracking-tighter ${rpn > 200 ? 'text-rose-600' : rpn > 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{rpn}</h4>
-                   <span className={`text-[10px] font-black ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL' : 'NOMINAL'}</span>
+                   <h4 className={`text-4xl font-bold tracking-tighter ${rpn > 200 ? 'text-rose-600' : rpn > 100 ? 'text-rose-400' : 'text-emerald-400'}`}>{rpn}</h4>
+                   <span className={`text-[10px] font-bold ${rpn > 150 ? 'text-rose-500' : 'text-emerald-500'}`}>{rpn > 150 ? 'CRITICAL' : 'NOMINAL'}</span>
                 </div>
              </div>
              <button 
                disabled={!formData.system_name || !formData.title || mutation.isPending} 
                onClick={() => mutation.mutate(formData)} 
-               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 italic"
+               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 "
              >
                {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} COMMIT
              </button>
@@ -966,14 +967,14 @@ function CausalTab({ mode, onUpdate }: any) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-500 italic">Root Cause Attribution Matrix</h3>
-          {!isAdding && <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-black uppercase italic hover:bg-amber-600 hover:text-white transition-all">+ Add Origin Trace</button>}
+          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
+          {!isAdding && <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Origin Trace</button>}
        </div>
        
        <div className="flex-1 bg-black/40 border border-white/5 rounded-[32px] overflow-hidden flex flex-col shadow-2xl">
           <table className="w-full text-left border-collapse">
              <thead className="bg-white/[0.03] border-b border-white/10">
-                <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">
+                <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
                    <th className="px-8 py-4">Trace Description (Logical Origin)</th>
                    <th className="px-8 py-4 text-center">Occur Lv</th>
                    <th className="px-8 py-4">Responsible Unit</th>
@@ -981,11 +982,11 @@ function CausalTab({ mode, onUpdate }: any) {
                    <th className="px-8 py-4 text-right">Ops</th>
                 </tr>
              </thead>
-             <tbody className="divide-y divide-white/5 font-bold uppercase italic text-[11px]">
+             <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
                 {isAdding && (
                   <tr className="bg-amber-500/5 animate-in fade-in slide-in-from-top-2">
                      <td className="px-8 py-4">
-                        <input autoFocus value={newCause.cause_text} onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})} placeholder="ENTER LOGICAL TRACE ORIGIN..." className="w-full bg-black/40 border border-amber-500/30 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 italic" />
+                        <input autoFocus value={newCause.cause_text} onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})} placeholder="ENTER LOGICAL TRACE ORIGIN..." className="w-full bg-black/40 border border-amber-500/30 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 " />
                      </td>
                      <td className="px-8 py-4">
                         <select value={newCause.occurrence_level} onChange={e => setNewCause({...newCause, occurrence_level: Number(e.target.value)})} className="bg-black/40 border border-amber-500/30 rounded-lg px-2 py-2 text-white outline-none w-full text-center">
@@ -993,7 +994,7 @@ function CausalTab({ mode, onUpdate }: any) {
                         </select>
                      </td>
                      <td className="px-8 py-4">
-                        <input value={newCause.responsible_team} onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 italic" />
+                        <input value={newCause.responsible_team} onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-amber-500 " />
                      </td>
                      <td className="px-8 py-4 text-center">--</td>
                      <td className="px-8 py-4 text-right">
@@ -1006,11 +1007,11 @@ function CausalTab({ mode, onUpdate }: any) {
                 )}
                 {mode.causes?.map((c: any) => (
                   <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
-                     <td className="px-8 py-5 text-white italic">{c.cause_text}</td>
-                     <td className="px-8 py-5 text-center"><span className="text-amber-500 italic font-black">{c.occurrence_level}/10</span></td>
+                     <td className="px-8 py-5 text-white ">{c.cause_text}</td>
+                     <td className="px-8 py-5 text-center"><span className="text-amber-500  font-bold">{c.occurrence_level}/10</span></td>
                      <td className="px-8 py-5 text-slate-400">{c.responsible_team}</td>
                      <td className="px-8 py-5 text-center">
-                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
+                        <span className={`px-3 py-1 rounded-lg text-[9px] font-bold ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
                            {c.resolutions?.length || 0} BKMS
                         </span>
                      </td>
@@ -1020,7 +1021,7 @@ function CausalTab({ mode, onUpdate }: any) {
                   </tr>
                 ))}
                 {(!mode.causes?.length && !isAdding) && (
-                  <tr><td colSpan={5} className="py-32 text-center opacity-20 font-black italic uppercase tracking-[0.3em]">No attribution traces linked to this vector</td></tr>
+                  <tr><td colSpan={5} className="py-32 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No attribution traces linked to this vector</td></tr>
                 )}
              </tbody>
           </table>
@@ -1060,12 +1061,12 @@ function RoadmapTab({ mode, onUpdate }: any) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-sky-400 italic">Defense Infrastructure Roadmap</h3>
+          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Defense Infrastructure Roadmap</h3>
           {!isAdding && (
             <div className="flex gap-2">
-               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-black uppercase italic hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-xl text-[10px] font-black uppercase italic hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black uppercase italic hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
             </div>
           )}
        </div>
@@ -1074,7 +1075,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
           {isAdding && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-[32px] p-8 space-y-6 relative">
                <div className="flex items-center justify-between">
-                  <h4 className={`text-xl font-black uppercase italic tracking-tighter ${actionType === 'Prevention' ? 'text-emerald-500' : actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
+                  <h4 className={`text-xl font-bold uppercase  tracking-tighter ${actionType === 'Prevention' ? 'text-emerald-500' : actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
                </div>
 
@@ -1082,51 +1083,51 @@ function RoadmapTab({ mode, onUpdate }: any) {
                   <div className="space-y-4">
                      {actionType === 'Workaround' && (
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-500 italic uppercase">Procedural Steps (Auto-Numbered)</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="STEP 1: ...\nSTEP 2: ..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-black text-white min-h-[150px] outline-none focus:border-amber-500 italic uppercase leading-relaxed" />
+                           <label className="text-[10px] font-bold text-slate-500  uppercase">Procedural Steps (Auto-Numbered)</label>
+                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="STEP 1: ...\nSTEP 2: ..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500  uppercase leading-relaxed" />
                         </div>
                      )}
                      {actionType === 'Monitoring' && (
                         <div className="space-y-4">
-                           <label className="text-[10px] font-black text-slate-500 italic uppercase">Link Active Monitor</label>
-                           <select value={newAction.monitoring_id} onChange={e => setNewAction({...newAction, monitoring_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-black text-white outline-none focus:border-sky-500 italic uppercase">
+                           <label className="text-[10px] font-bold text-slate-500  uppercase">Link Active Monitor</label>
+                           <select value={newAction.monitoring_id} onChange={e => setNewAction({...newAction, monitoring_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500  uppercase">
                               <option value="">SELECT EXISTING MONITOR...</option>
                               {monitoring?.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
                            </select>
-                           <p className="text-[10px] text-slate-500 italic text-center uppercase tracking-widest">OR</p>
-                           <button className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-[10px] font-black text-slate-500 hover:border-sky-500/50 hover:text-sky-400 transition-all uppercase italic">+ Create New Logic Node</button>
+                           <p className="text-[10px] text-slate-500  text-center uppercase tracking-widest">OR</p>
+                           <button className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-[10px] font-bold text-slate-500 hover:border-sky-500/50 hover:text-sky-400 transition-all uppercase ">+ Create New Logic Node</button>
                         </div>
                      )}
                      {actionType === 'Prevention' && (
                         <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-500 italic uppercase">Architectural Hardening Plan</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="DESCRIBE DESIGN CHANGE OR ELIMINATION PROOF..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-black text-white min-h-[150px] outline-none focus:border-emerald-500 italic uppercase leading-relaxed" />
+                           <label className="text-[10px] font-bold text-slate-500  uppercase">Architectural Hardening Plan</label>
+                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value.toUpperCase()})} placeholder="DESCRIBE DESIGN CHANGE OR ELIMINATION PROOF..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-emerald-500  uppercase leading-relaxed" />
                         </div>
                      )}
                   </div>
 
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 italic uppercase">Owner Team</label><input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-black text-white outline-none focus:border-white/20 italic uppercase" /></div>
-                        <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 italic uppercase">Initial Status</label><select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-black text-white outline-none focus:border-white/20 uppercase"><option value="Not Started">NOT_STARTED</option><option value="In Progress">IN_PROGRESS</option><option value="On Hold">ON_HOLD</option><option value="Blocked">BLOCKED</option><option value="Completed">COMPLETED</option></select></div>
+                        <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500  uppercase">Owner Team</label><input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value.toUpperCase()})} placeholder="TEAM_NAME" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-white/20  uppercase" /></div>
+                        <div className="space-y-1"><label className="text-[10px] font-bold text-slate-500  uppercase">Initial Status</label><select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-white/20 uppercase"><option value="Not Started">NOT_STARTED</option><option value="In Progress">IN_PROGRESS</option><option value="On Hold">ON_HOLD</option><option value="Blocked">BLOCKED</option><option value="Completed">COMPLETED</option></select></div>
                      </div>
 
                      {actionType === 'Workaround' && (
                         <div className="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-4">
-                           <div className="flex items-center justify-between"><label className="text-[10px] font-black text-slate-500 italic uppercase">BKM Alignment (Optional)</label><div className="flex gap-2"><button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`text-[8px] font-black uppercase ${newAction.bkm_mode === 'input' ? 'text-amber-400' : 'text-slate-600'}`}>Direct</button><button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`text-[8px] font-black uppercase ${newAction.bkm_mode === 'link' ? 'text-amber-400' : 'text-slate-600'}`}>Link</button></div></div>
+                           <div className="flex items-center justify-between"><label className="text-[10px] font-bold text-slate-500  uppercase">BKM Alignment (Optional)</label><div className="flex gap-2"><button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`text-[8px] font-bold uppercase ${newAction.bkm_mode === 'input' ? 'text-amber-400' : 'text-slate-600'}`}>Direct</button><button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`text-[8px] font-bold uppercase ${newAction.bkm_mode === 'link' ? 'text-amber-400' : 'text-slate-600'}`}>Link</button></div></div>
                            {newAction.bkm_mode === 'input' ? (
-                              <textarea value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value.toUpperCase()})} placeholder="PASTE RECOVERY INSTRUCTIONS HERE..." className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[10px] font-black text-slate-300 min-h-[100px] outline-none focus:border-amber-500 italic uppercase" />
+                              <textarea value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value.toUpperCase()})} placeholder="PASTE RECOVERY INSTRUCTIONS HERE..." className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[10px] font-bold text-slate-300 min-h-[100px] outline-none focus:border-amber-500  uppercase" />
                            ) : (
-                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-black text-white outline-none italic uppercase">
+                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none  uppercase">
                                  <option value="">SELECT BKM ARTIFACT...</option>
                                  {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
                               </select>
                            )}
-                           <button className="w-full py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[9px] font-black text-amber-500 hover:bg-amber-500 hover:text-white transition-all uppercase italic">+ New BKM Document</button>
+                           <button className="w-full py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[9px] font-bold text-amber-500 hover:bg-amber-500 hover:text-white transition-all uppercase ">+ New BKM Document</button>
                         </div>
                      )}
 
-                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all italic ${actionType === 'Prevention' ? 'bg-emerald-600 shadow-emerald-600/20' : actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20' : 'bg-amber-600 shadow-amber-600/20'}`}>Commit Strategic Action</button>
+                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-4 rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all  ${actionType === 'Prevention' ? 'bg-emerald-600 shadow-emerald-600/20' : actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20' : 'bg-amber-600 shadow-amber-600/20'}`}>Commit Strategic Action</button>
                   </div>
                </div>
             </motion.div>
@@ -1135,7 +1136,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
           <div className="bg-black/40 border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
              <table className="w-full text-left border-collapse">
                 <thead className="bg-white/[0.03] border-b border-white/10">
-                   <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">
+                   <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
                       <th className="px-8 py-4">Shield Type</th>
                       <th className="px-8 py-4">Deployment Protocol / Plan</th>
                       <th className="px-8 py-4 text-center">Status</th>
@@ -1143,24 +1144,24 @@ function RoadmapTab({ mode, onUpdate }: any) {
                       <th className="px-8 py-4 text-right">Ops</th>
                    </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 font-bold uppercase italic text-[11px]">
+                <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
                    {mode.mitigations?.map((m: any) => (
                      <tr key={m.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="px-8 py-5">
-                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-bold ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
                         </td>
-                        <td className="px-8 py-5 text-white italic max-w-xl">
+                        <td className="px-8 py-5 text-white  max-w-xl">
                            <div className="space-y-1">
                               {m.mitigation_steps.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
-                                   <span className="text-slate-600 text-[9px] font-black">{i + 1}</span>
+                                   <span className="text-slate-600 text-[9px] font-bold">{i + 1}</span>
                                    <span>{line}</span>
                                 </div>
                               ))}
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
-                           <span className="px-3 py-1 bg-slate-800 border border-white/10 rounded-lg text-[9px] font-black text-slate-400">NOMINAL</span>
+                           <span className="px-3 py-1 bg-slate-800 border border-white/10 rounded-lg text-[9px] font-bold text-slate-400">NOMINAL</span>
                         </td>
                         <td className="px-8 py-5 text-slate-500">{m.responsible_team}</td>
                         <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1182,14 +1183,14 @@ function HistoryTab({ mode, onUpdate }: any) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500 italic">Analytical Research History</h3>
-          <button className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-xl text-[10px] font-black uppercase italic hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
+          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500 ">Analytical Research History</h3>
+          <button className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
        </div>
        
-       <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-20 italic">
+       <div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-20 ">
           <Activity size={48} className="text-slate-500" />
-          <p className="text-[12px] font-black uppercase tracking-[0.3em] text-center max-w-md">No historical research artifacts currently mapped to this failure vector</p>
-          <button className="text-[10px] font-black uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
+          <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-center max-w-md">No historical research artifacts currently mapped to this failure vector</p>
+          <button className="text-[10px] font-bold uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
        </div>
     </motion.div>
   )
