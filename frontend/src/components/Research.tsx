@@ -21,20 +21,20 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 // --- Components ---
 
 const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between shadow-inner">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
     <div>
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
-      <p className="text-xl font-bold text-white tracking-tighter">{value}</p>
+      <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
     </div>
-    <div className={`p-2 rounded-lg bg-white/5 ${color}`}><Icon size={18} /></div>
+    <div className={`p-2 rounded-md bg-white/5 ${color}`}><Icon size={18} /></div>
   </div>
 )
 
 const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
-  <div className={`bg-white/5 border border-white/5 rounded-2xl p-3 space-y-2 ${className}`}>
-    <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-2">
+  <div className={`bg-white/5 border border-white/5 rounded-lg p-3 space-y-2 ${className}`}>
+    <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-1">
       <Icon size={14} className={color} />
-      <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/70">{title}</h3>
+      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">{title}</h3>
     </div>
     {children}
   </div>
@@ -848,6 +848,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [formData, setFormData] = useState({ ...item })
   const [activeTab, setActiveTab] = useState('overview')
   const [activeSubTab, setActiveSubTab] = useState('identification')
+  const [isEditing, setIsEditing] = useState(false)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
 
   const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
@@ -861,9 +862,13 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     return devices?.filter((d: any) => assetIds.includes(d.id)).flatMap((d: any) => d.logical_services || []) || []
   }, [devices, formData.impacted_asset_ids])
 
-  const handleSave = () => onSave(formData)
+  const handleSave = () => {
+    onSave(formData)
+    setIsEditing(false)
+  }
 
   const handlePaste = (e: React.ClipboardEvent, target: 'evidence' | 'identification' | 'rca', stepIdx?: number) => {
+    if (!isEditing && target !== 'evidence') return
     const items = e.clipboardData.items
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
@@ -894,23 +899,29 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={(e) => activeTab === 'overview' ? handlePaste(e, 'evidence') : null}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-lg border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         
-        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+        <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="p-3 bg-purple-600/20 rounded-2xl text-purple-400 border border-purple-500/30 shadow-inner"><ShieldAlert size={28} /></div>
+            <div className="p-3 bg-purple-600/20 rounded-lg text-purple-400 border border-purple-500/30 shadow-inner"><ShieldAlert size={28} /></div>
             <div>
               <div className="flex items-center space-x-3 mb-1">
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RCA // INTEL NODE</span>
                 <StatusPill value={formData.status} />
                 <span className="text-[9px] font-black text-rose-400 uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30">RISK LVL {formData.priority}</span>
               </div>
-              <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button 
+              onClick={() => setIsEditing(!isEditing)} 
+              className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
+            >
+              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock Changes' : 'Edit Intelligence'}
+            </button>
+            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
+            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
@@ -923,43 +934,79 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             <RcaIconBtn active={activeTab === 'mitigation'} icon={ShieldCheck} onClick={() => setActiveTab('mitigation')} label="Mitigation" />
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/30 p-8">
-            <div className="max-w-full space-y-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/30 p-6">
+            <div className="max-w-full space-y-4">
                
                {activeTab === 'overview' && (
-                 <div className="grid grid-cols-12 gap-8">
-                    <div className="col-span-12 lg:col-span-4 space-y-8">
-                       <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400" className="h-48 flex flex-col">
-                          <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none focus:border-purple-500/30 resize-none" />
+                 <div className="grid grid-cols-12 gap-4">
+                    <div className="col-span-12 lg:col-span-4 space-y-4">
+                       <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400" className="h-56 flex flex-col">
+                          <textarea 
+                            readOnly={!isEditing}
+                            value={formData.problem_statement} 
+                            onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                            className={`flex-1 w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none focus:border-purple-500/30 resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                          />
                        </SectionCard>
                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                          <div className="bg-white/5 rounded-lg p-4 border border-white/5 space-y-2">
                              <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Incident Start</label>
-                             <input type="datetime-local" value={formData.occurrence_at?.slice(0, 16)} onChange={e => setFormData({...formData, occurrence_at: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none [color-scheme:dark]" />
+                             <input 
+                               type="datetime-local" 
+                               readOnly={!isEditing}
+                               value={formData.occurrence_at?.slice(0, 16)} 
+                               onChange={e => setFormData({...formData, occurrence_at: e.target.value})} 
+                               className="w-full bg-transparent text-[12px] font-black text-white outline-none [color-scheme:dark]" 
+                             />
                           </div>
-                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                          <div className="bg-white/5 rounded-lg p-4 border border-white/5 space-y-2">
                              <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Triage Start</label>
-                             <input type="datetime-local" value={formData.acknowledged_at?.slice(0, 16)} onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none [color-scheme:dark]" />
+                             <input 
+                               type="datetime-local" 
+                               readOnly={!isEditing}
+                               value={formData.acknowledged_at?.slice(0, 16)} 
+                               onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} 
+                               className="w-full bg-transparent text-[12px] font-black text-white outline-none [color-scheme:dark]" 
+                             />
                           </div>
                        </div>
                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                          <div className="bg-white/5 rounded-lg p-4 border border-white/5 space-y-2">
                              <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Lead Owner</label>
-                             <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none placeholder:text-slate-700" placeholder="ASSIGN POC..." />
+                             <input 
+                               readOnly={!isEditing}
+                               value={formData.owner} 
+                               onChange={e => setFormData({...formData, owner: e.target.value})} 
+                               className="w-full bg-transparent text-[12px] font-black text-white outline-none placeholder:text-slate-700" 
+                               placeholder="ASSIGN POC..." 
+                             />
                           </div>
-                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                          <div className="bg-white/5 rounded-lg p-4 border border-white/5 space-y-2">
                              <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">External Ref</label>
-                             <input value={formData.jira_link} onChange={e => setFormData({...formData, jira_link: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-blue-400 outline-none placeholder:text-slate-700" placeholder="JIRA-123..." />
+                             <input 
+                               readOnly={!isEditing}
+                               value={formData.jira_link} 
+                               onChange={e => setFormData({...formData, jira_link: e.target.value})} 
+                               className="w-full bg-transparent text-[12px] font-black text-blue-400 outline-none placeholder:text-slate-700" 
+                               placeholder="JIRA-123..." 
+                             />
                           </div>
                        </div>
                        <SectionCard icon={ShieldAlert} title="Operational Impact (FAB)" color="text-rose-400">
                           <div className="space-y-4">
                              <div className="flex flex-wrap gap-2">
                                 {['Flow Halt', 'Scrap Risk', 'Quality Delta', 'Safety Trip'].map(c => (
-                                  <button key={c} onClick={() => {
-                                    const cats = formData.fab_impact_json?.categories || []
-                                    setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, categories: cats.includes(c) ? cats.filter((i:string)=>i!==c) : [...cats, c] }})
-                                  }} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}>{c}</button>
+                                  <button 
+                                    key={c} 
+                                    disabled={!isEditing}
+                                    onClick={() => {
+                                      const cats = formData.fab_impact_json?.categories || []
+                                      setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, categories: cats.includes(c) ? cats.filter((i:string)=>i!==c) : [...cats, c] }})
+                                    }} 
+                                    className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}
+                                  >
+                                    {c}
+                                  </button>
                                 ))}
                              </div>
                              <div className="space-y-2">
@@ -969,60 +1016,81 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                     <button 
                                       key={p}
                                       type="button"
+                                      disabled={!isEditing}
                                       onClick={() => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: p }})}
-                                      className={`py-2 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.severity === p ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                                      className={`py-2 rounded-lg text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.severity === p ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
                                     >
                                       {p}
                                     </button>
                                   ))}
                                 </div>
                              </div>
-                             <textarea value={formData.fab_impact_json?.explanation} onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[80px] resize-none" placeholder="Elaborate on the impact..." />
+                             <textarea 
+                               readOnly={!isEditing}
+                               value={formData.fab_impact_json?.explanation} 
+                               onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} 
+                               className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[80px] resize-none" 
+                               placeholder="Elaborate on the impact..." 
+                             />
                           </div>
                        </SectionCard>
                     </div>
 
-                    <div className="col-span-12 lg:col-span-4 space-y-8">
+                    <div className="col-span-12 lg:col-span-4 space-y-4">
                        <SectionCard icon={Database} title="System Topology Context" color="text-amber-400">
                           <div className="space-y-4">
-                             <SearchableMultiSelect 
-                                label="Target System(s)" 
-                                selected={formData.target_systems || []} 
-                                onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
-                                options={systemsList} 
-                                placeholder="Bind systems..." 
-                             />
-                             <div className="grid grid-cols-2 gap-4 h-96">
-                                <div className="bg-slate-950 rounded-2xl p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
+                             <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
+                               <SearchableMultiSelect 
+                                  label="Target System(s)" 
+                                  selected={formData.target_systems || []} 
+                                  onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
+                                  options={systemsList} 
+                                  placeholder="Bind systems..." 
+                               />
+                             </div>
+                             <div className="grid grid-cols-2 gap-4 h-[440px]">
+                                <div className="bg-slate-950 rounded-lg p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
                                    <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
                                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Assets</p>
                                       <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{formData.impacted_asset_ids?.length || 0}</span>
                                    </div>
                                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
                                       {filteredAssets.map((a: any) => (
-                                        <label key={a.id} className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-600/10 border-amber-500/40 text-amber-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
-                                           <input type="checkbox" checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
-                                             const ids = formData.impacted_asset_ids || []
-                                             setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
-                                           }} className="sr-only" />
+                                        <label key={a.id} className={`flex items-center gap-3 p-2 rounded-lg border transition-all ${isEditing ? 'cursor-pointer' : 'cursor-default'} ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-600/10 border-amber-500/40 text-amber-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
+                                           <input 
+                                             type="checkbox" 
+                                             disabled={!isEditing}
+                                             checked={formData.impacted_asset_ids?.includes(a.id)} 
+                                             onChange={e => {
+                                               const ids = formData.impacted_asset_ids || []
+                                               setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
+                                             }} 
+                                             className="sr-only" 
+                                           />
                                            <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'border-white/20'}`} />
                                            <span className="text-[10px] font-black uppercase truncate">{a.name}</span>
                                         </label>
                                       ))}
                                    </div>
                                 </div>
-                                <div className="bg-slate-950 rounded-2xl p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
+                                <div className="bg-slate-950 rounded-lg p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
                                    <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
                                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Services</p>
                                       <span className="text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">{formData.impacted_service_ids?.length || 0}</span>
                                    </div>
                                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
                                       {filteredServices.map((s: any) => (
-                                        <label key={s.id} className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-600/10 border-indigo-500/40 text-indigo-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
-                                           <input type="checkbox" checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
-                                             const ids = formData.impacted_service_ids || []
-                                             setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
-                                           }} className="sr-only" />
+                                        <label key={s.id} className={`flex items-center gap-3 p-2 rounded-lg border transition-all ${isEditing ? 'cursor-pointer' : 'cursor-default'} ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-600/10 border-indigo-500/40 text-indigo-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
+                                           <input 
+                                             type="checkbox" 
+                                             disabled={!isEditing}
+                                             checked={formData.impacted_service_ids?.includes(s.id)} 
+                                             onChange={e => {
+                                               const ids = formData.impacted_service_ids || []
+                                               setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
+                                             }} 
+                                             className="sr-only" 
+                                           />
                                            <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'border-white/20'}`} />
                                            <span className="text-[10px] font-black uppercase truncate">{s.name}</span>
                                         </label>
@@ -1033,13 +1101,19 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                           </div>
                        </SectionCard>
                        <SectionCard icon={LinkIcon} title="FAR Failure Mode Registry Mapping" color="text-purple-400">
-                          <div className="h-44 bg-slate-950 rounded-2xl p-4 border border-white/5 overflow-y-auto custom-scrollbar space-y-2">
+                          <div className="h-44 bg-slate-950 rounded-lg p-4 border border-white/5 overflow-y-auto custom-scrollbar space-y-2">
                              {failureModes?.filter((fm:any) => (formData.target_systems || []).includes(fm.system_name)).map((fm: any) => (
-                               <label key={fm.id} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-600/10 border-purple-500/40' : 'border-white/5 hover:bg-white/5'}`}>
-                                  <input type="checkbox" checked={formData.linked_failure_modes?.some((l:any)=>l.id === fm.id)} onChange={e => {
-                                    const modes = formData.linked_failure_modes || []
-                                    setFormData({...formData, linked_failure_modes: e.target.checked ? [...modes, fm] : modes.filter((m:any)=>m.id!==fm.id)})
-                                  }} className="sr-only" />
+                               <label key={fm.id} className={`flex items-center gap-4 p-3 rounded-lg border transition-all ${isEditing ? 'cursor-pointer' : 'cursor-default'} ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-600/10 border-purple-500/40' : 'border-white/5 hover:bg-white/5'}`}>
+                                  <input 
+                                    type="checkbox" 
+                                    disabled={!isEditing}
+                                    checked={formData.linked_failure_modes?.some((l:any)=>l.id === fm.id)} 
+                                    onChange={e => {
+                                      const modes = formData.linked_failure_modes || []
+                                      setFormData({...formData, linked_failure_modes: e.target.checked ? [...modes, fm] : modes.filter((m:any)=>m.id!==fm.id)})
+                                    }} 
+                                    className="sr-only" 
+                                  />
                                   <div className={`w-3 h-3 rounded border ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-500 border-purple-500 shadow-lg shadow-purple-500/20' : 'border-white/10'}`} />
                                   <div className="flex-1 min-w-0">
                                      <p className="text-[10px] font-black uppercase text-slate-200 truncate">{fm.title}</p>
@@ -1058,27 +1132,33 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                        </SectionCard>
                     </div>
 
-                    <div className="col-span-12 lg:col-span-4 space-y-8">
+                    <div className="col-span-12 lg:col-span-4 space-y-4">
                        <SectionCard icon={Camera} title="Evidence / Forensic Capture Hub" color="text-blue-400">
                           <div className="space-y-4">
-                             <div className="bg-black/40 border border-dashed border-white/10 rounded-2xl p-6 text-center group hover:border-blue-500/30 transition-all">
+                             <div className={`bg-black/40 border border-dashed border-white/10 rounded-lg p-6 text-center group hover:border-blue-500/30 transition-all ${!isEditing && 'opacity-50 grayscale pointer-events-none'}`}>
                                 <Clipboard size={24} className="mx-auto text-slate-700 group-hover:text-blue-500 mb-3" />
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PASTE EVIDENCE IMAGES OR LOGS</p>
                              </div>
                              <div className="grid grid-cols-2 gap-4 h-[580px] overflow-y-auto custom-scrollbar pr-2">
                                 {(formData.evidence_json || []).map((ev: any, i: number) => (
-                                  <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-2xl overflow-hidden aspect-video shadow-2xl">
+                                  <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-lg overflow-hidden aspect-video shadow-2xl">
                                      {ev.type === 'image' ? (
                                        <img src={ev.content} className="w-full h-full object-cover" />
                                      ) : (
                                        <div className="p-4 text-[9px] font-mono text-slate-300 overflow-hidden leading-relaxed">{ev.content}</div>
                                      )}
                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center space-x-2">
-                                        <button onClick={() => window.open(ev.content, '_blank')} className="p-2 bg-blue-600 text-white rounded-lg"><Eye size={14}/></button>
-                                        <button onClick={() => {
-                                          const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
-                                          setFormData({...formData, evidence_json: newEv})
-                                        }} className="p-2 bg-rose-600 text-white rounded-lg"><Trash2 size={14}/></button>
+                                        <button onClick={() => window.open(ev.content, '_blank')} className="p-2 bg-blue-600 text-white rounded-md"><Eye size={14}/></button>
+                                        <button 
+                                          disabled={!isEditing}
+                                          onClick={() => {
+                                            const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
+                                            setFormData({...formData, evidence_json: newEv})
+                                          }} 
+                                          className="p-2 bg-rose-600 text-white rounded-md disabled:opacity-50"
+                                        >
+                                          <Trash2 size={14}/>
+                                        </button>
                                      </div>
                                   </div>
                                 ))}
@@ -1090,11 +1170,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'timeline' && (
-                 <div className="flex flex-col gap-8">
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-12 gap-4 items-end shadow-2xl">
+                 <div className="flex flex-col gap-4">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-6 grid grid-cols-12 gap-4 items-end shadow-2xl">
                        <div className="col-span-12 lg:col-span-4">
                           <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Narrative</label>
-                          <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-black text-white outline-none focus:border-purple-500/50 uppercase" placeholder="E.G. ALERT FIRED..." />
+                          <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-black text-white outline-none focus:border-purple-500/50 uppercase" placeholder="E.G. ALERT FIRED..." />
                        </div>
                        <div className="col-span-12 lg:col-span-2">
                          <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}]} />
@@ -1102,22 +1182,22 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                        <div className="col-span-12 lg:col-span-2">
                           <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC / Team</label>
                           <div className="flex gap-2">
-                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Name" />
-                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Team" />
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Name" />
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Team" />
                           </div>
                        </div>
                        <div className="col-span-12 lg:col-span-3">
                           <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
-                          <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
+                          <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                        </div>
                        <button onClick={() => {
                           const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
                           setFormData({ ...formData, timeline })
                           setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
-                        }} className="col-span-1 p-4 bg-purple-600 text-white rounded-2xl shadow-xl shadow-purple-500/20 active:scale-95 transition-all"><Plus size={24} /></button>
+                        }} className="col-span-1 p-4 bg-purple-600 text-white rounded-lg shadow-xl shadow-purple-500/20 active:scale-95 transition-all"><Plus size={24} /></button>
                     </div>
                     
-                    <div className="relative pl-12 space-y-8 max-w-5xl mx-auto py-4">
+                    <div className="relative pl-12 space-y-4 max-w-5xl mx-auto py-4">
                        {/* Vertical Timeline Bar */}
                        <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600/50 via-blue-600/50 to-emerald-600/50 rounded-full" />
                        
@@ -1129,7 +1209,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                             'Resolution': 'bg-emerald-500 shadow-emerald-500/50'
                          }
                          return (
-                           <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-3xl p-6 shadow-2xl group hover:bg-white/[0.08] transition-all">
+                           <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all">
                               {/* Connector Dot */}
                               <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
                               
@@ -1140,11 +1220,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
                                     </div>
                                     <div>
-                                       <p className="text-sm font-black text-white uppercase tracking-tight">{e.description}</p>
-                                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 italic">{e.owner} // {e.owner_team}</p>
+                                       <p className="text-base font-black text-white uppercase tracking-tight leading-none">{e.description}</p>
+                                       <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 italic">{e.owner} // {e.owner_team}</p>
                                     </div>
                                  </div>
-                                 <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                                 <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
                               </div>
                            </div>
                          )
@@ -1154,13 +1234,13 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'investigation' && (
-                 <div className="space-y-8">
-                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 w-fit shadow-lg">
-                       <button onClick={() => setActiveSubTab('identification')} className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>1. Discovery & Identification Flow</button>
-                       <button onClick={() => setActiveSubTab('rca')} className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>2. RCA Analytical Logic Ladder</button>
+                 <div className="space-y-4">
+                    <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 w-fit shadow-lg">
+                       <button onClick={() => setActiveSubTab('identification')} className={`px-8 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>1. Discovery & Identification Flow</button>
+                       <button onClick={() => setActiveSubTab('rca')} className={`px-8 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>2. RCA Analytical Logic Ladder</button>
                     </div>
 
-                    <div className="bg-white/5 border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+                    <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
                        <table className="w-full text-left border-collapse">
                           <thead>
                              <tr className="bg-white/5 border-b border-white/5">
@@ -1179,6 +1259,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   <td className="px-6 py-4">
                                      <div className="space-y-4">
                                         <textarea 
+                                          readOnly={!isEditing}
                                           onPaste={(e) => handlePaste(e, activeSubTab as any, idx)} 
                                           value={step.text} 
                                           onChange={e => {
@@ -1187,20 +1268,26 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                             steps[idx].text = e.target.value
                                             setFormData({ ...formData, [key]: steps })
                                           }} 
-                                          className="w-full bg-transparent border-none p-0 text-[11px] font-bold text-slate-300 outline-none min-h-[60px] resize-none placeholder:text-slate-700" 
+                                          className={`w-full bg-transparent border-none p-0 text-base font-bold text-slate-300 outline-none min-h-[60px] resize-none placeholder:text-slate-700 ${!isEditing && 'cursor-default'}`} 
                                           placeholder="Enter discovery details or paste evidence images..." 
                                         />
                                         <div className="flex flex-wrap gap-3">
                                            {step.images?.map((img: string, i: number) => (
-                                             <div key={i} className="relative w-20 h-20 shrink-0 bg-slate-950 rounded-2xl overflow-hidden border border-white/10 group/img shadow-xl">
+                                             <div key={i} className="relative w-20 h-20 shrink-0 bg-slate-950 rounded-lg overflow-hidden border border-white/10 group/img shadow-xl">
                                                 <img src={img} className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center">
-                                                   <button onClick={() => {
-                                                     const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
-                                                     const steps = [...(formData[key] || [])]
-                                                     steps[idx].images.splice(i, 1)
-                                                     setFormData({ ...formData, [key]: steps })
-                                                   }} className="p-1.5 bg-rose-600 text-white rounded-lg shadow-lg"><Trash2 size={12}/></button>
+                                                   <button 
+                                                     disabled={!isEditing}
+                                                     onClick={() => {
+                                                       const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                                       const steps = [...(formData[key] || [])]
+                                                       steps[idx].images.splice(i, 1)
+                                                       setFormData({ ...formData, [key]: steps })
+                                                     }} 
+                                                     className="p-1.5 bg-rose-600 text-white rounded-md shadow-lg disabled:opacity-50"
+                                                   >
+                                                     <Trash2 size={12}/>
+                                                   </button>
                                                 </div>
                                              </div>
                                            ))}
@@ -1210,40 +1297,51 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   <td className="px-6 py-4 align-top">
                                      <div className="space-y-2">
                                         <input 
+                                          readOnly={!isEditing}
                                           value={step.owner} 
                                           onChange={e => {
                                             const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
                                             const steps = [...(formData[key] || [])]; steps[idx].owner = e.target.value; setFormData({...formData, [key]: steps})
                                           }}
                                           placeholder="POC NAME..." 
-                                          className="w-full bg-slate-950/50 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
+                                          className="w-full bg-slate-950/50 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
                                         />
                                         <input 
+                                          readOnly={!isEditing}
                                           value={step.owner_team} 
                                           onChange={e => {
                                             const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
                                             const steps = [...(formData[key] || [])]; steps[idx].owner_team = e.target.value; setFormData({...formData, [key]: steps})
                                           }}
                                           placeholder="TEAM..." 
-                                          className="w-full bg-slate-950/50 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
+                                          className="w-full bg-slate-950/50 border border-white/5 rounded-lg px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
                                         />
                                      </div>
                                   </td>
                                   <td className="px-6 py-4 text-center align-top">
-                                     <button onClick={() => {
-                                       const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
-                                       const steps = [...(formData[key] || [])]; steps.splice(idx, 1); setFormData({ ...formData, [key]: steps })
-                                     }} className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-lg"><Trash2 size={16}/></button>
+                                     <button 
+                                       disabled={!isEditing}
+                                       onClick={() => {
+                                         const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                         const steps = [...(formData[key] || [])]; steps.splice(idx, 1); setFormData({ ...formData, [key]: steps })
+                                       }} 
+                                       className="p-2.5 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-lg disabled:opacity-0"
+                                     >
+                                       <Trash2 size={16}/>
+                                     </button>
                                   </td>
                                </tr>
                              ))}
                           </tbody>
                        </table>
-                       <button onClick={() => {
+                       <button 
+                        disabled={!isEditing}
+                        onClick={() => {
                           const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
                           const steps = [...(formData[key] || [])]
                           setFormData({ ...formData, [key]: [...steps, { text: '', images: [], owner: '', owner_team: '' }] })
-                        }} className="w-full p-8 border-t border-white/5 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex items-center justify-center gap-4">
+                        }} 
+                        className={`w-full p-6 border-t border-white/5 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex items-center justify-center gap-4 ${!isEditing && 'opacity-0 h-0 p-0 overflow-hidden'}`}>
                           <PlusCircle size={20} /> <span>Initialize Next Step in Flow</span>
                        </button>
                     </div>
@@ -1251,45 +1349,45 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'causes' && (
-                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {(formData.potential_causes_json || []).map((c: any, idx: number) => (
-                      <div key={idx} className="bg-slate-950 border border-white/5 rounded-[32px] p-8 space-y-6 relative group shadow-2xl hover:border-purple-500/20 transition-all">
+                      <div key={idx} className="bg-slate-950 border border-white/5 rounded-lg p-8 space-y-6 relative group shadow-2xl hover:border-purple-500/20 transition-all">
                          <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
                                {['Likely', 'Confirmed', 'Disproven'].map(s => (
-                                 <button key={s} onClick={() => {
+                                 <button key={s} disabled={!isEditing} onClick={() => {
                                    const causes = [...formData.potential_causes_json]; causes[idx].status = s; setFormData({...formData, potential_causes_json: causes})
                                  }} className={`px-6 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${c.status === s ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{s}</button>
                                ))}
                             </div>
-                            <button onClick={() => {
+                            <button disabled={!isEditing} onClick={() => {
                               const causes = [...formData.potential_causes_json]; causes.splice(idx, 1); setFormData({...formData, potential_causes_json: causes})
-                            }} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                            }} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all disabled:opacity-0"><Trash2 size={16}/></button>
                          </div>
                          <div className="space-y-2">
                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Root Cause Narrative</label>
-                            <textarea value={c.cause} onChange={e => {
+                            <textarea readOnly={!isEditing} value={c.cause} onChange={e => {
                                const causes = [...formData.potential_causes_json]; causes[idx].cause = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                            }} className="w-full bg-slate-900 border border-white/5 rounded-2xl p-4 text-[12px] font-black text-white outline-none focus:border-indigo-500/50 min-h-[80px] resize-none" placeholder="Elaborate on the cause findings..." />
+                            }} className={`w-full bg-slate-900 border border-white/5 rounded-lg p-4 text-base font-black text-white outline-none focus:border-indigo-500/50 min-h-[80px] resize-none ${!isEditing && 'cursor-default'}`} placeholder="Elaborate on the cause findings..." />
                          </div>
                          <div className="space-y-2">
                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Forensic Signature / Indicator</label>
-                            <textarea value={c.indicator} onChange={e => {
+                            <textarea readOnly={!isEditing} value={c.indicator} onChange={e => {
                                const causes = [...formData.potential_causes_json]; causes[idx].indicator = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                            }} className="w-full bg-slate-900 border border-white/5 rounded-2xl p-4 text-[10px] font-mono font-bold text-amber-500 outline-none focus:border-amber-500/50 resize-none" placeholder="Paste the specific log line or metric trigger..." />
+                            }} className={`w-full bg-slate-900 border border-white/5 rounded-lg p-4 text-[11px] font-mono font-bold text-amber-500 outline-none focus:border-amber-500/50 resize-none ${!isEditing && 'cursor-default'}`} placeholder="Paste the specific log line or metric trigger..." />
                          </div>
-                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                         <div className={`flex items-center gap-4 bg-white/5 p-4 rounded-lg border border-white/5 ${!isEditing && 'opacity-80 pointer-events-none'}`}>
                             <div className="flex-1">
                                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Link Recovery BKM</label>
                                <StyledSelect value={c.bkm_id} onChange={e => {
                                  const causes = [...formData.potential_causes_json]; causes[idx].bkm_id = e.target.value; setFormData({...formData, potential_causes_json: causes})
                                }} options={[]} placeholder="Select Knowledge Entry..." />
                             </div>
-                            <button className="mt-4 p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30 hover:bg-blue-600 hover:text-white transition-all"><Plus size={20}/></button>
+                            <button className="mt-4 p-3 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 hover:bg-blue-600 hover:text-white transition-all"><Plus size={20}/></button>
                          </div>
                       </div>
                     ))}
-                    <button onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})} className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex flex-col items-center justify-center gap-6 shadow-2xl group">
+                    <button disabled={!isEditing} onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})} className={`border-2 border-dashed border-white/5 rounded-lg p-12 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex flex-col items-center justify-center gap-6 shadow-2xl group ${!isEditing && 'opacity-0 h-0 p-0 overflow-hidden'}`}>
                        <PlusCircle size={48} className="text-slate-700 group-hover:text-purple-500 transition-all" /> 
                        <span>Register Potential Root Cause</span>
                     </button>
@@ -1297,36 +1395,36 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'mitigation' && (
-                 <div className="space-y-8">
-                    <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-[32px] p-8 flex items-center justify-between shadow-2xl">
+                 <div className="space-y-4">
+                    <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-lg p-8 flex items-center justify-between shadow-2xl">
                        <div className="flex items-center gap-8">
-                          <div className="p-5 bg-emerald-600/20 rounded-[28px] text-emerald-400 border border-emerald-500/30 shadow-2xl shadow-emerald-500/20"><ShieldCheck size={40} /></div>
+                          <div className="p-5 bg-emerald-600/20 rounded-lg text-emerald-400 border border-emerald-500/30 shadow-2xl shadow-emerald-500/20"><ShieldCheck size={40} /></div>
                           <div>
-                             <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">Reliability Vector Synchronization</h3>
-                             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black max-w-xl">Confirmed findings are mapped to the Failure Analysis Registry (FAR) to trigger permanent infrastructure hardening and prevention tasks.</p>
+                             <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">Reliability Vector Synchronization</h3>
+                             <p className="text-[11px] text-slate-500 uppercase tracking-widest font-black max-w-xl">Confirmed findings are mapped to the Failure Analysis Registry (FAR) to trigger permanent infrastructure hardening and prevention tasks.</p>
                           </div>
                        </div>
                        <div className="text-right">
-                          <p className="text-3xl font-black text-white leading-none">{(formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').length || 0)}</p>
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Confirmed Findings</p>
+                          <p className="text-4xl font-black text-white leading-none">{(formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').length || 0)}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Confirmed Findings</p>
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 gap-4">
                        {formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').map((c: any, cIdx: number) => (
-                         <div key={cIdx} className="bg-white/5 border border-white/5 rounded-[40px] p-8 space-y-6 group hover:bg-white/[0.07] transition-all shadow-2xl">
+                         <div key={cIdx} className="bg-white/5 border border-white/5 rounded-lg p-8 space-y-6 group hover:bg-white/[0.07] transition-all shadow-2xl">
                             <div className="flex items-start justify-between">
                                <div className="flex items-start gap-6">
-                                  <div className="p-3 bg-emerald-600/20 rounded-2xl text-emerald-400 border border-emerald-500/30 shadow-inner mt-1"><Zap size={24} /></div>
+                                  <div className="p-3 bg-emerald-600/20 rounded-lg text-emerald-400 border border-emerald-500/30 shadow-inner mt-1"><Zap size={24} /></div>
                                   <div className="max-w-3xl">
-                                     <p className="text-base font-black text-white uppercase tracking-tight leading-relaxed">{c.cause}</p>
-                                     <div className="flex items-center gap-3 mt-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5 w-fit">
+                                     <p className="text-lg font-black text-white uppercase tracking-tight leading-relaxed">{c.cause}</p>
+                                     <div className="flex items-center gap-3 mt-4 bg-black/40 px-4 py-2 rounded-lg border border-white/5 w-fit">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Confirmed Signature:</span>
-                                        <span className="text-[10px] font-mono font-black text-amber-500 uppercase truncate max-w-xl">{c.indicator || 'NO SIGNATURE DEFINED'}</span>
+                                        <span className="text-[11px] font-mono font-black text-amber-500 uppercase truncate max-w-xl">{c.indicator || 'NO SIGNATURE DEFINED'}</span>
                                      </div>
                                   </div>
                                </div>
-                               <button className="px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3">
+                               <button className="px-8 py-3 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3">
                                   <RefreshCcw size={16} /> Sync Reliability Vector
                                </button>
                             </div>
@@ -1340,6 +1438,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   {(formData.linked_failure_modes || []).map((fm: any) => (
                                     <button 
                                        key={fm.id}
+                                       disabled={!isEditing}
                                        onClick={() => {
                                          const newCauses = (formData.potential_causes_json || []).map((cause: any) => {
                                             if (cause.cause === c.cause) {
@@ -1350,13 +1449,13 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                          })
                                          setFormData({...formData, potential_causes_json: newCauses})
                                        }}
-                                       className={`px-5 py-2.5 rounded-2xl border text-[10px] font-black uppercase transition-all flex items-center gap-3 shadow-lg ${c.linked_fm_ids?.includes(fm.id) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-950 border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/30'}`}
+                                       className={`px-5 py-2.5 rounded-lg border text-[10px] font-black uppercase transition-all flex items-center gap-3 shadow-lg ${c.linked_fm_ids?.includes(fm.id) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-950 border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/30'}`}
                                     >
                                        <Target size={14} className={c.linked_fm_ids?.includes(fm.id) ? 'text-white' : 'text-slate-700'} /> {fm.title}
                                     </button>
                                   ))}
                                   {(formData.linked_failure_modes || []).length === 0 && (
-                                    <div className="flex-1 py-12 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center gap-3">
+                                    <div className="flex-1 py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center gap-3">
                                        <Layers size={32} className="text-slate-800" />
                                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">No Failure Modes Bound. Register in Overview first.</p>
                                     </div>
@@ -1366,7 +1465,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          </div>
                        ))}
                        {(!formData.potential_causes_json || formData.potential_causes_json.filter((c:any)=>c.status === 'Confirmed').length === 0) && (
-                         <div className="py-32 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-6 shadow-2xl">
+                         <div className="py-32 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-6 shadow-2xl">
                             <Zap size={64} className="text-slate-800" />
                             <div className="space-y-2">
                                <p className="text-lg font-black text-slate-700 uppercase tracking-[0.4em]">Strategic Analytical Deadlock</p>
@@ -1398,6 +1497,7 @@ const RcaIconBtn = ({ active, icon: Icon, onClick, label }: any) => (
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
+  const [isEditing, setIsEditing] = useState(false)
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '', timestamp: new Date().toISOString() })
   const [layoutMode, setLayoutMode] = useState(1)
 
@@ -1416,7 +1516,10 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     }
   })
 
-  const handleSave = () => onSave(formData)
+  const handleSave = () => {
+    onSave(formData)
+    setIsEditing(false)
+  }
 
   const sortedLogs = useMemo(() => {
      return [...(formData.progress_logs || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -1426,27 +1529,56 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     switch (layoutMode) {
       case 1: // Classic Suite (Original refinement)
         return (
-          <div className="flex-1 flex overflow-hidden p-8 gap-8 animate-in fade-in duration-500">
-            <div className="w-1/3 flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-4">
+          <div className="flex-1 flex overflow-hidden p-6 gap-6 animate-in fade-in duration-500">
+            <div className="w-1/3 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-4">
               <SectionCard icon={FileText} title="Investigation Problem Context" color="text-blue-400" className="flex flex-col">
-                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[120px] resize-none" />
+                <textarea 
+                  readOnly={!isEditing}
+                  value={formData.problem_statement} 
+                  onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                  className={`flex-1 w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[120px] resize-none ${!isEditing && 'cursor-default'}`} 
+                />
               </SectionCard>
               <div className="grid grid-cols-2 gap-4">
                 <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
-                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="What triggered this research?" />
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.trigger_event} 
+                     onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
+                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default'}`} 
+                     placeholder="What triggered this research?" 
+                   />
                 </SectionCard>
                 <SectionCard icon={AlertTriangle} title="Identified Impact" color="text-rose-400">
-                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="Business or System impact..." />
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.impact} 
+                     onChange={e => setFormData({...formData, impact: e.target.value})} 
+                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default'}`} 
+                     placeholder="Business or System impact..." 
+                   />
                 </SectionCard>
               </div>
               <SectionCard icon={Search} title="Investigation Findings & Raw Intel" color="text-indigo-400">
-                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-300 outline-none min-h-[180px] resize-none" placeholder="Document all analytical findings here..." />
+                <textarea 
+                  readOnly={!isEditing}
+                  value={formData.root_cause} 
+                  onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                  className={`w-full bg-slate-950 border border-white/5 rounded-lg p-5 text-base font-bold text-slate-300 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default'}`} 
+                  placeholder="Document all analytical findings here..." 
+                />
               </SectionCard>
               <SectionCard icon={ShieldCheck} title="Proposed Strategy / Resolution" color="text-emerald-400">
-                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-200 outline-none min-h-[180px] resize-none" placeholder="Permanent strategy or fix steps..." />
+                <textarea 
+                  readOnly={!isEditing}
+                  value={formData.resolution_steps} 
+                  onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                  className={`w-full bg-slate-950 border border-white/5 rounded-lg p-5 text-base font-bold text-slate-200 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default'}`} 
+                  placeholder="Permanent strategy or fix steps..." 
+                />
               </SectionCard>
             </div>
-            <div className="flex-1 flex flex-col gap-8 overflow-hidden">
+            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
               <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
               <IntelligenceStream logs={sortedLogs} />
             </div>
@@ -1454,30 +1586,55 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         )
       case 2: // Dashboard Hub (Modular grid)
         return (
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-3 gap-6">
-               <div className="col-span-2 grid grid-cols-2 gap-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-3 gap-4">
+               <div className="col-span-2 grid grid-cols-2 gap-4">
                   <SectionCard icon={FileText} title="Problem Context" color="text-blue-400" className="h-44">
-                    <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-300 resize-none outline-none" />
+                    <textarea 
+                      readOnly={!isEditing}
+                      value={formData.problem_statement} 
+                      onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                      className={`w-full h-full bg-slate-950/50 border-none p-2 text-base font-bold text-slate-300 resize-none outline-none ${!isEditing && 'cursor-default'}`} 
+                    />
                   </SectionCard>
                   <div className="grid grid-rows-2 gap-4">
-                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col justify-between">
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col justify-between">
                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Triggers</span>
-                       <input value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="bg-transparent text-[11px] font-black text-amber-400 outline-none w-full" />
+                       <input 
+                         readOnly={!isEditing}
+                         value={formData.trigger_event} 
+                         onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
+                         className={`bg-transparent text-[12px] font-black text-amber-400 outline-none w-full ${!isEditing && 'cursor-default'}`} 
+                       />
                     </div>
-                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col justify-between">
+                    <div className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col justify-between">
                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Impact</span>
-                       <input value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="bg-transparent text-[11px] font-black text-rose-400 outline-none w-full" />
+                       <input 
+                         readOnly={!isEditing}
+                         value={formData.impact} 
+                         onChange={e => setFormData({...formData, impact: e.target.value})} 
+                         className={`bg-transparent text-[12px] font-black text-rose-400 outline-none w-full ${!isEditing && 'cursor-default'}`} 
+                       />
                     </div>
                   </div>
                   <SectionCard icon={Search} title="Analytical Findings" color="text-indigo-400" className="h-64">
-                    <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-300 resize-none outline-none" />
+                    <textarea 
+                      readOnly={!isEditing}
+                      value={formData.root_cause} 
+                      onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                      className={`w-full h-full bg-slate-950/50 border-none p-2 text-base font-bold text-slate-300 resize-none outline-none ${!isEditing && 'cursor-default'}`} 
+                    />
                   </SectionCard>
                   <SectionCard icon={ShieldCheck} title="Proposed Resolution" color="text-emerald-400" className="h-64">
-                    <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-200 resize-none outline-none" />
+                    <textarea 
+                      readOnly={!isEditing}
+                      value={formData.resolution_steps} 
+                      onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                      className={`w-full h-full bg-slate-950/50 border-none p-2 text-base font-bold text-slate-200 resize-none outline-none ${!isEditing && 'cursor-default'}`} 
+                    />
                   </SectionCard>
                </div>
-               <div className="flex flex-col gap-6">
+               <div className="flex flex-col gap-4">
                   <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} compact />
                   <div className="flex-1 min-h-[400px]">
                     <IntelligenceStream logs={sortedLogs} compact />
@@ -1488,44 +1645,79 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         )
       case 3: // Intel Stream Focused
         return (
-          <div className="flex-1 flex overflow-hidden p-8 gap-8 animate-in slide-in-from-left-4 duration-500">
-             <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+          <div className="flex-1 flex overflow-hidden p-6 gap-6 animate-in slide-in-from-left-4 duration-500">
+             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                 <IntelligenceStream logs={sortedLogs} wide />
                 <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
              </div>
-             <div className="w-80 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+             <div className="w-80 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
                 <SectionCard icon={FileText} title="Context" color="text-blue-400">
-                   <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{formData.problem_statement}</p>
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.problem_statement} 
+                     onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                     className={`w-full bg-transparent border-none text-[12px] text-slate-400 font-bold leading-relaxed resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                   />
                 </SectionCard>
                 <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
-                   <p className="text-[10px] text-slate-400 font-bold">{formData.trigger_event || 'N/A'}</p>
+                   <input 
+                     readOnly={!isEditing}
+                     value={formData.trigger_event} 
+                     onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
+                     className={`w-full bg-transparent border-none text-[11px] text-slate-400 font-bold outline-none ${!isEditing && 'cursor-default'}`} 
+                   />
                 </SectionCard>
                 <SectionCard icon={Search} title="Core Findings" color="text-indigo-400">
-                   <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{formData.root_cause || 'Analyzing...'}</p>
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.root_cause} 
+                     onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                     className={`w-full bg-transparent border-none text-[12px] text-slate-400 font-bold leading-relaxed resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                   />
                 </SectionCard>
                 <SectionCard icon={ShieldCheck} title="Resolution" color="text-emerald-400">
-                   <p className="text-[10px] text-slate-300 font-black uppercase tracking-tight">{formData.resolution_steps || 'Pending Strategy'}</p>
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.resolution_steps} 
+                     onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                     className={`w-full bg-transparent border-none text-[13px] text-slate-300 font-black uppercase tracking-tight resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                   />
                 </SectionCard>
              </div>
           </div>
         )
       case 4: // Forensic Workbench (Side-by-side wide)
         return (
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 animate-in zoom-in-95 duration-500">
-             <div className="space-y-8">
-                <div className="grid grid-cols-2 gap-8">
-                   <div className="space-y-4">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 animate-in zoom-in-95 duration-500">
+             <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
                       <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em] px-2 flex items-center gap-3"><FileText size={14}/> Problem Narrative</h3>
-                      <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-[32px] p-6 text-[12px] font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-blue-500/30 transition-all" />
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.problem_statement} 
+                        onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                        className={`w-full bg-white/5 border border-white/5 rounded-lg p-6 text-base font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-blue-500/30 transition-all ${!isEditing && 'cursor-default'}`} 
+                      />
                    </div>
-                   <div className="space-y-4">
+                   <div className="space-y-2">
                       <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] px-2 flex items-center gap-3"><Search size={14}/> Forensic Analysis</h3>
-                      <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-[32px] p-6 text-[12px] font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-indigo-500/30 transition-all" />
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.root_cause} 
+                        onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                        className={`w-full bg-white/5 border border-white/5 rounded-lg p-6 text-base font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-indigo-500/30 transition-all ${!isEditing && 'cursor-default'}`} 
+                      />
                    </div>
                 </div>
-                <div className="grid grid-cols-3 gap-8">
+                <div className="grid grid-cols-3 gap-4">
                    <SectionCard icon={ShieldCheck} title="Strategy" color="text-emerald-400">
-                      <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border-none p-2 text-[11px] font-bold text-white resize-none outline-none min-h-[150px]" />
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.resolution_steps} 
+                        onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                        className={`w-full bg-slate-950 border-none p-2 text-[12px] font-bold text-white resize-none outline-none min-h-[150px] ${!isEditing && 'cursor-default'}`} 
+                      />
                    </SectionCard>
                    <div className="col-span-2 flex flex-col gap-4">
                       <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} compact />
@@ -1539,28 +1731,45 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         )
       case 5: // Minimalist Zen (Apple-like)
         return (
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-12 max-w-5xl mx-auto space-y-16 animate-in fade-in duration-700">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-12 max-w-5xl mx-auto space-y-12 animate-in fade-in duration-700">
              <div className="space-y-6">
                 <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase border-b-2 border-white/5 pb-4">Executive Context</h2>
-                <p className="text-xl font-medium text-slate-400 leading-relaxed tracking-tight">{formData.problem_statement}</p>
+                <textarea 
+                  readOnly={!isEditing}
+                  value={formData.problem_statement} 
+                  onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                  className={`w-full bg-transparent border-none text-2xl font-medium text-slate-400 leading-relaxed tracking-tight resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                />
              </div>
              
              <div className="grid grid-cols-2 gap-16">
                 <div className="space-y-8">
                    <div className="space-y-4">
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Findings</h4>
-                      <p className="text-slate-200 font-bold leading-relaxed">{formData.root_cause || 'Intelligence gathering in progress...'}</p>
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.root_cause} 
+                        onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                        className={`w-full bg-transparent border-none text-slate-200 font-bold leading-relaxed resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                        placeholder="Intelligence gathering in progress..." 
+                      />
                    </div>
                    <div className="space-y-4">
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Resolution Path</h4>
-                      <p className="text-emerald-400 font-black uppercase tracking-tight text-lg leading-tight">{formData.resolution_steps || 'Awaiting structural resolution strategy.'}</p>
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.resolution_steps} 
+                        onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                        className={`w-full bg-transparent border-none text-emerald-400 font-black uppercase tracking-tight text-xl leading-tight resize-none h-48 outline-none ${!isEditing && 'cursor-default'}`} 
+                        placeholder="Awaiting structural resolution strategy." 
+                      />
                    </div>
                 </div>
                 <div className="space-y-8">
-                   <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Pulse History</h4>
+                   <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Pulse History (Chronological)</h4>
                    <div className="space-y-8 relative pl-6">
                       <div className="absolute left-0 top-0 bottom-0 w-px bg-white/10" />
-                      {sortedLogs.slice().reverse().slice(0,3).map((l:any, i:number) => (
+                      {sortedLogs.slice(0,5).map((l:any, i:number) => (
                         <div key={i} className="relative">
                            <div className="absolute -left-[27px] top-1.5 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
                            <p className="text-[12px] font-black text-white uppercase tracking-tight leading-tight">{l.entry_text}</p>
@@ -1579,26 +1788,26 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1500px] h-full rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1500px] h-full rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
         
-        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+        <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="p-3 bg-blue-600/20 rounded-2xl text-blue-400 border border-blue-500/30 shadow-inner"><Search size={28} /></div>
+            <div className="p-3 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Search size={28} /></div>
             <div>
               <div className="flex items-center space-x-3 mb-1">
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RESEARCH // INTEL NODE: {formData.id}</span>
                 <StatusPill value={formData.status} />
                 <span className="text-[9px] font-black text-blue-400 uppercase bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">RISK: {formData.priority}</span>
               </div>
-              <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
             
-            <div className="flex ml-8 bg-black/40 p-1 rounded-xl border border-white/5">
+            <div className="flex ml-8 bg-black/40 p-1 rounded-lg border border-white/5">
                {[1,2,3,4,5].map(num => (
                  <button 
                    key={num} 
                    onClick={() => setLayoutMode(num)}
-                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${layoutMode === num ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-300'}`}
+                   className={`px-4 py-1.5 rounded-md text-[10px] font-black uppercase transition-all ${layoutMode === num ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-300'}`}
                  >
                    V{num}
                  </button>
@@ -1606,8 +1815,14 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <button onClick={handleSave} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button 
+              onClick={() => setIsEditing(!isEditing)} 
+              className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
+            >
+              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock Changes' : 'Edit Intelligence'}
+            </button>
+            <button onClick={handleSave} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
+            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
@@ -1619,30 +1834,30 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
 function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: any) {
   return (
-    <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-2xl p-4' : 'rounded-[32px] p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
+    <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-lg p-4' : 'rounded-lg p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
       <div className="flex-1 space-y-2">
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
-         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-2xl ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
+         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
       </div>
       <div className={compact ? 'w-32' : 'w-48'}>
          <StyledSelect label="Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Milestone', label:'Milestone'}]} />
       </div>
       <div className={compact ? 'w-24' : 'w-40'}>
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
-         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-xl ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
+         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
       </div>
       <div className={compact ? 'w-40' : 'w-56'}>
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
-         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-xl ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-slate-400 outline-none [color-scheme:dark]`} />
+         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-slate-400 outline-none [color-scheme:dark]`} />
       </div>
-      <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className={`${compact ? 'p-3' : 'p-4'} bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center`}><Plus size={compact ? 18 : 24} /></button>
+      <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className={`${compact ? 'p-3' : 'p-4'} bg-blue-600 text-white rounded-lg shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center`}><Plus size={compact ? 18 : 24} /></button>
     </div>
   )
 }
 
 function IntelligenceStream({ logs, compact = false }: any) {
   return (
-    <div className={`flex-1 bg-slate-950/50 border border-white/5 ${compact ? 'rounded-2xl' : 'rounded-[40px]'} overflow-hidden flex flex-col shadow-2xl`}>
+    <div className={`flex-1 bg-slate-950/50 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl`}>
       <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
          <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{logs.length} Pulse Captured</span>
@@ -1652,7 +1867,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
             <div className="absolute left-5 top-2 bottom-2 w-0.5 bg-blue-500/20 rounded-full" />
             
             {logs.map((l: any, i: number) => (
-              <div key={i} className={`relative bg-white/5 border border-white/5 ${compact ? 'rounded-2xl p-3' : 'rounded-3xl p-5'} group hover:bg-white/[0.08] transition-all shadow-lg`}>
+              <div key={i} className={`relative bg-white/5 border border-white/5 ${compact ? 'rounded-lg p-3' : 'rounded-lg p-5'} group hover:bg-white/[0.08] transition-all shadow-lg`}>
                  <div className="absolute -left-[32px] top-6 w-3 h-3 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
                  
                  <div className={`flex ${compact ? 'gap-4' : 'gap-8'}`}>
@@ -1672,7 +1887,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
               </div>
             ))}
             {logs.length === 0 && (
-               <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-4 opacity-30">
+               <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
                   <Activity size={40} className="text-slate-500" />
                   <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
                </div>
