@@ -47,8 +47,10 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     
     # Handle ISO dates
     for date_field in ["occurrence_at", "acknowledged_at"]:
-        if date_field in clean_data and isinstance(clean_data[date_field], str):
+        if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
             clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+        elif date_field in clean_data and not clean_data[date_field]:
+            clean_data[date_field] = None
 
     record = models.RcaRecord(**clean_data)
     
@@ -74,8 +76,10 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     
     # Handle ISO dates
     for date_field in ["occurrence_at", "acknowledged_at"]:
-        if date_field in clean_data and isinstance(clean_data[date_field], str):
+        if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
             clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+        elif date_field in clean_data and not clean_data[date_field]:
+            clean_data[date_field] = None
 
     for k, v in clean_data.items():
         setattr(record, k, v)

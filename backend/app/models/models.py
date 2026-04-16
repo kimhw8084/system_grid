@@ -618,6 +618,9 @@ class Investigation(Base, BaseMixin):
     monitoring_items = Column(JSON, default=list) # Items to monitor after resolution
     lessons_learned = Column(Text)
     
+    # Optional timing
+    initiation_at = Column(DateTime, nullable=True)
+    
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
     
@@ -691,7 +694,8 @@ class RcaRecord(Base, BaseMixin):
     jira_link = Column(String)
     
     # Cascading selection context
-    target_system = Column(String) # System name
+    target_system = Column(String) # Legacy field (string)
+    target_systems = Column(JSON, default=list) # New multi-select field
     impacted_asset_ids = Column(JSON, default=list) # List of device IDs within that system
     impacted_service_ids = Column(JSON, default=list) # List of service IDs within those assets
     

@@ -25,6 +25,11 @@ async def get_investigations(include_deleted: bool = False, db: AsyncSession = D
 @router.post("/")
 async def create_investigation(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.Investigation, data)
+    
+    # Handle ISO dates
+    if "initiation_at" in clean_data and isinstance(clean_data["initiation_at"], str) and clean_data["initiation_at"]:
+        clean_data["initiation_at"] = datetime.fromisoformat(clean_data["initiation_at"].replace('Z', '+00:00'))
+
     inv = models.Investigation(**clean_data)
     db.add(inv)
     try:
@@ -42,6 +47,11 @@ async def update_investigation(inv_id: int, data: dict, db: AsyncSession = Depen
     if not inv: raise HTTPException(404, "Investigation not found")
     
     clean_data = filter_valid_columns(models.Investigation, data)
+    
+    # Handle ISO dates
+    if "initiation_at" in clean_data and isinstance(clean_data["initiation_at"], str) and clean_data["initiation_at"]:
+        clean_data["initiation_at"] = datetime.fromisoformat(clean_data["initiation_at"].replace('Z', '+00:00'))
+
     for k, v in clean_data.items():
         setattr(inv, k, v)
         

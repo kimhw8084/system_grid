@@ -7,7 +7,7 @@ import {
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
-  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target
+  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target, ChevronDown
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -40,34 +40,131 @@ const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any
   </div>
 )
 
-// --- Priority Gauge Component ---
-const PriorityGauge = ({ value, onChange, label, hint }: any) => {
-  const levels = [
-    { v: 1, color: 'bg-emerald-500', label: 'Low', desc: 'Minimal impact, informational' },
-    { v: 3, color: 'bg-blue-500', label: 'Medium', desc: 'Non-critical service degradation' },
-    { v: 5, color: 'bg-amber-500', label: 'High', desc: 'Partial system outage / Risk' },
-    { v: 8, color: 'bg-rose-500', label: 'Critical', desc: 'Global outage / Data Loss' },
-    { v: 10, color: 'bg-purple-600', label: 'Emergency', desc: 'Total FAB Halt / Safety' }
-  ]
+// --- Priority Slider Component ---
+const PrioritySlider = ({ value, onChange, label, type }: any) => {
+  const isRca = type === 'RCA'
+  
+  // Mapping 1-10 to 4 levels
+  const getLevel = (v: number) => {
+    if (v >= 8) return { label: 'Highest', color: 'text-rose-500', bg: 'bg-rose-500' }
+    if (v >= 6) return { label: 'High', color: 'text-amber-500', bg: 'bg-amber-500' }
+    if (v >= 4) return { label: 'Medium', color: 'text-blue-400', bg: 'bg-blue-400' }
+    return { label: 'Low', color: 'text-emerald-500', bg: 'bg-emerald-500' }
+  }
+
+  const definitions: any = {
+    RCA: {
+      'Low': 'Minor glitch, no FAB impact, solved via standard SOP.',
+      'Medium': 'Partial service degradation, minor delay, workaround exists.',
+      'High': 'Critical service failure, potential scrap risk, requires P2 triage.',
+      'Highest': 'Global system outage, FAB halt, immediate P1 RCA mandated.'
+    },
+    Research: {
+      'Low': 'General intelligence gathering, no immediate action needed.',
+      'Medium': 'Optimization study, potential efficiency gains identified.',
+      'High': 'Strategic investigation, core architecture shift consideration.',
+      'Highest': 'Urgent security or reliability probe, critical for roadmap.'
+    }
+  }
+
+  const level = getLevel(value)
+  const def = definitions[isRca ? 'RCA' : 'Research'][level.label]
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-end">
-        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</label>
-        <span className="text-[14px] font-bold text-white leading-none">{value}/10</span>
+    <div className="space-y-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+      <div className="flex justify-between items-center">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</label>
+        <div className="flex items-center gap-2">
+           <span className={`text-[11px] font-black uppercase ${level.color}`}>{level.label}</span>
+           <span className="text-[10px] font-bold text-slate-600">LVL {value}</span>
+        </div>
       </div>
-      <div className="h-2 bg-white/5 rounded-full flex overflow-hidden border border-white/5">
-        {[...Array(10)].map((_, i) => (
-          <div 
-            key={i} 
-            onClick={() => onChange(i + 1)}
-            className={`flex-1 cursor-pointer transition-all border-r border-black/20 last:border-0 ${
-              i < value ? (i < 2 ? 'bg-emerald-500' : i < 4 ? 'bg-blue-500' : i < 7 ? 'bg-amber-500' : i < 9 ? 'bg-rose-500' : 'bg-purple-600') : 'bg-transparent'
-            }`}
-          />
+      <div className="relative flex items-center h-6">
+        <input 
+          type="range" min="1" max="10" step="1" 
+          value={value} 
+          onChange={e => onChange(Number(e.target.value))}
+          className="w-full accent-blue-500 h-1 bg-slate-800 rounded-full appearance-none cursor-pointer"
+        />
+        <div className="absolute -bottom-1 left-0 right-0 flex justify-between px-1">
+           {[...Array(10)].map((_, i) => (
+             <div key={i} className={`w-0.5 h-1 rounded-full ${i < value ? level.bg : 'bg-slate-700'}`} />
+           ))}
+        </div>
+      </div>
+      <div className="flex gap-3 items-start bg-black/40 p-2.5 rounded-xl border border-white/5">
+         <Info size={14} className={level.color + " mt-0.5 shrink-0"} />
+         <p className="text-[10px] text-slate-400 font-bold leading-relaxed tracking-tight italic">{def}</p>
+      </div>
+    </div>
+  )
+}
+
+const SearchableMultiSelect = ({ label, selected, options, onChange, placeholder }: any) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const filtered = options.filter((o: string) => o.toLowerCase().includes(search.toLowerCase()))
+  const toggle = (val: string) => {
+    const next = selected.includes(val) ? selected.filter((s: string) => s !== val) : [...selected, val]
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-1 relative" ref={wrapperRef}>
+      <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1">{label}</label>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="min-h-[42px] w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 flex flex-wrap gap-1.5 cursor-pointer hover:border-white/20 transition-all shadow-inner"
+      >
+        {selected.length === 0 && <span className="text-slate-600 text-[11px] italic mt-0.5">{placeholder}</span>}
+        {selected.map((s: string) => (
+          <div key={s} className="bg-blue-600/20 border border-blue-500/30 rounded-lg px-2 py-0.5 flex items-center gap-1.5 group">
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">{s}</span>
+            <X size={10} className="text-slate-500 hover:text-white" onClick={(e) => { e.stopPropagation(); toggle(s); }} />
+          </div>
         ))}
+        <div className="ml-auto text-slate-600 group-hover:text-slate-400"><ChevronDown size={14} /></div>
       </div>
-      <p className="text-[9px] text-slate-500 italic leading-tight">{hint || levels.find(l => value <= l.v)?.desc}</p>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+            className="absolute z-[200] top-full left-0 right-0 mt-2 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-2 max-h-60 flex flex-col"
+          >
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={12} />
+              <input 
+                autoFocus value={search} onChange={e => setSearch(e.target.value)}
+                className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[11px] outline-none focus:border-blue-500/50"
+                placeholder="Search systems..."
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-0.5">
+               {filtered.map((o: string) => (
+                 <div 
+                   key={o} onClick={() => toggle(o)}
+                   className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase cursor-pointer flex items-center justify-between ${selected.includes(o) ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5'}`}
+                 >
+                   <span>{o}</span>
+                   {selected.includes(o) && <Check size={12} />}
+                 </div>
+               ))}
+               {filtered.length === 0 && <p className="text-center py-4 text-[10px] text-slate-600 italic">No matches found</p>}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -179,12 +276,6 @@ export default function Research() {
     }
   }, [combinedData])
 
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.sizeColumnsToFit(), 100)
-    }
-  }, [fontSize, rowDensity, combinedData])
-
   const columnDefs = useMemo(() => [
     { 
       headerName: "", 
@@ -245,7 +336,11 @@ export default function Research() {
       filter: true, 
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <StatusPill value={p.value} />,
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full w-full">
+           <StatusPill value={p.value} />
+        </div>
+      ),
       hide: hiddenColumns.includes("status")
     },
     { 
@@ -256,12 +351,19 @@ export default function Research() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const val = p.data.type === 'RCA' ? (p.data.priority || 5) : (p.data.priority === 'Urgent' ? 9 : p.data.priority === 'High' ? 7 : p.data.priority === 'Medium' ? 5 : 3)
-        const color = val >= 8 ? 'text-rose-500' : val >= 6 ? 'text-amber-500' : 'text-blue-400'
+        const val = p.data.type === 'RCA' ? (p.data.priority || 5) : (p.data.priority === 'Urgent' || p.data.priority === 'Highest' ? 9 : p.data.priority === 'High' ? 7 : p.data.priority === 'Medium' ? 5 : 3)
+        const colors: any = {
+           9: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+           7: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+           5: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+           3: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+        }
+        const level = val >= 8 ? 9 : val >= 6 ? 7 : val >= 4 ? 5 : 3
         return (
-          <div className="flex items-center justify-center space-x-1">
-            <div className={`w-2 h-2 rounded-full ${color.replace('text', 'bg')} animate-pulse`} />
-            <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${color}`}>LVL {val}</span>
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colors[level] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">LVL {val}</span>
+            </div>
           </div>
         )
       },
@@ -309,7 +411,7 @@ export default function Research() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-2 text-white">
+              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2 text-white">
                 <Shield size={24} className="text-blue-500" /> Research Matrix
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Unified System Intelligence & RCA Engine</p>
@@ -319,7 +421,7 @@ export default function Research() {
         <div className="flex items-center space-x-3">
           <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
@@ -331,8 +433,8 @@ export default function Research() {
           </div>
 
           <button 
-            onClick={() => setActiveModal({ title: '', status: 'Open', priority: 1, type: null, problem_statement: '' })} 
-            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+            onClick={() => setActiveModal({ title: '', status: 'Open', priority: 1, type: null, problem_statement: '', systems: [], target_systems: [] })} 
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
           >
             <PlusCircle size={14}/> Add Research
           </button>
@@ -346,18 +448,18 @@ export default function Research() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3 text-blue-400">
                      <Activity size={16} />
-                     <span className="text-[10px] font-bold uppercase tracking-widest">Density Laboratory</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest">Density Laboratory</span>
                   </div>
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
                         <input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-                        <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
+                        <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
                      </div>
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
                         <input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-                        <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
+                        <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
                      </div>
                   </div>
                </div>
@@ -378,7 +480,7 @@ export default function Research() {
         {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing Intelligence Matrix...</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Intelligence Matrix...</p>
           </div>
         )}
         <AgGridReact
@@ -388,16 +490,17 @@ export default function Research() {
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
           quickFilterText={searchTerm}
-          animateRows={true}
+          animateRows={false}
           enableCellTextSelection={true}
           rowSelection="multiple"
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
+          suppressColumnVirtualisation={true}
         />
         <AnimatePresence>
           {showColumnPicker && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2"><Sliders size={14} /> <span>Toggle Columns</span></h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2"><Sliders size={14} /> <span>Toggle Columns</span></h3>
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
@@ -407,7 +510,7 @@ export default function Research() {
                     <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                        {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -467,20 +570,20 @@ export default function Research() {
 
       <style>{`
         .ag-theme-alpine-dark {
-          --ag-background-color: #020617;
-          --ag-header-background-color: #0f172a;
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #3b82f6;
           --ag-font-family: 'Inter', sans-serif;
           --ag-font-size: ${fontSize}px;
         }
-        .ag-root-wrapper { border: none !important; border-radius: 1rem !important; }
+        .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; border-right: 1px solid rgba(255,255,255,0.02) !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
         .ag-row { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.15) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
     </div>
   )
@@ -498,15 +601,15 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
       return
     }
     
-    if (formData.type === 'RCA' && !formData.target_system) {
-      toast.error("Target System is required for RCA")
+    if (formData.type === 'RCA' && (!formData.target_systems || formData.target_systems.length === 0)) {
+      toast.error("Target System Context is required for RCA")
       return
     }
     
     // Strategic Mapping: Convert numeric priority to string for Investigation module if needed
     const finalData = { ...formData }
     if (finalData.type === 'Research') {
-       finalData.priority = finalData.priority >= 8 ? 'Urgent' : finalData.priority >= 6 ? 'High' : finalData.priority >= 4 ? 'Medium' : 'Low'
+       finalData.priority = finalData.priority >= 8 ? 'Highest' : finalData.priority >= 6 ? 'High' : finalData.priority >= 4 ? 'Medium' : 'Low'
     }
     
     onSave(finalData)
@@ -514,17 +617,17 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-[32px] border border-blue-500/30 space-y-6">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-[40px] border border-blue-500/30 space-y-6">
         {step === 0 ? (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold uppercase text-white tracking-tighter">Initialize Research Flow</h2>
+              <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter">Initialize Research Flow</h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Select the nature of this investigation</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <TypeCard 
                 icon={ShieldAlert} 
-                title="RCA (Root Cause Analysis)" 
+                title="RCA (Root Cause)" 
                 desc="Formal investigation for system failures, outages, or incidents requiring permanent resolution." 
                 active={formData.type === 'RCA'}
                 color="border-purple-500/50 text-purple-400"
@@ -539,61 +642,69 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 onClick={() => { setFormData({...formData, type: 'Research'}); setStep(1); }}
               />
             </div>
-            <button onClick={onClose} className="w-full py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Abort Initialization</button>
+            <button onClick={onClose} className="w-full py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Abort Initialization</button>
           </div>
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <h2 className={`text-xl font-bold uppercase flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
+              <h2 className={`text-xl font-black uppercase italic flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
                 {formData.type === 'RCA' ? <ShieldAlert size={20}/> : <Search size={20}/>} 
                 Initialize {formData.type}
               </h2>
-              <button onClick={() => setStep(0)} className="text-[9px] font-bold uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
+              <button onClick={() => setStep(0)} className="text-[9px] font-black uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
             </div>
 
             <div className="space-y-5">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
                 <input 
                   value={formData.title} 
                   onChange={e => setFormData({...formData, title: e.target.value})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-bold" 
-                  placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE: SENSOR FAILURE" : "E.G. CLUSTER LATENCY OPTIMIZATION STUDY"} 
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-black uppercase" 
+                  placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE..." : "E.G. CLUSTER LATENCY OPTIMIZATION..."} 
                 />
               </div>
 
-              {formData.type === 'RCA' && (
-                <div>
-                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Target System Context</label>
-                   <StyledSelect 
-                      value={formData.target_system} 
-                      onChange={(e:any) => setFormData({...formData, target_system: e.target.value})} 
-                      options={systems.map(s => ({ value: s, label: s }))}
-                      placeholder="Identify Core System..."
-                   />
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                 <SearchableMultiSelect 
+                    label="Target System Context"
+                    selected={formData.type === 'RCA' ? (formData.target_systems || []) : (formData.systems || [])}
+                    onChange={(next: string[]) => setFormData({...formData, [formData.type === 'RCA' ? 'target_systems' : 'systems']: next})}
+                    options={systems}
+                    placeholder="Identify core systems..."
+                 />
+                 <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">{formData.type === 'RCA' ? 'Incident Date/Time' : 'Initiation Date/Time'}</label>
+                    <input 
+                      type="datetime-local" 
+                      value={formData.type === 'RCA' ? (formData.occurrence_at?.slice(0, 16) || '') : (formData.initiation_at?.slice(0, 16) || '')} 
+                      onChange={e => setFormData({...formData, [formData.type === 'RCA' ? 'occurrence_at' : 'initiation_at']: e.target.value})}
+                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                    />
+                 </div>
+              </div>
 
-              <PriorityGauge 
+              <PrioritySlider 
                 value={formData.priority || 1} 
                 onChange={(v: number) => setFormData({...formData, priority: v})} 
-                label="Initial Priority Assessment"
+                label="Risk Priority Assessment"
+                type={formData.type}
               />
 
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Problem Statement / Narrative Goal</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Problem Statement / Narrative Goal</label>
                 <textarea 
                   value={formData.problem_statement} 
                   onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[100px] leading-relaxed" 
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[100px] leading-relaxed font-bold" 
                   placeholder="Describe the context or the problem in detail for easy recall..." 
                 />
               </div>
             </div>
 
             <div className="flex space-x-4 pt-2">
-              <button onClick={onClose} className="flex-1 py-3.5 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Cancel</button>
-              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-xl text-[10px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
+              <button onClick={onClose} className="flex-1 py-3.5 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Cancel</button>
+              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
                 {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Zap size={16} />} 
                 Launch {formData.type} Flow
               </button>
@@ -607,10 +718,10 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
 function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
   return (
-    <button onClick={onClick} className={`p-6 rounded-2xl border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
-      <div className={`p-3 rounded-xl bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
+    <button onClick={onClick} className={`p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
+      <div className={`p-3 rounded-2xl bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
       <div>
-        <h3 className={`text-sm font-bold uppercase tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
+        <h3 className={`text-sm font-black uppercase italic tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
         <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
       </div>
     </button>
@@ -623,8 +734,12 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [activeSubTab, setActiveSubTab] = useState('identification')
   const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
 
-  const systems = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
-  const filteredAssets = useMemo(() => devices?.filter((d: any) => d.system === formData.target_system) || [], [devices, formData.target_system])
+  const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
+  const filteredAssets = useMemo(() => {
+    const activeSystems = formData.target_systems || []
+    return devices?.filter((d: any) => activeSystems.includes(d.system)) || []
+  }, [devices, formData.target_systems])
+  
   const filteredServices = useMemo(() => {
     const assetIds = formData.impacted_asset_ids || []
     return devices?.filter((d: any) => assetIds.includes(d.id)).flatMap((d: any) => d.logical_services || []) || []
@@ -662,29 +777,29 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   }
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-2" onPaste={(e) => activeTab === 'overview' ? handlePaste(e, 'evidence') : null}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-[98vh] rounded-3xl border border-purple-500/20 overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={(e) => activeTab === 'overview' ? handlePaste(e, 'evidence') : null}>
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         
-        <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-purple-600/20 rounded-lg text-purple-400 border border-purple-500/30"><ShieldAlert size={16} /></div>
+        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-6">
+            <div className="p-3 bg-purple-600/20 rounded-2xl text-purple-400 border border-purple-500/30 shadow-inner"><ShieldAlert size={28} /></div>
             <div>
-              <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">RCA // {formData.target_system || 'UNASSIGNED'}</span>
+              <div className="flex items-center space-x-3 mb-1">
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RCA // INTEL NODE</span>
                 <StatusPill value={formData.status} />
-                <span className="text-[8px] font-bold text-white uppercase bg-rose-600/20 px-1.5 py-0.5 rounded border border-rose-500/30">LVL {formData.priority}</span>
+                <span className="text-[9px] font-black text-rose-400 uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30">RISK LVL {formData.priority}</span>
               </div>
-              <h1 className="text-sm font-bold uppercase tracking-tight text-white leading-none">{formData.title}</h1>
+              <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button onClick={handleSave} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
-            <button onClick={onClose} className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
+          <div className="flex items-center space-x-3">
+            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
+            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          <div className="w-14 border-r border-white/5 bg-black/20 flex flex-col items-center py-4 space-y-4 shrink-0">
+          <div className="w-20 border-r border-white/5 bg-black/20 flex flex-col items-center py-8 space-y-6 shrink-0">
             <RcaIconBtn active={activeTab === 'overview'} icon={LayoutGrid} onClick={() => setActiveTab('overview')} label="Overview" />
             <RcaIconBtn active={activeTab === 'timeline'} icon={History} onClick={() => setActiveTab('timeline')} label="Timeline" />
             <RcaIconBtn active={activeTab === 'investigation'} icon={Terminal} onClick={() => setActiveTab('investigation')} label="Forensics" />
@@ -692,120 +807,149 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             <RcaIconBtn active={activeTab === 'mitigation'} icon={ShieldCheck} onClick={() => setActiveTab('mitigation')} label="Mitigation" />
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/30 p-3">
-            <div className="max-w-full space-y-3">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#020617]/30 p-8">
+            <div className="max-w-full space-y-8">
                
                {activeTab === 'overview' && (
-                 <div className="grid grid-cols-12 gap-3">
-                    <div className="col-span-4 space-y-3">
-                       <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400">
-                          <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-2 text-[10px] font-medium text-slate-300 outline-none focus:border-purple-500/30 min-h-[80px]" />
+                 <div className="grid grid-cols-12 gap-8">
+                    <div className="col-span-12 lg:col-span-4 space-y-8">
+                       <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400" className="h-48 flex flex-col">
+                          <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none focus:border-purple-500/30 resize-none" />
                        </SectionCard>
-                       <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Occurrence</label>
-                             <input type="datetime-local" value={formData.occurrence_at?.slice(0, 16)} onChange={e => setFormData({...formData, occurrence_at: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark]" />
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                             <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Incident Start</label>
+                             <input type="datetime-local" value={formData.occurrence_at?.slice(0, 16)} onChange={e => setFormData({...formData, occurrence_at: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none [color-scheme:dark]" />
                           </div>
-                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Acknowledged</label>
-                             <input type="datetime-local" value={formData.acknowledged_at?.slice(0, 16)} onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none [color-scheme:dark]" />
-                          </div>
-                       </div>
-                       <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Owner</label>
-                             <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-white outline-none" placeholder="Investigator..." />
-                          </div>
-                          <div className="bg-white/5 rounded-xl p-2 border border-white/5">
-                             <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Jira Link</label>
-                             <input value={formData.jira_link} onChange={e => setFormData({...formData, jira_link: e.target.value})} className="w-full bg-transparent text-[10px] font-bold text-blue-400 outline-none" placeholder="Jira Link..." />
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                             <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Triage Start</label>
+                             <input type="datetime-local" value={formData.acknowledged_at?.slice(0, 16)} onChange={e => setFormData({...formData, acknowledged_at: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none [color-scheme:dark]" />
                           </div>
                        </div>
-                       <SectionCard icon={ShieldAlert} title="FAB Impact" color="text-rose-400">
-                          <div className="space-y-2">
-                             <div className="flex flex-wrap gap-1">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                             <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Lead Owner</label>
+                             <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-white outline-none placeholder:text-slate-700" placeholder="ASSIGN POC..." />
+                          </div>
+                          <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+                             <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">External Ref</label>
+                             <input value={formData.jira_link} onChange={e => setFormData({...formData, jira_link: e.target.value})} className="w-full bg-transparent text-[11px] font-black text-blue-400 outline-none placeholder:text-slate-700" placeholder="JIRA-123..." />
+                          </div>
+                       </div>
+                       <SectionCard icon={ShieldAlert} title="Operational Impact (FAB)" color="text-rose-400">
+                          <div className="space-y-4">
+                             <div className="flex flex-wrap gap-2">
                                 {['Flow Halt', 'Scrap Risk', 'Quality Delta', 'Safety Trip'].map(c => (
                                   <button key={c} onClick={() => {
                                     const cats = formData.fab_impact_json?.categories || []
                                     setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, categories: cats.includes(c) ? cats.filter((i:string)=>i!==c) : [...cats, c] }})
-                                  }} className={`px-2 py-0.5 rounded text-[7px] font-bold uppercase transition-all ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-500'}`}>{c}</button>
+                                  }} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}>{c}</button>
                                 ))}
                              </div>
-                             <PriorityGauge value={formData.fab_impact_json?.severity || 1} onChange={(v:number) => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: v }})} label="Impact Severity" />
-                             <textarea value={formData.fab_impact_json?.explanation} onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-1.5 text-[9px] font-medium text-slate-300 outline-none min-h-[40px]" placeholder="Impact details..." />
+                             <PrioritySlider value={formData.fab_impact_json?.severity || 1} onChange={(v:number) => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: v }})} label="FAB Impact Severity" type="RCA" />
+                             <textarea value={formData.fab_impact_json?.explanation} onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[80px] resize-none" placeholder="Elaborate on the impact..." />
                           </div>
                        </SectionCard>
                     </div>
 
-                    <div className="col-span-4 space-y-3">
-                       <SectionCard icon={Database} title="System Context" color="text-amber-400">
-                          <div className="space-y-2">
-                             <StyledSelect value={formData.target_system} onChange={e => setFormData({...formData, target_system: e.target.value, impacted_asset_ids: [], impacted_service_ids: []})} options={systems.map(s => ({value:s, label:s}))} placeholder="Select System..." />
-                             <div className="grid grid-cols-2 gap-2 h-44">
-                                <div className="bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-0.5">
-                                   <p className="text-[7px] font-bold text-slate-500 uppercase mb-1 px-1">Affected Assets</p>
-                                   {filteredAssets.map((a: any) => (
-                                     <label key={a.id} className="flex items-center gap-2 p-1 rounded hover:bg-white/5 cursor-pointer">
-                                        <input type="checkbox" checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
-                                          const ids = formData.impacted_asset_ids || []
-                                          setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
-                                        }} className="sr-only" />
-                                        <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/10'}`} />
-                                        <span className="text-[8px] font-bold uppercase text-slate-400 truncate">{a.name}</span>
-                                     </label>
-                                   ))}
+                    <div className="col-span-12 lg:col-span-4 space-y-8">
+                       <SectionCard icon={Database} title="System Topology Context" color="text-amber-400">
+                          <div className="space-y-4">
+                             <SearchableMultiSelect 
+                                label="Target System(s)" 
+                                selected={formData.target_systems || []} 
+                                onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
+                                options={systemsList} 
+                                placeholder="Bind systems..." 
+                             />
+                             <div className="grid grid-cols-2 gap-4 h-96">
+                                <div className="bg-slate-950 rounded-2xl p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
+                                   <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Assets</p>
+                                      <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{formData.impacted_asset_ids?.length || 0}</span>
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
+                                      {filteredAssets.map((a: any) => (
+                                        <label key={a.id} className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-600/10 border-amber-500/40 text-amber-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
+                                           <input type="checkbox" checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
+                                             const ids = formData.impacted_asset_ids || []
+                                             setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:number)=>i!==a.id), impacted_service_ids: []})
+                                           }} className="sr-only" />
+                                           <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'border-white/20'}`} />
+                                           <span className="text-[10px] font-black uppercase truncate">{a.name}</span>
+                                        </label>
+                                      ))}
+                                   </div>
                                 </div>
-                                <div className="bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-0.5">
-                                   <p className="text-[7px] font-bold text-slate-500 uppercase mb-1 px-1">Service Drill-down</p>
-                                   {filteredServices.map((s: any) => (
-                                     <label key={s.id} className="flex items-center gap-2 p-1 rounded hover:bg-white/5 cursor-pointer">
-                                        <input type="checkbox" checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
-                                          const ids = formData.impacted_service_ids || []
-                                          setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
-                                        }} className="sr-only" />
-                                        <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/10'}`} />
-                                        <span className="text-[8px] font-bold uppercase text-slate-400 truncate">{s.name}</span>
-                                     </label>
-                                   ))}
+                                <div className="bg-slate-950 rounded-2xl p-4 border border-white/5 flex flex-col space-y-2 overflow-hidden">
+                                   <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Services</p>
+                                      <span className="text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">{formData.impacted_service_ids?.length || 0}</span>
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
+                                      {filteredServices.map((s: any) => (
+                                        <label key={s.id} className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-600/10 border-indigo-500/40 text-indigo-400' : 'border-transparent hover:bg-white/5 text-slate-500'}`}>
+                                           <input type="checkbox" checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
+                                             const ids = formData.impacted_service_ids || []
+                                             setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:number)=>i!==s.id)})
+                                           }} className="sr-only" />
+                                           <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'border-white/20'}`} />
+                                           <span className="text-[10px] font-black uppercase truncate">{s.name}</span>
+                                        </label>
+                                      ))}
+                                   </div>
                                 </div>
                              </div>
                           </div>
                        </SectionCard>
-                       <SectionCard icon={LinkIcon} title="FAR Linkage" color="text-purple-400">
-                          <div className="h-32 bg-slate-950 rounded-xl p-1.5 border border-white/5 overflow-y-auto custom-scrollbar space-y-1">
-                             {failureModes?.filter((fm:any) => fm.system_name === formData.target_system).map((fm: any) => (
-                               <label key={fm.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer border border-transparent hover:border-white/5">
+                       <SectionCard icon={LinkIcon} title="FAR Failure Mode Registry Mapping" color="text-purple-400">
+                          <div className="h-44 bg-slate-950 rounded-2xl p-4 border border-white/5 overflow-y-auto custom-scrollbar space-y-2">
+                             {failureModes?.filter((fm:any) => (formData.target_systems || []).includes(fm.system_name)).map((fm: any) => (
+                               <label key={fm.id} className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-600/10 border-purple-500/40' : 'border-white/5 hover:bg-white/5'}`}>
                                   <input type="checkbox" checked={formData.linked_failure_modes?.some((l:any)=>l.id === fm.id)} onChange={e => {
                                     const modes = formData.linked_failure_modes || []
                                     setFormData({...formData, linked_failure_modes: e.target.checked ? [...modes, fm] : modes.filter((m:any)=>m.id!==fm.id)})
                                   }} className="sr-only" />
-                                  <div className={`w-2 h-2 rounded border ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-500 border-purple-500' : 'border-white/10'}`} />
-                                  <div>
-                                     <p className="text-[8px] font-bold uppercase text-slate-200 leading-tight">{fm.title}</p>
-                                     <p className="text-[6px] font-bold uppercase text-slate-500">RPN: {fm.rpn} // SEV: {fm.severity}</p>
+                                  <div className={`w-3 h-3 rounded border ${formData.linked_failure_modes?.some((l:any)=>l.id === fm.id) ? 'bg-purple-500 border-purple-500 shadow-lg shadow-purple-500/20' : 'border-white/10'}`} />
+                                  <div className="flex-1 min-w-0">
+                                     <p className="text-[10px] font-black uppercase text-slate-200 truncate">{fm.title}</p>
+                                     <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[7px] font-black uppercase text-slate-500 tracking-[0.2em]">RPN {fm.rpn}</span>
+                                        <span className="w-0.5 h-0.5 rounded-full bg-slate-700" />
+                                        <span className="text-[7px] font-black uppercase text-rose-500">SEV {fm.severity}</span>
+                                     </div>
                                   </div>
                                </label>
                              ))}
+                             {(!formData.target_systems || formData.target_systems.length === 0) && (
+                                <p className="text-[10px] font-bold text-slate-700 italic text-center py-10 uppercase tracking-widest">Select Target Systems First</p>
+                             )}
                           </div>
                        </SectionCard>
                     </div>
 
-                    <div className="col-span-4 space-y-3">
-                       <SectionCard icon={Camera} title="Evidence / Capture Hub" color="text-blue-400">
-                          <div className="space-y-2">
-                             <p className="text-[8px] font-bold text-slate-500 uppercase text-center py-2 border border-dashed border-white/10 rounded-xl">PASTE IMAGES OR TEXT LOGS HERE</p>
-                             <div className="grid grid-cols-2 gap-2 h-80 overflow-y-auto custom-scrollbar pr-1">
+                    <div className="col-span-12 lg:col-span-4 space-y-8">
+                       <SectionCard icon={Camera} title="Evidence / Forensic Capture Hub" color="text-blue-400">
+                          <div className="space-y-4">
+                             <div className="bg-black/40 border border-dashed border-white/10 rounded-2xl p-6 text-center group hover:border-blue-500/30 transition-all">
+                                <Clipboard size={24} className="mx-auto text-slate-700 group-hover:text-blue-500 mb-3" />
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PASTE EVIDENCE IMAGES OR LOGS</p>
+                             </div>
+                             <div className="grid grid-cols-2 gap-4 h-[580px] overflow-y-auto custom-scrollbar pr-2">
                                 {(formData.evidence_json || []).map((ev: any, i: number) => (
-                                  <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-xl overflow-hidden aspect-video">
+                                  <div key={i} className="group relative bg-slate-950 border border-white/10 rounded-2xl overflow-hidden aspect-video shadow-2xl">
                                      {ev.type === 'image' ? (
                                        <img src={ev.content} className="w-full h-full object-cover" />
                                      ) : (
-                                       <div className="p-2 text-[8px] font-mono text-slate-300 overflow-hidden">{ev.content}</div>
+                                       <div className="p-4 text-[9px] font-mono text-slate-300 overflow-hidden leading-relaxed">{ev.content}</div>
                                      )}
-                                     <button onClick={() => {
-                                       const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
-                                       setFormData({...formData, evidence_json: newEv})
-                                     }} className="absolute top-1 right-1 p-1 bg-black/80 rounded text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><X size={10}/></button>
+                                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center space-x-2">
+                                        <button onClick={() => window.open(ev.content, '_blank')} className="p-2 bg-blue-600 text-white rounded-lg"><Eye size={14}/></button>
+                                        <button onClick={() => {
+                                          const newEv = formData.evidence_json.filter((_:any, idx:number) => idx !== i)
+                                          setFormData({...formData, evidence_json: newEv})
+                                        }} className="p-2 bg-rose-600 text-white rounded-lg"><Trash2 size={14}/></button>
+                                     </div>
                                   </div>
                                 ))}
                              </div>
@@ -816,176 +960,253 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                )}
 
                {activeTab === 'timeline' && (
-                 <div className="space-y-4">
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-3 grid grid-cols-12 gap-2 items-end">
-                       <div className="col-span-4">
-                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Event Narrative</label>
-                          <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none" placeholder="E.G. ALERT FIRED..." />
+                 <div className="flex flex-col gap-8">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 grid grid-cols-12 gap-4 items-end shadow-2xl">
+                       <div className="col-span-12 lg:col-span-4">
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Narrative</label>
+                          <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-black text-white outline-none focus:border-purple-500/50 uppercase" placeholder="E.G. ALERT FIRED..." />
                        </div>
-                       <div className="col-span-2">
+                       <div className="col-span-12 lg:col-span-2">
                          <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}]} />
                        </div>
-                       <div className="col-span-2">
-                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC / Team</label>
-                          <div className="flex gap-1">
-                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-1/2 bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none" placeholder="Name" />
-                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-1/2 bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-white outline-none" placeholder="Team" />
+                       <div className="col-span-12 lg:col-span-2">
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC / Team</label>
+                          <div className="flex gap-2">
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Name" />
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-1/2 bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-black text-white outline-none uppercase" placeholder="Team" />
                           </div>
                        </div>
-                       <div className="col-span-3">
-                          <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Event Time</label>
-                          <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] text-slate-400 outline-none [color-scheme:dark]" />
+                       <div className="col-span-12 lg:col-span-3">
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
+                          <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                        </div>
                        <button onClick={() => {
                           const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
                           setFormData({ ...formData, timeline })
                           setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
-                        }} className="p-2 bg-purple-600 text-white rounded-lg shadow-lg"><Plus size={16} /></button>
+                        }} className="col-span-1 p-4 bg-purple-600 text-white rounded-2xl shadow-xl shadow-purple-500/20 active:scale-95 transition-all"><Plus size={24} /></button>
                     </div>
-                    <div className="space-y-2 max-w-4xl mx-auto">
-                       {(formData.timeline || []).sort((a:any, b:any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((e: any) => (
-                         <div key={e.id} className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between group">
-                            <div className="flex items-center gap-4">
-                               <div className="w-24 shrink-0">
-                                  <p className="text-[9px] font-bold text-slate-300">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                  <span className="text-[7px] font-bold uppercase text-purple-400">{e.event_type}</span>
-                               </div>
-                               <div>
-                                  <p className="text-[10px] font-bold text-white uppercase">{e.description}</p>
-                                  <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">{e.owner} // {e.owner_team}</p>
-                               </div>
-                            </div>
-                            <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-600 hover:text-rose-500"><Trash2 size={12}/></button>
-                         </div>
-                       ))}
+                    
+                    <div className="relative pl-12 space-y-8 max-w-5xl mx-auto py-4">
+                       {/* Vertical Timeline Bar */}
+                       <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600/50 via-blue-600/50 to-emerald-600/50 rounded-full" />
+                       
+                       {(formData.timeline || []).sort((a:any, b:any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((e: any) => {
+                         const typeColors: any = {
+                            'Detection': 'bg-rose-500 shadow-rose-500/50',
+                            'Observation': 'bg-blue-500 shadow-blue-500/50',
+                            'Mitigation': 'bg-amber-500 shadow-amber-500/50',
+                            'Resolution': 'bg-emerald-500 shadow-emerald-500/50'
+                         }
+                         return (
+                           <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-3xl p-6 shadow-2xl group hover:bg-white/[0.08] transition-all">
+                              {/* Connector Dot */}
+                              <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
+                              
+                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                 <div className="flex items-start gap-6">
+                                    <div className="w-32 shrink-0">
+                                       <p className="text-[11px] font-black text-white">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
+                                    </div>
+                                    <div>
+                                       <p className="text-sm font-black text-white uppercase tracking-tight">{e.description}</p>
+                                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 italic">{e.owner} // {e.owner_team}</p>
+                                    </div>
+                                 </div>
+                                 <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                              </div>
+                           </div>
+                         )
+                       })}
                     </div>
                  </div>
                )}
 
                {activeTab === 'investigation' && (
-                 <div className="space-y-4">
-                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 w-fit">
-                       <button onClick={() => setActiveSubTab('identification')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}>Identification Flow</button>
-                       <button onClick={() => setActiveSubTab('rca')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white' : 'text-slate-500'}`}>RCA Logic Ladder</button>
+                 <div className="space-y-8">
+                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 w-fit shadow-lg">
+                       <button onClick={() => setActiveSubTab('identification')} className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'identification' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>1. Discovery & Identification Flow</button>
+                       <button onClick={() => setActiveSubTab('rca')} className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'rca' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:text-slate-300'}`}>2. RCA Analytical Logic Ladder</button>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       {(activeSubTab === 'identification' ? formData.identification_steps_json : formData.rca_steps_json || []).map((step: any, idx: number) => (
-                         <div key={idx} className="bg-white/5 border border-white/5 rounded-2xl p-3 space-y-2 relative group">
-                            <div className="flex items-center justify-between">
-                               <div className="w-6 h-6 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-[10px]">{idx + 1}</div>
-                               <button onClick={() => {
-                                 const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
-                                 const steps = [...(formData[key] || [])]
-                                 steps.splice(idx, 1)
-                                 setFormData({ ...formData, [key]: steps })
-                               }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-rose-500"><Trash2 size={14}/></button>
-                            </div>
-                            <textarea onPaste={(e) => handlePaste(e, activeSubTab as any, idx)} value={step.text} onChange={e => {
-                               const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
-                               const steps = [...(formData[key] || [])]
-                               steps[idx].text = e.target.value
-                               setFormData({ ...formData, [key]: steps })
-                            }} className="w-full bg-slate-950 border border-white/5 rounded-xl p-2 text-[10px] font-medium text-slate-300 outline-none min-h-[60px]" placeholder="Discovery/Evidence. PASTE IMAGES HERE." />
-                            <div className="flex gap-1 overflow-x-auto custom-scrollbar py-1">
-                               {step.images?.map((img: string, i: number) => (
-                                 <div key={i} className="relative w-12 h-12 shrink-0 bg-slate-950 rounded-lg overflow-hidden border border-white/10 group/img">
-                                    <img src={img} className="w-full h-full object-cover" />
-                                    <button onClick={() => {
-                                      const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
-                                      const steps = [...(formData[key] || [])]
-                                      steps[idx].images.splice(i, 1)
-                                      setFormData({ ...formData, [key]: steps })
-                                    }} className="absolute top-0 right-0 p-0.5 bg-black/80 rounded text-rose-500"><X size={8}/></button>
-                                 </div>
-                               ))}
-                            </div>
-                         </div>
-                       ))}
+
+                    <div className="bg-white/5 border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+                       <table className="w-full text-left border-collapse">
+                          <thead>
+                             <tr className="bg-white/5 border-b border-white/5">
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest w-16 text-center">Step</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Forensic Observation & Discovery (Paste Images Here)</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest w-48">Owner / Team</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest w-20 text-center">Action</th>
+                             </tr>
+                          </thead>
+                          <tbody>
+                             {(activeSubTab === 'identification' ? formData.identification_steps_json : formData.rca_steps_json || []).map((step: any, idx: number) => (
+                               <tr key={idx} className="border-b border-white/5 group hover:bg-white/[0.02] transition-all">
+                                  <td className="px-6 py-4">
+                                     <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-black text-[11px] shadow-inner">{idx + 1}</div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                     <div className="space-y-4">
+                                        <textarea 
+                                          onPaste={(e) => handlePaste(e, activeSubTab as any, idx)} 
+                                          value={step.text} 
+                                          onChange={e => {
+                                            const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                            const steps = [...(formData[key] || [])]
+                                            steps[idx].text = e.target.value
+                                            setFormData({ ...formData, [key]: steps })
+                                          }} 
+                                          className="w-full bg-transparent border-none p-0 text-[11px] font-bold text-slate-300 outline-none min-h-[60px] resize-none placeholder:text-slate-700" 
+                                          placeholder="Enter discovery details or paste evidence images..." 
+                                        />
+                                        <div className="flex flex-wrap gap-3">
+                                           {step.images?.map((img: string, i: number) => (
+                                             <div key={i} className="relative w-20 h-20 shrink-0 bg-slate-950 rounded-2xl overflow-hidden border border-white/10 group/img shadow-xl">
+                                                <img src={img} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center">
+                                                   <button onClick={() => {
+                                                     const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                                     const steps = [...(formData[key] || [])]
+                                                     steps[idx].images.splice(i, 1)
+                                                     setFormData({ ...formData, [key]: steps })
+                                                   }} className="p-1.5 bg-rose-600 text-white rounded-lg shadow-lg"><Trash2 size={12}/></button>
+                                                </div>
+                                             </div>
+                                           ))}
+                                        </div>
+                                     </div>
+                                  </td>
+                                  <td className="px-6 py-4 align-top">
+                                     <div className="space-y-2">
+                                        <input 
+                                          value={step.owner} 
+                                          onChange={e => {
+                                            const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                            const steps = [...(formData[key] || [])]; steps[idx].owner = e.target.value; setFormData({...formData, [key]: steps})
+                                          }}
+                                          placeholder="POC NAME..." 
+                                          className="w-full bg-slate-950/50 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
+                                        />
+                                        <input 
+                                          value={step.owner_team} 
+                                          onChange={e => {
+                                            const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                            const steps = [...(formData[key] || [])]; steps[idx].owner_team = e.target.value; setFormData({...formData, [key]: steps})
+                                          }}
+                                          placeholder="TEAM..." 
+                                          className="w-full bg-slate-950/50 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-black uppercase text-white outline-none focus:border-purple-500/30" 
+                                        />
+                                     </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-center align-top">
+                                     <button onClick={() => {
+                                       const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
+                                       const steps = [...(formData[key] || [])]; steps.splice(idx, 1); setFormData({ ...formData, [key]: steps })
+                                     }} className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-lg"><Trash2 size={16}/></button>
+                                  </td>
+                               </tr>
+                             ))}
+                          </tbody>
+                       </table>
                        <button onClick={() => {
                           const key = activeSubTab === 'identification' ? 'identification_steps_json' : 'rca_steps_json'
                           const steps = [...(formData[key] || [])]
-                          setFormData({ ...formData, [key]: [...steps, { text: '', images: [] }] })
-                        }} className="border-2 border-dashed border-white/5 rounded-2xl p-6 text-[9px] font-bold uppercase text-slate-500 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
-                          <PlusCircle size={14} /> Add Step
+                          setFormData({ ...formData, [key]: [...steps, { text: '', images: [], owner: '', owner_team: '' }] })
+                        }} className="w-full p-8 border-t border-white/5 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex items-center justify-center gap-4">
+                          <PlusCircle size={20} /> <span>Initialize Next Step in Flow</span>
                        </button>
                     </div>
                  </div>
                )}
 
                {activeTab === 'causes' && (
-                 <div className="grid grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                     {(formData.potential_causes_json || []).map((c: any, idx: number) => (
-                      <div key={idx} className="bg-slate-950 border border-white/5 rounded-2xl p-4 space-y-3 relative group">
-                         <div className="flex justify-between items-center">
-                            <div className="flex gap-1">
+                      <div key={idx} className="bg-slate-950 border border-white/5 rounded-[32px] p-8 space-y-6 relative group shadow-2xl hover:border-purple-500/20 transition-all">
+                         <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
                                {['Likely', 'Confirmed', 'Disproven'].map(s => (
                                  <button key={s} onClick={() => {
                                    const causes = [...formData.potential_causes_json]; causes[idx].status = s; setFormData({...formData, potential_causes_json: causes})
-                                 }} className={`px-2 py-0.5 rounded text-[7px] font-bold uppercase transition-all ${c.status === s ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-500'}`}>{s}</button>
+                                 }} className={`px-6 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${c.status === s ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{s}</button>
                                ))}
                             </div>
                             <button onClick={() => {
                               const causes = [...formData.potential_causes_json]; causes.splice(idx, 1); setFormData({...formData, potential_causes_json: causes})
-                            }} className="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-rose-500"><Trash2 size={14}/></button>
+                            }} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
                          </div>
-                         <textarea value={c.cause} onChange={e => {
-                            const causes = [...formData.potential_causes_json]; causes[idx].cause = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                         }} className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[10px] font-bold text-white outline-none min-h-[50px]" placeholder="Cause description..." />
-                         <textarea value={c.indicator} onChange={e => {
-                            const causes = [...formData.potential_causes_json]; causes[idx].indicator = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                         }} className="w-full bg-slate-900 border border-white/5 rounded-lg p-2 text-[9px] font-mono font-bold text-amber-500 outline-none" placeholder="Signature/Log log..." />
-                         <div className="flex items-center gap-2">
-                            <div className="flex-1"><StyledSelect value={c.bkm_id} onChange={e => {
-                              const causes = [...formData.potential_causes_json]; causes[idx].bkm_id = e.target.value; setFormData({...formData, potential_causes_json: causes})
-                            }} options={[]} placeholder="Link BKM..." /></div>
-                            <button className="p-1.5 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30"><Plus size={14}/></button>
+                         <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Root Cause Narrative</label>
+                            <textarea value={c.cause} onChange={e => {
+                               const causes = [...formData.potential_causes_json]; causes[idx].cause = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                            }} className="w-full bg-slate-900 border border-white/5 rounded-2xl p-4 text-[12px] font-black text-white outline-none focus:border-indigo-500/50 min-h-[80px] resize-none" placeholder="Elaborate on the cause findings..." />
+                         </div>
+                         <div className="space-y-2">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Forensic Signature / Indicator</label>
+                            <textarea value={c.indicator} onChange={e => {
+                               const causes = [...formData.potential_causes_json]; causes[idx].indicator = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                            }} className="w-full bg-slate-900 border border-white/5 rounded-2xl p-4 text-[10px] font-mono font-bold text-amber-500 outline-none focus:border-amber-500/50 resize-none" placeholder="Paste the specific log line or metric trigger..." />
+                         </div>
+                         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                            <div className="flex-1">
+                               <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest block mb-1">Link Recovery BKM</label>
+                               <StyledSelect value={c.bkm_id} onChange={e => {
+                                 const causes = [...formData.potential_causes_json]; causes[idx].bkm_id = e.target.value; setFormData({...formData, potential_causes_json: causes})
+                               }} options={[]} placeholder="Select Knowledge Entry..." />
+                            </div>
+                            <button className="mt-4 p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30 hover:bg-blue-600 hover:text-white transition-all"><Plus size={20}/></button>
                          </div>
                       </div>
                     ))}
-                    <button onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})} className="border-2 border-dashed border-white/5 rounded-2xl p-10 text-[9px] font-bold uppercase text-slate-500 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
-                       <PlusCircle size={14} /> Add Potential Cause
+                    <button onClick={() => setFormData({...formData, potential_causes_json: [...(formData.potential_causes_json || []), { cause: '', indicator: '', bkm_id: null, status: 'Under Review' }]})} className="border-2 border-dashed border-white/5 rounded-[32px] p-20 text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 hover:text-purple-400 hover:bg-purple-600/5 transition-all flex flex-col items-center justify-center gap-6 shadow-2xl group">
+                       <PlusCircle size={48} className="text-slate-700 group-hover:text-purple-500 transition-all" /> 
+                       <span>Register Potential Root Cause</span>
                     </button>
                  </div>
                )}
 
                {activeTab === 'mitigation' && (
-                 <div className="space-y-4">
-                    <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between">
-                       <div className="flex items-center gap-4">
-                          <div className="p-3 bg-emerald-600/20 rounded-2xl text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/20"><ShieldCheck size={24} /></div>
+                 <div className="space-y-8">
+                    <div className="bg-emerald-600/10 border border-emerald-500/20 rounded-[32px] p-8 flex items-center justify-between shadow-2xl">
+                       <div className="flex items-center gap-8">
+                          <div className="p-5 bg-emerald-600/20 rounded-[28px] text-emerald-400 border border-emerald-500/30 shadow-2xl shadow-emerald-500/20"><ShieldCheck size={40} /></div>
                           <div>
-                             <h3 className="text-sm font-bold text-white uppercase tracking-tight leading-none mb-1">Reliability Vector Synchronization</h3>
-                             <p className="text-[8px] text-slate-500 uppercase tracking-widest font-bold">Map confirmed root causes to failure modes in the FAR registry</p>
+                             <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">Reliability Vector Synchronization</h3>
+                             <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black max-w-xl">Confirmed findings are mapped to the Failure Analysis Registry (FAR) to trigger permanent infrastructure hardening and prevention tasks.</p>
                           </div>
                        </div>
                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-white leading-none">{(formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').length || 0)} CONFIRMED</p>
-                          <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Awaiting FAR Hook</p>
+                          <p className="text-3xl font-black text-white leading-none">{(formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').length || 0)}</p>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Confirmed Findings</p>
                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-6">
                        {formData.potential_causes_json?.filter((c:any)=>c.status === 'Confirmed').map((c: any, cIdx: number) => (
-                         <div key={cIdx} className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-4 group hover:bg-white/[0.07] transition-all">
+                         <div key={cIdx} className="bg-white/5 border border-white/5 rounded-[40px] p-8 space-y-6 group hover:bg-white/[0.07] transition-all shadow-2xl">
                             <div className="flex items-start justify-between">
-                               <div className="flex items-center gap-4">
-                                  <div className="p-2 bg-emerald-600/20 rounded-lg text-emerald-400 border border-emerald-500/30"><Zap size={16} /></div>
-                                  <div>
-                                     <p className="text-[10px] font-bold text-white uppercase leading-tight max-w-xl">{c.cause}</p>
-                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Signature:</span>
-                                        <span className="text-[7px] font-mono font-bold text-amber-500 uppercase truncate max-w-md">{c.indicator || 'N/A'}</span>
+                               <div className="flex items-start gap-6">
+                                  <div className="p-3 bg-emerald-600/20 rounded-2xl text-emerald-400 border border-emerald-500/30 shadow-inner mt-1"><Zap size={24} /></div>
+                                  <div className="max-w-3xl">
+                                     <p className="text-base font-black text-white uppercase tracking-tight leading-relaxed">{c.cause}</p>
+                                     <div className="flex items-center gap-3 mt-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5 w-fit">
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Confirmed Signature:</span>
+                                        <span className="text-[10px] font-mono font-black text-amber-500 uppercase truncate max-w-xl">{c.indicator || 'NO SIGNATURE DEFINED'}</span>
                                      </div>
                                   </div>
                                </div>
-                               <button className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2">
-                                  <RefreshCcw size={12} /> Sync Vector
+                               <button className="px-8 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3">
+                                  <RefreshCcw size={16} /> Sync Reliability Vector
                                </button>
                             </div>
 
-                            <div className="pt-3 border-t border-white/5">
-                               <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Linked Failure Modes (N:N Mapping)</p>
-                               <div className="flex flex-wrap gap-2">
+                            <div className="pt-6 border-t border-white/5 space-y-4">
+                               <div className="flex items-center justify-between px-2">
+                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">N:N FAR Failure Mode Mapping</p>
+                                  <span className="text-[9px] font-black text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 uppercase">Analytical Hook Active</span>
+                               </div>
+                               <div className="flex flex-wrap gap-3">
                                   {(formData.linked_failure_modes || []).map((fm: any) => (
                                     <button 
                                        key={fm.id}
@@ -999,22 +1220,28 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                          })
                                          setFormData({...formData, potential_causes_json: newCauses})
                                        }}
-                                       className={`px-3 py-1.5 rounded-xl border text-[8px] font-bold uppercase transition-all flex items-center gap-2 ${c.linked_fm_ids?.includes(fm.id) ? 'bg-purple-600/20 border-purple-500 text-purple-400' : 'bg-white/5 border-white/5 text-slate-600 hover:text-slate-400'}`}
+                                       className={`px-5 py-2.5 rounded-2xl border text-[10px] font-black uppercase transition-all flex items-center gap-3 shadow-lg ${c.linked_fm_ids?.includes(fm.id) ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-950 border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/30'}`}
                                     >
-                                       <Target size={10} /> {fm.title}
+                                       <Target size={14} className={c.linked_fm_ids?.includes(fm.id) ? 'text-white' : 'text-slate-700'} /> {fm.title}
                                     </button>
                                   ))}
                                   {(formData.linked_failure_modes || []).length === 0 && (
-                                    <p className="text-[8px] font-bold text-slate-700 italic px-1 uppercase tracking-widest">No Failure Modes linked in Overview tab</p>
+                                    <div className="flex-1 py-12 border-2 border-dashed border-white/5 rounded-[32px] flex flex-col items-center justify-center gap-3">
+                                       <Layers size={32} className="text-slate-800" />
+                                       <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">No Failure Modes Bound. Register in Overview first.</p>
+                                    </div>
                                   )}
                                </div>
                             </div>
                          </div>
                        ))}
                        {(!formData.potential_causes_json || formData.potential_causes_json.filter((c:any)=>c.status === 'Confirmed').length === 0) && (
-                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl opacity-30 flex flex-col items-center gap-3">
-                            <Zap size={32} className="text-slate-500" />
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Awaiting Confirmed Findings for Strategic Mapping</p>
+                         <div className="py-32 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-6 shadow-2xl">
+                            <Zap size={64} className="text-slate-800" />
+                            <div className="space-y-2">
+                               <p className="text-lg font-black text-slate-700 uppercase tracking-[0.4em]">Strategic Analytical Deadlock</p>
+                               <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest italic">Awaiting Confirmed Findings for Strategic FAR Mapping</p>
+                            </div>
                          </div>
                        )}
                     </div>
@@ -1030,9 +1257,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 }
 
 const RcaIconBtn = ({ active, icon: Icon, onClick, label }: any) => (
-  <button onClick={onClick} className={`p-2.5 rounded-xl transition-all relative group ${active ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-500 hover:bg-white/10'}`}>
-    <Icon size={20} />
-    <span className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-[8px] font-bold uppercase rounded opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none whitespace-nowrap">{label}</span>
+  <button onClick={onClick} className={`p-3.5 rounded-2xl transition-all relative group shadow-lg ${active ? 'bg-purple-600 text-white shadow-purple-500/20 scale-110' : 'text-slate-500 hover:bg-white/10 hover:text-white'}`}>
+    <Icon size={24} />
+    <span className="absolute left-full ml-4 px-3 py-1.5 bg-slate-900 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 transition-all z-[300] pointer-events-none whitespace-nowrap shadow-2xl">
+      {label}
+    </span>
   </button>
 )
 
@@ -1059,78 +1288,102 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const handleSave = () => onSave(formData)
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1400px] h-[95vh] rounded-[32px] border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1500px] h-full rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
         
-        <div className="px-5 py-3 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-blue-600/20 rounded-xl text-blue-400 border border-blue-500/30"><Search size={20} /></div>
+        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-6">
+            <div className="p-3 bg-blue-600/20 rounded-2xl text-blue-400 border border-blue-500/30 shadow-inner"><Search size={28} /></div>
             <div>
-              <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">RES // ID: {formData.id}</span>
+              <div className="flex items-center space-x-3 mb-1">
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RESEARCH // INTEL ID: {formData.id}</span>
                 <StatusPill value={formData.status} />
+                <span className="text-[9px] font-black text-blue-400 uppercase bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">PRIORITY: {formData.priority}</span>
               </div>
-              <h1 className="text-lg font-bold uppercase tracking-tight text-white leading-none">{formData.title}</h1>
+              <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <button onClick={handleSave} className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center gap-2"><Save size={12}/> Sync State</button>
-            <button onClick={onClose} className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={16}/></button>
+          <div className="flex items-center space-x-3">
+            <button onClick={handleSave} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
+            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden p-4 gap-4">
-          <div className="w-1/3 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-             <SectionCard icon={FileText} title="Problem Context" color="text-blue-400">
-                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] font-medium text-slate-300 outline-none min-h-[100px]" />
+        <div className="flex-1 flex overflow-hidden p-8 gap-8">
+          <div className="w-1/3 flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-4">
+             <SectionCard icon={FileText} title="Investigation Problem Context" color="text-blue-400" className="flex flex-col">
+                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[120px] resize-none" />
              </SectionCard>
-             <div className="grid grid-cols-2 gap-3">
+             <div className="grid grid-cols-2 gap-4">
                 <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
-                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-2 text-[9px] outline-none min-h-[60px]" />
+                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="What triggered this research?" />
                 </SectionCard>
-                <SectionCard icon={AlertTriangle} title="Impact" color="text-rose-400">
-                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg p-2 text-[9px] outline-none min-h-[60px]" />
+                <SectionCard icon={AlertTriangle} title="Identified Impact" color="text-rose-400">
+                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="Business or System impact..." />
                 </SectionCard>
              </div>
-             <SectionCard icon={Search} title="Investigation Findings" color="text-indigo-400">
-                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] outline-none min-h-[120px]" />
+             <SectionCard icon={Search} title="Investigation Findings & Raw Intel" color="text-indigo-400">
+                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-300 outline-none min-h-[180px] resize-none" placeholder="Document all analytical findings here..." />
              </SectionCard>
-             <SectionCard icon={ShieldCheck} title="Resolution / Strategy" color="text-emerald-400">
-                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-xl p-3 text-[10px] outline-none min-h-[120px]" />
+             <SectionCard icon={ShieldCheck} title="Proposed Strategy / Resolution" color="text-emerald-400">
+                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-200 outline-none min-h-[180px] resize-none" placeholder="Permanent strategy or fix steps..." />
              </SectionCard>
           </div>
 
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end shrink-0 shadow-lg">
-                <div className="col-span-6">
-                   <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Live Intelligence Pulse</label>
-                   <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-4 py-2 text-[11px] text-white outline-none focus:border-blue-500" placeholder="Record observation..." />
+          <div className="flex-1 flex flex-col gap-8 overflow-hidden">
+             <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 flex items-end gap-4 shrink-0 shadow-2xl">
+                <div className="flex-1 space-y-2">
+                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse Update</label>
+                   <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-3 text-[12px] font-black text-white outline-none focus:border-blue-500 uppercase" placeholder="Record immediate observation or diagnosis pulse..." />
                 </div>
-                <div className="col-span-3">
-                   <StyledSelect label="Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}]} />
+                <div className="w-48">
+                   <StyledSelect label="Log Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Milestone', label:'Milestone'}]} />
                 </div>
-                <div className="col-span-2">
-                   <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest block mb-1">POC</label>
-                   <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-lg px-3 py-2 text-[10px] text-white outline-none" placeholder="Name" />
+                <div className="w-40">
+                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
+                   <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase" placeholder="NAME..." />
                 </div>
-                <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg active:scale-95 transition-all"><Plus size={20} /></button>
+                <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center"><Plus size={24} /></button>
              </div>
 
-             <div className="flex-1 bg-slate-950/50 border border-white/5 rounded-2xl overflow-y-auto custom-scrollbar p-3 space-y-2">
-                {(formData.progress_logs || []).map((l: any, i: number) => (
-                  <div key={i} className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-start justify-between group">
-                     <div className="flex gap-4">
-                        <div className="w-24 shrink-0 pt-1">
-                           <p className="text-[9px] font-bold text-slate-400">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                           <span className="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{l.entry_type}</span>
+             <div className="flex-1 bg-slate-950/50 border border-white/5 rounded-[40px] overflow-hidden flex flex-col shadow-2xl">
+                <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
+                   <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{(formData.progress_logs || []).length} Pulse Captured</span>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+                   {/* Vertical Intelligence Line */}
+                   <div className="relative pl-12 space-y-6">
+                      <div className="absolute left-5 top-2 bottom-2 w-0.5 bg-blue-500/20 rounded-full" />
+                      
+                      {(formData.progress_logs || []).map((l: any, i: number) => (
+                        <div key={i} className="relative bg-white/5 border border-white/5 rounded-3xl p-5 group hover:bg-white/[0.08] transition-all shadow-lg">
+                           <div className="absolute -left-[32px] top-6 w-3 h-3 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
+                           
+                           <div className="flex gap-8">
+                              <div className="w-32 shrink-0 pt-0.5">
+                                 <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
+                                 <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-inner">{l.entry_type}</span>
+                              </div>
+                              <div className="flex-1">
+                                 <p className="text-[12px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{l.entry_text}</p>
+                                 <div className="flex items-center gap-2 mt-2">
+                                    <User size={10} className="text-slate-600" />
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
+                                 </div>
+                              </div>
+                           </div>
                         </div>
-                        <div>
-                           <p className="text-[11px] font-bold text-slate-200 leading-relaxed uppercase">{l.entry_text}</p>
-                           <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">{l.poc} // {new Date(l.timestamp).toLocaleDateString()}</p>
-                        </div>
-                     </div>
-                  </div>
-                ))}
+                      ))}
+                      {(formData.progress_logs || []).length === 0 && (
+                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-4 opacity-30">
+                            <Activity size={40} className="text-slate-500" />
+                            <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
+                         </div>
+                      )}
+                   </div>
+                </div>
              </div>
           </div>
         </div>
