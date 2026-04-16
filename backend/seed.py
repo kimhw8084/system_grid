@@ -470,6 +470,7 @@ def seed():
             ("Split-Brain Sync Failure", "SAP-PROD"),
             ("Kernel Panic Loop", "K8S-CLUSTER-01")
         ]
+        all_failure_modes = []
         for title, sys_name in far_scenarios:
             mode = FarFailureMode(
                 system_name=sys_name,
@@ -478,52 +479,117 @@ def seed():
                 severity=random.randint(8, 10),
                 occurrence=random.randint(2, 4),
                 detection=random.randint(1, 3),
-                status="Resolution Identified"
+                status="Resolution Identified",
+                has_incident_history=True
             )
             mode.rpn = mode.severity * mode.occurrence * mode.detection
             mode.affected_assets = random.sample(all_workers, 5)
             db.add(mode)
             db.flush()
+            all_failure_modes.append(mode)
             
             cause = FarFailureCause(cause_text=f"Race condition in {title} module", occurrence_level=mode.occurrence, responsible_team="Reliability Eng")
             db.add(cause)
             db.flush()
             mode.causes.append(cause)
             
+            res = FarResolution(preventive_follow_up="Update BIOS and kernel parameters to prevent race condition.", responsible_team="HW-Ops")
+            db.add(res)
+            db.flush()
+            cause.resolutions.append(res)
+            
             db.add(FarMitigation(mitigation_type="Workaround", mitigation_steps="Periodic service restart every 12h", responsible_team="SRE"))
+            
+            db.add(FarPrevention(
+                failure_mode_id=mode.id,
+                prevention_action=f"Mandatory firmware audit for {sys_name}",
+                status="In Progress",
+                target_date=datetime.now() + timedelta(days=30),
+                responsible_team="Compliance"
+            ))
 
         # 13. Incident RCA (Root Cause Analysis) - Scenarios
-        print("Seeding Incident RCA Records...")
+        print("Seeding Incident RCA Records with deep forensics...")
         rca_scenarios = [
-            ("FAB-2 SENSOR BLINDNESS", "K8S-CLUSTER-01", "P1", {"flow_halted": True, "scrap_risk": True, "quality_impact": False, "global_outage": False}),
-            ("DATABASE DEADLOCK CASCADE", "SAP-PROD", "P2", {"flow_halted": True, "scrap_risk": False, "quality_impact": False, "global_outage": False}),
-            ("NETWORK JITTER SPIKE", "GLOBAL-DNS", "P3", {"flow_halted": False, "scrap_risk": False, "quality_impact": True, "global_outage": False})
+            ("FAB-2 SENSOR BLINDNESS", "K8S-CLUSTER-01", "P1", {"flow_halted": True, "scrap_risk": True, "quality_impact": False, "global_outage": False}, 9),
+            ("DATABASE DEADLOCK CASCADE", "SAP-PROD", "P2", {"flow_halted": True, "scrap_risk": False, "quality_impact": False, "global_outage": False}, 7),
+            ("NETWORK JITTER SPIKE", "GLOBAL-DNS", "P3", {"flow_halted": False, "scrap_risk": False, "quality_impact": True, "global_outage": False}, 4)
         ]
-        for title, sys_name, sev, logic in rca_scenarios:
+        for i, (title, sys_name, sev, logic, priority) in enumerate(rca_scenarios):
             rca = RcaRecord(
                 title=title,
+                problem_statement=f"Unexpected {title} resulting in intermittent system failures and degraded performance in {sys_name}.",
                 trigger_source="Auto Alert",
                 severity=sev,
+                priority=priority,
                 severity_logic=logic,
                 initial_symptoms="High latency and repeated timeout errors reported by monitoring nodes.",
+                occurrence_at=datetime.now() - timedelta(hours=random.randint(5, 24)),
+                acknowledged_at=datetime.now() - timedelta(hours=random.randint(1, 4)),
+                owner=fake.name(),
+                jira_link=f"https://jira.corp.net/browse/INC-{random.randint(1000,9999)}",
                 target_system=sys_name,
                 impacted_asset_ids=[random.choice(all_workers).id for _ in range(2)],
-                status="Investigation",
+                impacted_service_ids=[],
+                status="Resolved" if priority < 8 else "Investigation",
+                fab_impact_json={"categories": ["Wafer Loss", "Line Stoppage"], "explanation": "Critical sensor feedback loop interrupted.", "severity": 3 if priority > 7 else 1},
+                identification_steps_json=[{"step": 1, "text": "Analyzed telemetry logs from sensor nodes", "images": []}],
+                rca_steps_json=[{"step": 1, "text": "Reproduced race condition in staging environment", "images": []}],
+                potential_causes_json=[{"cause": "Kernel race condition", "indicator": "Spinlock timeout in dmesg", "status": "Confirmed"}],
                 narrative_summary="Discovery phase: Initial investigation points to a race condition in the orchestration layer. Evidence suggests a correlation between high load and sensor feedback delay."
             )
+            # Link to relevant FAR failure mode if applicable
+            if i < len(all_failure_modes):
+                rca.linked_failure_modes.append(all_failure_modes[i])
+                
             db.add(rca)
             db.flush()
             
             # Timeline events
-            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=datetime.now() - timedelta(hours=2), event_type="Detection", description="Alert triggered on node telemetry"))
-            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=datetime.now() - timedelta(minutes=90), event_type="Observation", description="Confirmed replication across multiple nodes"))
+            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=rca.occurrence_at + timedelta(minutes=5), event_type="Detection", description="Alert triggered on node telemetry", owner="System", owner_team="Monitoring"))
+            db.add(RcaTimelineEvent(rca_id=rca.id, event_time=rca.acknowledged_at, event_type="Observation", description="Confirmed replication across multiple nodes", owner=rca.owner, owner_team="SRE"))
             
             # Mitigations
             db.add(RcaMitigation(rca_id=rca.id, type="Workaround", action_description="Rolling restart of core services", status="Completed"))
             db.add(RcaMitigation(rca_id=rca.id, type="Preventive", action_description="Patching kernel to v5.15.2", status="Planned"))
 
-        # 14. External Intelligence Matrix
-        print("Seeding 10 High-Fidelity External Entities (Overhauled Matrix)...")
+        # 14. Investigations (Research Module)
+        print("Seeding Strategic Investigations (Research Module)...")
+        investigation_seeds = [
+            ("Kernel Memory Leak Analysis", "General", "Medium", ["K8S-CLUSTER-01"]),
+            ("Database Query Optimization", "Maintenance", "Low", ["SAP-PROD"]),
+            ("External API Latency Study", "Troubleshooting", "High", ["GLOBAL-DNS"]),
+            ("Security Audit - Q2", "Security", "Urgent", ["FIN-CORE"])
+        ]
+        for title, cat, priority, sys_list in investigation_seeds:
+            inv = Investigation(
+                title=title,
+                problem_statement=f"Investigating {title} to identify potential improvements and risks.",
+                category=cat,
+                status="Analyzing",
+                priority=priority,
+                systems=sys_list,
+                impacted_device_ids=[random.choice(all_workers).id for _ in range(3)],
+                assigned_team="Engineering",
+                impact="Potential performance degradation if left unaddressed.",
+                trigger_event="Observed gradual increase in resource consumption.",
+                mitigation_items=["Increased monitoring frequency", "Added temporary swap space"],
+                prevention_method="Implementing automated resource limits.",
+                monitoring_items=[{"item": "Memory Usage", "threshold": "90%"}]
+            )
+            db.add(inv)
+            db.flush()
+            
+            db.add(InvestigationProgress(
+                investigation_id=inv.id,
+                entry_text="Initial data collection completed. Preliminary analysis shows a slow leak in the caching layer.",
+                entry_type="Diagnosis",
+                poc=fake.name(),
+                added_by="system_admin"
+            ))
+
+        # 15. External Intelligence Matrix
+        print("Seeding 10 High-Fidelity External Entities...")
         external_seeds = [
             ("CUST-DATA-FEED", "API", "Global Logistics", "Data-Ops", "Active", "Production", "Real-time shipping telemetry feed", 
              [{"first_name": "Sarah", "last_name": "Connor", "id": "SC-9000", "email": "sconnor@logistics.com", "phone": "555-0101"}],
