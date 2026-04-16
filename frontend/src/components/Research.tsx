@@ -296,8 +296,8 @@ export default function Research() {
     { 
       field: "id", 
       headerName: "ID", 
-      width: 80,
-      minWidth: 80,
+      width: 90,
+      minWidth: 90,
       pinned: 'left',
       cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center',
@@ -305,9 +305,52 @@ export default function Research() {
       valueGetter: (p: any) => p.data.type === 'RCA' ? `RCA-${p.data.id}` : `RES-${p.data.id}`
     },
     { 
+      field: "involved_systems", 
+      headerName: "Involved System", 
+      width: 140, 
+      filter: true,
+      cellClass: "font-bold text-center", 
+      headerClass: 'text-center',
+      valueGetter: (p: any) => {
+        const sys = p.data.type === 'RCA' ? (p.data.target_systems || []) : (p.data.systems || [])
+        return sys
+      },
+      cellRenderer: (p: any) => {
+        const sys = p.value || []
+        if (sys.length === 0) return <span className="text-slate-600">N/A</span>
+        const display = sys.length > 1 ? `${sys[0]} +${sys.length - 1}` : sys[0]
+        return (
+          <div className="group relative cursor-help w-full h-full flex items-center justify-center">
+            <span style={{ fontSize: `${fontSize}px` }}>{display}</span>
+            {sys.length > 1 && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[100]">
+                <div className="bg-slate-900 border border-white/10 rounded-lg p-2 shadow-2xl whitespace-nowrap">
+                  {sys.map((s: string, i: number) => (
+                    <div key={i} className="text-[10px] font-black uppercase text-blue-400">{s}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      },
+      hide: hiddenColumns.includes("involved_systems")
+    },
+    { 
+      field: "title", 
+      headerName: "Title", 
+      minWidth: 200,
+      flex: 1.5, 
+      filter: true, 
+      cellClass: 'text-left font-bold uppercase tracking-tight truncate',
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("title")
+    },
+    { 
       field: "type", 
       headerName: "Type", 
-      width: 100, 
+      width: 90, 
       filter: true, 
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -319,15 +362,34 @@ export default function Research() {
       hide: hiddenColumns.includes("type")
     },
     { 
-      field: "title", 
-      headerName: "Research Title", 
-      flex: 1.5, 
-      pinned: 'left', 
+      field: "priority", 
+      headerName: "Risk Level", 
+      width: 110, 
       filter: true, 
-      cellClass: 'text-left font-bold uppercase tracking-tight',
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("title")
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const val = p.value
+        const colors: any = {
+           'Highest': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+           'High': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+           'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+           'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+        }
+        // Handle legacy numeric priorities
+        let displayVal = val
+        if (typeof val === 'number') {
+           displayVal = val >= 8 ? 'Highest' : val >= 6 ? 'High' : val >= 4 ? 'Medium' : 'Low'
+        }
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[displayVal] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">{displayVal || 'N/A'}</span>
+            </div>
+          </div>
+        )
+      },
+      hide: hiddenColumns.includes("priority")
     },
     { 
       field: "status", 
@@ -336,48 +398,93 @@ export default function Research() {
       filter: true, 
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full w-full">
-           <StatusPill value={p.value} />
-        </div>
-      ),
-      hide: hiddenColumns.includes("status")
-    },
-    { 
-      field: "priority", 
-      headerName: "Risk Level", 
-      width: 110, 
-      filter: true, 
-      cellClass: 'text-center',
-      headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const val = p.data.type === 'RCA' ? (p.data.priority || 5) : (p.data.priority === 'Urgent' || p.data.priority === 'Highest' ? 9 : p.data.priority === 'High' ? 7 : p.data.priority === 'Medium' ? 5 : 3)
         const colors: any = {
-           9: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-           7: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-           5: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-           3: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+          'Analyzing': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          'Open': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          'Investigation': 'text-purple-400 border-purple-500/40 bg-purple-500/20',
+          'Resolved': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          'Closed': 'text-slate-400 border-white/20 bg-white/10',
+          'Escalated': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          'Monitoring': 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20'
         }
-        const level = val >= 8 ? 9 : val >= 6 ? 7 : val >= 4 ? 5 : 3
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-20 h-5 rounded-md border shadow-sm ${colors[level] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">LVL {val}</span>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">
+                {p.value || 'Unknown'}
+              </span>
             </div>
           </div>
         )
       },
-      hide: hiddenColumns.includes("priority")
+      hide: hiddenColumns.includes("status")
+    },
+    { 
+      field: "initiation", 
+      headerName: "Initiation", 
+      width: 140, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-slate-400 uppercase', 
+      headerClass: 'text-center',
+      valueGetter: (p: any) => p.data.type === 'RCA' ? p.data.occurrence_at : p.data.initiation_at,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("initiation")
+    },
+    { 
+      field: "created_at", 
+      headerName: "Created", 
+      width: 140, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-slate-500 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
+      hide: hiddenColumns.includes("created_at")
     },
     { 
       field: "updated_at", 
       headerName: "Last Pulse", 
-      width: 160, 
+      width: 140, 
       filter: true, 
-      cellClass: 'text-center font-bold text-slate-400 uppercase', 
+      cellClass: 'text-center font-bold text-slate-300 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
       hide: hiddenColumns.includes("updated_at")
+    },
+    { 
+      field: "owner_display", 
+      headerName: "Owner", 
+      width: 120, 
+      filter: true, 
+      cellClass: 'text-center font-black uppercase text-blue-400', 
+      headerClass: 'text-center',
+      valueGetter: (p: any) => p.data.type === 'RCA' ? p.data.owner : p.data.assigned_team,
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      hide: hiddenColumns.includes("owner_display")
+    },
+    { 
+      field: "timeline_count", 
+      headerName: "Entity Count", 
+      width: 100, 
+      cellClass: 'text-center font-bold', 
+      headerClass: 'text-center',
+      valueGetter: (p: any) => p.data.type === 'RCA' ? (p.data.timeline?.length || 0) : (p.data.progress_logs?.length || 0),
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+           <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg text-slate-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+        </div>
+      ),
+      hide: hiddenColumns.includes("timeline_count")
+    },
+    { 
+      field: "problem_statement", 
+      headerName: "Problem Statement", 
+      width: 200, 
+      filter: true, 
+      cellClass: 'text-left font-bold text-slate-500 italic truncate px-4',
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("problem_statement")
     },
     {
       field: "actions",
@@ -684,12 +791,21 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                  </div>
               </div>
 
-              <PrioritySlider 
-                value={formData.priority || 1} 
-                onChange={(v: number) => setFormData({...formData, priority: v})} 
-                label="Risk Priority Assessment"
-                type={formData.type}
-              />
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Risk Level</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Low', 'Medium', 'High', 'Highest'].map(p => (
+                    <button 
+                      key={p}
+                      type="button"
+                      onClick={() => setFormData({...formData, priority: p})}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${formData.priority === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Problem Statement / Narrative Goal</label>
@@ -846,7 +962,21 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   }} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.categories?.includes(c) ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}>{c}</button>
                                 ))}
                              </div>
-                             <PrioritySlider value={formData.fab_impact_json?.severity || 1} onChange={(v:number) => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: v }})} label="FAB Impact Severity" type="RCA" />
+                             <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">FAB Impact Severity</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {['Low', 'Medium', 'High', 'Highest'].map(p => (
+                                    <button 
+                                      key={p}
+                                      type="button"
+                                      onClick={() => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, severity: p }})}
+                                      className={`py-2 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.fab_impact_json?.severity === p ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                                    >
+                                      {p}
+                                    </button>
+                                  ))}
+                                </div>
+                             </div>
                              <textarea value={formData.fab_impact_json?.explanation} onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[80px] resize-none" placeholder="Elaborate on the impact..." />
                           </div>
                        </SectionCard>
@@ -991,7 +1121,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                        {/* Vertical Timeline Bar */}
                        <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600/50 via-blue-600/50 to-emerald-600/50 rounded-full" />
                        
-                       {(formData.timeline || []).sort((a:any, b:any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((e: any) => {
+                       {(formData.timeline || []).sort((a:any, b:any) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()).map((e: any) => {
                          const typeColors: any = {
                             'Detection': 'bg-rose-500 shadow-rose-500/50',
                             'Observation': 'bg-blue-500 shadow-blue-500/50',
@@ -1268,7 +1398,8 @@ const RcaIconBtn = ({ active, icon: Icon, onClick, label }: any) => (
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ ...item })
-  const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
+  const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '', timestamp: new Date().toISOString() })
+  const [layoutMode, setLayoutMode] = useState(1)
 
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
@@ -1280,12 +1411,171 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     },
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, progress_logs: [data, ...(prev.progress_logs || [])] }))
-      setNewLog({ entry_text: '', entry_type: 'Diagnosis', poc: '' })
+      setNewLog({ entry_text: '', entry_type: 'Diagnosis', poc: '', timestamp: new Date().toISOString() })
       toast.success('Pulse Captured')
     }
   })
 
   const handleSave = () => onSave(formData)
+
+  const sortedLogs = useMemo(() => {
+     return [...(formData.progress_logs || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+  }, [formData.progress_logs])
+
+  const renderLayout = () => {
+    switch (layoutMode) {
+      case 1: // Classic Suite (Original refinement)
+        return (
+          <div className="flex-1 flex overflow-hidden p-8 gap-8 animate-in fade-in duration-500">
+            <div className="w-1/3 flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-4">
+              <SectionCard icon={FileText} title="Investigation Problem Context" color="text-blue-400" className="flex flex-col">
+                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[120px] resize-none" />
+              </SectionCard>
+              <div className="grid grid-cols-2 gap-4">
+                <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
+                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="What triggered this research?" />
+                </SectionCard>
+                <SectionCard icon={AlertTriangle} title="Identified Impact" color="text-rose-400">
+                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="Business or System impact..." />
+                </SectionCard>
+              </div>
+              <SectionCard icon={Search} title="Investigation Findings & Raw Intel" color="text-indigo-400">
+                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-300 outline-none min-h-[180px] resize-none" placeholder="Document all analytical findings here..." />
+              </SectionCard>
+              <SectionCard icon={ShieldCheck} title="Proposed Strategy / Resolution" color="text-emerald-400">
+                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-200 outline-none min-h-[180px] resize-none" placeholder="Permanent strategy or fix steps..." />
+              </SectionCard>
+            </div>
+            <div className="flex-1 flex flex-col gap-8 overflow-hidden">
+              <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
+              <IntelligenceStream logs={sortedLogs} />
+            </div>
+          </div>
+        )
+      case 2: // Dashboard Hub (Modular grid)
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="grid grid-cols-3 gap-6">
+               <div className="col-span-2 grid grid-cols-2 gap-6">
+                  <SectionCard icon={FileText} title="Problem Context" color="text-blue-400" className="h-44">
+                    <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-300 resize-none outline-none" />
+                  </SectionCard>
+                  <div className="grid grid-rows-2 gap-4">
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col justify-between">
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Triggers</span>
+                       <input value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="bg-transparent text-[11px] font-black text-amber-400 outline-none w-full" />
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-3 border border-white/5 flex flex-col justify-between">
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Impact</span>
+                       <input value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="bg-transparent text-[11px] font-black text-rose-400 outline-none w-full" />
+                    </div>
+                  </div>
+                  <SectionCard icon={Search} title="Analytical Findings" color="text-indigo-400" className="h-64">
+                    <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-300 resize-none outline-none" />
+                  </SectionCard>
+                  <SectionCard icon={ShieldCheck} title="Proposed Resolution" color="text-emerald-400" className="h-64">
+                    <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full h-full bg-slate-950/50 border-none p-2 text-[11px] font-bold text-slate-200 resize-none outline-none" />
+                  </SectionCard>
+               </div>
+               <div className="flex flex-col gap-6">
+                  <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} compact />
+                  <div className="flex-1 min-h-[400px]">
+                    <IntelligenceStream logs={sortedLogs} compact />
+                  </div>
+               </div>
+            </div>
+          </div>
+        )
+      case 3: // Intel Stream Focused
+        return (
+          <div className="flex-1 flex overflow-hidden p-8 gap-8 animate-in slide-in-from-left-4 duration-500">
+             <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+                <IntelligenceStream logs={sortedLogs} wide />
+                <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
+             </div>
+             <div className="w-80 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+                <SectionCard icon={FileText} title="Context" color="text-blue-400">
+                   <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{formData.problem_statement}</p>
+                </SectionCard>
+                <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
+                   <p className="text-[10px] text-slate-400 font-bold">{formData.trigger_event || 'N/A'}</p>
+                </SectionCard>
+                <SectionCard icon={Search} title="Core Findings" color="text-indigo-400">
+                   <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{formData.root_cause || 'Analyzing...'}</p>
+                </SectionCard>
+                <SectionCard icon={ShieldCheck} title="Resolution" color="text-emerald-400">
+                   <p className="text-[10px] text-slate-300 font-black uppercase tracking-tight">{formData.resolution_steps || 'Pending Strategy'}</p>
+                </SectionCard>
+             </div>
+          </div>
+        )
+      case 4: // Forensic Workbench (Side-by-side wide)
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 animate-in zoom-in-95 duration-500">
+             <div className="space-y-8">
+                <div className="grid grid-cols-2 gap-8">
+                   <div className="space-y-4">
+                      <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em] px-2 flex items-center gap-3"><FileText size={14}/> Problem Narrative</h3>
+                      <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-[32px] p-6 text-[12px] font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-blue-500/30 transition-all" />
+                   </div>
+                   <div className="space-y-4">
+                      <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] px-2 flex items-center gap-3"><Search size={14}/> Forensic Analysis</h3>
+                      <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-white/5 border border-white/5 rounded-[32px] p-6 text-[12px] font-bold text-slate-300 outline-none min-h-[200px] resize-none shadow-2xl focus:border-indigo-500/30 transition-all" />
+                   </div>
+                </div>
+                <div className="grid grid-cols-3 gap-8">
+                   <SectionCard icon={ShieldCheck} title="Strategy" color="text-emerald-400">
+                      <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border-none p-2 text-[11px] font-bold text-white resize-none outline-none min-h-[150px]" />
+                   </SectionCard>
+                   <div className="col-span-2 flex flex-col gap-4">
+                      <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} compact />
+                      <div className="h-64 IntelligenceStream-container">
+                        <IntelligenceStream logs={sortedLogs} compact />
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </div>
+        )
+      case 5: // Minimalist Zen (Apple-like)
+        return (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-12 max-w-5xl mx-auto space-y-16 animate-in fade-in duration-700">
+             <div className="space-y-6">
+                <h2 className="text-4xl font-black text-white tracking-tighter italic uppercase border-b-2 border-white/5 pb-4">Executive Context</h2>
+                <p className="text-xl font-medium text-slate-400 leading-relaxed tracking-tight">{formData.problem_statement}</p>
+             </div>
+             
+             <div className="grid grid-cols-2 gap-16">
+                <div className="space-y-8">
+                   <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Findings</h4>
+                      <p className="text-slate-200 font-bold leading-relaxed">{formData.root_cause || 'Intelligence gathering in progress...'}</p>
+                   </div>
+                   <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Resolution Path</h4>
+                      <p className="text-emerald-400 font-black uppercase tracking-tight text-lg leading-tight">{formData.resolution_steps || 'Awaiting structural resolution strategy.'}</p>
+                   </div>
+                </div>
+                <div className="space-y-8">
+                   <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Pulse History</h4>
+                   <div className="space-y-8 relative pl-6">
+                      <div className="absolute left-0 top-0 bottom-0 w-px bg-white/10" />
+                      {sortedLogs.slice().reverse().slice(0,3).map((l:any, i:number) => (
+                        <div key={i} className="relative">
+                           <div className="absolute -left-[27px] top-1.5 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
+                           <p className="text-[12px] font-black text-white uppercase tracking-tight leading-tight">{l.entry_text}</p>
+                           <p className="text-[9px] text-slate-500 mt-1 uppercase font-bold">{new Date(l.timestamp).toLocaleString()}</p>
+                        </div>
+                      ))}
+                   </div>
+                   <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} compact />
+                </div>
+             </div>
+          </div>
+        )
+      default: return null
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
@@ -1296,11 +1586,23 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
             <div className="p-3 bg-blue-600/20 rounded-2xl text-blue-400 border border-blue-500/30 shadow-inner"><Search size={28} /></div>
             <div>
               <div className="flex items-center space-x-3 mb-1">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RESEARCH // INTEL ID: {formData.id}</span>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RESEARCH // INTEL NODE: {formData.id}</span>
                 <StatusPill value={formData.status} />
-                <span className="text-[9px] font-black text-blue-400 uppercase bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">PRIORITY: {formData.priority}</span>
+                <span className="text-[9px] font-black text-blue-400 uppercase bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">RISK: {formData.priority}</span>
               </div>
               <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+            </div>
+            
+            <div className="flex ml-8 bg-black/40 p-1 rounded-xl border border-white/5">
+               {[1,2,3,4,5].map(num => (
+                 <button 
+                   key={num} 
+                   onClick={() => setLayoutMode(num)}
+                   className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${layoutMode === num ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-300'}`}
+                 >
+                   V{num}
+                 </button>
+               ))}
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -1309,85 +1611,74 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden p-8 gap-8">
-          <div className="w-1/3 flex flex-col gap-8 overflow-y-auto custom-scrollbar pr-4">
-             <SectionCard icon={FileText} title="Investigation Problem Context" color="text-blue-400" className="flex flex-col">
-                <textarea value={formData.problem_statement} onChange={e => setFormData({...formData, problem_statement: e.target.value})} className="flex-1 w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[120px] resize-none" />
-             </SectionCard>
-             <div className="grid grid-cols-2 gap-4">
-                <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
-                   <textarea value={formData.trigger_event} onChange={e => setFormData({...formData, trigger_event: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="What triggered this research?" />
-                </SectionCard>
-                <SectionCard icon={AlertTriangle} title="Identified Impact" color="text-rose-400">
-                   <textarea value={formData.impact} onChange={e => setFormData({...formData, impact: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-4 text-[10px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" placeholder="Business or System impact..." />
-                </SectionCard>
-             </div>
-             <SectionCard icon={Search} title="Investigation Findings & Raw Intel" color="text-indigo-400">
-                <textarea value={formData.root_cause} onChange={e => setFormData({...formData, root_cause: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-300 outline-none min-h-[180px] resize-none" placeholder="Document all analytical findings here..." />
-             </SectionCard>
-             <SectionCard icon={ShieldCheck} title="Proposed Strategy / Resolution" color="text-emerald-400">
-                <textarea value={formData.resolution_steps} onChange={e => setFormData({...formData, resolution_steps: e.target.value})} className="w-full bg-slate-950 border border-white/5 rounded-2xl p-5 text-[11px] font-bold text-slate-200 outline-none min-h-[180px] resize-none" placeholder="Permanent strategy or fix steps..." />
-             </SectionCard>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-8 overflow-hidden">
-             <div className="bg-white/5 border border-white/10 rounded-[32px] p-6 flex items-end gap-4 shrink-0 shadow-2xl">
-                <div className="flex-1 space-y-2">
-                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse Update</label>
-                   <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-2xl px-5 py-3 text-[12px] font-black text-white outline-none focus:border-blue-500 uppercase" placeholder="Record immediate observation or diagnosis pulse..." />
-                </div>
-                <div className="w-48">
-                   <StyledSelect label="Log Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Milestone', label:'Milestone'}]} />
-                </div>
-                <div className="w-40">
-                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
-                   <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase" placeholder="NAME..." />
-                </div>
-                <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center"><Plus size={24} /></button>
-             </div>
-
-             <div className="flex-1 bg-slate-950/50 border border-white/5 rounded-[40px] overflow-hidden flex flex-col shadow-2xl">
-                <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
-                   <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{(formData.progress_logs || []).length} Pulse Captured</span>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-                   {/* Vertical Intelligence Line */}
-                   <div className="relative pl-12 space-y-6">
-                      <div className="absolute left-5 top-2 bottom-2 w-0.5 bg-blue-500/20 rounded-full" />
-                      
-                      {(formData.progress_logs || []).map((l: any, i: number) => (
-                        <div key={i} className="relative bg-white/5 border border-white/5 rounded-3xl p-5 group hover:bg-white/[0.08] transition-all shadow-lg">
-                           <div className="absolute -left-[32px] top-6 w-3 h-3 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
-                           
-                           <div className="flex gap-8">
-                              <div className="w-32 shrink-0 pt-0.5">
-                                 <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
-                                 <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-inner">{l.entry_type}</span>
-                              </div>
-                              <div className="flex-1">
-                                 <p className="text-[12px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{l.entry_text}</p>
-                                 <div className="flex items-center gap-2 mt-2">
-                                    <User size={10} className="text-slate-600" />
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
-                                 </div>
-                              </div>
-                           </div>
-                        </div>
-                      ))}
-                      {(formData.progress_logs || []).length === 0 && (
-                         <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-4 opacity-30">
-                            <Activity size={40} className="text-slate-500" />
-                            <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
-                         </div>
-                      )}
-                   </div>
-                </div>
-             </div>
-          </div>
-        </div>
+        {renderLayout()}
       </motion.div>
+    </div>
+  )
+}
+
+function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: any) {
+  return (
+    <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-2xl p-4' : 'rounded-[32px] p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
+      <div className="flex-1 space-y-2">
+         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
+         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-2xl ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
+      </div>
+      <div className={compact ? 'w-32' : 'w-48'}>
+         <StyledSelect label="Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Milestone', label:'Milestone'}]} />
+      </div>
+      <div className={compact ? 'w-24' : 'w-40'}>
+         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
+         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-xl ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
+      </div>
+      <div className={compact ? 'w-40' : 'w-56'}>
+         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
+         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-xl ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-slate-400 outline-none [color-scheme:dark]`} />
+      </div>
+      <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className={`${compact ? 'p-3' : 'p-4'} bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center`}><Plus size={compact ? 18 : 24} /></button>
+    </div>
+  )
+}
+
+function IntelligenceStream({ logs, compact = false }: any) {
+  return (
+    <div className={`flex-1 bg-slate-950/50 border border-white/5 ${compact ? 'rounded-2xl' : 'rounded-[40px]'} overflow-hidden flex flex-col shadow-2xl`}>
+      <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
+         <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{logs.length} Pulse Captured</span>
+      </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+         <div className="relative pl-12 space-y-6">
+            <div className="absolute left-5 top-2 bottom-2 w-0.5 bg-blue-500/20 rounded-full" />
+            
+            {logs.map((l: any, i: number) => (
+              <div key={i} className={`relative bg-white/5 border border-white/5 ${compact ? 'rounded-2xl p-3' : 'rounded-3xl p-5'} group hover:bg-white/[0.08] transition-all shadow-lg`}>
+                 <div className="absolute -left-[32px] top-6 w-3 h-3 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)]" />
+                 
+                 <div className={`flex ${compact ? 'gap-4' : 'gap-8'}`}>
+                    <div className={`${compact ? 'w-24' : 'w-32'} shrink-0 pt-0.5`}>
+                       <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
+                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-inner">{l.entry_type}</span>
+                    </div>
+                    <div className="flex-1">
+                       <p className={`${compact ? 'text-[11px]' : 'text-[12px]'} font-black text-slate-200 leading-relaxed uppercase tracking-tight`}>{l.entry_text}</p>
+                       <div className="flex items-center gap-2 mt-2">
+                          <User size={10} className="text-slate-600" />
+                          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            ))}
+            {logs.length === 0 && (
+               <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center gap-4 opacity-30">
+                  <Activity size={40} className="text-slate-500" />
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
+               </div>
+            )}
+         </div>
+      </div>
     </div>
   )
 }
