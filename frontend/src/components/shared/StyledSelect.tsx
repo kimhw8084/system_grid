@@ -15,6 +15,7 @@ interface StyledSelectProps {
   placeholder?: string
   className?: string
   error?: boolean
+  disabled?: boolean
 }
 
 export const StyledSelect = ({ 
@@ -24,10 +25,11 @@ export const StyledSelect = ({
   label, 
   placeholder, 
   className = '',
-  error = false
+  error = false,
+  disabled = false
 }: StyledSelectProps) => {
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-1 ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
       {label && (
         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1">
           {label}
@@ -37,11 +39,12 @@ export const StyledSelect = ({
         <select 
           value={value} 
           onChange={onChange}
+          disabled={disabled}
           className={`
             w-full appearance-none bg-slate-900 border 
             ${error ? 'border-rose-500/50' : 'border-white/10 group-hover:border-white/20'} 
             rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 
-            transition-all cursor-pointer 
+            transition-all ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} 
             ${!value ? 'text-slate-500 italic' : 'text-slate-200'}
           `}
         >

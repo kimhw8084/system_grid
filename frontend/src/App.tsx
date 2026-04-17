@@ -65,6 +65,13 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
   }
 }
 
+const NavTab = ({ icon: Icon, label, path, active }: any) => (
+  <Link to={path} className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all border-b-2 shrink-0 ${active ? "border-blue-500 text-blue-400 bg-blue-500/5" : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}>
+    <Icon size={14} />
+    <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+  </Link>
+)
+
 const SidebarItem = ({ icon: Icon, label, path, active, isOpen }: any) => (
   <Link to={path} className={`w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-300 relative ${active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
     <Icon size={18} className={!isOpen && active ? "text-white" : ""} />
@@ -302,6 +309,24 @@ function MainLayout() {
             </Link>
           </div>
         </header>
+
+        <div className="h-12 border-b border-[var(--glass-border)] bg-[var(--bg-header)]/50 backdrop-blur-md flex items-center px-8 space-x-2 overflow-x-auto custom-scrollbar shrink-0">
+           <NavTab icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} />
+           <NavTab icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} />
+           <NavTab icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} />
+           <NavTab icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} />
+           <NavTab icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} />
+           <NavTab icon={Share2} label="External" path="/external" active={location.pathname === "/external"} />
+           <NavTab icon={Network} label="Network" path="/network" active={location.pathname === "/network"} />
+           <NavTab icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} />
+           <NavTab icon={Search} label="Research" path="/research" active={location.pathname === "/research"} />
+           <NavTab icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} />
+           <NavTab icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} />
+           <NavTab icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} />
+           <NavTab icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} />
+           <NavTab icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} />
+        </div>
+
         <div className="flex-1 p-8 overflow-hidden relative">
           <Routes>
             <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />

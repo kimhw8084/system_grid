@@ -59,7 +59,11 @@ def seed():
             "MonitoringCategory": ["Infrastructure", "Log", "Network", "Application", "Synthetic"],
             "MonitoringSeverity": ["Critical", "Warning", "Info"],
             "NotificationMethod": ["Email", "Slack", "Teams", "PagerDuty", "Webhook"],
-            "MonitoringOwnerRole": ["Primary Support", "Secondary Support", "Business Owner", "Notification Subscriber"]
+            "MonitoringOwnerRole": ["Primary Support", "Secondary Support", "Business Owner", "Notification Subscriber"],
+            "IncidentType": ["Network Outage", "Database Failure", "Application Crash", "Security Incident", "Hardware Fault", "Performance Degradation"],
+            "DetectionType": ["Automated Alert", "Manual Observation", "Customer Report", "Log Analysis", "Security Scanner", "External Intelligence"],
+            "ImpactType": ["Service Unavailable", "Data Loss", "Performance Degradation", "Internal Only", "Regulatory Non-compliance"],
+            "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"]
         }
         for cat, vals in cats.items():
             for v in vals:

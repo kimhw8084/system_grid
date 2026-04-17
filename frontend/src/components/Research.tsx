@@ -313,7 +313,7 @@ export default function Research() {
     },
     { 
       field: "updated_at", 
-      headerName: "Last Pulse", 
+      headerName: "Last Updated", 
       width: 140, 
       filter: true, 
       cellClass: 'text-center font-bold text-slate-300 uppercase', 
@@ -331,20 +331,6 @@ export default function Research() {
       valueGetter: (p: any) => p.data.type === 'RCA' ? p.data.owner : p.data.assigned_team,
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
       hide: hiddenColumns.includes("owner_display")
-    },
-    { 
-      field: "timeline_count", 
-      headerName: "Entity Count", 
-      width: 100, 
-      cellClass: 'text-center font-bold', 
-      headerClass: 'text-center',
-      valueGetter: (p: any) => p.data.type === 'RCA' ? (p.data.timeline?.length || 0) : (p.data.progress_logs?.length || 0),
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-           <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-lg text-slate-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-        </div>
-      ),
-      hide: hiddenColumns.includes("timeline_count")
     },
     { 
       field: "problem_statement", 
@@ -541,7 +527,11 @@ export default function Research() {
         sections={[
           { title: 'System Hierarchy', category: 'LogicalSystem', icon: Database },
           { title: 'Research Domains', category: 'ResearchCategory', icon: LayoutGrid },
-          { title: 'Failure Domains', category: 'FailureCategory', icon: ShieldAlert }
+          { title: 'Failure Domains', category: 'FailureCategory', icon: ShieldAlert },
+          { title: 'Incident Types', category: 'IncidentType', icon: AlertTriangle },
+          { title: 'Detection Types', category: 'DetectionType', icon: Search },
+          { title: 'Impact Types', category: 'ImpactType', icon: ShieldAlert },
+          { title: 'Event Types', category: 'EventType', icon: Activity }
         ]}
       />
 
@@ -808,7 +798,8 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
-  const [isTopologyOpen, setIsTopologyOpen] = useState(false)
+  const [isFailureModesOpen, setIsFailureModesOpen] = useState(false)
+  const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
 
   const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
@@ -863,6 +854,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   }
 
   const pInfo = getPriorityInfo(formData.priority)
+  
+  const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value, label: o.label }))
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={handlePaste}>
@@ -875,31 +868,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RCA // INTEL NODE</span>
-                
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-32">
-                      <StyledSelect 
-                        value={formData.status} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
-                        options={['Analyzing', 'Open', 'Investigation', 'Resolved', 'Closed', 'Escalated'].map(s => ({value: s, label: s}))} 
-                      />
-                    </div>
-                    <div className="w-32">
-                      <StyledSelect 
-                        value={formData.priority} 
-                        onChange={(e: any) => setFormData({...formData, priority: e.target.value})} 
-                        options={['Low', 'Medium', 'High', 'Highest'].map(s => ({value: s, label: s}))} 
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
-                    <span className="text-[9px] font-bold text-slate-600 italic tracking-tight">{pInfo.hint}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <span className="text-[9px] font-bold text-slate-600 italic tracking-tight">{pInfo.hint}</span>
+                </div>
               </div>
               <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
@@ -917,49 +890,149 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Swapped V3: Analytical Pane (Left) */}
+          {/* Analytical Pane (Left) */}
           <div className="w-[480px] border-r border-white/5 bg-black/20 overflow-y-auto custom-scrollbar p-6 space-y-4">
-             <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400">
-                <textarea 
-                  readOnly={!isEditing}
-                  value={formData.problem_statement} 
-                  onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                  className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[120px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                />
-             </SectionCard>
-
-             <SectionCard icon={ShieldAlert} title="Operational Impact" color="text-rose-400">
+             
+             {/* 1. Overview Section */}
+             <SectionCard icon={Info} title="Overview" color="text-blue-400">
                 <div className="space-y-4">
-                   <div className="bg-slate-950 border border-white/5 rounded-lg p-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Severity / Priority</p>
-                        <span className={`text-xs font-black uppercase ${pInfo.color}`}>{pInfo.label}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-500 italic">{pInfo.hint}</span>
+                   <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
+                      <SearchableMultiSelect 
+                         label="Owners" 
+                         selected={formData.owners || []} 
+                         onChange={(next: string[]) => setFormData({...formData, owners: next})} 
+                         options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support']} 
+                         placeholder="Select Owners..." 
+                      />
                    </div>
-                   <textarea 
-                     readOnly={!isEditing}
-                     value={formData.fab_impact_json?.explanation} 
-                     onChange={e => setFormData({...formData, fab_impact_json: { ...formData.fab_impact_json, explanation: e.target.value }})} 
-                     className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
-                     placeholder="Elaborate on the operational impact..." 
-                   />
+                   
+                   <div className="grid grid-cols-2 gap-4">
+                      <StyledSelect 
+                         label="Incident Type" 
+                         value={formData.incident_type} 
+                         onChange={(e: any) => setFormData({...formData, incident_type: e.target.value})} 
+                         options={enumOptions('IncidentType')} 
+                         disabled={!isEditing}
+                      />
+                      <div>
+                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Incident Datetime</label>
+                         <input 
+                           type="datetime-local" 
+                           readOnly={!isEditing}
+                           value={formData.occurrence_at?.slice(0, 16) || ''} 
+                           onChange={e => setFormData({...formData, occurrence_at: e.target.value})}
+                           className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                         />
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <StyledSelect 
+                         label="Detection Type" 
+                         value={formData.detection_type} 
+                         onChange={(e: any) => setFormData({...formData, detection_type: e.target.value})} 
+                         options={enumOptions('DetectionType')} 
+                         disabled={!isEditing}
+                      />
+                      <div>
+                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Detection Datetime</label>
+                         <input 
+                           type="datetime-local" 
+                           readOnly={!isEditing}
+                           value={formData.detection_at?.slice(0, 16) || ''} 
+                           onChange={e => setFormData({...formData, detection_at: e.target.value})}
+                           className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                         />
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-4">
+                      <StyledSelect 
+                        label="Priority"
+                        value={formData.priority} 
+                        onChange={(e: any) => setFormData({...formData, priority: e.target.value})} 
+                        options={['Low', 'Medium', 'High', 'Highest'].map(s => ({value: s, label: s}))} 
+                        disabled={!isEditing}
+                      />
+                      <StyledSelect 
+                        label="Status"
+                        value={formData.status} 
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
+                        options={['Analyzing', 'Open', 'Investigation', 'Resolved', 'Closed', 'Escalated'].map(s => ({value: s, label: s}))} 
+                        disabled={!isEditing}
+                      />
+                   </div>
                 </div>
              </SectionCard>
 
+             {/* 2. Problem Statement */}
+             <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400">
+                <div className="space-y-4">
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.problem_statement} 
+                     onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                     placeholder="Describe the problem..."
+                   />
+                   
+                   <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden transition-all">
+                      <button 
+                         onClick={() => setIsFailureModesOpen(!isFailureModesOpen)}
+                         className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
+                      >
+                         <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Linked Failure Modes (FAR)</span>
+                         <ChevronDown size={14} className={`text-slate-500 transition-transform ${isFailureModesOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      <AnimatePresence>
+                         {isFailureModesOpen && (
+                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-black/20 p-4">
+                               <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
+                                  <SearchableMultiSelect 
+                                     selected={formData.linked_failure_mode_ids || []} 
+                                     onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
+                                     options={(failureModes || []).map((fm: any) => ({ value: fm.id, label: fm.title }))} 
+                                     placeholder="Add Failure Modes..." 
+                                  />
+                               </div>
+                               <div className="mt-2 space-y-1">
+                                  {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
+                                     <div key={fm.id} className="text-[9px] font-black uppercase text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 flex items-center justify-between">
+                                        <span>{fm.title}</span>
+                                        {isEditing && <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})}><X size={10}/></button>}
+                                     </div>
+                                  ))}
+                               </div>
+                            </motion.div>
+                         )}
+                      </AnimatePresence>
+                   </div>
+                </div>
+             </SectionCard>
+
+             {/* 3. System Context */}
              <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden transition-all">
                 <button 
-                   onClick={() => setIsTopologyOpen(!isTopologyOpen)}
+                   onClick={() => setIsSystemContextOpen(!isSystemContextOpen)}
                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
                 >
                    <div className="flex items-center gap-2">
                       <Database size={14} className="text-amber-400" />
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">System Topology Context</h3>
+                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">System Context</h3>
                    </div>
-                   <ChevronDown size={14} className={`text-slate-500 transition-transform ${isTopologyOpen ? 'rotate-180' : ''}`} />
+                   <div className="flex items-center gap-4">
+                      {!isSystemContextOpen && (formData.target_systems || []).length > 0 && (
+                         <div className="flex gap-1">
+                            {(formData.target_systems || []).map((s: string) => (
+                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase">{s}</span>
+                            ))}
+                         </div>
+                      )}
+                      <ChevronDown size={14} className={`text-slate-500 transition-transform ${isSystemContextOpen ? 'rotate-180' : ''}`} />
+                   </div>
                 </button>
                 <AnimatePresence>
-                   {isTopologyOpen && (
+                   {isSystemContextOpen && (
                       <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-black/20 p-4 space-y-4">
                          <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
                            <SearchableMultiSelect 
@@ -967,33 +1040,39 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               selected={formData.target_systems || []} 
                               onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
                               options={systemsList} 
-                              placeholder="Bind systems..." 
+                              placeholder="Select Systems..." 
                            />
                          </div>
-                         <div className="grid grid-cols-2 gap-3 h-48 overflow-y-auto custom-scrollbar">
-                            <div className="space-y-1">
-                               {filteredAssets.map((a: any) => (
-                                 <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
-                                    <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
-                                      const ids = formData.impacted_asset_ids || []
-                                      setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id)})
-                                    }} className="sr-only" />
-                                    <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/20'}`} />
-                                    <span className="truncate">{a.name}</span>
-                                 </label>
-                               ))}
+                         <div className="space-y-4">
+                            <div>
+                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
+                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                  {filteredAssets.map((a: any) => (
+                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
+                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
+                                         const ids = formData.impacted_asset_ids || []
+                                         setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id)})
+                                       }} className="sr-only" />
+                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/20'}`} />
+                                       <span className="truncate">{a.name}</span>
+                                    </label>
+                                  ))}
+                               </div>
                             </div>
-                            <div className="space-y-1 border-l border-white/5 pl-2">
-                               {filteredServices.map((s: any) => (
-                                 <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
-                                    <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
-                                      const ids = formData.impacted_service_ids || []
-                                      setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
-                                    }} className="sr-only" />
-                                    <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/20'}`} />
-                                    <span className="truncate">{s.name}</span>
-                                 </label>
-                               ))}
+                            <div>
+                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
+                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                  {filteredServices.map((s: any) => (
+                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
+                                         const ids = formData.impacted_service_ids || []
+                                         setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
+                                       }} className="sr-only" />
+                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/20'}`} />
+                                       <span className="truncate">{s.name}</span>
+                                    </label>
+                                  ))}
+                               </div>
                             </div>
                          </div>
                       </motion.div>
@@ -1001,26 +1080,27 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 </AnimatePresence>
              </div>
 
-             <SectionCard icon={LinkIcon} title="FAR Mapping" color="text-purple-400">
-                <div className="flex flex-col gap-2">
-                   <button 
+             {/* 4. Operational Impact */}
+             <SectionCard icon={ShieldAlert} title="Operational Impact" color="text-rose-400">
+                <div className="space-y-4">
+                   <StyledSelect 
+                      label="Impact Type" 
+                      value={formData.impact_type} 
+                      onChange={(e: any) => setFormData({...formData, impact_type: e.target.value})} 
+                      options={enumOptions('ImpactType')} 
                       disabled={!isEditing}
-                      onClick={() => toast.success('FAR Registry Connector Active')}
-                      className="w-full py-2.5 bg-purple-600/20 border border-purple-500/30 rounded-lg text-[10px] font-black uppercase text-purple-400 hover:bg-purple-600 hover:text-white transition-all flex items-center justify-center gap-2"
-                   >
-                      <PlusCircle size={14}/> Link Failure Modes from FAR
-                   </button>
-                   <div className="space-y-1 mt-2 max-h-32 overflow-y-auto custom-scrollbar">
-                      {(formData.linked_failure_modes || []).map((fm: any) => (
-                         <div key={fm.id} className="bg-slate-950 p-2 rounded border border-white/5 flex items-center justify-between">
-                            <span className="text-[9px] font-black uppercase text-slate-300 truncate">{fm.title}</span>
-                            <button disabled={!isEditing} onClick={() => setFormData({...formData, linked_failure_modes: formData.linked_failure_modes.filter((m:any)=>m.id!==fm.id)})} className="text-rose-500 hover:text-rose-300"><Trash2 size={12}/></button>
-                         </div>
-                      ))}
-                   </div>
+                   />
+                   <textarea 
+                     readOnly={!isEditing}
+                     value={formData.impact_description} 
+                     onChange={e => setFormData({...formData, impact_description: e.target.value})} 
+                     className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
+                     placeholder="Describe the operational impact..." 
+                   />
                 </div>
              </SectionCard>
 
+             {/* 5. Evidence Section */}
              <SectionCard icon={Camera} title="Evidence" color="text-blue-400">
                 <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                    {(formData.evidence_json || []).map((ev: any, i: number) => (
@@ -1031,29 +1111,33 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          </div>
                       </div>
                    ))}
-                   <div className="aspect-square bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-slate-600">
+                   <div className="aspect-square bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-slate-600 cursor-pointer hover:bg-white/10 transition-all">
                       <Plus size={20} />
                    </div>
                 </div>
              </SectionCard>
           </div>
 
-          {/* Swapped V3: Timeline Pane (Right) */}
+          {/* Timeline Pane (Right) */}
           <div className="flex-1 flex flex-col bg-[#020617]/30 overflow-hidden">
              <div className="p-6 border-b border-white/5 bg-white/5">
                 <div className="grid grid-cols-12 gap-3 items-end">
                    <div className="col-span-12 lg:col-span-5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Narrative</label>
-                      <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-black text-white outline-none focus:border-purple-500/50 uppercase" placeholder="E.G. ALERT FIRED..." />
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
+                      <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Describe the event..." />
                    </div>
                    <div className="col-span-12 lg:col-span-3">
-                     <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={[{value:'Detection', label:'Detection'}, {value:'Observation', label:'Observation'}, {value:'Mitigation', label:'Mitigation'}, {value:'Resolution', label:'Resolution'}]} />
+                     <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={enumOptions('EventType')} />
                    </div>
                    <div className="col-span-12 lg:col-span-3">
                       <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
                       <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                    </div>
                    <button onClick={() => {
+                      if (!newTimeline.description.trim()) {
+                         toast.error("Description cannot be empty")
+                         return
+                      }
                       const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
                       setFormData({ ...formData, timeline })
                       setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
@@ -1083,7 +1167,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
                                 </div>
                                 <div>
-                                   <p className="text-base font-black text-white uppercase tracking-tight leading-none">{e.description}</p>
+                                   <p className="text-base font-bold text-white tracking-tight leading-none">{e.description}</p>
                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 italic">{e.owner} {e.owner_team ? `// ${e.owner_team}` : ''}</p>
                                 </div>
                              </div>
@@ -1294,7 +1378,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
                        <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{l.entry_type}</span>
                     </div>
                     <div className="flex-1">
-                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed uppercase tracking-tight`}>{l.entry_text}</p>
+                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed tracking-tight`}>{l.entry_text}</p>
                        <div className="flex items-center gap-2 mt-2">
                           <User size={10} className="text-slate-600" />
                           <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
