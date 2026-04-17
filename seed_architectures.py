@@ -40,8 +40,24 @@ async def seed_complex_architecture():
         # 2. Create External Entities
         print("Seeding external IQ entities...")
         externals = [
-            models.ExternalEntity(name="STRIPE-PAYMENT-API", type="Cloud Service", owner_organization="Stripe Inc.", hostname="api.stripe.com", ip_address="3.18.12.50", description="Global Payment Processor"),
-            models.ExternalEntity(name="AUTH0-IDP", type="Cloud Service", owner_organization="Okta", hostname="auth.sysgrid.io", ip_address="35.12.5.1", description="External Identity Provider"),
+            models.ExternalEntity(
+                name="STRIPE-PAYMENT-API", 
+                type="API", 
+                owner_organization="Stripe Inc.", 
+                environment="Production",
+                status="Active",
+                metadata_json={"hostname": "api.stripe.com", "ip_address": "3.18.12.50", "auth_type": "OAuth2", "version": "v3"},
+                description="Global Payment Processor"
+            ),
+            models.ExternalEntity(
+                name="AUTH0-IDP", 
+                type="API", 
+                owner_organization="Okta", 
+                environment="Production",
+                status="Active",
+                metadata_json={"hostname": "auth.sysgrid.io", "ip_address": "35.12.5.1", "protocol": "OIDC"},
+                description="External Identity Provider"
+            ),
         ]
         db.add_all(externals)
         await db.commit()

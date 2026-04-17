@@ -520,6 +520,9 @@ def seed():
             ("NETWORK JITTER SPIKE", "GLOBAL-DNS", "P3", {"flow_halted": False, "scrap_risk": False, "quality_impact": True, "global_outage": False}, 4)
         ]
         for i, (title, sys_name, sev, logic, priority) in enumerate(rca_scenarios):
+            occ_at = datetime.now() - timedelta(hours=random.randint(5, 24))
+            det_at = occ_at + timedelta(minutes=random.randint(1, 15))
+            ack_at = det_at + timedelta(minutes=random.randint(5, 30))
             rca = RcaRecord(
                 title=title,
                 problem_statement=f"Unexpected {title} resulting in intermittent system failures and degraded performance in {sys_name}.",
@@ -528,11 +531,17 @@ def seed():
                 priority=priority,
                 severity_logic=logic,
                 initial_symptoms="High latency and repeated timeout errors reported by monitoring nodes.",
-                occurrence_at=datetime.now() - timedelta(hours=random.randint(5, 24)),
-                acknowledged_at=datetime.now() - timedelta(hours=random.randint(1, 4)),
+                occurrence_at=occ_at,
+                detection_at=det_at,
+                acknowledged_at=ack_at,
                 owner=fake.name(),
+                owners=[fake.name(), fake.name()],
                 jira_link=f"https://jira.corp.net/browse/INC-{random.randint(1000,9999)}",
                 target_system=sys_name,
+                target_systems=[sys_name],
+                incident_type=random.choice(["Network Outage", "Database Failure", "Application Crash", "Hardware Fault"]),
+                detection_type=random.choice(["Automated Alert", "Manual Observation", "Customer Report"]),
+                impact_type=random.choice(["Service Unavailable", "Data Loss", "Performance Degradation"]),
                 impacted_asset_ids=[random.choice(all_workers).id for _ in range(2)],
                 impacted_service_ids=[],
                 status="Resolved" if priority < 8 else "Investigation",
@@ -560,19 +569,22 @@ def seed():
         # 14. Investigations (Research Module)
         print("Seeding Strategic Investigations (Research Module)...")
         investigation_seeds = [
-            ("Kernel Memory Leak Analysis", "General", "Medium", ["K8S-CLUSTER-01"]),
-            ("Database Query Optimization", "Maintenance", "Low", ["SAP-PROD"]),
-            ("External API Latency Study", "Troubleshooting", "High", ["GLOBAL-DNS"]),
-            ("Security Audit - Q2", "Security", "Urgent", ["FIN-CORE"])
+            ("Kernel Memory Leak Analysis", "General", "Medium", ["K8S-CLUSTER-01"], "Infrastructure", "Software Bug"),
+            ("Database Query Optimization", "Maintenance", "Low", ["SAP-PROD"], "Database", "Performance"),
+            ("External API Latency Study", "Troubleshooting", "High", ["GLOBAL-DNS"], "Network", "External Factor"),
+            ("Security Audit - Q2", "Security", "Urgent", ["FIN-CORE"], "Security", "Compliance")
         ]
-        for title, cat, priority, sys_list in investigation_seeds:
+        for title, cat, priority, sys_list, res_domain, fail_domain in investigation_seeds:
             inv = Investigation(
                 title=title,
                 problem_statement=f"Investigating {title} to identify potential improvements and risks.",
                 category=cat,
+                research_domain=res_domain,
+                failure_domain=fail_domain,
                 status="Analyzing",
                 priority=priority,
                 systems=sys_list,
+                initiation_at=datetime.now() - timedelta(days=random.randint(1, 10)),
                 impacted_device_ids=[random.choice(all_workers).id for _ in range(3)],
                 assigned_team="Engineering",
                 impact="Potential performance degradation if left unaddressed.",
