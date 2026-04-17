@@ -599,6 +599,8 @@ class Investigation(Base, BaseMixin):
     title = Column(String, index=True)
     problem_statement = Column(Text)
     category = Column(String, default="General") # General, Troubleshooting, Security, Maintenance
+    research_domain = Column(String) # Added research_domain
+    failure_domain = Column(String) # Added failure_domain
     
     status = Column(String, default="Analyzing") # Analyzing, Escalated, Monitoring, Resolved, Closed
     priority = Column(String, default="Medium") # Urgent, High, Medium, Low
@@ -689,9 +691,16 @@ class RcaRecord(Base, BaseMixin):
     
     # Timing & Ownership
     occurrence_at = Column(DateTime)
+    detection_at = Column(DateTime) # Added detection_at
     acknowledged_at = Column(DateTime)
     owner = Column(String)
+    owners = Column(JSON, default=list) # Added multi-owner support
     jira_link = Column(String)
+    
+    # Enum Classifications
+    incident_type = Column(String) # Added incident_type
+    detection_type = Column(String) # Added detection_type
+    impact_type = Column(String) # Added impact_type
     
     # Cascading selection context
     target_system = Column(String) # Legacy field (string)

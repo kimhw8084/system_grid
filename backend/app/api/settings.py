@@ -107,8 +107,29 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         res = await db.execute(select(models.Device).filter(models.Device.type == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True
     elif opt.category == "LogicalSystem":
-        res = await db.execute(select(models.Device).filter(models.Device.system == opt.value, models.Device.is_deleted == False))
+        res_dev = await db.execute(select(models.Device).filter(models.Device.system == opt.value, models.Device.is_deleted == False))
+        res_rca = await db.execute(select(models.RcaRecord).filter(models.RcaRecord.target_systems.contains(opt.value), models.RcaRecord.is_deleted == False))
+        res_inv = await db.execute(select(models.Investigation).filter(models.Investigation.systems.contains(opt.value), models.Investigation.is_deleted == False))
+        if res_dev.scalars().first() or res_rca.scalars().first() or res_inv.scalars().first(): in_use = True
+    elif opt.category == "ResearchCategory":
+        res = await db.execute(select(models.Investigation).filter(models.Investigation.research_domain == opt.value, models.Investigation.is_deleted == False))
         if res.scalars().first(): in_use = True
+    elif opt.category == "FailureCategory":
+        res = await db.execute(select(models.Investigation).filter(models.Investigation.failure_domain == opt.value, models.Investigation.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "IncidentType":
+        res = await db.execute(select(models.RcaRecord).filter(models.RcaRecord.incident_type == opt.value, models.RcaRecord.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "DetectionType":
+        res = await db.execute(select(models.RcaRecord).filter(models.RcaRecord.detection_type == opt.value, models.RcaRecord.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "ImpactType":
+        res = await db.execute(select(models.RcaRecord).filter(models.RcaRecord.impact_type == opt.value, models.RcaRecord.is_deleted == False))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "EventType":
+        res_timeline = await db.execute(select(models.RcaTimelineEvent).filter(models.RcaTimelineEvent.event_type == opt.value))
+        res_log = await db.execute(select(models.InvestigationProgress).filter(models.InvestigationProgress.entry_type == opt.value))
+        if res_timeline.scalars().first() or res_log.scalars().first(): in_use = True
     elif opt.category == "Manufacturer":
         res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value, models.Device.is_deleted == False))
         if res.scalars().first(): in_use = True

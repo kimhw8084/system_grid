@@ -179,7 +179,7 @@ export default function Research() {
       field: "involved_systems", 
       headerName: "Involved System", 
       width: 140, 
-      filter: true,
+      filter: true, 
       cellClass: "font-bold text-center", 
       headerClass: 'text-center',
       valueGetter: (p: any) => {
@@ -556,7 +556,7 @@ export default function Research() {
   )
 }
 
-function SearchableMultiSelect({ label, selected = [], onChange, options = [], placeholder }: any) {
+function SearchableMultiSelect({ label, selected = [], onChange, options = [], placeholder, allowCustom = true }: any) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -571,15 +571,25 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filteredOptions = options.filter((opt: any) => 
-    (typeof opt === 'string' ? opt : opt.label).toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredOptions = useMemo(() => {
+    const term = search.toLowerCase().trim()
+    let filtered = options.filter((opt: any) => 
+      (typeof opt === 'string' ? opt : opt.label).toLowerCase().includes(term)
+    )
+    
+    if (allowCustom && term && !filtered.some((opt:any) => (typeof opt === 'string' ? opt : opt.label).toLowerCase() === term)) {
+        filtered = [{ value: term, label: `Add "${term}"...`, isNew: true }, ...filtered]
+    }
+    return filtered
+  }, [options, search, allowCustom])
 
-  const toggleOption = (opt: string) => {
-    const next = selected.includes(opt)
-      ? selected.filter((s: string) => s !== opt)
-      : [...selected, opt]
+  const toggleOption = (opt: any) => {
+    const val = typeof opt === 'string' ? opt : opt.value
+    const next = selected.includes(val)
+      ? selected.filter((s: string) => s !== val)
+      : [...selected, val]
     onChange(next)
+    if (typeof opt !== 'string' && opt.isNew) setSearch('')
   }
 
   return (
@@ -587,7 +597,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
       {label && <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">{label}</label>}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px]"
+        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px] relative z-10"
       >
         <div className="flex flex-wrap gap-1">
           {selected.length > 0 ? (
@@ -609,7 +619,8 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-[150] w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl"
+            className="absolute z-[1000] w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-3xl"
+            style={{ top: '100%' }}
           >
             <div className="p-2 border-b border-white/5 bg-white/5">
               <div className="relative">
@@ -618,26 +629,28 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
                   autoFocus
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Filter options..."
+                  placeholder="Filter or add new..."
                   className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 uppercase"
                 />
               </div>
             </div>
-            <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
+            <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((opt: any) => {
                   const val = typeof opt === 'string' ? opt : opt.value
                   const lbl = typeof opt === 'string' ? opt : opt.label
                   const isSelected = selected.includes(val)
+                  const isNew = typeof opt !== 'string' && opt.isNew
                   return (
                     <div 
                       key={val}
-                      onClick={() => toggleOption(val)}
+                      onClick={() => toggleOption(opt)}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all group ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-white/5 text-slate-400'}`}
                     >
-                      <span className="text-[10px] font-black uppercase tracking-tight">{lbl}</span>
+                      <span className={`text-[10px] font-black uppercase tracking-tight ${isNew ? 'text-blue-400 italic' : ''}`}>{lbl}</span>
                       <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                         {isSelected && <Check size={10} className="text-white" />}
+                        {isNew && !isSelected && <Plus size={10} className="text-blue-400" />}
                       </div>
                     </div>
                   )
@@ -723,13 +736,14 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 overflow-visible">
                  <SearchableMultiSelect 
                     label="Target System Context"
                     selected={formData.type === 'RCA' ? (formData.target_systems || []) : (formData.systems || [])}
                     onChange={(next: string[]) => setFormData({...formData, [formData.type === 'RCA' ? 'target_systems' : 'systems']: next})}
                     options={systems}
                     placeholder="Identify core systems..."
+                    allowCustom={false}
                  />
                  <div>
                     <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">{formData.type === 'RCA' ? 'Incident Date/Time' : 'Initiation Date/Time'}</label>
@@ -798,9 +812,11 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(false)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
+  const [newMitigation, setNewMitigation] = useState({ type: 'Workaround', action_description: '', status: 'Planned' })
 
   const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
   const filteredAssets = useMemo(() => {
@@ -813,10 +829,15 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     return devices?.filter((d: any) => assetIds.includes(d.id)).flatMap((d: any) => d.logical_services || []) || []
   }, [devices, formData.impacted_asset_ids])
 
-  const handleSave = () => {
-    onSave(formData)
-    setIsEditing(false)
-  }
+  // Auto-save logic
+  const lastSavedData = useRef(JSON.stringify(item))
+  useEffect(() => {
+    const currentData = JSON.stringify(formData)
+    if (!isEditing && currentData !== lastSavedData.current) {
+        onSave(formData)
+        lastSavedData.current = currentData
+    }
+  }, [isEditing, formData, onSave])
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
@@ -880,18 +901,17 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => setIsEditing(!isEditing)} 
-              className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
+              className={`px-8 py-3 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
-              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock' : 'Edit'}
+              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
-            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           {/* Analytical Pane (Left) */}
-          <div className="w-[480px] border-r border-white/5 bg-black/20 overflow-y-auto custom-scrollbar p-6 space-y-4">
+          <div className="w-[480px] border-r border-white/5 bg-black/20 overflow-y-auto custom-scrollbar p-6 space-y-4 relative z-20">
              
              {/* 1. Overview Section */}
              <SectionCard icon={Info} title="Overview" color="text-blue-400">
@@ -902,7 +922,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          selected={formData.owners || []} 
                          onChange={(next: string[]) => setFormData({...formData, owners: next})} 
                          options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support']} 
-                         placeholder="Select Owners..." 
+                         placeholder="Add Owners..." 
+                         allowCustom={true}
                       />
                    </div>
                    
@@ -976,7 +997,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                      placeholder="Describe the problem..."
                    />
                    
-                   <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden transition-all">
+                   <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all">
                       <button 
                          onClick={() => setIsFailureModesOpen(!isFailureModesOpen)}
                          className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
@@ -986,13 +1007,14 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       </button>
                       <AnimatePresence>
                          {isFailureModesOpen && (
-                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-black/20 p-4">
+                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4">
                                <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
                                   <SearchableMultiSelect 
                                      selected={formData.linked_failure_mode_ids || []} 
                                      onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
                                      options={(failureModes || []).map((fm: any) => ({ value: fm.id, label: fm.title }))} 
                                      placeholder="Add Failure Modes..." 
+                                     allowCustom={false}
                                   />
                                </div>
                                <div className="mt-2 space-y-1">
@@ -1011,7 +1033,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              </SectionCard>
 
              {/* 3. System Context */}
-             <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden transition-all">
+             <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all">
                 <button 
                    onClick={() => setIsSystemContextOpen(!isSystemContextOpen)}
                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
@@ -1022,9 +1044,9 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    </div>
                    <div className="flex items-center gap-4">
                       {!isSystemContextOpen && (formData.target_systems || []).length > 0 && (
-                         <div className="flex gap-1">
+                         <div className="flex gap-1 overflow-hidden max-w-[150px]">
                             {(formData.target_systems || []).map((s: string) => (
-                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase">{s}</span>
+                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase whitespace-nowrap">{s}</span>
                             ))}
                          </div>
                       )}
@@ -1033,7 +1055,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 </button>
                 <AnimatePresence>
                    {isSystemContextOpen && (
-                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-black/20 p-4 space-y-4">
+                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4 space-y-4">
                          <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
                            <SearchableMultiSelect 
                               label="Target System(s)" 
@@ -1041,6 +1063,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
                               options={systemsList} 
                               placeholder="Select Systems..." 
+                              allowCustom={false}
                            />
                          </div>
                          <div className="space-y-4">
@@ -1118,65 +1141,136 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              </SectionCard>
           </div>
 
-          {/* Timeline Pane (Right) */}
+          {/* Right Pane with Tabs */}
           <div className="flex-1 flex flex-col bg-[#020617]/30 overflow-hidden">
-             <div className="p-6 border-b border-white/5 bg-white/5">
-                <div className="grid grid-cols-12 gap-3 items-end">
-                   <div className="col-span-12 lg:col-span-5">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
-                      <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Describe the event..." />
-                   </div>
-                   <div className="col-span-12 lg:col-span-3">
-                     <StyledSelect label="Type" value={newTimeline.event_type} onChange={e => setNewTimeline({...newTimeline, event_type: e.target.value})} options={enumOptions('EventType')} />
-                   </div>
-                   <div className="col-span-12 lg:col-span-3">
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
-                      <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
-                   </div>
-                   <button onClick={() => {
-                      if (!newTimeline.description.trim()) {
-                         toast.error("Description cannot be empty")
-                         return
-                      }
-                      const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
-                      setFormData({ ...formData, timeline })
-                      setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
-                    }} className="col-span-1 p-2.5 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all"><Plus size={24} /></button>
-                </div>
+             {/* Navigation Tabs */}
+             <div className="flex bg-white/5 border-b border-white/5 p-1 gap-1 shrink-0">
+                {['Timeline', 'Mitigation', 'Investigation'].map(tab => (
+                   <button 
+                     key={tab}
+                     onClick={() => setActiveTab(tab)}
+                     className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                   >
+                      {tab === 'Timeline' && <History size={14} className="inline mr-2" />}
+                      {tab === 'Mitigation' && <ShieldCheck size={14} className="inline mr-2" />}
+                      {tab === 'Investigation' && <Search size={14} className="inline mr-2" />}
+                      {tab}
+                   </button>
+                ))}
              </div>
-             
-             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                <div className="relative pl-12 space-y-4 max-w-full">
-                   <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600/50 via-blue-600/50 to-emerald-600/50 rounded-full" />
-                   
-                   {(formData.timeline || []).sort((a:any, b:any) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()).map((e: any) => {
-                     const typeColors: any = {
-                        'Detection': 'bg-rose-500 shadow-rose-500/50',
-                        'Observation': 'bg-blue-500 shadow-blue-500/50',
-                        'Mitigation': 'bg-amber-500 shadow-amber-500/50',
-                        'Resolution': 'bg-emerald-500 shadow-emerald-500/50'
-                     }
-                     return (
-                       <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all w-full">
-                          <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
-                          
-                          <div className="flex items-center justify-between gap-4">
-                             <div className="flex items-center gap-6">
-                                <div className="w-32 shrink-0">
-                                   <p className="text-[11px] font-black text-white">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
-                                </div>
-                                <div>
-                                   <p className="text-base font-bold text-white tracking-tight leading-none">{e.description}</p>
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 italic">{e.owner} {e.owner_team ? `// ${e.owner_team}` : ''}</p>
-                                </div>
-                             </div>
-                             <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+
+             <div className="flex-1 overflow-hidden flex flex-col">
+                {activeTab === 'Timeline' && (
+                  <>
+                    <div className="p-6 border-b border-white/5 bg-white/5">
+                        <div className="grid grid-cols-12 gap-3 items-end">
+                          <div className="col-span-12 lg:col-span-5">
+                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
+                              <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description (non-uppercase)..." />
                           </div>
-                       </div>
-                     )
-                   })}
-                </div>
+                          <div className="col-span-12 lg:col-span-3">
+                            <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value})} options={enumOptions('EventType')} />
+                          </div>
+                          <div className="col-span-12 lg:col-span-3">
+                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
+                              <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
+                          </div>
+                          <button onClick={() => {
+                              if (!newTimeline.description.trim()) {
+                                toast.error("Description cannot be empty")
+                                return
+                              }
+                              const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
+                              setFormData({ ...formData, timeline })
+                              setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
+                            }} className="col-span-1 p-2.5 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all"><Plus size={24} /></button>
+                        </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                        <div className="relative pl-12 space-y-4 max-w-full">
+                          <div className="absolute left-6 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-600/50 via-blue-600/50 to-emerald-600/50 rounded-full" />
+                          
+                          {(formData.timeline || []).sort((a:any, b:any) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()).map((e: any) => {
+                            const typeColors: any = {
+                                'Detection': 'bg-rose-500 shadow-rose-500/50',
+                                'Observation': 'bg-blue-500 shadow-blue-500/50',
+                                'Mitigation': 'bg-amber-500 shadow-amber-500/50',
+                                'Resolution': 'bg-emerald-500 shadow-emerald-500/50'
+                            }
+                            return (
+                              <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all w-full">
+                                  <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
+                                  
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-32 shrink-0">
+                                          <p className="text-[11px] font-black text-white">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
+                                        </div>
+                                        <div>
+                                          <p className="text-base font-bold text-white tracking-tight leading-none normal-case">{e.description}</p>
+                                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 italic">{e.owner} {e.owner_team ? `// ${e.owner_team}` : ''}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                                  </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'Mitigation' && (
+                  <div className="p-6 flex-1 flex flex-col space-y-6 overflow-hidden">
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4 shadow-xl">
+                          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Strategy</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                             <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value})} options={['Workaround', 'Preventive', 'Mitigation', 'Permanent Fix'].map(v=>({value:v, label:v}))} />
+                             <StyledSelect label="Status" value={newMitigation.status} onChange={(e:any) => setNewMitigation({...newMitigation, status: e.target.value})} options={['Planned', 'In Progress', 'Verified', 'Completed'].map(v=>({value:v, label:v}))} />
+                          </div>
+                          <textarea value={newMitigation.action_description} onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px]" placeholder="Action details..." />
+                          <button onClick={() => {
+                             if (!newMitigation.action_description.trim()) { toast.error("Description required"); return; }
+                             setFormData({...formData, mitigations: [...(formData.mitigations || []), { ...newMitigation, id: Date.now() }]})
+                             setNewMitigation({ type: 'Workaround', action_description: '', status: 'Planned' })
+                          }} className="w-full py-3 bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+                         {(formData.mitigations || []).map((m: any) => (
+                           <div key={m.id} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
+                              <div className="flex items-center gap-6">
+                                 <div className="w-24 text-center">
+                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-blue-500/30 text-blue-400 bg-blue-500/10">{m.type}</span>
+                                    <p className={`text-[8px] font-black uppercase mt-1.5 ${m.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>{m.status}</p>
+                                 </div>
+                                 <p className="text-[11px] font-bold text-slate-200">{m.action_description}</p>
+                              </div>
+                              <button onClick={() => setFormData({...formData, mitigations: formData.mitigations.filter((x:any)=>x.id!==m.id)})} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                           </div>
+                         ))}
+                      </div>
+                  </div>
+                )}
+
+                {activeTab === 'Investigation' && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                     <div className="p-6">
+                        <SectionCard icon={Search} title="Investigation Narrative" color="text-indigo-400">
+                           <textarea 
+                              readOnly={!isEditing}
+                              value={formData.narrative_summary} 
+                              onChange={e => setFormData({...formData, narrative_summary: e.target.value})} 
+                              className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[12px] font-bold text-slate-300 outline-none min-h-[300px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                              placeholder="Record technical deep-dive findings, cause/effect chains, and logic here..."
+                           />
+                        </SectionCard>
+                     </div>
+                  </div>
+                )}
              </div>
           </div>
         </div>
