@@ -20,6 +20,7 @@ export default function NetworkFabric() {
   const [showStyleLab, setShowStyleLab] = useState(true)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const [showConnectModal, setShowConnectModal] = useState(false)
   const [viewingLink, setViewingLink] = useState<any>(null)

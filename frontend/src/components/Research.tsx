@@ -566,6 +566,103 @@ export default function Research() {
   )
 }
 
+function SearchableMultiSelect({ label, selected = [], onChange, options = [], placeholder }: any) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredOptions = options.filter((opt: any) => 
+    (typeof opt === 'string' ? opt : opt.label).toLowerCase().includes(search.toLowerCase())
+  )
+
+  const toggleOption = (opt: string) => {
+    const next = selected.includes(opt)
+      ? selected.filter((s: string) => s !== opt)
+      : [...selected, opt]
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-1 relative" ref={containerRef}>
+      {label && <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">{label}</label>}
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px]"
+      >
+        <div className="flex flex-wrap gap-1">
+          {selected.length > 0 ? (
+            selected.map((s: string) => (
+              <span key={s} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border border-blue-500/30">
+                {s}
+              </span>
+            ))
+          ) : (
+            <span className="text-slate-500 italic uppercase">{placeholder}</span>
+          )}
+        </div>
+        <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute z-[150] w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl"
+          >
+            <div className="p-2 border-b border-white/5 bg-white/5">
+              <div className="relative">
+                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input 
+                  autoFocus
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Filter options..."
+                  className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 uppercase"
+                />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((opt: any) => {
+                  const val = typeof opt === 'string' ? opt : opt.value
+                  const lbl = typeof opt === 'string' ? opt : opt.label
+                  const isSelected = selected.includes(val)
+                  return (
+                    <div 
+                      key={val}
+                      onClick={() => toggleOption(val)}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all group ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-white/5 text-slate-400'}`}
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-tight">{lbl}</span>
+                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
+                        {isSelected && <Check size={10} className="text-white" />}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="py-8 text-center text-[9px] font-bold text-slate-600 uppercase tracking-widest">No results found</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [step, setStep] = useState(item.type ? 1 : 0)

@@ -8,7 +8,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical
+  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -175,6 +175,7 @@ export default function FAR() {
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   
   const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void}>({
     show: false, title: '', message: '', onConfirm: () => {}

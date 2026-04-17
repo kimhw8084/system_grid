@@ -572,6 +572,7 @@ export default function External() {
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)

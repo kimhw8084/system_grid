@@ -43,8 +43,8 @@ export default function Vendor() {
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
-
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
