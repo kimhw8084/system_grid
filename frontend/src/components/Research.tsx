@@ -846,10 +846,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('Timeline')
-  const [isFailureModesOpen, setIsFailureModesOpen] = useState(false)
+  const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | null>(null)
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
+  const [editTimelineData, setEditTimelineData] = useState<any>(null)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
   const [newMitigation, setNewMitigation] = useState({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
 
@@ -875,10 +876,9 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           reader.onload = (event: any) => {
             const base64 = event.target.result
             if (focusedField === 'evidence') {
-              setFormData((prev: any) => ({ 
-                ...prev, 
-                evidence_json: [...(prev.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }] 
-              }))
+              const nextEvidence = [...(formData.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }]
+              setFormData((prev: any) => ({ ...prev, evidence_json: nextEvidence }))
+              if (!isEditing) onSave({ ...formData, evidence_json: nextEvidence })
               toast.success('Evidence Captured')
             } else if (focusedField === 'timeline') {
               setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
@@ -914,14 +914,20 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     toast.success('Event Purged')
   }
 
-  const handleUpdateTimeline = (id: number, updates: any) => {
+  const startEditingTimeline = (event: any) => {
+    setEditingTimelineId(event.id)
+    setEditTimelineData({ ...event })
+  }
+
+  const saveTimelineUpdate = () => {
     const timeline = (formData.timeline || []).map((t: any) => 
-      t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
+      t.id === editingTimelineId ? { ...editTimelineData, updated_at: new Date().toISOString() } : t
     )
     const updated = { ...formData, timeline }
     setFormData(updated)
     onSave(updated)
     setEditingTimelineId(null)
+    setEditTimelineData(null)
     toast.success('Event Updated')
   }
 
@@ -943,10 +949,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     
     return failureModes.filter((fm: any) => {
       const fmSystem = fm.system_name || fm.system
-      const fmAssetId = fm.asset_id
+      const fmAssetIds = fm.affected_assets?.map((a: any) => a.id) || []
       
       if (activeAssetIds.length > 0) {
-        return activeAssetIds.includes(fmAssetId)
+        return activeAssetIds.some(id => fmAssetIds.includes(id))
       }
       if (activeSystems.length > 0) {
         return activeSystems.includes(fmSystem)
@@ -954,6 +960,25 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
       return true
     })
   }, [failureModes, formData.target_systems, formData.impacted_asset_ids])
+
+  // Analytics Calculation
+  const timelineStats = useMemo(() => {
+    const events = [...(formData.timeline || [])].sort((a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime())
+    if (events.length === 0) return null
+    const start = new Date(events[0].event_time)
+    const end = new Date(events[events.length - 1].event_time)
+    const diff = end.getTime() - start.getTime()
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    
+    return {
+      start: start.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      end: end.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      duration: `${days}D ${hours}H ${minutes}M`
+    }
+  }, [formData.timeline])
 
   // Auto-save logic
   const lastSavedData = useRef(JSON.stringify(item))
@@ -966,12 +991,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   }, [isEditing, formData, onSave])
 
   const pInfo = getPriorityInfo(formData.priority)
-  
   const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value.toUpperCase(), label: o.label.toUpperCase() }))
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={handlePaste}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1700px] h-full rounded-lg border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1750px] h-full rounded-lg border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
@@ -993,6 +1017,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 if (isEditing) {
                   onSave(formData)
                   lastSavedData.current = JSON.stringify(formData)
+                  toast.success('Registry Updated')
                 }
                 setIsEditing(!isEditing)
               }} 
@@ -1014,7 +1039,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
         <div className="flex-1 flex overflow-hidden">
           {/* Analytical Pane (Left) */}
-          <div className="w-[480px] border-r border-white/5 bg-black/20 overflow-y-auto custom-scrollbar p-6 space-y-4 relative z-20">
+          <div className="w-[500px] border-r border-white/5 bg-black/20 overflow-y-auto custom-scrollbar p-6 space-y-4 relative z-20">
              
              {/* 1. Overview Section */}
              <SectionCard icon={Info} title="Overview" color="text-blue-400">
@@ -1073,7 +1098,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                         label="Priority"
-                        value={pInfo.label} 
+                        value={getPriorityInfo(formData.priority).label} 
                         onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
                         options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
@@ -1125,23 +1150,37 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                      <thead>
                                         <tr className="border-b border-white/10">
                                            <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">Failure Mode</th>
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">System/Server</th>
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2 text-right">Actions</th>
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">System</th>
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">Server</th>
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2 text-right">Delete</th>
                                         </tr>
                                      </thead>
                                      <tbody>
                                         {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
                                            <tr key={fm.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                               <td className="py-2 px-2">
-                                                 <div className="text-[9px] font-black uppercase text-purple-400">{fm.title}</div>
+                                                 <div className="text-[9px] font-black uppercase text-purple-400 truncate max-w-[150px]">{fm.title}</div>
                                               </td>
                                               <td className="py-2 px-2">
                                                  <div className="text-[9px] font-black uppercase text-slate-400">{fm.system_name || fm.system}</div>
                                               </td>
+                                              <td className="py-2 px-2">
+                                                 <div className="group relative cursor-help inline-block">
+                                                    <div className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
+                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
+                                                       <div className="bg-slate-900 border border-white/10 rounded-lg p-2 shadow-2xl min-w-[150px]">
+                                                          {(fm.affected_assets || []).map((a: any) => (
+                                                             <div key={a.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5 border-b border-white/5 last:border-0">{a.name}</div>
+                                                          ))}
+                                                          {(fm.affected_assets || []).length === 0 && <div className="text-[8px] font-black text-slate-600">No assets linked</div>}
+                                                       </div>
+                                                    </div>
+                                                 </div>
+                                              </td>
                                               <td className="py-2 px-2 text-right">
                                                  {isEditing && (
-                                                    <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})} className="text-rose-500 hover:text-rose-300">
-                                                       <X size={12}/>
+                                                    <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})} className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded">
+                                                       <Trash2 size={12}/>
                                                     </button>
                                                  )}
                                               </td>
@@ -1149,7 +1188,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                         ))}
                                         {(formData.linked_failure_mode_ids || []).length === 0 && (
                                            <tr>
-                                              <td colSpan={3} className="py-8 text-center text-[9px] font-black uppercase text-slate-600 italic">No linked failure modes</td>
+                                              <td colSpan={4} className="py-8 text-center text-[9px] font-black uppercase text-slate-600 italic">No linked failure modes</td>
                                            </tr>
                                         )}
                                      </tbody>
@@ -1235,7 +1274,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
              {/* 4. Operational Impact */}
              <SectionCard icon={ShieldAlert} title="Operational Impact" color="text-rose-400">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                    <StyledSelect 
                       label="Impact Type" 
                       value={safeUpper(formData.impact_type)} 
@@ -1243,13 +1282,16 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       options={enumOptions('ImpactType')} 
                       disabled={!isEditing}
                    />
-                   <textarea 
-                     readOnly={!isEditing}
-                     value={formData.impact_description} 
-                     onChange={e => setFormData({...formData, impact_description: e.target.value})} 
-                     className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
-                     placeholder="Describe the operational impact..." 
-                   />
+                   <div>
+                      <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Impact Narrative</label>
+                      <textarea 
+                        readOnly={!isEditing}
+                        value={formData.impact_description} 
+                        onChange={e => setFormData({...formData, impact_description: e.target.value})} 
+                        className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
+                        placeholder="Describe the operational impact..." 
+                      />
+                   </div>
                 </div>
              </SectionCard>
 
@@ -1257,13 +1299,18 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              <SectionCard icon={Camera} title="Evidence" color="text-blue-400">
                 <div 
                    onClick={() => setFocusedField('evidence')}
-                   className={`grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1 p-2 rounded-lg transition-all border-2 ${focusedField === 'evidence' ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-transparent'}`}
+                   className={`grid grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar pr-1 p-2 rounded-lg transition-all border-2 ${focusedField === 'evidence' ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-transparent'}`}
                 >
                    {(formData.evidence_json || []).map((ev: any, i: number) => (
                       <div key={i} className="relative aspect-square bg-slate-950 border border-white/10 rounded-lg overflow-hidden group shadow-xl">
                          <img src={ev.content} className="w-full h-full object-cover" />
                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                            <button disabled={!isEditing} onClick={(e) => { e.stopPropagation(); setFormData({...formData, evidence_json: formData.evidence_json.filter((_:any,idx:number)=>idx!==i)}) }} className="p-1.5 bg-rose-600 text-white rounded"><Trash2 size={12}/></button>
+                            <button onClick={(e) => { 
+                               e.stopPropagation(); 
+                               const nextEvidence = formData.evidence_json.filter((_:any,idx:number)=>idx!==i);
+                               setFormData({...formData, evidence_json: nextEvidence});
+                               if (!isEditing) onSave({...formData, evidence_json: nextEvidence});
+                            }} className="p-1.5 bg-rose-600 text-white rounded hover:bg-rose-500 transition-colors shadow-lg"><Trash2 size={12}/></button>
                          </div>
                       </div>
                    ))}
@@ -1271,7 +1318,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       <Plus size={20} />
                    </div>
                 </div>
-                {focusedField === 'evidence' && <p className="text-[8px] font-black uppercase text-blue-400 text-center animate-pulse">Ready to paste evidence...</p>}
+                {focusedField === 'evidence' && <p className="text-[8px] font-black uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
              </SectionCard>
           </div>
 
@@ -1342,6 +1389,28 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                           </div>
                         </div>
                     </div>
+
+                    {/* Timeline Analytics Bar */}
+                    {timelineStats && (
+                       <div className="px-6 py-2 bg-purple-600/10 border-b border-white/5 flex items-center justify-between">
+                          <div className="flex items-center gap-8">
+                             <div className="flex flex-col">
+                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Timeline Start</span>
+                                <span className="text-[10px] font-black text-purple-400">{timelineStats.start}</span>
+                             </div>
+                             <div className="w-px h-6 bg-white/10" />
+                             <div className="flex flex-col">
+                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Timeline End</span>
+                                <span className="text-[10px] font-black text-blue-400">{timelineStats.end}</span>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-3 px-4 py-1 bg-white/5 rounded-full border border-white/10">
+                             <Clock size={12} className="text-emerald-400" />
+                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Duration:</span>
+                             <span className="text-[11px] font-black text-emerald-400 tabular-nums">{timelineStats.duration}</span>
+                          </div>
+                       </div>
+                    )}
                     
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                         <div className="relative pl-12 space-y-4 max-w-full">
@@ -1367,28 +1436,43 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                         </div>
                                         <div className="flex-1">
                                           {isEditingEvent ? (
-                                             <div className="space-y-4 bg-black/40 p-4 rounded-lg border border-purple-500/30">
-                                                <textarea 
-                                                   value={e.description} 
-                                                   onChange={ev => handleUpdateTimeline(e.id, { description: ev.target.value })}
-                                                   className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-sm text-white font-bold outline-none focus:border-purple-500/50"
-                                                />
-                                                <div className="flex justify-end gap-2">
-                                                   <button onClick={() => setEditingTimelineId(null)} className="h-10 px-4 text-[10px] font-black uppercase text-slate-500 hover:text-white">Cancel</button>
-                                                   <button onClick={() => setEditingTimelineId(null)} className="h-10 px-4 bg-purple-600 text-white rounded text-[10px] font-black uppercase">Save</button>
+                                             <div className="grid grid-cols-12 gap-4 bg-black/60 p-5 rounded-xl border border-purple-500/40 shadow-2xl">
+                                                <div className="col-span-12">
+                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Description</label>
+                                                   <textarea 
+                                                      value={editTimelineData.description} 
+                                                      onChange={ev => setEditTimelineData({...editTimelineData, description: ev.target.value})}
+                                                      className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
+                                                   />
+                                                </div>
+                                                <div className="col-span-4">
+                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Owner</label>
+                                                   <input value={editTimelineData.owner} onChange={ev => setEditTimelineData({...editTimelineData, owner: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-purple-500/50" />
+                                                </div>
+                                                <div className="col-span-4">
+                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Team</label>
+                                                   <input value={editTimelineData.owner_team} onChange={ev => setEditTimelineData({...editTimelineData, owner_team: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-purple-500/50" />
+                                                </div>
+                                                <div className="col-span-4">
+                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Event Time</label>
+                                                   <input type="datetime-local" value={editTimelineData.event_time.slice(0, 16)} onChange={ev => setEditTimelineData({...editTimelineData, event_time: new Date(ev.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-slate-400 outline-none [color-scheme:dark]" />
+                                                </div>
+                                                <div className="col-span-12 flex justify-end gap-2 pt-2">
+                                                   <button onClick={() => { setEditingTimelineId(null); setEditTimelineData(null); }} className="h-10 px-6 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                                                   <button onClick={saveTimelineUpdate} className="h-10 px-8 bg-purple-600 text-white rounded text-[10px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all">Save Event</button>
                                                 </div>
                                              </div>
                                           ) : (
                                              <>
-                                                <p className="text-lg font-bold text-white tracking-tight leading-tight normal-case mb-2">{e.description}</p>
+                                                <p className="text-[11px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
                                                 <div className="flex items-center gap-3">
-                                                   <div className="flex items-center gap-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md">
-                                                      <User size={10} className="text-purple-400" />
-                                                      <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{e.owner || 'UNKNOWN OWNER'}</span>
+                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
+                                                      <User size={12} className="text-purple-400" />
+                                                      <span className="text-[9px] font-black text-purple-300 uppercase tracking-widest">{e.owner || 'N/A'}</span>
                                                    </div>
                                                    {e.owner_team && (
-                                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                         // {e.owner_team}
+                                                      <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                                         {e.owner_team}
                                                       </div>
                                                    )}
                                                 </div>
@@ -1412,7 +1496,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                           </div>
                                        </div>
                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                          <button onClick={() => setEditingTimelineId(e.id)} className="w-11 h-11 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20"><Edit2 size={16}/></button>
+                                          <button onClick={() => startEditingTimeline(e)} className="w-11 h-11 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20"><Edit2 size={16}/></button>
                                           <button onClick={() => handleDeleteTimeline(e.id)} className="w-11 h-11 flex items-center justify-center bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20"><Trash2 size={16}/></button>
                                        </div>
                                     </div>
