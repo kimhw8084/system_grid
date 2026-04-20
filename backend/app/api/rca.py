@@ -67,30 +67,65 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/{rca_id}")
 async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.RcaRecord).options(joinedload(models.RcaRecord.linked_failure_modes)).filter(models.RcaRecord.id == rca_id))
+    result = await db.execute(select(models.RcaRecord).options(
+        joinedload(models.RcaRecord.linked_failure_modes),
+        joinedload(models.RcaRecord.timeline),
+        joinedload(models.RcaRecord.mitigations)
+    ).filter(models.RcaRecord.id == rca_id))
     record = result.unique().scalar_one_or_none()
     if not record: raise HTTPException(404, "RCA Record not found")
     
     linked_modes_data = data.pop("linked_failure_modes", None)
+    timeline_data = data.pop("timeline", None)
+    mitigations_data = data.pop("mitigations", None)
+    
     clean_data = filter_valid_columns(models.RcaRecord, data)
     
+    # Priority Mapping (Frontend uses strings, DB uses Integer for RcaRecord)
+    p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10}
+    if "priority" in clean_data and isinstance(clean_data["priority"], str):
+        clean_data["priority"] = p_map.get(clean_data["priority"].upper(), 1)
+
     # Handle ISO dates
-    for date_field in ["occurrence_at", "acknowledged_at"]:
+    for date_field in ["occurrence_at", "acknowledged_at", "detection_at"]:
         if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
             clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
         elif date_field in clean_data and not clean_data[date_field]:
             clean_data[date_field] = None
 
+    # Sync primary owner from owners list if provided
+    if "owners" in clean_data and isinstance(clean_data["owners"], list) and clean_data["owners"]:
+        clean_data["owner"] = clean_data["owners"][0]
+
     for k, v in clean_data.items():
         setattr(record, k, v)
     
+    # Sync Failure Modes
     if linked_modes_data is not None:
-        mode_ids = [m.get("id") for m in linked_modes_data if m.get("id")]
+        mode_ids = [m if isinstance(m, int) else m.get("id") for m in linked_modes_data if (isinstance(m, int) or m.get("id"))]
         if mode_ids:
             modes_result = await db.execute(select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(mode_ids)))
             record.linked_failure_modes = list(modes_result.scalars().all())
         else:
             record.linked_failure_modes = []
+
+    # Sync Timeline (Brute force: delete and re-create for simplicity in sync)
+    if timeline_data is not None:
+        await db.execute(delete(models.RcaTimelineEvent).where(models.RcaTimelineEvent.rca_id == rca_id))
+        for t in timeline_data:
+            t_clean = filter_valid_columns(models.RcaTimelineEvent, t)
+            t_clean["rca_id"] = rca_id
+            if 'event_time' in t_clean and isinstance(t_clean['event_time'], str):
+                t_clean['event_time'] = datetime.fromisoformat(t_clean['event_time'].replace('Z', '+00:00'))
+            db.add(models.RcaTimelineEvent(**t_clean))
+
+    # Sync Mitigations
+    if mitigations_data is not None:
+        await db.execute(delete(models.RcaMitigation).where(models.RcaMitigation.rca_id == rca_id))
+        for m in mitigations_data:
+            m_clean = filter_valid_columns(models.RcaMitigation, m)
+            m_clean["rca_id"] = rca_id
+            db.add(models.RcaMitigation(**m_clean))
         
     await db.commit()
     await db.refresh(record)

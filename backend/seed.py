@@ -569,10 +569,10 @@ def seed():
         # 14. Investigations (Research Module)
         print("Seeding Strategic Investigations (Research Module)...")
         investigation_seeds = [
-            ("Kernel Memory Leak Analysis", "General", "Medium", ["K8S-CLUSTER-01"], "Infrastructure", "Software Bug"),
-            ("Database Query Optimization", "Maintenance", "Low", ["SAP-PROD"], "Database", "Performance"),
-            ("External API Latency Study", "Troubleshooting", "High", ["GLOBAL-DNS"], "Network", "External Factor"),
-            ("Security Audit - Q2", "Security", "Urgent", ["FIN-CORE"], "Security", "Compliance")
+            ("Kernel Memory Leak Analysis", "General", "MEDIUM", ["K8S-CLUSTER-01"], "Infrastructure", "Software Bug"),
+            ("Database Query Optimization", "Maintenance", "LOW", ["SAP-PROD"], "Database", "Performance"),
+            ("External API Latency Study", "Troubleshooting", "HIGH", ["GLOBAL-DNS"], "Network", "External Factor"),
+            ("Security Audit - Q2", "Security", "URGENT", ["FIN-CORE"], "Security", "Compliance")
         ]
         for title, cat, priority, sys_list, res_domain, fail_domain in investigation_seeds:
             inv = Investigation(

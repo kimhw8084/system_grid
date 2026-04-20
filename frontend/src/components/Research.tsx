@@ -21,8 +21,9 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 // --- Components ---
 
 const getPriorityInfo = (p: any) => {
-  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
+  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 10 ? 'URGENT' : p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
   const colors: any = {
+    'URGENT': 'text-rose-500 border-rose-600 bg-rose-600/20 shadow-[0_0_10px_rgba(244,63,94,0.3)]',
     'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
     'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
     'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
@@ -165,6 +166,13 @@ export default function Research() {
     return [...invs, ...rcas].sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
   }, [investigations, rcaRecords])
 
+  useEffect(() => {
+    if (activeDetails) {
+       const fresh = combinedData.find((d: any) => d.id === activeDetails.id && d.type === activeDetails.type)
+       if (fresh) setActiveDetails(fresh)
+    }
+  }, [combinedData])
+
   const stats = useMemo(() => {
     return {
       total: combinedData.length,
@@ -221,10 +229,10 @@ export default function Research() {
           <div className="group relative cursor-help w-full h-full flex items-center justify-center">
             <span style={{ fontSize: `${fontSize}px` }}>{display}</span>
             {sys.length > 1 && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[100]">
-                <div className="bg-slate-900 border border-white/10 rounded-lg p-2 shadow-2xl whitespace-nowrap">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
+                <div className="bg-slate-900 border border-white/20 rounded-lg p-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap">
                   {sys.map((s: string, i: number) => (
-                    <div key={i} className="text-[10px] font-black uppercase text-blue-400">{s}</div>
+                    <div key={i} className="text-[10px] font-black uppercase text-blue-400 px-2 py-0.5 border-b border-white/5 last:border-0">{s}</div>
                   ))}
                 </div>
               </div>
@@ -267,21 +275,11 @@ export default function Research() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const val = p.value
-        const colors: any = {
-           'Highest': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-           'High': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-           'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-           'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
-        }
-        let displayVal = val
-        if (typeof val === 'number') {
-           displayVal = val >= 8 ? 'Highest' : val >= 6 ? 'High' : val >= 4 ? 'Medium' : 'Low'
-        }
+        const pInfo = getPriorityInfo(p.value)
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[displayVal] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">{displayVal || 'N/A'}</span>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${pInfo.color}`}>
+              <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">{pInfo.label}</span>
             </div>
           </div>
         )
@@ -351,12 +349,19 @@ export default function Research() {
     { 
       field: "owner_display", 
       headerName: "Owner", 
-      width: 120, 
+      width: 140, 
       filter: true, 
       cellClass: 'text-center font-black uppercase text-blue-400', 
       headerClass: 'text-center',
-      valueGetter: (p: any) => p.data.type === 'RCA' ? p.data.owner : p.data.assigned_team,
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      valueGetter: (p: any) => {
+        if (p.data.type === 'RCA') {
+           const owners = p.data.owners || []
+           if (owners.length === 0) return p.data.owner || 'N/A'
+           return owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : owners[0]
+        }
+        return p.data.assigned_team || 'N/A'
+      },
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("owner_display")
     },
     { 
@@ -628,11 +633,18 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
       >
         <div className="flex flex-wrap gap-1">
           {selected.length > 0 ? (
-            selected.map((s: string) => (
-              <span key={s} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border border-blue-500/30">
-                {s}
-              </span>
-            ))
+            selected.map((s: any) => {
+              const val = typeof s === 'string' ? s : (s.value || s)
+              const lbl = typeof s === 'string' ? s : (s.label || s)
+              return (
+                <span key={val} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border border-blue-500/30 flex items-center gap-1 group/badge">
+                  {lbl}
+                  <button onClick={(e) => { e.stopPropagation(); toggleOption(s); }} className="hover:text-rose-400 transition-colors">
+                    <X size={10} />
+                  </button>
+                </span>
+              )
+            })
           ) : (
             <span className="text-slate-500 italic uppercase">{placeholder}</span>
           )}
@@ -791,8 +803,8 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Priority</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(p => (
+                <div className="grid grid-cols-5 gap-2">
+                  {['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(p => (
                     <button 
                       key={p}
                       type="button"
@@ -849,10 +861,29 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | null>(null)
+  
+  useEffect(() => {
+    if (!isEditing) setFormData({ ...item })
+  }, [item, isEditing])
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
   const [editTimelineData, setEditTimelineData] = useState<any>(null)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-  const [newMitigation, setNewMitigation] = useState({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
+  // Click-away logic for focus fields
+  useEffect(() => {
+    const handleClickAway = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.focus-trigger')) {
+        setFocusedField(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickAway)
+    return () => document.removeEventListener('mousedown', handleClickAway)
+  }, [])
+
+  const handleDeleteOwner = (owner: string) => {
+    const nextOwners = (formData.owners || []).filter((o: string) => o !== owner)
+    setFormData({ ...formData, owners: nextOwners })
+    if (!isEditing) onSave({ ...formData, owners: nextOwners })
+  }
 
   // Navigation Safety
   useEffect(() => {
@@ -899,7 +930,16 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
       return
     }
     const now = new Date().toISOString()
-    const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now(), created_at: now, updated_at: now }]
+    const timeline = [...(formData.timeline || []), { 
+      ...newTimeline, 
+      id: Date.now(), 
+      description: newTimeline.description.toUpperCase(),
+      owner: newTimeline.owner.toUpperCase(),
+      owner_team: newTimeline.owner_team.toUpperCase(),
+      event_type: newTimeline.event_type.toUpperCase(),
+      created_at: now, 
+      updated_at: now 
+    }]
     const updated = { ...formData, timeline }
     setFormData(updated)
     onSave(updated)
@@ -1100,7 +1140,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                         label="Priority"
                         value={getPriorityInfo(formData.priority).label} 
                         onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
-                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
+                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
                       <StyledSelect 
@@ -1298,8 +1338,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              {/* 5. Evidence Section */}
              <SectionCard icon={Camera} title="Evidence" color="text-blue-400">
                 <div 
-                   onClick={() => setFocusedField('evidence')}
-                   className={`grid grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar pr-1 p-2 rounded-lg transition-all border-2 ${focusedField === 'evidence' ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-transparent'}`}
+                   onClick={(e) => { e.stopPropagation(); setFocusedField('evidence'); }}
+                   className={`grid grid-cols-3 gap-2 max-h-64 overflow-y-auto custom-scrollbar pr-1 p-2 rounded-lg transition-all border-2 focus-trigger ${focusedField === 'evidence' ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-transparent'}`}
                 >
                    {(formData.evidence_json || []).map((ev: any, i: number) => (
                       <div key={i} className="relative aspect-square bg-slate-950 border border-white/10 rounded-lg overflow-hidden group shadow-xl">
@@ -1365,8 +1405,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
                           <div 
-                             onClick={() => setFocusedField('timeline')}
-                             className={`col-span-12 flex items-center justify-between mt-4 p-3 rounded-lg border-2 transition-all ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
+                             onClick={(e) => { e.stopPropagation(); setFocusedField('timeline'); }}
+                             className={`col-span-12 flex items-center justify-between mt-4 p-3 rounded-lg border-2 transition-all focus-trigger ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
                           >
                              <div className="flex-1 flex items-center gap-4">
                                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Figure(s):</label>
@@ -1517,10 +1557,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                              <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value.toUpperCase()})} options={['WORKAROUND', 'PREVENTIVE', 'MITIGATION', 'PERMANENT FIX'].map(v=>({value:v, label:v}))} />
                              <StyledSelect label="Status" value={newMitigation.status} onChange={(e:any) => setNewMitigation({...newMitigation, status: e.target.value.toUpperCase()})} options={['PLANNED', 'IN PROGRESS', 'VERIFIED', 'COMPLETED'].map(v=>({value:v, label:v}))} />
                           </div>
-                          <textarea value={newMitigation.action_description} onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px]" placeholder="Action details..." />
+                          <textarea value={newMitigation.action_description} onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" placeholder="Action details..." />
                           <button onClick={() => {
                              if (!newMitigation.action_description.trim()) { toast.error("Description required"); return; }
-                             const nextMitigations = [...(formData.mitigations || []), { ...newMitigation, id: Date.now() }]
+                             const nextMitigations = [...(formData.mitigations || []), { ...newMitigation, action_description: newMitigation.action_description.toUpperCase(), id: Date.now() }]
                              setFormData({...formData, mitigations: nextMitigations})
                              onSave({...formData, mitigations: nextMitigations})
                              setNewMitigation({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
@@ -1644,7 +1684,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                       <StyledSelect 
                         value={pInfo.label} 
                         onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
-                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
+                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(s => ({value: s, label: s}))} 
                       />
                     </div>
                   </div>
