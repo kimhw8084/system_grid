@@ -697,7 +697,13 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
       return
     }
     
-    onSave(formData)
+    const finalData = {
+      ...formData,
+      type: formData.type?.toUpperCase(),
+      priority: formData.priority?.toUpperCase(),
+      status: formData.status?.toUpperCase()
+    }
+    onSave(finalData)
   }
 
   return (
@@ -722,9 +728,9 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 icon={Search} 
                 title="General Research" 
                 desc="Investigations regarding system behavior, optimization, or external intel. Not strictly failure-based." 
-                active={formData.type === 'Research'}
+                active={formData.type === 'RESEARCH'}
                 color="border-blue-500/50 text-blue-400"
-                onClick={() => { setFormData({...formData, type: 'Research'}); setStep(1); }}
+                onClick={() => { setFormData({...formData, type: 'RESEARCH'}); setStep(1); }}
               />
             </div>
             <button onClick={onClose} className="w-full py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Abort Initialization</button>
@@ -744,7 +750,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
                 <input 
                   value={formData.title} 
-                  onChange={e => setFormData({...formData, title: e.target.value})} 
+                  onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} 
                   className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-black uppercase" 
                   placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE..." : "E.G. CLUSTER LATENCY OPTIMIZATION..."} 
                 />
@@ -773,12 +779,12 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Priority</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {['Low', 'Medium', 'High', 'Highest'].map(p => (
+                  {['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(p => (
                     <button 
                       key={p}
                       type="button"
                       onClick={() => setFormData({...formData, priority: p})}
-                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${formData.priority === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${formData.priority?.toUpperCase() === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
                     >
                       {p}
                     </button>
@@ -829,10 +835,24 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(false)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
-  const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [] })
-  const [newMitigation, setNewMitigation] = useState({ type: 'Workaround', action_description: '', status: 'Planned' })
+  const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | null>(null)
+  const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
+  const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  const [newMitigation, setNewMitigation] = useState({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
 
-  const handlePasteTimeline = (e: React.ClipboardEvent) => {
+  // Navigation Safety
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isEditing) {
+        e.preventDefault()
+        e.returnValue = 'Unsaved changes will be lost. Exit?'
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isEditing])
+
+  const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
@@ -840,9 +860,19 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
         if (file) {
           const reader = new FileReader()
           reader.onload = (event: any) => {
-             const base64 = event.target.result
-             setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
-             toast.success('Image Captured')
+            const base64 = event.target.result
+            if (focusedField === 'evidence') {
+              setFormData((prev: any) => ({ 
+                ...prev, 
+                evidence_json: [...(prev.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }] 
+              }))
+              toast.success('Evidence Captured')
+            } else if (focusedField === 'timeline') {
+              setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
+              toast.success('Figure Captured')
+            } else {
+              toast.error('Select a field to paste images (Evidence or Figures)')
+            }
           }
           reader.readAsDataURL(file)
         }
@@ -855,11 +885,12 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
       toast.error("Description required")
       return
     }
-    const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
+    const now = new Date().toISOString()
+    const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now(), created_at: now, updated_at: now }]
     const updated = { ...formData, timeline }
     setFormData(updated)
     onSave(updated)
-    setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [] })
+    setNewTimeline({ event_type: 'OBSERVATION', description: '', event_time: now, owner: '', owner_team: '', images: [], created_at: now, updated_at: now })
     toast.success('Event Synchronized')
   }
 
@@ -867,6 +898,18 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     const updated = { ...formData, timeline: (formData.timeline || []).filter((t: any) => t.id !== id) }
     setFormData(updated)
     onSave(updated)
+    toast.success('Event Purged')
+  }
+
+  const handleUpdateTimeline = (id: number, updates: any) => {
+    const timeline = (formData.timeline || []).map((t: any) => 
+      t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
+    )
+    const updated = { ...formData, timeline }
+    setFormData(updated)
+    onSave(updated)
+    setEditingTimelineId(null)
+    toast.success('Event Updated')
   }
 
   const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
@@ -880,6 +923,25 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     return devices?.filter((d: any) => assetIds.includes(d.id)).flatMap((d: any) => d.logical_services || []) || []
   }, [devices, formData.impacted_asset_ids])
 
+  const filteredFailureModes = useMemo(() => {
+    if (!failureModes) return []
+    const activeSystems = formData.target_systems || []
+    const activeAssetIds = formData.impacted_asset_ids || []
+    
+    return failureModes.filter((fm: any) => {
+      const fmSystem = fm.system_name || fm.system
+      const fmAssetId = fm.asset_id
+      
+      if (activeAssetIds.length > 0) {
+        return activeAssetIds.includes(fmAssetId)
+      }
+      if (activeSystems.length > 0) {
+        return activeSystems.includes(fmSystem)
+      }
+      return true
+    })
+  }, [failureModes, formData.target_systems, formData.impacted_asset_ids])
+
   // Auto-save logic
   const lastSavedData = useRef(JSON.stringify(item))
   useEffect(() => {
@@ -890,38 +952,20 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     }
   }, [isEditing, formData, onSave])
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const file = items[i].getAsFile()
-        if (file) {
-          const reader = new FileReader()
-          reader.onload = (event: any) => {
-            const base64 = event.target.result
-            setFormData((prev: any) => ({ ...prev, evidence_json: [...(prev.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }] }))
-            toast.success('Evidence Synchronized')
-          }
-          reader.readAsDataURL(file)
-        }
-      }
-    }
-  }
-
   const getPriorityInfo = (p: any) => {
-    const val = typeof p === 'string' ? p : (p >= 8 ? 'Highest' : p >= 6 ? 'High' : p >= 4 ? 'Medium' : 'Low')
+    const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
     const colors: any = {
-      'Highest': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-      'High': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-      'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-      'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+      'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+      'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+      'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+      'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
     }
     return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
   }
 
   const pInfo = getPriorityInfo(formData.priority)
   
-  const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value, label: o.label }))
+  const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value.toUpperCase(), label: o.label.toUpperCase() }))
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={handlePaste}>
@@ -934,7 +978,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status?.toUpperCase()}</div>
                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
               </div>
@@ -943,12 +987,26 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           </div>
           <div className="flex items-center space-x-3">
             <button 
-              onClick={() => setIsEditing(!isEditing)} 
+              onClick={() => {
+                if (isEditing) {
+                  onSave(formData)
+                  lastSavedData.current = JSON.stringify(formData)
+                }
+                setIsEditing(!isEditing)
+              }} 
               className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
-            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button 
+              onClick={() => {
+                if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
+                onClose()
+              }} 
+              className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
+            >
+              <X size={24}/>
+            </button>
           </div>
         </div>
 
@@ -963,8 +1021,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       <SearchableMultiSelect 
                          label="Owners" 
                          selected={formData.owners || []} 
-                         onChange={(next: string[]) => setFormData({...formData, owners: next})} 
-                         options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support']} 
+                         onChange={(next: string[]) => setFormData({...formData, owners: next.map(s => s.toUpperCase())})} 
+                         options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support'].map(s => s.toUpperCase())} 
                          placeholder="Add Owners..." 
                          allowCustom={true}
                       />
@@ -973,8 +1031,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                          label="Incident Type" 
-                         value={formData.incident_type} 
-                         onChange={(e: any) => setFormData({...formData, incident_type: e.target.value})} 
+                         value={formData.incident_type?.toUpperCase()} 
+                         onChange={(e: any) => setFormData({...formData, incident_type: e.target.value.toUpperCase()})} 
                          options={enumOptions('IncidentType')} 
                          disabled={!isEditing}
                       />
@@ -993,8 +1051,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                          label="Detection Type" 
-                         value={formData.detection_type} 
-                         onChange={(e: any) => setFormData({...formData, detection_type: e.target.value})} 
+                         value={formData.detection_type?.toUpperCase()} 
+                         onChange={(e: any) => setFormData({...formData, detection_type: e.target.value.toUpperCase()})} 
                          options={enumOptions('DetectionType')} 
                          disabled={!isEditing}
                       />
@@ -1013,16 +1071,16 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                         label="Priority"
-                        value={formData.priority} 
-                        onChange={(e: any) => setFormData({...formData, priority: e.target.value})} 
-                        options={['Low', 'Medium', 'High', 'Highest'].map(s => ({value: s, label: s}))} 
+                        value={formData.priority?.toUpperCase()} 
+                        onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
+                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
                       <StyledSelect 
                         label="Status"
-                        value={formData.status} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
-                        options={['Analyzing', 'Open', 'Investigation', 'Resolved', 'Closed', 'Escalated'].map(s => ({value: s, label: s}))} 
+                        value={formData.status?.toUpperCase()} 
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                        options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
                    </div>
@@ -1055,18 +1113,45 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   <SearchableMultiSelect 
                                      selected={formData.linked_failure_mode_ids || []} 
                                      onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
-                                     options={(failureModes || []).map((fm: any) => ({ value: fm.id, label: fm.title }))} 
+                                     options={filteredFailureModes.map((fm: any) => ({ value: fm.id, label: `${fm.title} [${fm.system_name || fm.system}]` }))} 
                                      placeholder="Add Failure Modes..." 
                                      allowCustom={false}
                                   />
                                </div>
-                               <div className="mt-2 space-y-1">
-                                  {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
-                                     <div key={fm.id} className="text-[9px] font-black uppercase text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 flex items-center justify-between">
-                                        <span>{fm.title}</span>
-                                        {isEditing && <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})}><X size={10}/></button>}
-                                     </div>
-                                  ))}
+                               <div className="mt-4 overflow-x-auto">
+                                  <table className="w-full text-left border-collapse">
+                                     <thead>
+                                        <tr className="border-b border-white/10">
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">Failure Mode</th>
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">System/Server</th>
+                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2 text-right">Actions</th>
+                                        </tr>
+                                     </thead>
+                                     <tbody>
+                                        {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
+                                           <tr key={fm.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                              <td className="py-2 px-2">
+                                                 <div className="text-[9px] font-black uppercase text-purple-400">{fm.title}</div>
+                                              </td>
+                                              <td className="py-2 px-2">
+                                                 <div className="text-[9px] font-black uppercase text-slate-400">{fm.system_name || fm.system}</div>
+                                              </td>
+                                              <td className="py-2 px-2 text-right">
+                                                 {isEditing && (
+                                                    <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})} className="text-rose-500 hover:text-rose-300">
+                                                       <X size={12}/>
+                                                    </button>
+                                                 )}
+                                              </td>
+                                           </tr>
+                                        ))}
+                                        {(formData.linked_failure_mode_ids || []).length === 0 && (
+                                           <tr>
+                                              <td colSpan={3} className="py-8 text-center text-[9px] font-black uppercase text-slate-600 italic">No linked failure modes</td>
+                                           </tr>
+                                        )}
+                                     </tbody>
+                                  </table>
                                </div>
                             </motion.div>
                          )}
@@ -1103,7 +1188,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                            <SearchableMultiSelect 
                               label="Target System(s)" 
                               selected={formData.target_systems || []} 
-                              onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: []})} 
+                              onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: [], linked_failure_mode_ids: []})} 
                               options={systemsList} 
                               placeholder="Select Systems..." 
                               allowCustom={false}
@@ -1117,7 +1202,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                     <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
                                        <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
                                          const ids = formData.impacted_asset_ids || []
-                                         setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id)})
+                                         setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id), linked_failure_mode_ids: []})
                                        }} className="sr-only" />
                                        <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/20'}`} />
                                        <span className="truncate">{a.name}</span>
@@ -1151,8 +1236,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 <div className="space-y-4">
                    <StyledSelect 
                       label="Impact Type" 
-                      value={formData.impact_type} 
-                      onChange={(e: any) => setFormData({...formData, impact_type: e.target.value})} 
+                      value={formData.impact_type?.toUpperCase()} 
+                      onChange={(e: any) => setFormData({...formData, impact_type: e.target.value.toUpperCase()})} 
                       options={enumOptions('ImpactType')} 
                       disabled={!isEditing}
                    />
@@ -1168,12 +1253,15 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
              {/* 5. Evidence Section */}
              <SectionCard icon={Camera} title="Evidence" color="text-blue-400">
-                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                <div 
+                   onClick={() => setFocusedField('evidence')}
+                   className={`grid grid-cols-3 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-1 p-2 rounded-lg transition-all border-2 ${focusedField === 'evidence' ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-transparent'}`}
+                >
                    {(formData.evidence_json || []).map((ev: any, i: number) => (
                       <div key={i} className="relative aspect-square bg-slate-950 border border-white/10 rounded-lg overflow-hidden group shadow-xl">
                          <img src={ev.content} className="w-full h-full object-cover" />
                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
-                            <button disabled={!isEditing} onClick={() => setFormData({...formData, evidence_json: formData.evidence_json.filter((_:any,idx:number)=>idx!==i)})} className="p-1.5 bg-rose-600 text-white rounded"><Trash2 size={12}/></button>
+                            <button disabled={!isEditing} onClick={(e) => { e.stopPropagation(); setFormData({...formData, evidence_json: formData.evidence_json.filter((_:any,idx:number)=>idx!==i)}) }} className="p-1.5 bg-rose-600 text-white rounded"><Trash2 size={12}/></button>
                          </div>
                       </div>
                    ))}
@@ -1181,6 +1269,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       <Plus size={20} />
                    </div>
                 </div>
+                {focusedField === 'evidence' && <p className="text-[8px] font-black uppercase text-blue-400 text-center animate-pulse">Ready to paste evidence...</p>}
              </SectionCard>
           </div>
 
@@ -1205,7 +1294,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              <div className="flex-1 overflow-hidden flex flex-col">
                 {activeTab === 'Timeline' && (
                   <>
-                    <div className="p-6 border-b border-white/5 bg-white/5" onPaste={handlePasteTimeline}>
+                    <div className="p-6 border-b border-white/5 bg-white/5">
                         <div className="grid grid-cols-12 gap-3 items-end">
                           <div className="col-span-12 lg:col-span-4">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
@@ -1213,35 +1302,41 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Owner</label>
-                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Team</label>
-                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
-                            <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value})} options={enumOptions('EventType')} />
+                            <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value.toUpperCase()})} options={enumOptions('EventType')} />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
                               <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
-                          <div className="col-span-12 flex items-center justify-between mt-4 bg-black/40 p-3 rounded-lg border border-white/5">
+                          <div 
+                             onClick={() => setFocusedField('timeline')}
+                             className={`col-span-12 flex items-center justify-between mt-4 p-3 rounded-lg border-2 transition-all ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
+                          >
                              <div className="flex-1 flex items-center gap-4">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Evidence Cache:</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Figure(s):</label>
                                 <div className="flex gap-2 overflow-x-auto">
                                    {(newTimeline.images || []).map((img: string, i: number) => (
                                       <div key={i} className="relative w-10 h-10 shrink-0 border border-purple-500/30 rounded overflow-hidden">
                                          <img src={img} className="w-full h-full object-cover" />
-                                         <button onClick={() => setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)})} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={8}/></button>
+                                         <button onClick={(e) => { e.stopPropagation(); setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)}) }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={8}/></button>
                                       </div>
                                    ))}
                                    {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-black">Paste images here to cache for this event...</span>}
                                 </div>
                              </div>
-                             <button onClick={handleAddTimeline} className="px-8 py-2.5 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center gap-2 border border-purple-400/50">
-                                <Plus size={16} /> Add Event
-                             </button>
+                             <div className="flex items-center gap-3">
+                                {focusedField === 'timeline' && <span className="text-[8px] font-black uppercase text-purple-400 animate-pulse mr-2">Ready to paste figures...</span>}
+                                <button onClick={handleAddTimeline} className="h-12 px-8 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center gap-2 border border-purple-400/50">
+                                   <Plus size={16} /> Add Event
+                                </button>
+                             </div>
                           </div>
                         </div>
                     </div>
@@ -1252,45 +1347,73 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                           
                           {(formData.timeline || []).sort((a:any, b:any) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()).map((e: any) => {
                             const typeColors: any = {
-                                'Detection': 'bg-rose-500 shadow-rose-500/50',
-                                'Observation': 'bg-blue-500 shadow-blue-500/50',
-                                'Mitigation': 'bg-amber-500 shadow-amber-500/50',
-                                'Resolution': 'bg-emerald-500 shadow-emerald-500/50'
+                                'DETECTION': 'bg-rose-500 shadow-rose-500/50',
+                                'OBSERVATION': 'bg-blue-500 shadow-blue-500/50',
+                                'MITIGATION': 'bg-amber-500 shadow-amber-500/50',
+                                'RESOLUTION': 'bg-emerald-500 shadow-emerald-500/50'
                             }
+                            const isEditingEvent = editingTimelineId === e.id
                             return (
                               <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all w-full">
                                   <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
                                   
                                   <div className="flex items-start justify-between gap-4">
-                                    <div className="flex items-start gap-8">
+                                    <div className="flex-1 flex items-start gap-8">
                                         <div className="w-40 shrink-0 pt-1">
                                           <p className="text-[12px] font-black text-white mb-1.5">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded border tracking-widest ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
+                                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded border tracking-widest ${e.event_type === 'DETECTION' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
                                         </div>
-                                        <div>
-                                          <p className="text-lg font-bold text-white tracking-tight leading-tight normal-case mb-2">{e.description}</p>
-                                          <div className="flex items-center gap-3">
-                                             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md">
-                                                <User size={10} className="text-purple-400" />
-                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{e.owner || 'UNKNOWN OWNER'}</span>
-                                             </div>
-                                             {e.owner_team && (
-                                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                   // {e.owner_team}
+                                        <div className="flex-1">
+                                          {isEditingEvent ? (
+                                             <div className="space-y-4 bg-black/40 p-4 rounded-lg border border-purple-500/30">
+                                                <textarea 
+                                                   value={e.description} 
+                                                   onChange={ev => handleUpdateTimeline(e.id, { description: ev.target.value })}
+                                                   className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-sm text-white font-bold outline-none focus:border-purple-500/50"
+                                                />
+                                                <div className="flex justify-end gap-2">
+                                                   <button onClick={() => setEditingTimelineId(null)} className="h-10 px-4 text-[10px] font-black uppercase text-slate-500 hover:text-white">Cancel</button>
+                                                   <button onClick={() => setEditingTimelineId(null)} className="h-10 px-4 bg-purple-600 text-white rounded text-[10px] font-black uppercase">Save</button>
                                                 </div>
-                                             )}
-                                          </div>
-                                          
-                                          {e.images && e.images.length > 0 && (
-                                             <div className="mt-4 flex gap-2 flex-wrap">
-                                                {e.images.map((img: string, idx: number) => (
-                                                   <ImageThumbnail key={idx} src={img} />
-                                                ))}
                                              </div>
+                                          ) : (
+                                             <>
+                                                <p className="text-lg font-bold text-white tracking-tight leading-tight normal-case mb-2">{e.description}</p>
+                                                <div className="flex items-center gap-3">
+                                                   <div className="flex items-center gap-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md">
+                                                      <User size={10} className="text-purple-400" />
+                                                      <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{e.owner || 'UNKNOWN OWNER'}</span>
+                                                   </div>
+                                                   {e.owner_team && (
+                                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                         // {e.owner_team}
+                                                      </div>
+                                                   )}
+                                                </div>
+                                                
+                                                {e.images && e.images.length > 0 && (
+                                                   <div className="mt-4 flex gap-2 flex-wrap">
+                                                      {e.images.map((img: string, idx: number) => (
+                                                         <ImageThumbnail key={idx} src={img} />
+                                                      ))}
+                                                   </div>
+                                                )}
+                                             </>
                                           )}
                                         </div>
                                     </div>
-                                    <button onClick={() => handleDeleteTimeline(e.id)} className="opacity-0 group-hover:opacity-100 p-3 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={18}/></button>
+                                    <div className="flex flex-col items-end gap-4">
+                                       <div className="text-right shrink-0">
+                                          <div className="flex flex-col">
+                                             <span className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">Created: {new Date(e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                             <span className="text-[8px] font-black text-blue-500/60 uppercase tracking-tighter">Modified: {new Date(e.updated_at || e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                          </div>
+                                       </div>
+                                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                          <button onClick={() => setEditingTimelineId(e.id)} className="w-11 h-11 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20"><Edit2 size={16}/></button>
+                                          <button onClick={() => handleDeleteTimeline(e.id)} className="w-11 h-11 flex items-center justify-center bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20"><Trash2 size={16}/></button>
+                                       </div>
+                                    </div>
                                   </div>
                               </div>
                             )
@@ -1305,15 +1428,17 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4 shadow-xl">
                           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Strategy</h3>
                           <div className="grid grid-cols-2 gap-4">
-                             <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value})} options={['Workaround', 'Preventive', 'Mitigation', 'Permanent Fix'].map(v=>({value:v, label:v}))} />
-                             <StyledSelect label="Status" value={newMitigation.status} onChange={(e:any) => setNewMitigation({...newMitigation, status: e.target.value})} options={['Planned', 'In Progress', 'Verified', 'Completed'].map(v=>({value:v, label:v}))} />
+                             <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value.toUpperCase()})} options={['WORKAROUND', 'PREVENTIVE', 'MITIGATION', 'PERMANENT FIX'].map(v=>({value:v, label:v}))} />
+                             <StyledSelect label="Status" value={newMitigation.status} onChange={(e:any) => setNewMitigation({...newMitigation, status: e.target.value.toUpperCase()})} options={['PLANNED', 'IN PROGRESS', 'VERIFIED', 'COMPLETED'].map(v=>({value:v, label:v}))} />
                           </div>
                           <textarea value={newMitigation.action_description} onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px]" placeholder="Action details..." />
                           <button onClick={() => {
                              if (!newMitigation.action_description.trim()) { toast.error("Description required"); return; }
-                             setFormData({...formData, mitigations: [...(formData.mitigations || []), { ...newMitigation, id: Date.now() }]})
-                             setNewMitigation({ type: 'Workaround', action_description: '', status: 'Planned' })
-                          }} className="w-full py-3 bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
+                             const nextMitigations = [...(formData.mitigations || []), { ...newMitigation, id: Date.now() }]
+                             setFormData({...formData, mitigations: nextMitigations})
+                             onSave({...formData, mitigations: nextMitigations})
+                             setNewMitigation({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
+                          }} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
                       </div>
 
                       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
@@ -1322,11 +1447,15 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               <div className="flex items-center gap-6">
                                  <div className="w-24 text-center">
                                     <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-blue-500/30 text-blue-400 bg-blue-500/10">{m.type}</span>
-                                    <p className={`text-[8px] font-black uppercase mt-1.5 ${m.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>{m.status}</p>
+                                    <p className={`text-[8px] font-black uppercase mt-1.5 ${m.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{m.status}</p>
                                  </div>
                                  <p className="text-[11px] font-bold text-slate-200">{m.action_description}</p>
                               </div>
-                              <button onClick={() => setFormData({...formData, mitigations: formData.mitigations.filter((x:any)=>x.id!==m.id)})} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                              <button onClick={() => {
+                                 const nextMitigations = formData.mitigations.filter((x:any)=>x.id!==m.id)
+                                 setFormData({...formData, mitigations: nextMitigations})
+                                 onSave({...formData, mitigations: nextMitigations})
+                              }} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
                            </div>
                          ))}
                       </div>
@@ -1359,26 +1488,45 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
-  const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'Diagnosis', poc: '', timestamp: new Date().toISOString() })
+  const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
+
+  // Navigation Safety
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isEditing) {
+        e.preventDefault()
+        e.returnValue = 'Unsaved changes will be lost. Exit?'
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isEditing])
 
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
+      const formattedLog = { ...log, entry_type: log.entry_type.toUpperCase(), poc: log.poc.toUpperCase() }
       const res = await apiFetch(`/api/v1/investigations/${item.id}/logs`, {
         method: 'POST',
-        body: JSON.stringify(log)
+        body: JSON.stringify(formattedLog)
       })
       return res.json()
     },
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, progress_logs: [...(prev.progress_logs || []), data] }))
-      setNewLog({ entry_text: '', entry_type: 'Diagnosis', poc: '', timestamp: new Date().toISOString() })
+      setNewLog({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
       toast.success('Pulse Captured')
     }
   })
 
   const handleSave = () => {
-    onSave(formData)
+    const finalData = { 
+      ...formData, 
+      status: formData.status?.toUpperCase(), 
+      priority: formData.priority?.toUpperCase() 
+    }
+    onSave(finalData)
     setIsEditing(false)
+    toast.success('Intelligence Synchronized')
   }
 
   const sortedLogs = useMemo(() => {
@@ -1386,12 +1534,12 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   }, [formData.progress_logs])
 
   const getPriorityInfo = (p: any) => {
-    const val = typeof p === 'string' ? p : (p >= 8 ? 'Highest' : p >= 6 ? 'High' : p >= 4 ? 'Medium' : 'Low')
+    const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
     const colors: any = {
-      'Highest': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-      'High': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-      'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-      'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+      'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+      'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+      'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+      'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
     }
     return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
   }
@@ -1410,24 +1558,24 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
               <div className="flex items-center space-x-4 mb-1.5">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-32">
+                    <div className="w-40">
                       <StyledSelect 
-                        value={formData.status} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
-                        options={['Analyzing', 'Open', 'Investigation', 'Resolved', 'Closed', 'Escalated'].map(s => ({value: s, label: s}))} 
+                        value={formData.status?.toUpperCase()} 
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                        options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                       />
                     </div>
-                    <div className="w-32">
+                    <div className="w-40">
                       <StyledSelect 
-                        value={formData.priority} 
-                        onChange={(e: any) => setFormData({...formData, priority: e.target.value})} 
-                        options={['Low', 'Medium', 'High', 'Highest'].map(s => ({value: s, label: s}))} 
+                        value={formData.priority?.toUpperCase()} 
+                        onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
+                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
                       />
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
+                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status?.toUpperCase()}</div>
                     <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                   </div>
                 )}
@@ -1443,9 +1591,18 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock' : 'Edit'}
             </button>
             <button onClick={handleSave} className="h-11 px-6 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button 
+               onClick={() => {
+                  if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
+                  onClose()
+               }} 
+               className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
+            >
+               <X size={24}/>
+            </button>
           </div>
         </div>
+
 
         <div className="flex-1 flex overflow-hidden p-6 gap-6">
            {/* Analytical Fields (Left) */}
@@ -1500,14 +1657,14 @@ function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: 
     <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-lg p-4' : 'rounded-lg p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
       <div className="flex-1 space-y-2">
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
-         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
+         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
       </div>
       <div className={compact ? 'w-32' : 'w-48'}>
-         <StyledSelect label="Type" value={newLog.entry_type} onChange={e => setNewLog({...newLog, entry_type: e.target.value})} options={[{value:'Diagnosis', label:'Diagnosis'}, {value:'Action', label:'Action'}, {value:'Observation', label:'Observation'}, {value:'Milestone', label:'Milestone'}]} />
+         <StyledSelect label="Type" value={newLog.entry_type?.toUpperCase()} onChange={e => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={[{value:'DIAGNOSIS', label:'DIAGNOSIS'}, {value:'ACTION', label:'ACTION'}, {value:'OBSERVATION', label:'OBSERVATION'}, {value:'MILESTONE', label:'MILESTONE'}]} />
       </div>
       <div className={compact ? 'w-24' : 'w-40'}>
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
-         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
+         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
       </div>
       <div className={compact ? 'w-40' : 'w-56'}>
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
@@ -1537,10 +1694,10 @@ function IntelligenceStream({ logs, compact = false }: any) {
                     <div className={`${compact ? 'w-24' : 'w-32'} shrink-0 pt-0.5`}>
                        <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
-                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{l.entry_type}</span>
+                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{l.entry_type?.toUpperCase()}</span>
                     </div>
                     <div className="flex-1">
-                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed tracking-tight`}>{l.entry_text}</p>
+                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
                        <div className="flex items-center gap-2 mt-2">
                           <User size={10} className="text-slate-600" />
                           <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
