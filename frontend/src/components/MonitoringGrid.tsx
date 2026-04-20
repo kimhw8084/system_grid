@@ -436,7 +436,7 @@ export default function MonitoringGrid() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">High-Reliability Infrastructure Observability</p>
            </div>
            
-           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
                 <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     Active
                 </button>
@@ -453,11 +453,11 @@ export default function MonitoringGrid() {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="SCAN MATRIX..."
-              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black outline-none focus:border-blue-500/50 w-64 transition-all"
+              className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black outline-none focus:border-blue-500/50 w-64 transition-all"
             />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
@@ -476,10 +476,10 @@ export default function MonitoringGrid() {
           </div>
 
           <div className="relative bulk-menu-container">
-            <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+            <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
             <AnimatePresence>
               {showBulkMenu && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
                    <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Monitors Selected</p>
                    {activeTab === 'deleted' ? (
                      <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
@@ -503,7 +503,7 @@ export default function MonitoringGrid() {
 
           <button 
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             + Add Monitoring
           </button>
@@ -518,7 +518,7 @@ export default function MonitoringGrid() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -557,7 +557,7 @@ export default function MonitoringGrid() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -718,7 +718,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isStatusOpen) return (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                    <Tag size={24}/> <span>Update Status</span>
@@ -734,7 +734,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
               />
               <div className="flex space-x-3 pt-2">
                  <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
+                 <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
               </div>
            </motion.div>
         </div>
@@ -742,7 +742,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isSeverityOpen) return (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-rose-500/30 space-y-6">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
                    <Shield size={24}/> <span>Update Severity</span>
@@ -758,7 +758,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
               />
               <div className="flex space-x-3 pt-2">
                  <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
+                 <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
               </div>
            </motion.div>
         </div>
@@ -766,7 +766,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isNotifyOpen) return (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-amber-500/30 space-y-6">
+           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
                    <Bell size={24}/> <span>Update Notification</span>
@@ -782,7 +782,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
               />
               <div className="flex space-x-3 pt-2">
                  <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
+                 <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
               </div>
            </motion.div>
         </div>
@@ -796,7 +796,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 function ServicesModal({ names, title, onClose }: any) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-3xl border-blue-500/20">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -804,7 +804,7 @@ function ServicesModal({ names, title, onClose }: any) {
         <p className="text-[10px] text-slate-500 font-bold uppercase mb-4 italic">Linked to: {title}</p>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
           {names.map((name: string, i: number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center space-x-3">
+            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3">
               <Shield size={14} className="text-blue-500" />
               <span className="text-[11px] font-bold text-slate-200">{name}</span>
             </div>
@@ -818,7 +818,7 @@ function ServicesModal({ names, title, onClose }: any) {
 function RecipientsModal({ recipients, method, onClose }: any) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-3xl border-emerald-500/20">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -829,7 +829,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
         </div>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
           {recipients.map((r: string, i: number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center space-x-3 group hover:border-emerald-500/30 transition-all">
+            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all">
               <Mail size={14} className="text-emerald-500" />
               <span className="text-[11px] font-bold text-slate-200">{r}</span>
             </div>
@@ -844,7 +844,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-3xl border-amber-500/20">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
              <BookOpen size={20} className="text-amber-500" />
@@ -858,7 +858,7 @@ function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
             <button 
               key={id} 
               onClick={() => onOpenBkm(id)}
-              className="w-full text-left bg-black/40 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
+              className="w-full text-left bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
             >
               <div className="flex items-center space-x-4">
                  <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
@@ -873,7 +873,7 @@ function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
             </button>
           ))}
           {ids.length === 0 && (
-             <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-2xl">
+             <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-lg">
                 <BookOpen size={24} className="text-slate-800" />
                 <p className="text-[10px] text-slate-700 font-black uppercase italic tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
              </div>
@@ -893,10 +893,10 @@ function BkmDetailModal({ bkmId, onClose }: any) {
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-[40px] border-amber-500/30">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 border border-amber-500/20">
+              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/20">
                 <BookOpen size={24} />
               </div>
               <div>
@@ -908,7 +908,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
                 </div>
               </div>
            </div>
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
               <X size={24} />
            </button>
         </div>
@@ -921,7 +921,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
              </div>
            ) : (
              <>
-                <div className="bg-amber-500/5 border border-amber-500/10 rounded-3xl p-6">
+                <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-6">
                    <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center space-x-2">
                       <Zap size={12}/> <span>Executive Summary</span>
                    </h4>
@@ -935,10 +935,10 @@ function BkmDetailModal({ bkmId, onClose }: any) {
                         {bkm.content_json.steps.map((step: any, i: number) => (
                            <div key={i} className="flex space-x-6 relative">
                               {i < bkm.content_json.steps.length - 1 && <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-white/5" />}
-                              <div className="w-10 h-10 rounded-2xl bg-slate-800 border border-white/10 flex items-center justify-center flex-shrink-0 z-10 text-[12px] font-black text-amber-500 shadow-lg">
+                              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center flex-shrink-0 z-10 text-[12px] font-black text-amber-500 shadow-lg">
                                  {i + 1}
                               </div>
-                              <div className="bg-black/20 border border-white/5 rounded-2xl p-5 flex-1 hover:border-amber-500/20 transition-all">
+                              <div className="bg-black/20 border border-white/5 rounded-lg p-5 flex-1 hover:border-amber-500/20 transition-all">
                                  <h5 className="text-[11px] font-black uppercase text-slate-200 mb-1">{step.title}</h5>
                                  <p className="text-[12px] text-slate-400 font-bold leading-relaxed">{step.description}</p>
                               </div>
@@ -961,14 +961,14 @@ function MonitoringDetailModal({ item, onClose }: any) {
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-8">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-10 rounded-[40px] border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)] relative">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-10 rounded-lg border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)] relative">
         {/* Background Accent */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600/5 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
 
         <div className="flex items-center justify-between mb-8 relative z-10">
            <div className="flex items-center space-x-6">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+              <div className="w-14 h-14 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
                  <Monitor size={28} strokeWidth={1.5} />
               </div>
               <div>
@@ -983,7 +983,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
               </div>
            </div>
-           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 hover:text-white transition-all">
+           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all">
               <X size={24} />
            </button>
         </div>
@@ -993,7 +993,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
               <div className="sm:col-span-7 space-y-8">
                  {/* Purpose & Impact */}
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-blue-600/5 border border-white/5 rounded-3xl p-5 group hover:border-blue-500/20 transition-all">
+                    <div className="bg-blue-600/5 border border-white/5 rounded-lg p-5 group hover:border-blue-500/20 transition-all">
                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Info size={12}/> <span>Purpose</span>
                        </h4>
@@ -1001,7 +1001,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                           {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
-                    <div className="bg-rose-600/5 border border-white/5 rounded-3xl p-5 group hover:border-rose-500/20 transition-all">
+                    <div className="bg-rose-600/5 border border-white/5 rounded-lg p-5 group hover:border-rose-500/20 transition-all">
                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Zap size={12}/> <span>Impact</span>
                        </h4>
@@ -1026,7 +1026,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                     </div>
                     <div className="space-y-3">
                        {item.logic_json?.map((log: any) => (
-                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-2xl overflow-hidden transition-all hover:border-emerald-500/20">
+                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-emerald-500/20">
                             <button 
                                onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
@@ -1077,7 +1077,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                           { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
                           { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
                        ].map((stat, i) => (
-                         <div key={i} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
+                         <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
                             <div className="flex items-center justify-between mb-2">
                                <stat.icon size={12} className="text-slate-600" />
                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
@@ -1095,13 +1095,13 @@ function MonitoringDetailModal({ item, onClose }: any) {
                     </h3>
                     <div className="space-y-2">
                        {item.recovery_doc_titles?.map((title: string, i: number) => (
-                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group">
+                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group">
                             <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
                             <span className="text-[10px] font-black uppercase text-slate-300 tracking-tight leading-tight">{title}</span>
                          </div>
                        ))}
                        {item.recovery_doc_titles?.length === 0 && (
-                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-4 text-center">
+                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-4 text-center">
                              <AlertCircle size={18} className="mx-auto text-rose-500 mb-2" />
                              <p className="text-[10px] font-black text-rose-500 uppercase italic">No BKM Linked</p>
                           </div>
@@ -1112,7 +1112,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                  {item.monitoring_url && (
                     <button 
                        onClick={() => window.open(item.monitoring_url, '_blank')}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
                     >
                        <ExternalLink size={14} />
                        <span>Open Platform Console</span>
@@ -1303,11 +1303,11 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-7xl h-full sm:h-[90vh] overflow-hidden flex flex-col p-6 sm:p-8 rounded-[40px] border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
+        className="glass-panel w-full max-w-7xl h-full sm:h-[90vh] overflow-hidden flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-6 mb-6 gap-4">
            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400 border border-blue-500/20">
+              <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20">
                 <Zap size={20} />
               </div>
               <div>
@@ -1324,7 +1324,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
               </div>
            </div>
            
-           <div className="flex bg-black/40 rounded-2xl p-1 border border-white/5">
+           <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
               {[
                 { id: 'context', label: '1. Detection & Context' },
                 { id: 'logic', label: '2. Logic Specification' },
@@ -1333,14 +1333,14 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`px-4 sm:px-6 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   {tab.label}
                 </button>
               ))}
            </div>
 
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
               <X size={20} />
            </button>
         </div>
@@ -1363,7 +1363,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       />
 
                       {formData.device_id && (
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-3">
+                        <div className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-3">
                            <div className="flex items-center justify-between px-1">
                               <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Service Scope</label>
                               <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">
@@ -1405,7 +1405,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       />
                    </div>
                    
-                   <div className="space-y-4 p-4 bg-white/5 rounded-3xl border border-white/5">
+                   <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="flex items-center justify-between px-1">
                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Ownership Matrix</h3>
                          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
@@ -1417,7 +1417,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               value={newOwner.name}
                               onChange={e => setNewOwner({...newOwner, name: e.target.value})}
                               placeholder="Name..."
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
                             />
                          </div>
                          <div className="col-span-3">
@@ -1425,26 +1425,26 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               value={newOwner.external_id}
                               onChange={e => setNewOwner({...newOwner, external_id: e.target.value})}
                               placeholder="ID..."
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
                             />
                          </div>
                          <div className="col-span-4">
                             <select 
                               value={newOwner.role}
                               onChange={e => setNewOwner({...newOwner, role: e.target.value})}
-                              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
                             >
                                {ownerRoles.map((r:any) => <option key={r.id} value={r.value}>{r.label}</option>)}
                             </select>
                          </div>
                          <div className="col-span-1">
-                            <button onClick={addOwner} className="w-full h-full flex items-center justify-center bg-blue-600 rounded-xl text-white hover:bg-blue-500 transition-all"><Plus size={14}/></button>
+                            <button onClick={addOwner} className="w-full h-full flex items-center justify-center bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition-all"><Plus size={14}/></button>
                          </div>
                       </div>
 
                       <div className="space-y-1 mt-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                          {formData.owners?.map((o: any, idx: number) => (
-                           <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5 group">
+                           <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-lg border border-white/5 group">
                               <div className="flex items-center space-x-3">
                                  <User size={12} className="text-blue-500" />
                                  <div className="flex flex-col">
@@ -1467,7 +1467,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           value={formData.title}
                           onChange={e => setFormData({...formData, title: e.target.value})}
                           placeholder="e.g. CORE-DB: High CPU Load Alert"
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
                         />
                       </div>
 
@@ -1477,7 +1477,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           value={formData.platform}
                           onChange={e => setFormData({...formData, platform: e.target.value})}
                           placeholder="e.g. Zabbix, Prometheus"
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
                         />
                       </div>
                    </div>
@@ -1490,7 +1490,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           value={formData.monitoring_url}
                           onChange={e => setFormData({...formData, monitoring_url: e.target.value})}
                           placeholder="https://console.internal/..."
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all"
                         />
                       </div>
                    </div>
@@ -1505,7 +1505,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           onChange={e => setFormData({...formData, purpose: e.target.value})}
                           placeholder="Why are we monitoring this? How does it help the team?"
                           rows={4}
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
                         />
                       </div>
                       <div className="space-y-2">
@@ -1517,7 +1517,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           onChange={e => setFormData({...formData, impact: e.target.value})}
                           placeholder="What does it mean if this alert notifies? What is the consequence?"
                           rows={4}
-                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
                         />
                       </div>
                    </div>
@@ -1544,7 +1544,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                         <div 
                           key={entry.id}
                           onClick={() => setActiveLogicId(entry.id)}
-                          className={`p-4 rounded-2xl border cursor-pointer transition-all relative group ${
+                          className={`p-4 rounded-lg border cursor-pointer transition-all relative group ${
                             activeLogicId === entry.id 
                               ? 'bg-blue-600/10 border-blue-500/50 shadow-lg' 
                               : 'bg-black/40 border-white/5 hover:border-white/20'
@@ -1564,7 +1564,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                         </div>
                       ))}
                       {formData.logic_json?.length === 0 && (
-                        <div className="py-12 text-center text-slate-600 italic text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-3xl">
+                        <div className="py-12 text-center text-slate-600 italic text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-lg">
                            No logic entries defined
                         </div>
                       )}
@@ -1580,7 +1580,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                                  type="number"
                                  value={formData.check_interval}
                                  onChange={e => setFormData({...formData, check_interval: parseInt(e.target.value)})}
-                                 className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                                 className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                                />
                             </div>
                          </div>
@@ -1592,7 +1592,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                                  type="number"
                                  value={formData.alert_duration}
                                  onChange={e => setFormData({...formData, alert_duration: parseInt(e.target.value)})}
-                                 className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                                 className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                                />
                             </div>
                          </div>
@@ -1617,7 +1617,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                                value={activeLogicEntry.description}
                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
                                placeholder="What does this logic check?"
-                               className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                               className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                              />
                            </div>
                         </div>
@@ -1633,7 +1633,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               </button>
                            </div>
                            
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-2xl overflow-hidden flex font-mono text-[12px] shadow-inner relative group min-h-[200px]">
+                           <div className="flex-1 bg-black/40 border border-white/10 rounded-lg overflow-hidden flex font-mono text-[12px] shadow-inner relative group min-h-[200px]">
                               {showLineNumbers && (
                                 <div className="bg-white/5 border-r border-white/10 px-3 py-4 text-slate-600 text-right select-none whitespace-pre leading-relaxed min-w-[40px]">
                                    {activeLogicEntry.logic_info.split('\n').map((_, i) => i + 1).join('\n')}
@@ -1656,7 +1656,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                         </div>
                      </>
                    ) : (
-                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] space-y-4">
+                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg space-y-4">
                         <Activity size={40} className="text-slate-700" />
                         <div className="text-center">
                            <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Select an entry to modify logic</p>
@@ -1679,7 +1679,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                      options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
                    />
 
-                   <div className="space-y-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+                   <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="space-y-1.5">
                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notification Throttle (Seconds)</label>
                          <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight italic">Minimum time between re-alerts for the same issue</p>
@@ -1687,7 +1687,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                            type="number"
                            value={formData.notification_throttle}
                            onChange={e => setFormData({...formData, notification_throttle: parseInt(e.target.value)})}
-                           className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                           className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                          />
                       </div>
                    </div>
@@ -1708,9 +1708,9 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               onChange={e => setRecipientInput(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && addRecipient()}
                               placeholder="Channel ID or Email..."
-                              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500"
+                              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500"
                             />
-                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-xl transition-all"><Plus size={14}/></button>
+                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg transition-all"><Plus size={14}/></button>
                          </div>
                          <div className="flex flex-wrap gap-2 mt-2">
                             {formData.notification_recipients.map((r: string) => (
@@ -1731,7 +1731,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    </h3>
                    
                    <div className="space-y-4">
-                      <div className="p-6 border-2 border-dashed border-white/5 rounded-3xl space-y-6">
+                      <div className="p-6 border-2 border-dashed border-white/5 rounded-lg space-y-6">
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                <p className="text-[12px] font-black text-white uppercase tracking-tighter italic">Link Recovery Documents</p>
@@ -1749,7 +1749,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               value={recoverySearch}
                               onChange={e => setRecoverySearch(e.target.value)}
                               placeholder="Search Knowledge Base for Recovery Procedures..."
-                              className="w-full bg-black/60 border border-white/10 rounded-2xl pl-11 pr-4 py-4 text-[11px] font-black outline-none focus:border-blue-500 transition-all shadow-2xl"
+                              className="w-full bg-black/60 border border-white/10 rounded-lg pl-11 pr-4 py-4 text-[11px] font-black outline-none focus:border-blue-500 transition-all shadow-2xl"
                             />
                          </div>
 
@@ -1759,7 +1759,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                                  key={entry.id}
                                  type="button"
                                  onClick={() => toggleRecoveryDoc(entry.id)}
-                                 className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group/item ${
+                                 className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group/item ${
                                    formData.recovery_docs?.includes(entry.id)
                                      ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
                                      : 'bg-black/40 border-white/5 hover:border-white/20'
@@ -1786,7 +1786,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       </div>
                    </div>
                    
-                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-start space-x-3">
+                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start space-x-3">
                       <div className="p-2 bg-amber-500/20 rounded-lg text-amber-400 mt-1">
                          <AlertCircle size={16} />
                       </div>
@@ -1809,7 +1809,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                   }
                 }}
                 disabled={formData.status !== 'Existing'}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-xl border transition-all ${
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all ${
                   formData.is_active 
                     ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
                     : 'bg-slate-500/10 border-white/10 text-slate-500 hover:bg-white/5 hover:text-white'
@@ -1821,11 +1821,11 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
            </div>
 
            <div className="flex space-x-4">
-              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
+              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
               <button 
                 onClick={() => mutation.mutate(formData)}
                 disabled={mutation.isPending}
-                className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
+                className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
               >
                 {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
                 <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
@@ -1868,10 +1868,10 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-8">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-[40px] border-blue-500/30">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-lg border-blue-500/30">
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-400">
+              <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400">
                 <Clock size={24} />
               </div>
               <div>
@@ -1879,7 +1879,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</p>
               </div>
            </div>
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 hover:text-white transition-colors">
+           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
               <X size={24} />
            </button>
         </div>
@@ -1896,7 +1896,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                   <button 
                     key={h.id}
                     onClick={() => setSelectedIndex(idx)}
-                    className={`w-full p-4 rounded-2xl border text-left transition-all ${selectedIndex === idx ? 'bg-blue-600 border-blue-400 shadow-lg' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                    className={`w-full p-4 rounded-lg border text-left transition-all ${selectedIndex === idx ? 'bg-blue-600 border-blue-400 shadow-lg' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
                   >
                     <div className="flex items-center justify-between mb-1">
                        <span className={`text-[10px] font-black uppercase ${selectedIndex === idx ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
@@ -1913,7 +1913,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
            </div>
 
            {/* Diff View */}
-           <div className="flex-1 bg-black/40 rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+           <div className="flex-1 bg-black/40 rounded-lg border border-white/5 overflow-hidden flex flex-col">
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     {previous ? `Comparing v${previous.version} → v${current?.version}` : `Initial Version v${current?.version}`}
@@ -1929,13 +1929,13 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                           <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest">{d.field.replace(/_/g, ' ')}</span>
                        </div>
                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-3 relative overflow-hidden">
+                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 relative overflow-hidden">
                              <div className="absolute top-0 right-0 px-2 py-0.5 bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase rounded-bl-lg">OLD</div>
                              <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono">
                                 {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
                              </pre>
                           </div>
-                          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 relative overflow-hidden">
+                          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 relative overflow-hidden">
                              <div className="absolute top-0 right-0 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-bl-lg">NEW</div>
                              <pre className="text-[11px] text-emerald-300 whitespace-pre-wrap font-mono font-bold">
                                 {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}

@@ -58,10 +58,10 @@ export const ConfirmationModal = ({
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
         exit={{ scale: 0.95, opacity: 0 }}
-        className={`glass-panel w-[400px] p-10 rounded-[40px] border ${getVariantBorder()} space-y-6 relative overflow-hidden`}
+        className={`glass-panel w-[400px] p-10 rounded-lg border ${getVariantBorder()} space-y-6 relative overflow-hidden`}
       >
         <div className="flex items-center space-x-4">
-          <div className="p-3 bg-white/5 rounded-2xl">
+          <div className="p-3 bg-white/5 rounded-lg">
             {getVariantIcon()}
           </div>
           <h2 className="text-xl font-black uppercase tracking-tighter text-white">
@@ -82,7 +82,7 @@ export const ConfirmationModal = ({
           </button>
           <button
             onClick={() => { onConfirm(); onClose(); }}
-            className={`flex-1 py-4 px-6 ${getVariantColor()} text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all`}
+            className={`flex-1 py-4 px-6 ${getVariantColor()} text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all`}
           >
             {confirmText}
           </button>

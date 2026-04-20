@@ -23,12 +23,12 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
             initial={{ scale: 0.98, opacity: 0, y: 10 }} 
             animate={{ scale: 1, opacity: 1, y: 0 }} 
             exit={{ scale: 0.98, opacity: 0, y: 10 }}
-            className="glass-panel w-full max-w-[950px] max-h-[85vh] flex flex-col rounded-[32px] border border-blue-500/30 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] bg-[#020617]/90"
+            className="glass-panel w-full max-w-[950px] max-h-[85vh] flex flex-col rounded-lg border border-blue-500/30 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)] bg-[#020617]/90"
           >
              {/* Header */}
              <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-white/[0.02]">
                 <div className="flex items-center gap-5">
-                    <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-500/30 shadow-inner">
+                    <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30 shadow-inner">
                       <Network size={24} className="text-blue-400" />
                     </div>
                     <div>
@@ -42,7 +42,7 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                         </p>
                     </div>
                 </div>
-                <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-xl transition-all border border-white/10 hover:border-rose-500/20 group">
+                <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all border border-white/10 hover:border-rose-500/20 group">
                   <X size={20} className="group-hover:rotate-90 transition-transform duration-300"/>
                 </button>
              </div>
@@ -151,7 +151,7 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                   </div>                  <div className="h-3 w-px bg-white/10" />
                   <span className="text-[9px] font-mono text-slate-600">ID: {sourceDevice?.id || '---'}</span>
                 </div>
-                <button onClick={onClose} className="px-8 py-2.5 bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95">
+                <button onClick={onClose} className="px-8 py-2.5 bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300 border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95">
                     Close Registry
                 </button>
              </div>

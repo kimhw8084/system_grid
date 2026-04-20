@@ -85,7 +85,7 @@ const PatchNotesModal = ({ onClose }: any) => {
   const [expandedIndex, setExpandedIndex] = useState(0)
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-hidden flex flex-col p-10 rounded-[40px] border-blue-500/30">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-hidden flex flex-col p-10 rounded-2xl border-blue-500/30">
          <div className="flex items-center justify-between border-b border-white/10 pb-6">
             <div className="flex items-center space-x-4">
                <Star size={24} className="text-blue-400 animate-pulse" />

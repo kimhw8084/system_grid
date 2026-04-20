@@ -42,7 +42,7 @@ const SharedServiceModals = ({
       <AnimatePresence>
         {activeEdit && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
                      <Layers size={28}/> <span>Modify Service Configuration</span>
@@ -58,7 +58,7 @@ const SharedServiceModals = ({
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
                     <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
@@ -157,7 +157,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
             <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Tag size={24}/> <span>Update Status</span>
@@ -176,7 +176,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
              <button 
                disabled={!selectedStatus}
                onClick={() => onApply(selectedStatus)} 
-               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -197,7 +197,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
             <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Globe size={24}/> <span>Update Environment</span>
@@ -216,7 +216,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
              <button
                disabled={!selectedEnv}
                onClick={() => onApply(selectedEnv)}
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -294,7 +294,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   }
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Metadata</span>
@@ -336,7 +336,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 setJsonValue(e.target.value);
                 syncFromJSON(e.target.value);
             }} 
-            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`}
           />
         )}
       </div>
@@ -354,7 +354,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
   return (
     <div className="p-6 space-y-4">
       <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
-      <div className="bg-slate-900/50 rounded-xl border border-white/5 overflow-hidden">
+      <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
         <table className="w-full text-[10px]">
           <thead className="bg-white/5 border-b border-white/5">
             <tr>
@@ -407,7 +407,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
   return (
     <div className="flex-1 flex overflow-hidden space-x-4">
       {/* Left Vertical List */}
-      <div className="w-80 flex flex-col glass-panel rounded-2xl overflow-hidden border-white/5">
+      <div className="w-80 flex flex-col glass-panel rounded-lg overflow-hidden border-white/5">
         <div className="p-4 border-b border-white/5 space-y-3 bg-white/5">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -415,7 +415,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
               value={filter.name} 
               onChange={e => setFilter({ ...filter, name: e.target.value })} 
               placeholder="Search Assets..." 
-              className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 transition-all" 
+              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 transition-all" 
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -444,7 +444,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <button
               key={a.id}
               onClick={() => onSelect(a.id)}
-              className={`w-full flex flex-col p-3 rounded-xl transition-all text-left relative overflow-hidden group ${selectedId === a.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}
+              className={`w-full flex flex-col p-3 rounded-lg transition-all text-left relative overflow-hidden group ${selectedId === a.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-black text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
@@ -474,14 +474,14 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
       </div>
 
       {/* Right Report Content */}
-      <div className="flex-1 glass-panel rounded-2xl overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
+      <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
           <div className="p-12 space-y-12">
             {/* Report Header */}
             <div className="flex items-start justify-between">
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                   <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
+                   <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/20">
                       <Box size={32} />
                    </div>
                    <div>
@@ -505,7 +505,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                  }`}>
                    {selectedAsset.status} STATUS
                  </div>
-                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
                     <Edit2 size={14}/> <span>Modify Config</span>
                  </button>
               </div>
@@ -519,17 +519,17 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Connectivity & Access</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                     <div className="bg-black/20 p-5 rounded-lg border border-white/5">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</p>
                         <p className="text-xl font-mono text-blue-400 font-black">{selectedAsset.primary_ip || '---.---.---.---'}</p>
                      </div>
-                     <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                     <div className="bg-black/20 p-5 rounded-lg border border-white/5">
                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</p>
                         <p className="text-xl font-mono text-indigo-400 font-black">{selectedAsset.management_ip || '---.---.---.---'}</p>
                      </div>
                   </div>
                   {selectedAsset.management_url && (
-                    <div className="bg-black/20 p-5 rounded-2xl border border-indigo-500/20 flex items-center justify-between group cursor-pointer" onClick={() => window.open(selectedAsset.management_url, '_blank')}>
+                    <div className="bg-black/20 p-5 rounded-lg border border-indigo-500/20 flex items-center justify-between group cursor-pointer" onClick={() => window.open(selectedAsset.management_url, '_blank')}>
                        <div className="flex items-center space-x-4">
                           <Terminal size={24} className="text-indigo-400" />
                           <div>
@@ -548,7 +548,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <CpuIcon size={16} className="text-amber-400" />
                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hardware & System</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-y-6 gap-x-12">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-y-6 gap-x-12">
                      <div>
                         <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Platform</p>
                         <p className="text-xs font-black text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
@@ -575,7 +575,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <HardDrive size={16} className="text-emerald-400" />
                   <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Resource Registry ({selectedAsset.hardware_summary})</h3>
                </div>
-               <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -587,7 +587,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Layers size={16} className="text-blue-400" />
                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
-                  <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
                        deviceId={selectedAsset.id} 
                        onViewDetails={onViewServiceDetails} 
@@ -602,7 +602,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Calendar size={16} className="text-rose-400" />
                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-8">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-8">
                      <div className="space-y-6">
                         <div>
                            <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Commissioning</p>
@@ -625,7 +625,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center justify-between p-5 bg-black/20 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between p-5 bg-black/20 rounded-lg border border-white/5">
                      <div className="flex items-center space-x-3">
                         <Activity size={16} className="text-blue-400" />
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Power Payload (Avg/Max)</span>
@@ -641,7 +641,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <LinkIcon size={16} className="text-indigo-400" />
                   <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Dependency Vectors</h3>
                </div>
-               <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <RelationsTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -967,7 +967,7 @@ export default function AssetGrid() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Infrastructure Asset Registry</p>
            </div>
 
-           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
                 <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     <LayoutGrid size={14}/> <span>Table</span>
                 </button>
@@ -977,7 +977,7 @@ export default function AssetGrid() {
            </div>
 
            {viewMode === 'grid' && (
-             <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+             <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
                   <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                       Existing
                   </button>
@@ -992,10 +992,10 @@ export default function AssetGrid() {
           <div className="flex items-center space-x-3">
             <div className="relative">
                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
-            <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5">
+            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5">
                <button 
                   onClick={() => setShowStyleLab(!showStyleLab)} 
                   className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
@@ -1009,10 +1009,10 @@ export default function AssetGrid() {
             </div>
 
             <div className="relative bulk-menu-container">
-              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
               <AnimatePresence>
                 {showBulkMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
                      <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
                      {activeTab === 'deleted' ? (
                        <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
@@ -1033,7 +1033,7 @@ export default function AssetGrid() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
+            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
           </div>
         )}
       </div>
@@ -1046,7 +1046,7 @@ export default function AssetGrid() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -1086,7 +1086,7 @@ export default function AssetGrid() {
       </AnimatePresence>
 
       {viewMode === 'grid' ? (
-        <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+        <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
@@ -1145,7 +1145,7 @@ export default function AssetGrid() {
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
                      <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
@@ -1162,7 +1162,7 @@ export default function AssetGrid() {
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
                     <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
@@ -1257,15 +1257,15 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
-                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
+                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
+                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
                 </div>
                 {mode === 'edit' && (
                     <button 
                         disabled={!!metadataError}
                         onClick={() => onSave(localData)} 
-                        className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                     >
                         Save Metadata
                     </button>
@@ -1306,9 +1306,9 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
                     {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
@@ -1350,7 +1350,7 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-6 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+      <div className="grid grid-cols-6 gap-2 bg-white/5 p-3 rounded-lg border border-white/5">
          <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
             <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
          </select>
@@ -1429,17 +1429,17 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 font-black text-slate-200 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
               </td>
               <td className="px-4 py-2 text-slate-500 text-center">
                 {editingId === h.id ? (
-                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
               <td className="px-4 py-2 font-mono text-center text-slate-400">
                 {editingId === h.id ? (
-                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[11px] w-12 outline-none focus:border-blue-500" />
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1.5 text-[11px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
               </td>
               <td className="px-4 py-2 text-center">
@@ -1495,7 +1495,7 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-xl border border-white/5 items-end">
+      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-lg border border-white/5 items-end">
          <div className="col-span-1">
            <StyledSelect
               value={newSec.secret_type}
@@ -1506,17 +1506,17 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Identity</label>
-            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
-            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Notes</label>
-            <input value={newSec.notes} onChange={e => setNewSec({...newSec, notes: e.target.value})} placeholder="Purpose / Note" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newSec.notes} onChange={e => setNewSec({...newSec, notes: e.target.value})} placeholder="Purpose / Note" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
-         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
       </div>
       <SecretsTable deviceId={deviceId} />
     </div>
@@ -1584,12 +1584,12 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 font-black text-slate-200">
                 {editingId === s.id ? (
-                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
               </td>
               <td className="px-4 py-2 font-mono text-slate-400">
                 {editingId === s.id ? (
-                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
+                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
                 ) : (
                     <div className="flex items-center space-x-3 group">
                        <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
@@ -1601,7 +1601,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 text-slate-500">
                 {editingId === s.id ? (
-                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.notes}
               </td>
               <td className="px-4 py-2 text-center">
@@ -1703,7 +1703,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
          <div className="grid grid-cols-11 gap-4 items-end">
             <div className="col-span-3">
                <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
-               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-xl px-4 py-2.5 text-xs text-blue-400 font-black uppercase truncate">
+               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-lg px-4 py-2.5 text-xs text-blue-400 font-black uppercase truncate">
                   {currentDevice?.name || 'Local'}
                </div>
             </div>
@@ -1720,7 +1720,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
             <div className="col-span-1 flex justify-center pb-2">
                <button 
                  onClick={swapRoles}
-                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all group"
+                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all group"
                  title="Swap Roles"
                >
                   <ArrowRightLeft size={16} className="group-active:rotate-180 transition-transform duration-300" />
@@ -1754,7 +1754,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
             </div>
             <button 
               onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
             >
                <Plus size={14} /> <span>Establish Vector</span>
             </button>
@@ -1970,7 +1970,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
 
   return (
     <div className="space-y-6 py-6">
-      <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit mb-4">
+      <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit mb-4">
          {['config', 'hardware', 'secrets', 'relations', 'metadata'].map(t => {
            const isDisabled = !formData.id && ['hardware', 'secrets', 'relations'].includes(t)
            return (
@@ -1979,7 +1979,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              onClick={() => !isDisabled && setActiveSubTab(t)}
              disabled={isDisabled}
              title={isDisabled ? 'Save asset first' : ''}
-             className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+             className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
              {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
            </button>
          )
@@ -1995,7 +1995,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
-                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
+                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
                   placeholder="SRV-NAME-01" 
                 />
              </div>
@@ -2010,7 +2010,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner</label>
-                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
                 <StyledSelect
                     label="Business Unit"
@@ -2044,7 +2044,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
-                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div />
              </div>
@@ -2064,15 +2064,15 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="space-y-3">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Primary IP Address</label>
-                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
+                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management IP Address</label>
-                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-indigo-500" />
+                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-mono outline-none focus:border-indigo-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management URL / Console</label>
-                    <input value={formData.management_url || ""} onChange={e => setFormData({...formData, management_url: e.target.value})} placeholder="https://..." className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
+                    <input value={formData.management_url || ""} onChange={e => setFormData({...formData, management_url: e.target.value})} placeholder="https://..." className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
                 </div>
              </div>
 
@@ -2083,33 +2083,33 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
                 <div className="flex space-x-2">
-                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
-                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value.toUpperCase()})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value.toUpperCase()})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Serial / Asset Tag</label>
                 <div className="flex space-x-2">
-                    <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                    <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                    <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                    <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
                 <div className="flex space-x-2">
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none font-mono" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Typical</label>
                     </div>
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-mono" />
+                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none font-mono" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Peak</label>
                     </div>
                 </div>
@@ -2118,21 +2118,21 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Purchase Date</label>
-                    <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none" />
+                    <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
-                    <input type="date" value={formData.install_date ? formData.install_date.split('T')[0] : ""} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-emerald-500/30" />
+                    <input type="date" value={formData.install_date ? formData.install_date.split('T')[0] : ""} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-emerald-500/30" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Warranty End</label>
-                    <input type="date" value={formData.warranty_end ? formData.warranty_end.split('T')[0] : ""} onChange={e => setFormData({...formData, warranty_end: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-amber-500/30" />
+                    <input type="date" value={formData.warranty_end ? formData.warranty_end.split('T')[0] : ""} onChange={e => setFormData({...formData, warranty_end: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-amber-500/30" />
                 </div>
                 <div>
                     <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">EOL / Retirement</label>
-                    <input type="date" value={formData.eol_date ? formData.eol_date.split('T')[0] : ""} onChange={e => setFormData({...formData, eol_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-rose-500/30" />
+                    <input type="date" value={formData.eol_date ? formData.eol_date.split('T')[0] : ""} onChange={e => setFormData({...formData, eol_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-rose-500/30" />
                 </div>
              </div>
           </div>
@@ -2160,7 +2160,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
             if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory");
             onSave({ data: formData })
           }}
-          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
+          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-lg text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
         >
           {isSaving && <RefreshCcw size={14} className="animate-spin" />}
           <span>Save Asset</span>

@@ -35,7 +35,7 @@ const getPriorityInfo = (p: any) => {
 const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
 
 const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-[32px] flex items-center justify-between shadow-inner">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
     <div>
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
       <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
@@ -45,7 +45,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
 )
 
 const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
-  <div className={`bg-white/5 border border-white/5 rounded-[32px] p-4 space-y-3 ${className}`}>
+  <div className={`bg-white/5 border border-white/5 rounded-lg p-4 space-y-3 ${className}`}>
     <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-1">
       <Icon size={14} className={color} />
       <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">{title}</h3>
@@ -416,10 +416,10 @@ export default function Research() {
         <div className="flex items-center space-x-3">
           <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab"><Activity size={16} /></button>
              <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker"><Sliders size={16} /></button>
              <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV"><FileText size={16} /></button>
@@ -429,7 +429,7 @@ export default function Research() {
 
           <button 
             onClick={() => setActiveModal({ title: '', status: 'Open', priority: 'Low', type: null, problem_statement: '', systems: [], target_systems: [] })} 
-            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
           >
             <PlusCircle size={14}/> Add Research
           </button>
@@ -439,7 +439,7 @@ export default function Research() {
       <AnimatePresence>
         {showStyleLab && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3 text-blue-400">
                      <Activity size={16} />
@@ -471,7 +471,7 @@ export default function Research() {
         <CompactSummary label="Critical/Highest" value={stats.urgent} icon={AlertTriangle} color="text-rose-500" />
       </div>
 
-      <div className="flex-1 glass-panel rounded-[40px] overflow-hidden ag-theme-alpine-dark relative border-white/5">
+      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
         {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
@@ -629,7 +629,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
       {label && <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">{label}</label>}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px] relative z-10"
+        className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px] relative z-10"
       >
         <div className="flex flex-wrap gap-1">
           {selected.length > 0 ? (
@@ -658,7 +658,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
             initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-[1000] w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-3xl"
+            className="absolute z-[1000] w-full mt-2 bg-slate-900 border border-white/10 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden backdrop-blur-3xl"
             style={{ top: '100%' }}
           >
             <div className="p-2 border-b border-white/5 bg-white/5">
@@ -733,7 +733,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-[40px] border border-blue-500/30 space-y-6">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-lg border border-blue-500/30 space-y-6">
         {step === 0 ? (
           <div className="space-y-6">
             <div className="text-center space-y-2">
@@ -776,7 +776,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 <input 
                   value={formData.title} 
                   onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-black uppercase" 
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-black uppercase" 
                   placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE..." : "E.G. CLUSTER LATENCY OPTIMIZATION..."} 
                 />
               </div>
@@ -796,7 +796,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                       type="datetime-local" 
                       value={formData.type === 'RCA' ? (formData.occurrence_at?.slice(0, 16) || '') : (formData.initiation_at?.slice(0, 16) || '')} 
                       onChange={e => setFormData({...formData, [formData.type === 'RCA' ? 'occurrence_at' : 'initiation_at']: e.target.value})}
-                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                      className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
                     />
                  </div>
               </div>
@@ -809,7 +809,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                       key={p}
                       type="button"
                       onClick={() => setFormData({...formData, priority: p})}
-                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${safeUpper(formData.priority) === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                      className={`py-2.5 rounded-lg text-[10px] font-black uppercase transition-all border ${safeUpper(formData.priority) === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
                     >
                       {p}
                     </button>
@@ -822,7 +822,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 <textarea 
                   value={formData.problem_statement} 
                   onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[100px] leading-relaxed font-bold" 
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[11px] outline-none focus:border-blue-500 text-slate-300 min-h-[100px] leading-relaxed font-bold" 
                   placeholder="Describe the context or the problem in detail for easy recall..." 
                 />
               </div>
@@ -830,7 +830,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
             <div className="flex space-x-4 pt-2">
               <button onClick={onClose} className="flex-1 py-3.5 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Cancel</button>
-              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
+              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
                 {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Zap size={16} />} 
                 Launch {formData.type} Flow
               </button>
@@ -844,8 +844,8 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
 
 function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
   return (
-    <button onClick={onClick} className={`p-6 rounded-3xl border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
-      <div className={`p-3 rounded-2xl bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
+    <button onClick={onClick} className={`p-6 rounded-lg border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
+      <div className={`p-3 rounded-lg bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
       <div>
         <h3 className={`text-sm font-black uppercase italic tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
         <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
@@ -1032,7 +1032,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={handlePaste}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1750px] h-full rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1750px] h-full rounded-lg border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
@@ -1106,7 +1106,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                            readOnly={!isEditing}
                            value={formData.occurrence_at?.slice(0, 16) || ''} 
                            onChange={e => setFormData({...formData, occurrence_at: e.target.value})}
-                           className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                           className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
                          />
                       </div>
                    </div>
@@ -1126,7 +1126,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                            readOnly={!isEditing}
                            value={formData.detection_at?.slice(0, 16) || ''} 
                            onChange={e => setFormData({...formData, detection_at: e.target.value})}
-                           className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
+                           className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold [color-scheme:dark]" 
                          />
                       </div>
                    </div>
@@ -1471,7 +1471,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                         </div>
                                         <div className="flex-1">
                                           {isEditingEvent ? (
-                                             <div className="grid grid-cols-12 gap-4 bg-black/60 p-5 rounded-xl border border-purple-500/40 shadow-2xl">
+                                             <div className="grid grid-cols-12 gap-4 bg-black/60 p-5 rounded-lg border border-purple-500/40 shadow-2xl">
                                                 <div className="col-span-12">
                                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Description</label>
                                                    <textarea 
@@ -1550,7 +1550,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
                 {activeTab === 'Mitigation' && (
                   <div className="p-6 flex-1 flex flex-col space-y-6 overflow-hidden">
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-4 shadow-xl">
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
                           <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Strategy</h3>
                           <div className="grid grid-cols-2 gap-4">
                              <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value.toUpperCase()})} options={['WORKAROUND', 'PREVENTIVE', 'MITIGATION', 'PERMANENT FIX'].map(v=>({value:v, label:v}))} />
@@ -1658,7 +1658,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
         
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">

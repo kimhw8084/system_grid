@@ -87,11 +87,11 @@ export default function Knowledge() {
         <div className="flex items-center space-x-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search knowledge..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search knowledge..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveModal({ category: 'BKM', title: '', content: '', tags: [], content_json: { purpose: '', prerequisites: [], flowchart: '', steps: [], tips: [], troubleshooting: [], next_steps: [] } })} className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all">+ New BKM</button>
-            <button onClick={() => setActiveModal({ category: 'Q&A', title: '', content: '', tags: [], linked_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ New Entry</button>
+            <button onClick={() => setActiveModal({ category: 'BKM', title: '', content: '', tags: [], content_json: { purpose: '', prerequisites: [], flowchart: '', steps: [], tips: [], troubleshooting: [], next_steps: [] } })} className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all">+ New BKM</button>
+            <button onClick={() => setActiveModal({ category: 'Q&A', title: '', content: '', tags: [], linked_device_ids: [] })} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ New Entry</button>
           </div>
         </div>
       </div>
@@ -115,10 +115,10 @@ export default function Knowledge() {
                   layoutId={`entry-${entry.id}`}
                   key={entry.id} 
                   onClick={() => setActiveEntry(entry)}
-                  className={`glass-panel border border-white/5 p-6 rounded-[32px] hover:border-blue-500/30 transition-all cursor-pointer group flex flex-col h-64 ${entry.category === 'BKM' ? 'border-rose-500/20 bg-rose-500/[0.02]' : ''}`}
+                  className={`glass-panel border border-white/5 p-6 rounded-lg hover:border-blue-500/30 transition-all cursor-pointer group flex flex-col h-64 ${entry.category === 'BKM' ? 'border-rose-500/20 bg-rose-500/[0.02]' : ''}`}
                 >
                    <div className="flex items-start justify-between mb-4">
-                      <div className={`p-2 rounded-xl bg-white/5 ${
+                      <div className={`p-2 rounded-lg bg-white/5 ${
                         entry.category === 'Q&A' ? 'text-amber-400' :
                         entry.category === 'Manual' ? 'text-blue-400' :
                         entry.category === 'BKM' ? 'text-rose-500' :
@@ -192,7 +192,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving }: any) {
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${isBKM ? 'w-full max-w-6xl' : 'w-[800px]'} max-h-[95vh] p-10 rounded-[40px] border border-blue-500/30 overflow-hidden flex flex-col shadow-2xl`}>
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${isBKM ? 'w-full max-w-6xl' : 'w-[800px]'} max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-hidden flex flex-col shadow-2xl`}>
           <div className="flex items-center justify-between border-b border-white/5 pb-6">
              <h2 className={`text-2xl font-black uppercase flex items-center gap-3 ${isBKM ? 'text-rose-500' : 'text-blue-400'}`}>
                 {isBKM ? <Shield size={24} /> : <PlusCircle size={24} />} 
@@ -220,7 +220,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving }: any) {
                 </div>
                 <div className="space-y-2">
                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">BKM Title / Subject</label>
-                   <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-3.5 text-sm text-white font-bold uppercase tracking-tight outline-none focus:border-blue-500/50" placeholder="e.g. Critical Failure Recovery Flow for DB Nodes" />
+                   <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-lg px-6 py-3.5 text-sm text-white font-bold uppercase tracking-tight outline-none focus:border-blue-500/50" placeholder="e.g. Critical Failure Recovery Flow for DB Nodes" />
                 </div>
              </div>
 
@@ -233,7 +233,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving }: any) {
                     <textarea 
                       value={formData.content} 
                       onChange={e => setFormData({...formData, content: e.target.value})} 
-                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-6 text-xs text-slate-300 min-h-[300px] outline-none focus:border-blue-500/50 leading-relaxed font-medium" 
+                      className="w-full bg-slate-900 border border-white/10 rounded-lg p-6 text-xs text-slate-300 min-h-[300px] outline-none focus:border-blue-500/50 leading-relaxed font-medium" 
                       placeholder="Draft your intelligence here..."
                     />
                  </div>
@@ -254,17 +254,17 @@ function KnowledgeForm({ item, onClose, onSave, isSaving }: any) {
                      value={tagInput} 
                      onChange={e => setTagInput(e.target.value)} 
                      onKeyDown={e => e.key === 'Enter' && addTag()}
-                     className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white uppercase font-black tracking-widest outline-none focus:border-blue-500" 
+                     className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-[10px] text-white uppercase font-black tracking-widest outline-none focus:border-blue-500" 
                      placeholder="ADD_TAG..." 
                    />
-                   <button onClick={addTag} className="p-2 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><Plus size={20}/></button>
+                   <button onClick={addTag} className="p-2 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><Plus size={20}/></button>
                 </div>
              </div>
           </div>
 
           <div className="flex space-x-3 pt-8 mt-auto border-t border-white/5">
              <button onClick={onClose} className="flex-1 py-4 text-[11px] font-black uppercase text-slate-500 hover:text-white transition-colors">Discard Draft</button>
-             <button onClick={() => onSave(formData)} className={`flex-[2] py-4 rounded-2xl text-[11px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${isBKM ? 'bg-rose-600 text-white shadow-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20'}`}>
+             <button onClick={() => onSave(formData)} className={`flex-[2] py-4 rounded-lg text-[11px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${isBKM ? 'bg-rose-600 text-white shadow-rose-500/20' : 'bg-blue-600 text-white shadow-blue-500/20'}`}>
                 {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
                 Synchronize Knowledge
              </button>
@@ -286,7 +286,7 @@ function BKMEditor({ data, onChange }: any) {
     <div className="space-y-10 py-4">
       <section className="space-y-3">
         <label className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14}/> Purpose & Objective</label>
-        <textarea value={data.purpose} onChange={e => update('purpose', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm font-medium text-slate-200 min-h-[100px] outline-none focus:border-rose-500/30" placeholder="Clearly state the goal of this BKM..." />
+        <textarea value={data.purpose} onChange={e => update('purpose', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-6 text-sm font-medium text-slate-200 min-h-[100px] outline-none focus:border-rose-500/30" placeholder="Clearly state the goal of this BKM..." />
       </section>
 
       <section className="space-y-4">
@@ -296,7 +296,7 @@ function BKMEditor({ data, onChange }: any) {
         </div>
         <div className="space-y-3">
           {data.prerequisites?.map((p: any, idx: number) => (
-            <div key={idx} className="flex gap-4 items-start bg-white/5 p-4 rounded-2xl border border-white/5">
+            <div key={idx} className="flex gap-4 items-start bg-white/5 p-4 rounded-lg border border-white/5">
               <input value={p.description} onChange={e => {
                 const next = [...data.prerequisites]; next[idx].description = e.target.value; update('prerequisites', next)
               }} className="flex-1 bg-transparent border-none outline-none text-xs font-bold text-white uppercase" placeholder="Describe prereq..." />
@@ -316,7 +316,7 @@ function BKMEditor({ data, onChange }: any) {
         </div>
         <div className="space-y-4">
           {data.steps?.map((s: any, idx: number) => (
-            <div key={idx} className="flex gap-6 p-6 bg-white/5 border border-white/5 rounded-3xl relative group">
+            <div key={idx} className="flex gap-6 p-6 bg-white/5 border border-white/5 rounded-lg relative group">
               <div className="flex flex-col items-center gap-2">
                  <div className="w-8 h-8 rounded-full bg-rose-600 flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-rose-500/20">{idx + 1}</div>
                  <div className="flex-1 w-px bg-white/10" />
@@ -327,9 +327,9 @@ function BKMEditor({ data, onChange }: any) {
                 }} className="w-full bg-transparent border-none outline-none text-sm font-black text-white uppercase tracking-tight" placeholder="Step Task Header..." />
                 <textarea value={s.description} onChange={e => {
                   const next = [...data.steps]; next[idx].description = e.target.value; update('steps', next)
-                }} className="w-full bg-black/20 border border-white/5 rounded-xl p-4 text-xs font-medium text-slate-300 min-h-[80px]" placeholder="Detailed instructions for this task..." />
+                }} className="w-full bg-black/20 border border-white/5 rounded-lg p-4 text-xs font-medium text-slate-300 min-h-[80px]" placeholder="Detailed instructions for this task..." />
               </div>
-              <div className="w-32 h-32 bg-white/5 rounded-2xl flex flex-col items-center justify-center border border-dashed border-white/10 text-slate-600 hover:text-rose-500 cursor-pointer transition-all">
+              <div className="w-32 h-32 bg-white/5 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 text-slate-600 hover:text-rose-500 cursor-pointer transition-all">
                  <ImageIcon size={24} />
                  <span className="text-[8px] font-black uppercase mt-1">Add Image</span>
               </div>
@@ -347,7 +347,7 @@ function BKMEditor({ data, onChange }: any) {
           </div>
           <div className="space-y-2">
             {data.tips?.map((t: string, idx: number) => (
-              <div key={idx} className="flex gap-3 items-center bg-amber-500/5 p-3 rounded-xl border border-amber-500/10">
+              <div key={idx} className="flex gap-3 items-center bg-amber-500/5 p-3 rounded-lg border border-amber-500/10">
                 <Zap size={12} className="text-amber-500 shrink-0" />
                 <input value={t} onChange={e => {
                   const next = [...data.tips]; next[idx] = e.target.value; update('tips', next)
@@ -364,7 +364,7 @@ function BKMEditor({ data, onChange }: any) {
           </div>
           <div className="space-y-2">
             {data.next_steps?.map((n: string, idx: number) => (
-              <div key={idx} className="flex gap-3 items-center bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
+              <div key={idx} className="flex gap-3 items-center bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10">
                 <ArrowRight size={12} className="text-emerald-500 shrink-0" />
                 <input value={n} onChange={e => {
                   const next = [...data.next_steps]; next[idx] = e.target.value; update('next_steps', next)
@@ -400,10 +400,10 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete }: any) {
                 </div>
              </div>
              <div className="flex items-center space-x-3">
-                <button onClick={onEdit} className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-emerald-400 transition-all" title="Modify Entry"><Edit2 size={20}/></button>
-                <button onClick={onDelete} className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-rose-500 transition-all" title="Expunge Entry"><Trash2 size={20}/></button>
+                <button onClick={onEdit} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-emerald-400 transition-all" title="Modify Entry"><Edit2 size={20}/></button>
+                <button onClick={onDelete} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-rose-500 transition-all" title="Expunge Entry"><Trash2 size={20}/></button>
                 <div className="w-px h-10 bg-white/10 mx-2" />
-                <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+                <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
              </div>
           </div>
 
@@ -462,7 +462,7 @@ function BKMViewer({ data }: any) {
           </h4>
           <div className="grid grid-cols-2 gap-4">
              {data.prerequisites?.map((p: any, i: number) => (
-               <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between group hover:border-rose-500/20 transition-all">
+               <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-rose-500/20 transition-all">
                   <div className="flex items-center gap-3">
                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                      <span className="text-[11px] font-black text-white uppercase tracking-tight">{p.description}</span>
@@ -481,7 +481,7 @@ function BKMViewer({ data }: any) {
              {data.steps?.map((s: any, i: number) => (
                <div key={i} className="flex gap-8 group">
                   <div className="flex flex-col items-center gap-4">
-                     <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-lg font-black text-rose-500 shadow-xl group-hover:bg-rose-600 group-hover:text-white transition-all">
+                     <div className="w-12 h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-lg font-black text-rose-500 shadow-xl group-hover:bg-rose-600 group-hover:text-white transition-all">
                         {String(i + 1).padStart(2, '0')}
                      </div>
                      <div className="flex-1 w-px bg-white/10" />
@@ -489,7 +489,7 @@ function BKMViewer({ data }: any) {
                   <div className="flex-1 pb-12 space-y-4">
                      <h5 className="text-lg font-black text-white uppercase tracking-tight">{s.task}</h5>
                      <p className="text-sm text-slate-400 leading-relaxed font-medium">{s.description}</p>
-                     {s.image_url && <div className="aspect-video bg-white/5 rounded-3xl border border-white/5 overflow-hidden"><img src={s.image_url} className="w-full h-full object-cover" /></div>}
+                     {s.image_url && <div className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden"><img src={s.image_url} className="w-full h-full object-cover" /></div>}
                   </div>
                </div>
              ))}
@@ -503,7 +503,7 @@ function BKMViewer({ data }: any) {
              </h4>
              <div className="space-y-3">
                 {data.tips?.map((t: string, i: number) => (
-                  <div key={i} className="flex gap-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl items-start">
+                  <div key={i} className="flex gap-4 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg items-start">
                      <Zap size={14} className="text-amber-500 mt-0.5" />
                      <p className="text-xs font-bold text-amber-200 uppercase tracking-tight">{t}</p>
                   </div>
@@ -517,7 +517,7 @@ function BKMViewer({ data }: any) {
              </h4>
              <div className="space-y-3">
                 {data.next_steps?.map((n: string, i: number) => (
-                  <div key={i} className="flex gap-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl items-start">
+                  <div key={i} className="flex gap-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg items-start">
                      <CheckCircle2 size={14} className="text-emerald-500 mt-0.5" />
                      <p className="text-xs font-bold text-emerald-200 uppercase tracking-tight">{n}</p>
                   </div>

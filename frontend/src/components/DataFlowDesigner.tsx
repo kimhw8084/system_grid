@@ -55,10 +55,10 @@ const DeviceNode = ({ data, selected }: any) => {
   const isImpacted = data.isImpacted; // Added for troubleshooting scenario
   
   return (
-    <div className={`glass-panel min-w-[340px] rounded-[40px] border-2 transition-all duration-500 overflow-hidden relative shadow-2xl ${selected ? 'border-blue-500 bg-blue-500/5 ring-4 ring-blue-500/20' : isImpacted ? 'border-rose-500 bg-rose-500/10 shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'border-white/10'}`}>
+    <div className={`glass-panel min-w-[340px] rounded-lg border-2 transition-all duration-500 overflow-hidden relative shadow-2xl ${selected ? 'border-blue-500 bg-blue-500/5 ring-4 ring-blue-500/20' : isImpacted ? 'border-rose-500 bg-rose-500/10 shadow-[0_0_30px_rgba(244,63,94,0.3)]' : 'border-white/10'}`}>
       <div className={`px-8 py-4 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/20' : 'bg-white/5'}`}>
          <div className="flex items-center space-x-4">
-            <div className={`p-2.5 rounded-2xl ${isImpacted ? 'bg-rose-500 text-white' : data.type === 'Switch' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-blue-500/20 text-blue-400'} border border-current/20 shadow-inner transition-colors`}>
+            <div className={`p-2.5 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : data.type === 'Switch' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-blue-500/20 text-blue-400'} border border-current/20 shadow-inner transition-colors`}>
                {data.type === 'Switch' ? <Network size={20}/> : <Server size={20}/>}
             </div>
             <div className="min-w-0">
@@ -92,8 +92,8 @@ const DeviceNode = ({ data, selected }: any) => {
 }
 
 const ServiceNode = ({ data, selected }: any) => (
-  <div className={`glass-panel px-5 py-3 rounded-2xl border-2 transition-all duration-300 flex items-center space-x-4 w-full shadow-lg ${selected ? 'border-emerald-500 bg-emerald-500/10 scale-105' : 'border-white/10 bg-white/5'}`}>
-     <div className="p-2 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/20 shadow-inner">
+  <div className={`glass-panel px-5 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-4 w-full shadow-lg ${selected ? 'border-emerald-500 bg-emerald-500/10 scale-105' : 'border-white/10 bg-white/5'}`}>
+     <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20 shadow-inner">
         <Database size={16}/>
      </div>
      <div className="flex-1 min-w-0">
@@ -106,9 +106,9 @@ const ServiceNode = ({ data, selected }: any) => (
 )
 
 const ExternalNode = ({ data, selected }: any) => (
-  <div className={`glass-panel min-w-[300px] rounded-[40px] border-2 transition-all duration-500 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10 ring-4 ring-indigo-500/20' : 'border-white/20'}`}>
+  <div className={`glass-panel min-w-[300px] rounded-lg border-2 transition-all duration-500 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10 ring-4 ring-indigo-500/20' : 'border-white/20'}`}>
      <div className="flex items-center space-x-4">
-        <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400 border border-indigo-500/20 shadow-inner">
+        <div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400 border border-indigo-500/20 shadow-inner">
            <Globe size={24}/>
         </div>
         <div className="min-w-0">
@@ -176,12 +176,12 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
           <div className="flex items-end justify-between">
              <div className="space-y-2">
                 <div className="flex items-center space-x-3">
-                   <div className="p-3 bg-blue-600 rounded-2xl shadow-xl text-white"><Workflow size={32} /></div>
+                   <div className="p-3 bg-blue-600 rounded-lg shadow-xl text-white"><Workflow size={32} /></div>
                    <h1 className="text-5xl font-black text-white uppercase tracking-tighter italic">Architecture Matrix</h1>
                 </div>
                 <p className="text-slate-500 text-[11px] font-black uppercase tracking-[0.5em] mt-2 italic pl-1">Intelligent Blast Radius & Change Point Governance</p>
              </div>
-             <button onClick={onAdd} className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-[32px] flex items-center space-x-4 transition-all shadow-2xl border-t border-white/20">
+             <button onClick={onAdd} className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center space-x-4 transition-all shadow-2xl border-t border-white/20">
                 <Plus size={24} />
                 <span className="text-base font-black uppercase tracking-widest">New Manifest</span>
              </button>
@@ -226,7 +226,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
                          <tr key={f.id} className="group cursor-pointer" onClick={() => onEdit(f)}>
                             <td className="px-6 py-6 bg-white/[0.02] group-hover:bg-white/[0.05] rounded-l-[32px] border-y border-l border-white/5 transition-all">
                                <div className="flex items-center space-x-6">
-                                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform"><Layout size={24} /></div>
+                                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:scale-110 transition-transform"><Layout size={24} /></div>
                                   <div className="flex flex-col">
                                      <span className="text-lg font-black text-white tracking-tighter uppercase leading-none mb-1">{f.name}</span>
                                      <span className="text-[10px] text-slate-500 font-bold uppercase truncate max-w-[400px] italic">{f.description || 'No context'}</span>
@@ -247,7 +247,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
                                </div>
                             </td>
                             <td className="px-6 py-6 bg-white/[0.02] group-hover:bg-white/[0.05] border-y border-r border-white/5 rounded-r-[32px] text-right transition-all">
-                               <button className="p-4 bg-blue-600 text-white rounded-2xl shadow-xl transform group-hover:scale-110 active:scale-95 transition-all"><ArrowRight size={20} /></button>
+                               <button className="p-4 bg-blue-600 text-white rounded-lg shadow-xl transform group-hover:scale-110 active:scale-95 transition-all"><ArrowRight size={20} /></button>
                             </td>
                          </tr>
                       ))}
@@ -267,12 +267,12 @@ const MissionControl = ({ selectedNode, impactedNodes, onBack }: any) => {
       <div className="w-[420px] glass-panel h-full border-l border-white/5 flex flex-col p-8 space-y-10 bg-[#0a0c14]/80 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar">
          <div className="flex items-center justify-between">
             <h2 className="text-xl font-black uppercase text-rose-400 tracking-tighter flex items-center gap-3"><AlertOctagon size={24}/> Blast Radius</h2>
-            <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-xl text-slate-500"><X size={20}/></button>
+            <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-lg text-slate-500"><X size={20}/></button>
          </div>
 
          {selectedNode ? (
             <div className="space-y-8">
-               <div className="p-6 bg-white/5 rounded-[32px] border border-white/10 space-y-4">
+               <div className="p-6 bg-white/5 rounded-lg border border-white/10 space-y-4">
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Critical Point of Interest</p>
                   <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{selectedNode.data.name}</h3>
                   <div className="flex items-center space-x-3">
@@ -285,7 +285,7 @@ const MissionControl = ({ selectedNode, impactedNodes, onBack }: any) => {
                   <h4 className="text-[11px] font-black uppercase text-white tracking-widest flex items-center gap-2"><Layers size={14}/> Impacted Dependencies ({impactedNodes.length})</h4>
                   <div className="space-y-2">
                      {impactedNodes.map((n: any) => (
-                        <div key={n.id} className="flex items-center justify-between p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl group hover:bg-rose-500/10 transition-all">
+                        <div key={n.id} className="flex items-center justify-between p-4 bg-rose-500/5 border border-rose-500/10 rounded-lg group hover:bg-rose-500/10 transition-all">
                            <div className="flex items-center space-x-3">
                               <div className="p-2 bg-rose-500/20 rounded-lg text-rose-400"><Server size={14}/></div>
                               <span className="text-[11px] font-black text-slate-300 uppercase truncate max-w-[180px]">{n.data.name}</span>
@@ -303,7 +303,7 @@ const MissionControl = ({ selectedNode, impactedNodes, onBack }: any) => {
                     placeholder="Document impacts for internal governance..."
                     defaultValue={`IMPACT ASSESSMENT:\nModifying ${selectedNode.data.name} affects ${impactedNodes.length} downstream components.\nCritical Path: ${impactedNodes.map((n:any)=>n.data.name).join(' -> ')}`}
                   />
-                  <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl transition-all">Generate Governance Doc</button>
+                  <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[11px] font-black uppercase tracking-widest shadow-xl transition-all">Generate Governance Doc</button>
                </div>
             </div>
          ) : (
@@ -465,7 +465,7 @@ function ArchDesignerInner() {
             
             <Panel position="top-left" className="flex flex-col space-y-4">
                <div className="glass-panel p-3 rounded-[30px] border border-white/10 flex items-center space-x-4 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
-                  <button onClick={() => { setView('dashboard'); setSelectedNodeId(null); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-400 transition-all"><ChevronLeft size={20}/></button>
+                  <button onClick={() => { setView('dashboard'); setSelectedNodeId(null); }} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all"><ChevronLeft size={20}/></button>
                   <div className="flex flex-col min-w-[200px]">
                      <span className="text-[12px] font-black uppercase text-white tracking-widest truncate max-w-[220px]">{activeFlow.name}</span>
                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">
@@ -473,7 +473,7 @@ function ArchDesignerInner() {
                      </span>
                   </div>
                   <div className="h-10 w-px bg-white/10" />
-                  <button onClick={toggleLayout} className={`flex items-center space-x-3 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${layoutMode === 'SEQUENTIAL' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'bg-white/5 text-slate-400 hover:text-white'}`}>
+                  <button onClick={toggleLayout} className={`flex items-center space-x-3 px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${layoutMode === 'SEQUENTIAL' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]' : 'bg-white/5 text-slate-400 hover:text-white'}`}>
                      <ArrowDownUp size={16} />
                      <span>{layoutMode === 'SEQUENTIAL' ? 'Sequential View' : 'Flow View'}</span>
                   </button>
@@ -495,7 +495,7 @@ function ArchDesignerInner() {
 
             {layoutMode === 'SEQUENTIAL' && (
                <Panel position="bottom-left" className="ml-4 mb-20 pointer-events-none">
-                  <div className="glass-panel p-6 rounded-[32px] border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md">
+                  <div className="glass-panel p-6 rounded-lg border border-indigo-500/20 bg-indigo-500/5 backdrop-blur-md">
                      <h4 className="text-[10px] font-black uppercase text-indigo-400 tracking-[0.2em] mb-4">Traffic Lane Partitions</h4>
                      <div className="flex flex-col space-y-3">
                         {Array.from(new Set(nodes.map(n => n.data.system || 'GLOBAL'))).map((sys, i) => (

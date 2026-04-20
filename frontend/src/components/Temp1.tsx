@@ -94,7 +94,7 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
     <div className="relative" ref={triggerRef}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-white/10 transition-all min-w-[300px] active:scale-[0.98] group"
+        className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-lg flex items-center justify-between cursor-pointer hover:bg-white/10 transition-all min-w-[300px] active:scale-[0.98] group"
       >
         <div className="flex items-center space-x-3">
           <Target size={16} className={`${selected.length ? 'text-blue-400' : 'text-slate-600'} group-hover:scale-110 transition-transform`} />
@@ -110,7 +110,7 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
           <div className="fixed inset-0 z-[2000] bg-black/40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />
           <motion.div 
             initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} 
-            className="fixed z-[2001] bg-[#0f172a] border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[500px]"
+            className="fixed z-[2001] bg-[#0f172a] border border-white/10 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[500px]"
             style={{ top: coords.top, left: coords.left, width: coords.width }}
           >
             <div className="p-4 border-b border-white/5 bg-black/40 flex items-center space-x-3">
@@ -122,7 +122,7 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
                  <div className="p-10 text-center text-[10px] font-black uppercase text-slate-600 tracking-[0.3em]">No Assets Detected</div>
                ) : (
                  filteredOptions.map((opt: any) => (
-                   <div key={opt.value} onClick={() => toggle(opt.value)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase cursor-pointer transition-all flex items-center justify-between group ${selected.includes(opt.value) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-white/5'}`}>
+                   <div key={opt.value} onClick={() => toggle(opt.value)} className={`px-4 py-3 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all flex items-center justify-between group ${selected.includes(opt.value) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-white/5'}`}>
                      <div className="flex items-center space-x-3">
                         <div className={`w-2.5 h-2.5 rounded-full border-2 ${selected.includes(opt.value) ? 'bg-white border-white' : 'bg-transparent border-slate-700'}`} />
                         <span className="truncate italic tracking-tight">{opt.label}</span>
@@ -296,7 +296,7 @@ export default function Temp1() {
               <p className="text-[9px] text-slate-600 uppercase tracking-[0.4em] font-black">Industrial Asset Propagation Engine</p>
            </div>
            {graphData.nodes.length > 0 && (
-             <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/5 items-center px-6 space-x-8 shadow-inner">
+             <div className="flex bg-white/5 p-1.5 rounded-lg border border-white/5 items-center px-6 space-x-8 shadow-inner">
                 <HeaderStat label="NODES" value={graphData.nodes.length} color="text-blue-400" />
                 <HeaderStat label="IMPACTED" value={isSimulatingFailure ? impactedNodesMap.size : 0} color="text-rose-500" />
                 <HeaderStat label="LINKS" value={graphData.links.length} color="text-slate-400" />
@@ -305,7 +305,7 @@ export default function Temp1() {
         </div>
 
         <div className="flex items-center space-x-4">
-           <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 items-center px-4 space-x-4 h-[46px]">
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/10 items-center px-4 space-x-4 h-[46px]">
               <div className="flex flex-col">
                  <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Direction</span>
                  <div className="flex space-x-1">
@@ -330,10 +330,10 @@ export default function Temp1() {
 
       <div className="flex-1 flex min-h-0 space-x-4 overflow-hidden">
         
-        <div ref={containerRef} className="flex-1 relative rounded-[40px] border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div ref={containerRef} className="flex-1 relative rounded-lg border border-white/5 bg-slate-950 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)] overflow-hidden">
           
           <div className="absolute top-8 left-8 z-10 flex space-x-3 pointer-events-auto">
-             <div className="bg-[#1e293b]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 flex items-center space-x-2">
+             <div className="bg-[#1e293b]/90 backdrop-blur-2xl border border-white/10 rounded-lg p-1.5 flex items-center space-x-2">
                 <Search size={14} className="text-slate-500 ml-2" />
                 <input value={graphSearch} onChange={e => setGraphSearch(e.target.value)} placeholder="FILTER MATRIX..." className="bg-transparent border-none text-[10px] font-black text-white uppercase outline-none w-32 tracking-wider placeholder:text-slate-700" />
                 {graphSearch && <button onClick={() => setGraphSearch('')} className="p-2 text-slate-500 hover:text-white"><X size={14} /></button>}
@@ -434,7 +434,7 @@ export default function Temp1() {
             )
           )}
 
-          <div className="absolute bottom-10 left-10 flex items-center bg-[#0f172a]/90 backdrop-blur-3xl px-8 py-4 rounded-3xl border border-white/10 space-x-10 shadow-2xl pointer-events-auto">
+          <div className="absolute bottom-10 left-10 flex items-center bg-[#0f172a]/90 backdrop-blur-3xl px-8 py-4 rounded-lg border border-white/10 space-x-10 shadow-2xl pointer-events-auto">
              <GridControl active={showLabels} onClick={() => setShowLabels(!showLabels)} icon={<Eye size={16} />} label="Identities" />
              <GridControl active={true} onClick={() => {}} icon={<Layers size={16} />} label="Topology" />
              <GridControl active={isFixed} onClick={() => setIsFixed(!isFixed)} icon={isFixed ? <Lock size={16} /> : <Unlock size={16} />} label="Lock Matrix" />
@@ -447,14 +447,14 @@ export default function Temp1() {
         </div>
 
         <aside className="w-[440px] flex flex-col shrink-0">
-           <div className="flex-1 bg-white/5 rounded-[40px] border border-white/5 flex flex-col overflow-hidden shadow-2xl">
+           <div className="flex-1 bg-white/5 rounded-lg border border-white/5 flex flex-col overflow-hidden shadow-2xl">
               <div className="p-8 border-b border-white/5 bg-black/30">
                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-4 text-blue-400">
                        <Fingerprint size={24} className={isSimulatingFailure ? 'text-rose-500 animate-pulse' : 'animate-pulse'} />
                        <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Forensic Hub</h3>
                     </div>
-                    {highlightedNodeId && <button onClick={() => setHighlightedNodeId(null)} className="p-2 text-slate-600 hover:text-white transition-colors bg-white/5 rounded-xl"><X size={20} /></button>}
+                    {highlightedNodeId && <button onClick={() => setHighlightedNodeId(null)} className="p-2 text-slate-600 hover:text-white transition-colors bg-white/5 rounded-lg"><X size={20} /></button>}
                  </div>
                  <p className="text-[9px] text-slate-500 uppercase font-black tracking-[0.4em]">Propagated Analytics</p>
               </div>
@@ -473,10 +473,10 @@ export default function Temp1() {
                            <>
                              {isSimulatingFailure && impactInfo && (
                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="overflow-hidden">
-                                  <div className={`p-6 rounded-[32px] border ${isOrigin ? 'bg-rose-600 border-rose-500 shadow-[0_0_30px_rgba(225,68,68,0.3)]' : 'bg-amber-600/20 border-amber-500/30'} flex flex-col space-y-4`}>
+                                  <div className={`p-6 rounded-lg border ${isOrigin ? 'bg-rose-600 border-rose-500 shadow-[0_0_30px_rgba(225,68,68,0.3)]' : 'bg-amber-600/20 border-amber-500/30'} flex flex-col space-y-4`}>
                                      <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
-                                           <div className={`p-2 rounded-xl ${isOrigin ? 'bg-white/20' : 'bg-amber-500/20'} text-white`}>
+                                           <div className={`p-2 rounded-lg ${isOrigin ? 'bg-white/20' : 'bg-amber-500/20'} text-white`}>
                                               {isOrigin ? <Flame size={18} /> : getImpact(impactInfo.type).icon}
                                            </div>
                                            <span className="text-[12px] font-black uppercase tracking-widest text-white italic">{isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}</span>
@@ -493,7 +493,7 @@ export default function Temp1() {
                                </motion.div>
                              )}
 
-                             <div className="bg-[#1e293b]/50 p-6 rounded-[32px] border border-white/5 relative overflow-hidden">
+                             <div className="bg-[#1e293b]/50 p-6 rounded-lg border border-white/5 relative overflow-hidden">
                                 <h4 className="text-3xl font-black text-blue-400 uppercase tracking-tighter italic leading-[1.1] mb-4 break-all">{rawDevice.name}</h4>
                                 <div className="flex flex-wrap gap-2">
                                    <StatusBadge label={rawDevice.type} color={getTypeColor(rawDevice.type)} />
@@ -529,7 +529,7 @@ export default function Temp1() {
                                           className={`w-full bg-black/40 border border-white/5 rounded-[20px] p-4 flex items-center justify-between group transition-all active:scale-[0.98] ${isImpacted ? 'hover:border-rose-500/40 shadow-[0_0_15px_rgba(225,68,68,0.1)]' : 'hover:border-blue-500/40'}`}
                                        >
                                           <div className="flex items-center space-x-4">
-                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isImpacted ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isImpacted ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                                 {isSource ? <ArrowRightLeft size={16} /> : <Zap size={16} />}
                                              </div>
                                              <div className="flex flex-col items-start">
@@ -587,7 +587,7 @@ const FilterBtn = ({ active, onClick, icon }: any) => (
 
 const GridControl = ({ active, onClick, icon, label }: any) => (
   <button onClick={onClick} className={`flex items-center space-x-3 transition-all ${active ? 'text-blue-400' : 'text-slate-600 hover:text-slate-400'}`}>
-     <div className={`p-2 rounded-xl ${active ? 'bg-blue-500/10' : 'bg-transparent'}`}>{icon}</div>
+     <div className={`p-2 rounded-lg ${active ? 'bg-blue-500/10' : 'bg-transparent'}`}>{icon}</div>
      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
   </button>
 )
@@ -602,7 +602,7 @@ const ActionButton = ({ icon, onClick, active, danger, label }: any) => (
 )
 
 const StatusBadge = ({ label, color }: any) => (
-  <span className="px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30`, color }}>{label}</span>
+  <span className="px-3.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight" style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30`, color }}>{label}</span>
 )
 
 const ForensicRow = ({ label, value, mono }: any) => (

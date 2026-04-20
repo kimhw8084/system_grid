@@ -24,11 +24,11 @@ export const ErrorDetailModal = ({ isOpen, onClose, error }: ErrorDetailModalPro
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-8 rounded-[40px] border-rose-500/30"
+        className="glass-panel w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-8 rounded-lg border-rose-500/30"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500">
+            <div className="p-3 bg-rose-500/10 rounded-lg text-rose-500">
               <Bug size={24} />
             </div>
             <div>
@@ -39,19 +39,19 @@ export const ErrorDetailModal = ({ isOpen, onClose, error }: ErrorDetailModalPro
           <div className="flex items-center space-x-2">
             <button 
               onClick={copyToClipboard}
-              className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors"
+              className="p-3 hover:bg-white/5 rounded-lg text-slate-400 hover:text-white transition-colors"
               title="Copy Full Error Context"
             >
               <Copy size={20} />
             </button>
-            <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
               <X size={24} />
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
-          <div className="bg-rose-500/5 border border-rose-500/20 rounded-2xl p-6">
+          <div className="bg-rose-500/5 border border-rose-500/20 rounded-lg p-6">
             <div className="flex items-center space-x-2 text-rose-400 mb-2">
               <AlertCircle size={16} />
               <span className="text-[10px] font-black uppercase tracking-widest">Exception Message</span>
@@ -65,7 +65,7 @@ export const ErrorDetailModal = ({ isOpen, onClose, error }: ErrorDetailModalPro
               <Terminal size={16} />
               <span className="text-[10px] font-black uppercase tracking-widest">Server-Side Traceback</span>
             </div>
-            <div className="bg-black/60 rounded-2xl p-6 font-mono text-[11px] text-slate-300 leading-relaxed overflow-x-auto border border-white/5 whitespace-pre">
+            <div className="bg-black/60 rounded-lg p-6 font-mono text-[11px] text-slate-300 leading-relaxed overflow-x-auto border border-white/5 whitespace-pre">
               {error.traceback || 'No server-side traceback captured for this exception type.'}
             </div>
           </div>
@@ -76,7 +76,7 @@ export const ErrorDetailModal = ({ isOpen, onClose, error }: ErrorDetailModalPro
                 <Bug size={16} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Raw Response Data</span>
               </div>
-              <pre className="bg-black/40 rounded-2xl p-6 font-mono text-[11px] text-slate-400 border border-white/5 overflow-x-auto">
+              <pre className="bg-black/40 rounded-lg p-6 font-mono text-[11px] text-slate-400 border border-white/5 overflow-x-auto">
                 {JSON.stringify(error.data, null, 2)}
               </pre>
             </div>

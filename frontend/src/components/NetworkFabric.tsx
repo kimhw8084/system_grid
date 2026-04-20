@@ -265,11 +265,11 @@ export default function NetworkFabric() {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="SCAN FABRIC..."
-              className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all"
+              className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all"
             />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                 <Activity size={16} />
              </button>
@@ -289,7 +289,7 @@ export default function NetworkFabric() {
 
           <button 
             onClick={() => { resetForm(); setShowConnectModal(true) }}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             + Add Network
           </button>
@@ -304,7 +304,7 @@ export default function NetworkFabric() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -343,7 +343,7 @@ export default function NetworkFabric() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -436,7 +436,7 @@ export default function NetworkFabric() {
       <AnimatePresence>
         {showConnectModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[85vh] rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[85vh] rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
               <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
                  <div className="space-y-4">
                     <div className="flex items-center space-x-3">
@@ -448,12 +448,12 @@ export default function NetworkFabric() {
                     </h1>
                     <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Precision Infrastructure Interconnect Mapping</p>
                  </div>
-                 <button onClick={() => setShowConnectModal(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+                 <button onClick={() => setShowConnectModal(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
                 <div className="grid grid-cols-2 gap-10">
-                  <div className="p-8 bg-blue-600/5 border border-blue-500/10 rounded-[40px] space-y-6">
+                  <div className="p-8 bg-blue-600/5 border border-blue-500/10 rounded-lg space-y-6">
                     <h3 className="text-[10px] font-bold uppercase text-blue-500 tracking-[0.3em] flex items-center gap-2"><Network size={14}/> Source Node</h3>
                     <StyledSelect
                       label="Source Asset Registry Entity *"
@@ -465,16 +465,16 @@ export default function NetworkFabric() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Local Port *</label>
-                        <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="eth0" />
+                        <input value={connData.source_port || connData.port_a || ''} onChange={e => setConnData({...connData, source_port: e.target.value, port_a: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="eth0" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">VLAN ID</label>
-                        <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="100" />
+                        <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="100" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-8 bg-emerald-600/5 border border-emerald-500/10 rounded-[40px] space-y-6">
+                  <div className="p-8 bg-emerald-600/5 border border-emerald-500/10 rounded-lg space-y-6">
                     <h3 className="text-[10px] font-bold uppercase text-emerald-500 tracking-[0.3em] flex items-center gap-2"><Network size={14}/> Peer Node</h3>
                     <StyledSelect
                       label="Peer Asset Registry Entity *"
@@ -486,11 +486,11 @@ export default function NetworkFabric() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Peer Port *</label>
-                        <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+                        <input value={connData.target_port || connData.port_b || ''} onChange={e => setConnData({...connData, target_port: e.target.value, port_b: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="Te1/1/1" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Peer VLAN</label>
-                        <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="100" />
+                        <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="100" />
                       </div>
                     </div>
                   </div>
@@ -519,7 +519,7 @@ export default function NetworkFabric() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Speed Value</label>
-                        <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                        <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" />
                       </div>
                       <StyledSelect
                         label="Metric Unit"

@@ -25,7 +25,7 @@ const SectionHeader = ({ icon: Icon, title, color = "text-blue-400" }: any) => (
 )
 
 const InfoCard = ({ label, value, icon: Icon }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-2xl space-y-1">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-lg space-y-1">
     <div className="flex items-center space-x-2 text-slate-500">
       <Icon size={12} />
       <span className="text-[8px] font-bold uppercase tracking-widest">{label}</span>
@@ -291,10 +291,10 @@ export default function Vendor() {
         <div className="flex items-center space-x-3">
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button 
                 onClick={() => setShowStyleLab(!showStyleLab)} 
                 className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
@@ -318,7 +318,7 @@ export default function Vendor() {
 
           <button 
             onClick={() => setActiveModal({ name: '', primary_email: '', primary_phone: '', country: '' })}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             + Add Vendor
           </button>
@@ -333,7 +333,7 @@ export default function Vendor() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -372,7 +372,7 @@ export default function Vendor() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
+      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
@@ -485,7 +485,7 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3">
             <Briefcase size={24} /> Vendor Entry
@@ -498,26 +498,26 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
-                <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Phone</label>
-                <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Country</label>
-                <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
             </div>
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
           <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Save Vendor
           </button>
@@ -562,7 +562,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[90vh] rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[90vh] rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
         
         {/* Header Section */}
         <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
@@ -577,14 +577,14 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                 <div className="flex items-center space-x-2 text-slate-400 font-mono text-xs"><Phone size={14} className="text-amber-500" /> <span>{vendor.primary_phone}</span></div>
              </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+          <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar Nav */}
           <div className="w-56 border-r border-white/5 bg-black/20 p-6 space-y-1">
              {['Personnel', 'Contracts'].map(tab => (
-               <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
+               <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
                  {tab === 'Personnel' && <User size={16} />}
                  {tab === 'Contracts' && <FileText size={16} />}
                  <span className="text-[10px] font-bold uppercase tracking-widest">{tab}</span>
@@ -598,17 +598,17 @@ function VendorDetails({ vendor, devices, onClose }: any) {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <SectionHeader icon={User} title="Vendor Personnel" />
-                  <button onClick={() => setShowPersonnelModal({ name: '', position: '', team: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                  <button onClick={() => setShowPersonnelModal({ name: '', position: '', team: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
                     <Plus size={14} /> Add Personnel
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
                   {vendor.personnel?.map((p: any) => (
-                    <div key={p.id} className="bg-white/5 border border-white/5 rounded-2xl p-6 group hover:bg-white/10 transition-all">
+                    <div key={p.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                          <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
                             <User size={20} />
                           </div>
                           <div>
@@ -646,7 +646,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                     </div>
                   ))}
                   {(!vendor.personnel || vendor.personnel.length === 0) && (
-                    <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No personnel records found</div>
+                    <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No personnel records found</div>
                   )}
                 </div>
               </div>
@@ -656,17 +656,17 @@ function VendorDetails({ vendor, devices, onClose }: any) {
               <div className="space-y-6">
                  <div className="flex items-center justify-between">
                     <SectionHeader icon={FileText} title="Vendor Service Contracts" />
-                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_assets: [], scope_of_work: [], schedule: {} })} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_assets: [], scope_of_work: [], schedule: {} })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
                        <Plus size={14} /> Register Contract
                     </button>
                  </div>
                  
                  <div className="grid grid-cols-1 gap-4">
                     {vendor.contracts?.map((c: any) => (
-                       <div key={c.id} className="bg-white/5 border border-white/5 rounded-2xl p-6 group hover:bg-white/10 transition-all">
+                       <div key={c.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all">
                           <div className="flex items-center justify-between">
                              <div className="flex items-center space-x-6">
-                                <div className="w-12 h-12 bg-black/40 rounded-xl flex items-center justify-center text-blue-400 border border-white/5">
+                                <div className="w-12 h-12 bg-black/40 rounded-lg flex items-center justify-center text-blue-400 border border-white/5">
                                    <FileText size={20} />
                                 </div>
                                 <div>
@@ -721,7 +721,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                        </div>
                     ))}
                     {(!vendor.contracts || vendor.contracts.length === 0) && (
-                       <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-3xl border border-dashed border-white/5">No active service contracts found for this vendor</div>
+                       <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No active service contracts found for this vendor</div>
                     )}
                  </div>
               </div>
@@ -768,7 +768,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] p-10 rounded-[40px] border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Details</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -780,27 +780,27 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Full Name</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Position</label>
-                <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Team</label>
-                <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Company Email</label>
-                <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Internal Email</label>
-                <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Phone</label>
-                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
             </div>
           </div>
@@ -853,7 +853,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
 
         <div className="flex space-x-3 pt-10 mt-auto">
           <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Sync Personnel
           </button>
@@ -882,7 +882,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[95vh] p-10 rounded-[40px] border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Service Contract</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -895,23 +895,23 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
-                  <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                  <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
-                  <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                  <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
-                  <input value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" />
+                  <input value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
-                  <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                  <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
-                  <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                  <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
                 </div>
               </div>
             </section>
@@ -923,7 +923,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
               </div>
               <div className="space-y-4">
                 {formData.scope_of_work?.map((s: any, i: number) => (
-                  <div key={i} className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-3 relative group">
+                  <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 relative group">
                     <button onClick={() => setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
                     <input placeholder="Deliverable / Description" value={s.deliverable} onChange={e => {
                       const newSow = [...formData.scope_of_work]; newSow[i].deliverable = e.target.value; setFormData({...formData, scope_of_work: newSow})
@@ -948,7 +948,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
           <div className="space-y-8">
             <section>
               <SectionHeader icon={Shield} title="Covered Assets" color="text-indigo-400" />
-              <div className="bg-black/20 rounded-2xl border border-white/5 h-[300px] overflow-y-auto custom-scrollbar p-4 space-y-1">
+              <div className="bg-black/20 rounded-lg border border-white/5 h-[300px] overflow-y-auto custom-scrollbar p-4 space-y-1">
                 {devices?.map((d: any) => {
                   const asset = formData.covered_assets?.find((a:any) => a.device_id === d.id)
                   return (
@@ -981,11 +981,11 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
               <div className="space-y-4">
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Work Schedule</label>
-                  <input value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white" placeholder="e.g. 24/7 or 9-5" />
+                  <input value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" placeholder="e.g. 24/7 or 9-5" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Holiday Policy</label>
-                  <textarea value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs text-white min-h-[80px]" />
+                  <textarea value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[80px]" />
                 </div>
               </div>
             </section>
@@ -994,7 +994,7 @@ function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
 
         <div className="flex space-x-3 pt-10 mt-auto">
           <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
             Sync Contract
           </button>

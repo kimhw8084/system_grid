@@ -74,7 +74,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   }
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">External Entity Metadata</span>
@@ -113,7 +113,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
           <textarea value={jsonValue} onChange={e => {
             setJsonValue(e.target.value);
             syncFromJSON(e.target.value);
-          }} className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`} />
+          }} className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-4 py-3 text-[11px] font-mono text-blue-300 outline-none`} />
         )}
       </div>
     </div>
@@ -128,7 +128,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
     obj = {}
   }
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Metadata Inspection</span>
       </div>
@@ -171,7 +171,7 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
   }
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
         <div className="flex items-center space-x-3">
           <User size={14} className="text-amber-400" />
@@ -181,12 +181,12 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
       </div>
       <div className="p-4 space-y-3">
         {pocs.length === 0 && (
-          <div className="py-8 text-center border border-dashed border-white/5 rounded-xl">
+          <div className="py-8 text-center border border-dashed border-white/5 rounded-lg">
             <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest ">No POCs registered</p>
           </div>
         )}
         {pocs.map((poc, idx) => (
-          <div key={idx} className="bg-black/40 p-4 rounded-xl border border-white/5 space-y-3 relative group">
+          <div key={idx} className="bg-black/40 p-4 rounded-lg border border-white/5 space-y-3 relative group">
             <button onClick={() => removePOC(idx)} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><X size={14}/></button>
             <div className="grid grid-cols-3 gap-3">
               <div>
@@ -249,35 +249,35 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-black/40 border border-white/5 rounded-2xl p-6 space-y-4">
+      <div className="bg-black/40 border border-white/5 rounded-lg p-6 space-y-4">
         <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-widest flex items-center gap-2">
           <Shield size={12}/> Register Access Credential
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Username / ID</label>
-            <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="E.G. ADMIN_SVC" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+            <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="E.G. ADMIN_SVC" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
           <div>
             <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Access Password</label>
-            <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+            <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
           <div>
             <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Purpose / Note</label>
-            <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="E.G. READ-ONLY API ACCESS" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+            <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="E.G. READ-ONLY API ACCESS" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
         </div>
         <button 
           disabled={!newSecret.username || !newSecret.password}
           onClick={() => addMutation.mutate(newSecret)}
-          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
           {addMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Plus size={14} />}
           Inject Secret into Vault
         </button>
       </div>
 
-      <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+      <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
           <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Authorized Credential Matrix</span>
           <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{entity?.secrets?.length || 0} Entries</span>
@@ -397,7 +397,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <input 
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" 
                 placeholder="E.G. CUSTOMER-FEED-API" 
               />
            </div>
@@ -430,7 +430,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <input 
                 value={formData.owner_organization} 
                 onChange={e => setFormData({...formData, owner_organization: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="GLOBAL LOGISTICS INC." 
               />
            </div>
@@ -439,7 +439,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <input 
                 value={formData.owner_team} 
                 onChange={e => setFormData({...formData, owner_team: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
+                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
                 placeholder="CORE-INFRA-TEAM" 
               />
            </div>
@@ -448,7 +448,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
               <textarea 
                 value={formData.description} 
                 onChange={e => setFormData({...formData, description: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 h-24 resize-none" 
+                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs outline-none focus:border-blue-500 h-24 resize-none" 
                 placeholder="Technical rationale for this external entity integration..." 
               />
            </div>
@@ -473,7 +473,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
         <button 
           disabled={isSaving || !formData.name} 
           onClick={() => onSave(formData)} 
-          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
+          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
         >
           {isSaving && <RefreshCcw size={18} className="animate-spin" />}
           <span>{initialData.id ? 'Synchronize Entity Manifest' : 'Authorize External Registry Admission'}</span>
@@ -489,13 +489,13 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+        <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
           {[
             { id: 'metadata', label: 'Metadata View', icon: List },
             { id: 'org', label: 'Organization & POCs', icon: Briefcase },
             { id: 'secrets', label: 'Credentials', icon: Tag }
           ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               <t.icon size={12} /> <span>{t.label}</span>
             </button>
           ))}
@@ -515,7 +515,7 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
 
         {tab === 'org' && (
           <div className="space-y-6">
-            <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/10 relative overflow-hidden group">
+            <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 relative overflow-hidden group">
                <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>
                <div className="grid grid-cols-2 gap-6 relative z-10">
                   <div className="flex flex-col border-l-2 border-white/5 pl-4">
@@ -529,14 +529,14 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
                </div>
             </div>
 
-            <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
                 <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
                 <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{entity.poc_json?.length || 0} Contacts</span>
               </div>
               <div className="p-3 grid grid-cols-2 gap-3">
                    {entity.poc_json && entity.poc_json.length > 0 ? entity.poc_json.map((poc: any, idx: number) => (
-                     <div key={idx} className="bg-black/40 p-3 rounded-xl border border-white/5 flex items-center justify-between">
+                     <div key={idx} className="bg-black/40 p-3 rounded-lg border border-white/5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                            <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-bold text-[10px]">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
                            <div>
@@ -830,7 +830,7 @@ export default function External() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Third-Party Asset Forensic</p>
            </div>
            
-           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
                 <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     Active
                 </button>
@@ -847,10 +847,10 @@ export default function External() {
                value={searchTerm} 
                onChange={e => setSearchTerm(e.target.value)} 
                placeholder="SCAN REGISTRY..." 
-               className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
+               className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
              />
           </div>
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button 
                 onClick={() => setShowStyleLab(!showStyleLab)} 
                 className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
@@ -871,7 +871,7 @@ export default function External() {
                 <Settings size={16} />
              </button>
           </div>
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
+          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
         </div>
       </div>
 
@@ -883,7 +883,7 @@ export default function External() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -922,7 +922,7 @@ export default function External() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-2xl border border-white/5 overflow-hidden ag-theme-alpine-dark relative">
+      <div className="flex-1 glass-panel rounded-lg border border-white/5 overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -989,7 +989,7 @@ export default function External() {
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Layers size={28}/> <span>{activeModal.id ? 'Modify Entity Registry' : 'Admit External Identity'}</span>
@@ -1005,7 +1005,7 @@ export default function External() {
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div className="flex-1">
                     <h2 className="text-2xl font-bold uppercase text-blue-400 leading-tight tracking-tighter ">{activeDetails.name}</h2>
@@ -1020,7 +1020,7 @@ export default function External() {
                         activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
                       }`}>STATUS: {activeDetails.status}</p>
                     </div>
-                    <div className="mt-2 p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 max-w-2xl">
+                    <div className="mt-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 max-w-2xl">
                        <p className="text-[10px] font-bold text-slate-400  leading-relaxed">
                           "{activeDetails.description || 'No formal functional description provided for this architectural identity.'}"
                        </p>

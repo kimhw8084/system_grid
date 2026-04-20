@@ -43,7 +43,7 @@ const SharedServiceModals = ({
       <AnimatePresence>
         {activeEdit && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Layers size={28}/> <span>Modify Service Configuration</span>
@@ -59,7 +59,7 @@ const SharedServiceModals = ({
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
                     <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
@@ -140,7 +140,7 @@ const SharedNetworkModals = ({
             initial={{ scale: 0.95, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }} 
             exit={{ scale: 0.95, opacity: 0 }} 
-            className="glass-panel w-[500px] p-10 rounded-[40px] space-y-6 border border-blue-500/30"
+            className="glass-panel w-[500px] p-10 rounded-lg space-y-6 border border-blue-500/30"
           >
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
               <h2 className="text-2xl font-bold uppercase tracking-tighter flex items-center space-x-4 text-blue-400">
@@ -162,21 +162,21 @@ const SharedNetworkModals = ({
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
-                <input value={connData.port_a || ''} onChange={e => setConnData({...connData, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
+                <input value={connData.port_a || ''} onChange={e => setConnData({...connData, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
-                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.10" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
-                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
                 </div>
               </div>
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
-                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
+                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
               </div>
               <StyledSelect
                   label="Direction"
@@ -195,21 +195,21 @@ const SharedNetworkModals = ({
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
-                <input value={connData.port_b || ''} onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+                <input value={connData.port_b || ''} onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
-                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.254" />
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
-                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
                 </div>
               </div>
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
-                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
+                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
               </div>
               <StyledSelect
                   label="Link Type *"
@@ -222,11 +222,11 @@ const SharedNetworkModals = ({
               />
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
-                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
+                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
-                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
               </div>
               <StyledSelect
                   label="Unit"
@@ -242,7 +242,7 @@ const SharedNetworkModals = ({
                   return toast.error("Entity and Port mapping required")
                 }
                 mutation.mutate(connData)
-              }} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
+              }} className="flex-1 py-3 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
             </div>
           </motion.div>
         </motion.div>
@@ -347,7 +347,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
             <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Tag size={24}/> <span>Update Status</span>
@@ -366,7 +366,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
              <button 
                disabled={!selectedStatus}
                onClick={() => onApply(selectedStatus)} 
-               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -387,7 +387,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
             <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Globe size={24}/> <span>Update Environment</span>
@@ -406,7 +406,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
              <button
                disabled={!selectedEnv}
                onClick={() => onApply(selectedEnv)}
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -484,7 +484,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   }
 
   return (
-    <div className="bg-slate-900/50 rounded-2xl border border-white/5 overflow-hidden">
+    <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
             <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Service Metadata</span>
@@ -526,7 +526,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 setJsonValue(e.target.value);
                 syncFromJSON(e.target.value);
             }} 
-            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-xl px-4 py-3 text-[11px] text-blue-300 outline-none`}
+            className={`w-full h-32 bg-black/40 border ${error === 'Invalid JSON format' || error === 'Duplicate keys in JSON' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-4 py-3 text-[11px] text-blue-300 outline-none`}
           />
         )}
       </div>
@@ -544,7 +544,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
   return (
     <div className="p-6 space-y-4">
       <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
-      <div className="bg-slate-900/50 rounded-xl border border-white/5 overflow-hidden">
+      <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
         <table className="w-full text-[10px]">
           <thead className="bg-white/5 border-b border-white/5">
             <tr>
@@ -597,7 +597,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
   return (
     <div className="flex-1 flex overflow-hidden space-x-4">
       {/* Left Vertical List */}
-      <div className="w-80 flex flex-col glass-panel rounded-2xl overflow-hidden border-white/5">
+      <div className="w-80 flex flex-col glass-panel rounded-lg overflow-hidden border-white/5">
         <div className="p-4 border-b border-white/5 space-y-3 bg-white/5">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -605,7 +605,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
               value={filter.name} 
               onChange={e => setFilter({ ...filter, name: e.target.value })} 
               placeholder="Search Assets..." 
-              className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 transition-all" 
+              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 transition-all" 
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -634,7 +634,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <button
               key={a.id}
               onClick={() => onSelect(a.id)}
-              className={`w-full flex flex-col p-3 rounded-xl transition-all text-left relative overflow-hidden group ${selectedId === a.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}
+              className={`w-full flex flex-col p-3 rounded-lg transition-all text-left relative overflow-hidden group ${selectedId === a.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
@@ -661,14 +661,14 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
       </div>
 
       {/* Right Report Content */}
-      <div className="flex-1 glass-panel rounded-2xl overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
+      <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
           <div className="p-12 space-y-12">
             {/* Report Header */}
             <div className="flex items-start justify-between">
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                   <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/20">
+                   <div className="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/20">
                       <Box size={32} />
                    </div>
                    <div>
@@ -695,7 +695,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                  }`}>
                    {selectedAsset.status} STATUS
                  </div>
-                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
                     <Edit2 size={14}/> <span>Modify Config</span>
                  </button>
               </div>
@@ -709,17 +709,17 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Connectivity & Access</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                     <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                     <div className="bg-black/20 p-5 rounded-lg border border-white/5">
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</p>
                         <p className="text-xl text-blue-400 font-bold">{selectedAsset.primary_ip || '---.---.---.---'}</p>
                      </div>
-                     <div className="bg-black/20 p-5 rounded-2xl border border-white/5">
+                     <div className="bg-black/20 p-5 rounded-lg border border-white/5">
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</p>
                         <p className="text-xl text-indigo-400 font-bold">{selectedAsset.management_ip || '---.---.---.---'}</p>
                      </div>
                   </div>
                   {selectedAsset.management_url && (
-                    <div className="bg-black/20 p-5 rounded-2xl border border-indigo-500/20 flex items-center justify-between group cursor-pointer" onClick={() => window.open(selectedAsset.management_url, '_blank')}>
+                    <div className="bg-black/20 p-5 rounded-lg border border-indigo-500/20 flex items-center justify-between group cursor-pointer" onClick={() => window.open(selectedAsset.management_url, '_blank')}>
                        <div className="flex items-center space-x-4">
                           <Terminal size={24} className="text-indigo-400" />
                           <div>
@@ -738,7 +738,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <CpuIcon size={16} className="text-amber-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-y-6 gap-x-12">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-y-6 gap-x-12">
                      <div>
                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Platform</p>
                         <p className="text-xs font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
@@ -765,7 +765,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <HardDrive size={16} className="text-emerald-400" />
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Resource Registry ({selectedAsset.hardware_summary})</h3>
                </div>
-               <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -777,7 +777,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Layers size={16} className="text-blue-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
-                  <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
                        deviceId={selectedAsset.id} 
                        onViewDetails={onViewServiceDetails} 
@@ -792,7 +792,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Calendar size={16} className="text-rose-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-8">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-8">
                      <div className="space-y-6">
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Commissioning</p>
@@ -815,7 +815,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center justify-between p-5 bg-black/20 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between p-5 bg-black/20 rounded-lg border border-white/5">
                      <div className="flex items-center space-x-3">
                         <Activity size={16} className="text-blue-400" />
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Power Payload (Avg/Max)</span>
@@ -831,7 +831,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <LinkIcon size={16} className="text-indigo-400" />
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Dependency Vectors</h3>
                </div>
-               <div className="glass-panel rounded-2xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <RelationsTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -1233,7 +1233,7 @@ export default function AssetTemp() {
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
            </div>
 
-           <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 ml-2">
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
                 <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     <LayoutGrid size={14}/> <span>Table</span>
                 </button>
@@ -1243,7 +1243,7 @@ export default function AssetTemp() {
            </div>
 
            {viewMode === 'grid' && (
-             <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+             <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
                   <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                       Existing
                   </button>
@@ -1258,10 +1258,10 @@ export default function AssetTemp() {
           <div className="flex items-center space-x-3">
             <div className="relative">
                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
-            <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
                <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                   <Activity size={16} />
                </button>
@@ -1280,10 +1280,10 @@ export default function AssetTemp() {
             </div>
 
             <div className="relative bulk-menu-container">
-              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-xl border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
               <AnimatePresence>
                 {showBulkMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl z-50 p-2 space-y-1">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
                      <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
                      {activeTab === 'deleted' ? (
                        <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
@@ -1304,7 +1304,7 @@ export default function AssetTemp() {
               </AnimatePresence>
             </div>
 
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Asset</button>
+            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Asset</button>
           </div>
         )}
       </div>
@@ -1318,7 +1318,7 @@ export default function AssetTemp() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -1358,7 +1358,7 @@ export default function AssetTemp() {
       </AnimatePresence>
 
       {viewMode === 'grid' ? (
-        <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+        <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
@@ -1462,7 +1462,7 @@ export default function AssetTemp() {
       <AnimatePresence>
         {activeModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-[40px] border border-blue-500/30 custom-scrollbar">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
@@ -1479,7 +1479,7 @@ export default function AssetTemp() {
       <AnimatePresence>
         {activeDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-[40px] border border-blue-500/30 flex flex-col">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
                     <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
@@ -1602,15 +1602,15 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
-                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
-                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
+                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
+                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
                 </div>
                 {mode === 'edit' && (
                     <button 
                         disabled={!!metadataError}
                         onClick={() => onSave(localData)} 
-                        className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                     >
                         Save Metadata
                     </button>
@@ -1827,11 +1827,11 @@ const SecurityTab = ({ device }: { device: any }) => {
         <div className="grid grid-cols-4 gap-4">
           <div className="col-span-2">
             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Rule Name</label>
-            <input value={newRule.name} onChange={e => setNewRule({...newRule, name: e.target.value})} placeholder="e.g. DB Access for Client X" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newRule.name} onChange={e => setNewRule({...newRule, name: e.target.value})} placeholder="e.g. DB Access for Client X" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
           </div>
           <div className="col-span-2">
             <label className="text-[9px] font-bold text-rose-400 uppercase block mb-1 px-1">Risk / Impact if Missing</label>
-            <input value={newRule.risk} onChange={e => setNewRule({...newRule, risk: e.target.value})} placeholder="e.g. Critical service outage for production grid" className="w-full bg-slate-900 border border-rose-500/20 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-rose-500" />
+            <input value={newRule.risk} onChange={e => setNewRule({...newRule, risk: e.target.value})} placeholder="e.g. Critical service outage for production grid" className="w-full bg-slate-900 border border-rose-500/20 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-rose-500" />
           </div>
         </div>
         
@@ -1846,7 +1846,7 @@ const SecurityTab = ({ device }: { device: any }) => {
           </div>
           <div>
             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Port(s)</label>
-            <input value={newRule.port_range} onChange={e => setNewRule({...newRule, port_range: e.target.value})} placeholder="e.g. 443, 1433" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newRule.port_range} onChange={e => setNewRule({...newRule, port_range: e.target.value})} placeholder="e.g. 443, 1433" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
           </div>
           <div>
             <StyledSelect
@@ -1876,7 +1876,7 @@ const SecurityTab = ({ device }: { device: any }) => {
              ) : (
                 <>
                   <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">{newRule.source_type === 'Description' ? 'Source Description' : 'Source IP / CIDR'}</label>
-                  <input value={newRule.source_custom_ip} onChange={e => setNewRule({...newRule, source_custom_ip: e.target.value})} placeholder={newRule.source_type === 'Description' ? 'e.g. External Cloud' : 'e.g. 10.0.0.1 or 0.0.0.0/0'} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                  <input value={newRule.source_custom_ip} onChange={e => setNewRule({...newRule, source_custom_ip: e.target.value})} placeholder={newRule.source_type === 'Description' ? 'e.g. External Cloud' : 'e.g. 10.0.0.1 or 0.0.0.0/0'} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </>
              )}
           </div>
@@ -1885,14 +1885,14 @@ const SecurityTab = ({ device }: { device: any }) => {
         <div className="flex justify-end pt-2">
           <button 
             onClick={() => { if(!newRule.name || !newRule.port_range) return toast.error("Name and Ports required"); mutation.mutate(newRule) }} 
-            className="px-8 py-2.5 bg-blue-600 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+            className="px-8 py-2.5 bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             Authorize Exception
           </button>
         </div>
       </div>
 
-      <div className="p-0 overflow-hidden border border-white/5 rounded-2xl">
+      <div className="p-0 overflow-hidden border border-white/5 rounded-lg">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-500">
             <RefreshCcw size={20} className="animate-spin mb-2" />
@@ -1978,10 +1978,10 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {items?.map((item: any) => (
-            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-blue-500/30 transition-all group">
+            <div key={item.id} className="bg-white/5 border border-white/10 rounded-lg p-6 hover:border-blue-500/30 transition-all group">
               <div className="flex items-start justify-between mb-6">
                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-600/10 rounded-xl text-blue-400 border border-blue-500/20">
+                    <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20">
                        <Activity size={20} />
                     </div>
                     <div>
@@ -2004,7 +2004,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
 
               <div className="space-y-4">
                  {item.logic_json?.length > 0 ? (
-                    <div className="bg-black/40 rounded-xl border border-white/5 overflow-hidden">
+                    <div className="bg-black/40 rounded-lg border border-white/5 overflow-hidden">
                        <table className="w-full text-[10px]">
                           <thead className="bg-white/5 border-b border-white/5">
                              <tr>
@@ -2025,7 +2025,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
                        </table>
                     </div>
                  ) : (
-                    <div className="p-4 bg-black/20 rounded-xl border border-dashed border-white/10 text-center">
+                    <div className="p-4 bg-black/20 rounded-lg border border-dashed border-white/10 text-center">
                        <p className="text-[9px] font-bold text-slate-600 uppercase ">No structured logic entries defined</p>
                     </div>
                  )}
@@ -2044,7 +2044,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
             </div>
           ))}
           {!items?.length && (
-            <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-[40px] flex flex-col items-center justify-center space-y-4">
+            <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center space-y-4">
                <div className="p-6 bg-white/5 rounded-full opacity-20"><Activity size={48} /></div>
                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600 ">No monitoring logic bound to this asset</p>
             </div>
@@ -2074,9 +2074,9 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit">
+                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
                     {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
@@ -2121,7 +2121,7 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-6 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
+      <div className="grid grid-cols-6 gap-2 bg-white/5 p-3 rounded-lg border border-white/5">
          <select value={newComp.category} onChange={e => setNewComp({...newComp, category: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] outline-none">
             <option>CPU</option><option>Memory</option><option>Card</option><option>Disk</option><option>NIC</option><option>PSU</option>
          </select>
@@ -2200,17 +2200,17 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 font-bold text-slate-200 text-center text-[10px]">
                 {editingId === h.id ? (
-                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
               </td>
               <td className="px-4 py-2 text-slate-500 text-center font-bold text-[10px]">
                 {editingId === h.id ? (
-                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.specs} onChange={e => setEditData({...editData, specs: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : h.specs}
               </td>
               <td className="px-4 py-2 text-center text-slate-400 font-bold text-[10px]">
                 {editingId === h.id ? (
-                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-xl px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
+                    <input type="number" value={editData.count} onChange={e => setEditData({...editData, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] w-12 outline-none focus:border-blue-500" />
                 ) : `x${h.count}`}
               </td>
               <td className="px-4 py-2 text-center">
@@ -2266,7 +2266,7 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-xl border border-white/5 items-end">
+      <div className="grid grid-cols-5 gap-2 bg-white/5 p-3 rounded-lg border border-white/5 items-end">
          <div className="col-span-1">
            <StyledSelect
               value={newSec.secret_type}
@@ -2277,17 +2277,17 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Identity</label>
-            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
-            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Notes</label>
-            <input value={newSec.notes} onChange={e => setNewSec({...newSec, notes: e.target.value})} placeholder="Purpose / Note" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+            <input value={newSec.notes} onChange={e => setNewSec({...newSec, notes: e.target.value})} placeholder="Purpose / Note" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
-         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
       </div>
       <SecretsTable deviceId={deviceId} />
     </div>
@@ -2355,12 +2355,12 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 font-bold text-slate-200">
                 {editingId === s.id ? (
-                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
               </td>
               <td className="px-4 py-2 text-slate-400">
                 {editingId === s.id ? (
-                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
+                    <input type="password" value={editData.encrypted_payload} onChange={e => setEditData({...editData, encrypted_payload: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" placeholder="Update secret..." />
                 ) : (
                     <div className="flex items-center space-x-3 group">
                        <span className={visibleIds.includes(s.id) ? 'text-blue-300' : 'text-slate-700'}>{visibleIds.includes(s.id) ? s.encrypted_payload : '••••••••••••'}</span>
@@ -2372,7 +2372,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
               <td className="px-4 py-2 text-slate-500">
                 {editingId === s.id ? (
-                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-xl px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
+                    <input value={editData.notes} onChange={e => setEditData({...editData, notes: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] w-full outline-none focus:border-blue-500" />
                 ) : s.notes}
               </td>
               <td className="px-4 py-2 text-center">
@@ -2474,7 +2474,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
          <div className="grid grid-cols-11 gap-4 items-end">
             <div className="col-span-3">
                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
-               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-xl px-4 py-2.5 text-xs text-blue-400 font-bold uppercase truncate">
+               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-lg px-4 py-2.5 text-xs text-blue-400 font-bold uppercase truncate">
                   {currentDevice?.name || 'Local'}
                </div>
             </div>
@@ -2491,7 +2491,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
             <div className="col-span-1 flex justify-center pb-2">
                <button 
                  onClick={swapRoles}
-                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all group"
+                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all group"
                  title="Swap Roles"
                >
                   <ArrowRightLeft size={16} className="group-active:rotate-180 transition-transform duration-300" />
@@ -2525,7 +2525,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
             </div>
             <button 
               onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
-              className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
             >
                <Plus size={14} /> <span>Establish Vector</span>
             </button>
@@ -2741,7 +2741,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
 
   return (
     <div className="space-y-6 py-6">
-      <div className="flex space-x-1 bg-black/40 p-1 rounded-2xl w-fit mb-4">
+      <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit mb-4">
          {['config', 'hardware', 'secrets', 'relations', 'metadata'].map(t => {
            const isDisabled = !formData.id && ['hardware', 'secrets', 'relations'].includes(t)
            return (
@@ -2750,7 +2750,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              onClick={() => !isDisabled && setActiveSubTab(t)}
              disabled={isDisabled}
              title={isDisabled ? 'Save asset first' : ''}
-             className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+             className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
              {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
            </button>
          )
@@ -2766,7 +2766,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value})} 
-                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
+                  className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all`} 
                   placeholder="SRV-NAME-01" 
                 />
              </div>
@@ -2775,7 +2775,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 <input 
                   value={formData.role || ''} 
                   onChange={e => setFormData({...formData, role: e.target.value})} 
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all" 
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500 transition-all" 
                   placeholder="Primary ERP Database Node" 
                 />
              </div>
@@ -2790,7 +2790,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Owner</label>
-                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
+                    <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
                 <StyledSelect
                     label="Business Unit"
@@ -2824,7 +2824,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-2">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Height (U)</label>
-                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                    <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div />
              </div>
@@ -2844,15 +2844,15 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="space-y-3">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Primary IP Address</label>
-                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+                    <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Management IP Address</label>
-                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
+                    <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
                 </div>
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Management URL / Console</label>
-                    <input value={formData.management_url || ""} onChange={e => setFormData({...formData, management_url: e.target.value})} placeholder="https://..." className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
+                    <input value={formData.management_url || ""} onChange={e => setFormData({...formData, management_url: e.target.value})} placeholder="https://..." className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
                 </div>
              </div>
 
@@ -2863,33 +2863,33 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
                 <div className="flex space-x-2">
-                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                   <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
-                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                   <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                   <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Serial / Asset Tag</label>
                 <div className="flex space-x-2">
-                    <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
-                    <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none" />
+                    <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
+                    <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
                 <div className="flex space-x-2">
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-bold" />
+                      <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none font-bold" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Typical</label>
                     </div>
                     <div className="w-1/2">
-                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none font-bold" />
+                      <input type="number" min={0} step={0.1} value={formData.power_max_w || 0} onChange={e => setFormData({...formData, power_max_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none font-bold" />
                       <label className="text-[8px] text-slate-500 uppercase mt-0.5 block">Peak</label>
                     </div>
                 </div>
@@ -2898,21 +2898,21 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Purchase Date</label>
-                    <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none" />
+                    <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none" />
                 </div>
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
-                    <input type="date" value={formData.install_date ? formData.install_date.split('T')[0] : ""} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-emerald-500/30" />
+                    <input type="date" value={formData.install_date ? formData.install_date.split('T')[0] : ""} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-emerald-500/30" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Warranty End</label>
-                    <input type="date" value={formData.warranty_end ? formData.warranty_end.split('T')[0] : ""} onChange={e => setFormData({...formData, warranty_end: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-amber-500/30" />
+                    <input type="date" value={formData.warranty_end ? formData.warranty_end.split('T')[0] : ""} onChange={e => setFormData({...formData, warranty_end: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-amber-500/30" />
                 </div>
                 <div>
                     <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">EOL / Retirement</label>
-                    <input type="date" value={formData.eol_date ? formData.eol_date.split('T')[0] : ""} onChange={e => setFormData({...formData, eol_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] outline-none border-rose-500/30" />
+                    <input type="date" value={formData.eol_date ? formData.eol_date.split('T')[0] : ""} onChange={e => setFormData({...formData, eol_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-rose-500/30" />
                 </div>
              </div>
           </div>
@@ -2940,7 +2940,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
             if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory");
             onSave({ data: formData })
           }}
-          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
+          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
         >
           {isSaving && <RefreshCcw size={14} className="animate-spin" />}
           <span>Save Asset</span>

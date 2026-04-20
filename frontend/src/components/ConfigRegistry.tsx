@@ -67,7 +67,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
   })
 
   return (
-    <div className="border border-white/5 bg-white/5 rounded-2xl overflow-hidden transition-all">
+    <div className="border border-white/5 bg-white/5 rounded-lg overflow-hidden transition-all">
       <div className="flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-all cursor-pointer group" onClick={() => setIsExpanded(!isExpanded)}>
          <div className="flex items-center space-x-4">
             <div className={`p-2 rounded-lg bg-white/5 ${isExpanded ? 'text-blue-400' : 'text-slate-500'}`}>
@@ -103,7 +103,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
             <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2 min-h-[50px]">
                     {options?.map((opt: any, index: number) => (
-                    <div key={opt.id} className="flex flex-col p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all border border-white/5 group relative">
+                    <div key={opt.id} className="flex flex-col p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-all border border-white/5 group relative">
                         <div className="flex items-center justify-between">
                             {editingId === opt.id ? (
                                 <div className="flex items-center space-x-2 flex-1">
@@ -160,7 +160,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                     value={newValue} 
                     onChange={e => setNewValue(e.target.value)} 
                     placeholder={`Define new ${title} entry...`} 
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[11px] outline-none focus:border-blue-500 transition-all font-black text-white uppercase pr-12 shadow-inner"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[11px] outline-none focus:border-blue-500 transition-all font-black text-white uppercase pr-12 shadow-inner"
                     onKeyDown={e => e.key === 'Enter' && newValue && addMutation.mutate()}
                     />
                     <button onClick={() => newValue && addMutation.mutate()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-500 transition-all active:scale-90">
@@ -189,17 +189,17 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                         initial={{ scale: 0.95, opacity: 0, y: 20 }} 
                         animate={{ scale: 1, opacity: 1, y: 0 }} 
                         exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-                        className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-hidden p-1 rounded-[40px] border border-white/10 flex flex-col bg-[#020617]/90"
+                        className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-hidden p-1 rounded-lg border border-white/10 flex flex-col bg-[#020617]/90"
                     >
                         <div className="p-8 pb-4 flex items-center justify-between border-b border-white/5 bg-white/2">
                             <div className="flex items-center space-x-6">
-                                <div className="p-4 bg-blue-600/20 rounded-2xl text-blue-400 border border-blue-500/30 shadow-inner"><Layout size={28} /></div>
+                                <div className="p-4 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Layout size={28} /></div>
                                 <div>
                                     <h2 className="text-2xl font-black uppercase text-white tracking-tighter italic">{title || 'Registry Configuration'}</h2>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Global System Parameters & Enumerations</p>
                                 </div>
                             </div>
-                            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-500 rounded-2xl transition-all border border-white/10 group">
+                            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-500 rounded-lg transition-all border border-white/10 group">
                                 <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                             </button>
                         </div>

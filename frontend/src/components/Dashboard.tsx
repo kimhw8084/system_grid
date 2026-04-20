@@ -44,10 +44,10 @@ const BentoCard = ({ title, subtitle, icon: Icon, color, total, breakdown, onCli
     onClick={onClick}
     className="relative group cursor-pointer h-full"
   >
-    <div className={`absolute -inset-0.5 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 rounded-[40px] blur-xl transition-all duration-500`} />
-    <div className="relative h-full glass-panel p-8 rounded-[40px] border-white/5 group-hover:border-white/10 group-hover:bg-white/[0.03] transition-all duration-500 flex flex-col">
+    <div className={`absolute -inset-0.5 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-10 rounded-lg blur-xl transition-all duration-500`} />
+    <div className="relative h-full glass-panel p-8 rounded-lg border-white/5 group-hover:border-white/10 group-hover:bg-white/[0.03] transition-all duration-500 flex flex-col">
       <div className="flex items-start justify-between mb-8">
-        <div className={`p-4 rounded-2xl bg-gradient-to-br ${color} bg-opacity-10 shadow-inner border border-white/5 group-hover:scale-110 transition-transform duration-500`}>
+        <div className={`p-4 rounded-lg bg-gradient-to-br ${color} bg-opacity-10 shadow-inner border border-white/5 group-hover:scale-110 transition-transform duration-500`}>
           <Icon size={24} className="text-white" />
         </div>
         <div className="flex flex-col items-end text-right">
@@ -78,7 +78,7 @@ const BentoCard = ({ title, subtitle, icon: Icon, color, total, breakdown, onCli
 )
 
 const MetricTile = ({ label, value, sub, icon: Icon, color }: any) => (
-  <div className="glass-panel p-6 rounded-3xl border-white/5 hover:border-white/10 transition-all group overflow-hidden relative">
+  <div className="glass-panel p-6 rounded-lg border-white/5 hover:border-white/10 transition-all group overflow-hidden relative">
     <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${color} opacity-[0.03] rounded-bl-full`} />
     <div className="flex items-start justify-between relative z-10">
       <div>
@@ -86,7 +86,7 @@ const MetricTile = ({ label, value, sub, icon: Icon, color }: any) => (
         <h4 className="text-2xl font-black text-white tracking-tighter tabular-nums">{value}</h4>
         {sub && <p className="text-[9px] font-bold text-slate-600 uppercase mt-1">{sub}</p>}
       </div>
-      <div className={`p-2 rounded-xl bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 group-hover:scale-110 transition-transform`}>
+      <div className={`p-2 rounded-lg bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 group-hover:scale-110 transition-transform`}>
         <Icon size={16} className="text-white" />
       </div>
     </div>
@@ -191,8 +191,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         <div className="flex items-center justify-between">
            <div className="flex items-center space-x-4">
               <div className="relative">
-                 <div className="absolute inset-0 bg-blue-600/40 blur-lg rounded-xl animate-pulse" />
-                 <div className="p-3 bg-blue-600 rounded-xl shadow-2xl relative border border-white/20">
+                 <div className="absolute inset-0 bg-blue-600/40 blur-lg rounded-lg animate-pulse" />
+                 <div className="p-3 bg-blue-600 rounded-lg shadow-2xl relative border border-white/20">
                     <GitBranch size={24} className="text-white" />
                  </div>
               </div>
@@ -209,7 +209,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab === tab.id ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent'}`}
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${activeTab === tab.id ? 'bg-white/10 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5 border border-transparent'}`}
                 >
                   <tab.icon size={14} className={activeTab === tab.id ? tab.color : 'text-slate-600'} />
                   <span className={activeTab === tab.id ? 'opacity-100' : 'opacity-60'}>{tab.label.split(' ')[0]}</span>
@@ -263,7 +263,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                   <MetricTile label="OS Diversity" value={new Set(devices?.map((d:any)=>d.os_name)).size} sub="Kernels Tracked" icon={Terminal} color="from-amber-600 to-orange-700" />
                </div>
                <div className="grid grid-cols-3 gap-8 h-[500px]">
-                  <div className="col-span-1 glass-panel p-8 rounded-[40px] border-white/5 flex flex-col">
+                  <div className="col-span-1 glass-panel p-8 rounded-lg border-white/5 flex flex-col">
                      <h3 className="text-sm font-black text-white uppercase tracking-widest mb-8 flex items-center">
                         <Terminal size={18} className="text-blue-400 mr-3" /> Kernel Distribution
                      </h3>
@@ -276,7 +276,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                         </BarChart>
                      </ResponsiveContainer>
                   </div>
-                  <div className="col-span-2 glass-panel p-0 rounded-[40px] border-white/5 overflow-hidden flex flex-col">
+                  <div className="col-span-2 glass-panel p-0 rounded-lg border-white/5 overflow-hidden flex flex-col">
                      <div className="p-8 border-b border-white/5 flex items-center justify-between shrink-0">
                         <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center">
                            <ListTree size={18} className="text-emerald-400 mr-3" /> Compute Asset Matrix
@@ -332,7 +332,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.4em]">Multi-Site Infrastructure Interconnect</p>
                   </div>
                   <div className="absolute top-10 right-10 z-10 flex flex-col items-end space-y-4">
-                     <div className="glass-panel p-6 rounded-3xl border-white/10 backdrop-blur-xl">
+                     <div className="glass-panel p-6 rounded-lg border-white/10 backdrop-blur-xl">
                         <div className="flex flex-col space-y-4">
                            <div className="flex items-center space-x-3">
                               <div className="w-3 h-3 rounded-full bg-blue-500" />
@@ -349,8 +349,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                         </div>
                      </div>
                      <div className="flex space-x-2">
-                        <button className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-blue-600 transition-all text-white"><Compass size={20}/></button>
-                        <button className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-blue-600 transition-all text-white"><MousePointer2 size={20}/></button>
+                        <button className="p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-blue-600 transition-all text-white"><Compass size={20}/></button>
+                        <button className="p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-blue-600 transition-all text-white"><MousePointer2 size={20}/></button>
                      </div>
                   </div>
                   
@@ -391,7 +391,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             <TabContentWrapper>
                <div className="grid grid-cols-4 gap-8 h-full">
                   <div className="col-span-1 space-y-6">
-                     <div className="glass-panel p-8 rounded-[40px] border-white/5 flex flex-col items-center text-center">
+                     <div className="glass-panel p-8 rounded-lg border-white/5 flex flex-col items-center text-center">
                         <Workflow size={48} className="text-purple-400 mb-4 animate-pulse" />
                         <h3 className="text-xl font-black text-white uppercase tracking-tight">Service Dependency</h3>
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Cross-Functional Microservices</p>
@@ -407,7 +407,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                            </div>
                         </div>
                      </div>
-                     <div className="glass-panel p-8 rounded-[40px] border-white/5">
+                     <div className="glass-panel p-8 rounded-lg border-white/5">
                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Service Health Index</h3>
                         <div className="space-y-4">
                            {['Identity-IAM', 'Core-SQL', 'Object-S3', 'Cache-RD'].map(s => (
@@ -423,7 +423,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                   </div>
                   <div className="col-span-3 glass-panel rounded-[48px] border-white/5 overflow-hidden bg-[#030712] relative">
                      <div className="absolute top-8 left-8 z-10 flex items-center space-x-4">
-                        <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                        <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                            <GitBranch size={20} className="text-purple-400" />
                         </div>
                         <div>
@@ -506,8 +506,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                </div>
                <div className="grid grid-cols-3 gap-8">
                   {incidents?.slice(0,3).map((i: any) => (
-                    <div key={i.id} className="glass-panel p-6 rounded-3xl border-white/5 border-l-4 border-l-rose-500 flex items-start space-x-4">
-                       <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500">
+                    <div key={i.id} className="glass-panel p-6 rounded-lg border-white/5 border-l-4 border-l-rose-500 flex items-start space-x-4">
+                       <div className="p-3 bg-rose-500/10 rounded-lg text-rose-500">
                           <AlertCircle size={20} />
                        </div>
                        <div>
@@ -537,11 +537,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                         </BarChart>
                      </ResponsiveContainer>
                      <div className="mt-8 grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="p-4 bg-white/5 rounded-lg border border-white/5">
                            <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Max Power Demand</p>
                            <p className="text-xl font-black text-white">12.4 kW</p>
                         </div>
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="p-4 bg-white/5 rounded-lg border border-white/5">
                            <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Free Space (Global)</p>
                            <p className="text-xl font-black text-emerald-400">75 U</p>
                         </div>
@@ -566,7 +566,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                      </div>
                      <div className="grid grid-cols-3 gap-4 mt-8">
                         {rackCapData.slice(0,3).map((r,idx) => (
-                           <div key={r.name} className="flex flex-col items-center p-4 bg-white/5 rounded-3xl border border-white/10">
+                           <div key={r.name} className="flex flex-col items-center p-4 bg-white/5 rounded-lg border border-white/10">
                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{r.name}</span>
                               <span className="text-lg font-black text-white mt-1">{r.cooling}%</span>
                               <div className="w-full h-1 bg-white/5 mt-3 rounded-full overflow-hidden">
@@ -636,7 +636,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-panel p-6 rounded-[32px] border-white/5 flex items-center justify-between bg-gradient-to-r from-transparent via-blue-500/[0.02] to-transparent shrink-0 backdrop-blur-2xl"
+        className="glass-panel p-6 rounded-lg border-white/5 flex items-center justify-between bg-gradient-to-r from-transparent via-blue-500/[0.02] to-transparent shrink-0 backdrop-blur-2xl"
       >
         <div className="flex items-center space-x-8">
            <div className="flex flex-col">
@@ -667,7 +667,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               <p className="text-[9px] font-black text-slate-500 uppercase">SYSGRID ORCHESTRATOR</p>
               <p className="text-[10px] font-black text-blue-400 italic tracking-tighter">CORE ENGINE v2.5.4</p>
            </div>
-           <div className="p-3 bg-white/5 rounded-2xl border border-white/10 shadow-inner">
+           <div className="p-3 bg-white/5 rounded-lg border border-white/10 shadow-inner">
               <Binary size={20} className="text-slate-400" />
            </div>
         </div>

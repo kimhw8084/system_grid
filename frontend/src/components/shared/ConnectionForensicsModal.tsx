@@ -21,7 +21,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
             initial={{ scale: 0.95, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }} 
             exit={{ scale: 0.95, opacity: 0 }}
-            className="glass-panel w-full max-w-[550px] p-10 rounded-[40px] border border-emerald-500/30 space-y-8 relative overflow-hidden"
+            className="glass-panel w-full max-w-[550px] p-10 rounded-lg border border-emerald-500/30 space-y-8 relative overflow-hidden"
           >
              <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center space-x-4 text-emerald-400">
@@ -32,13 +32,13 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                   {onEdit && (
                     <button 
                       onClick={() => onEdit(connection)} 
-                      className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl transition-all border border-blue-500/20"
+                      className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all border border-blue-500/20"
                       title="Edit Connection"
                     >
                       <Edit2 size={20} />
                     </button>
                   )}
-                  <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white rounded-xl transition-all border border-white/10">
+                  <button onClick={onClose} className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white rounded-lg transition-all border border-white/10">
                     <X size={20}/>
                   </button>
                 </div>
@@ -46,7 +46,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
 
              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                   <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl relative overflow-hidden group">
+                   <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-lg relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-blue-500/30">SOURCE ENTITY</div>
                       <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
                       <p className="text-lg font-black text-white truncate">{connection.server_a || connection.source_device_name}</p>
@@ -72,7 +72,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                 </div>
 
                 <div className="space-y-4">
-                   <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl relative overflow-hidden group">
+                   <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-2 text-[8px] font-black uppercase text-emerald-500/30">PEER ENTITY</div>
                       <p className="text-xs font-black uppercase text-slate-500 mb-1">Entity Name</p>
                       <p className="text-lg font-black text-white truncate">{connection.server_b || connection.target_device_name}</p>
@@ -118,7 +118,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                 </div>
              </div>
 
-             <button onClick={onClose} className="w-full py-4 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95">
+             <button onClick={onClose} className="w-full py-4 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95">
                 Dismiss Forensics
              </button>
           </motion.div>

@@ -131,7 +131,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
   const def = METRIC_DEFINITIONS[metric];
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-10 rounded-[40px] border border-blue-500/30 space-y-6">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-10 rounded-lg border border-blue-500/30 space-y-6">
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400  flex items-center space-x-3">
              <Info size={24}/> <span>{def.title}</span>
@@ -141,7 +141,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
         <div className="space-y-4">
           <div>
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Mathematical Derivation</p>
-            <div className="bg-black/40 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-blue-300">
+            <div className="bg-black/40 border border-white/5 rounded-lg p-4 font-mono text-[11px] text-blue-300">
                {def.formula}
             </div>
           </div>
@@ -152,7 +152,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
             </p>
           </div>
         </div>
-        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-500/20">Acknowledge</button>
+        <button onClick={onClose} className="w-full py-3 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-500/20">Acknowledge</button>
       </motion.div>
     </div>
   )
@@ -480,11 +480,11 @@ export default function FAR() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Scan risk vectors..."
-                className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-rose-500/50 w-64 transition-all"
+                className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-rose-500/50 w-64 transition-all"
               />
            </div>
 
-           <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Laboratory">
                 <Activity size={16} />
              </button>
@@ -498,7 +498,7 @@ export default function FAR() {
 
            <button 
              onClick={() => { setSelectedModeId(null); setShowWizard(true); }}
-             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
+             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
            >
              <ShieldAlert size={14} /> Add Failure Mode
            </button>
@@ -508,7 +508,7 @@ export default function FAR() {
       <AnimatePresence>
         {showStyleLab && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="bg-rose-600/10 border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+            <div className="bg-rose-600/10 border border-rose-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-rose-400" />
@@ -526,9 +526,9 @@ export default function FAR() {
       </AnimatePresence>
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>GLOBAL_REALM</button>
+         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>GLOBAL_REALM</button>
          {availableSystems.map(sys => (
-           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
+           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
          ))}
       </div>
 
@@ -539,7 +539,7 @@ export default function FAR() {
          <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp("AvgSeverity")} />
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col glass-panel rounded-3xl border-white/5 bg-[#0a0c14]/40 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col glass-panel rounded-lg border-white/5 bg-[#0a0c14]/40 overflow-hidden">
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
                  <ShieldAlert size={14} className="text-rose-500" />
@@ -610,7 +610,7 @@ export default function FAR() {
       <AnimatePresence>
         {showMaturityHelp && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl rounded-[40px] border border-white/10 bg-slate-900 overflow-hidden shadow-2xl">
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl rounded-lg border border-white/10 bg-slate-900 overflow-hidden shadow-2xl">
                 <div className="p-8 border-b border-white/5 flex items-center justify-between">
                    <h2 className="text-xl font-bold uppercase tracking-widest text-white ">Maturity Matrix Glossary</h2>
                    <button onClick={() => setShowMaturityHelp(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -664,13 +664,13 @@ export default function FAR() {
       <AnimatePresence>
         {showWizard && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-[40px] border border-rose-500/20 overflow-hidden shadow-2xl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-lg border border-rose-500/20 overflow-hidden shadow-2xl">
                <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
                   <div>
                     <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">New Failure Mode</h1>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Reliability Engineering Risk Documentation Studio</p>
                   </div>
-                  <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+                  <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
                </div>
                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  <FARWizard initialData={selectedMode} onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
@@ -689,7 +689,7 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   const bgColors: any = { emerald: 'bg-emerald-500/5', rose: 'bg-rose-500/5', amber: 'bg-amber-500/5', sky: 'bg-sky-500/5' }
   const textColors: any = { emerald: 'text-emerald-400', rose: 'text-rose-400', amber: 'text-amber-400', sky: 'text-sky-400' }
   return (
-    <div className={`glass-panel p-4 rounded-2xl border-white/5 ${bgColors[color]} flex flex-col justify-between group overflow-hidden relative min-h-[90px]`}>
+    <div className={`glass-panel p-4 rounded-lg border-white/5 ${bgColors[color]} flex flex-col justify-between group overflow-hidden relative min-h-[90px]`}>
       <div className="flex items-center justify-between relative z-10">
          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
          <button onClick={onHelp} className="p-1 text-slate-600 hover:text-white transition-colors"><HelpCircle size={12}/></button>
@@ -721,7 +721,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6 font-bold uppercase tracking-tight">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-[40px] border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-lg border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
          
          {/* HEADER SECTION */}
          <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex flex-col shrink-0 relative overflow-hidden">
@@ -738,7 +738,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
               </div>
 
               <div className="flex items-center gap-4">
-                  <div className="flex gap-1.5 bg-black/40 p-1.5 rounded-xl border border-white/5 shadow-xl">
+                  <div className="flex gap-1.5 bg-black/40 p-1.5 rounded-lg border border-white/5 shadow-xl">
                       <HeaderScore label="S" value={mode.severity} color="rose" />
                       <HeaderScore label="O" value={mode.occurrence} color="amber" />
                       <HeaderScore label="D" value={mode.detection} color="sky" />
@@ -751,13 +751,13 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
                          <p className="text-[8px] font-bold text-slate-500  uppercase">RPN</p>
                       </div>
                   </div>
-                  <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all ml-2 border border-white/10"><X size={20}/></button>
+                  <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all ml-2 border border-white/10"><X size={20}/></button>
               </div>
             </div>
 
             {/* EFFECT & IMPACTS ON OWN ROW */}
             <div className="mt-4 flex flex-col space-y-3 relative z-10">
-               <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl px-4 py-2 flex items-center gap-3">
+               <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg px-4 py-2 flex items-center gap-3">
                   <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest shrink-0">Effect Forensics:</p>
                   <p className="text-[11px] text-slate-200 font-bold uppercase  tracking-tight leading-none truncate">{mode.effect || 'NULL_EFFECT_STATEMENT'}</p>
                </div>
@@ -780,7 +780,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
 
             {/* TABS ON OWN ROW */}
             <div className="mt-6 flex items-center relative z-10">
-               <div className="flex space-x-1 bg-black/60 p-0.5 rounded-xl border border-white/5">
+               <div className="flex space-x-1 bg-black/60 p-0.5 rounded-lg border border-white/5">
                  {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
                    <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
                  ))}
@@ -844,7 +844,7 @@ function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
        </div>
-       <div className="bg-black/20 border border-white/5 rounded-xl p-3 min-h-[50px]">
+       <div className="bg-black/20 border border-white/5 rounded-lg p-3 min-h-[50px]">
           <p className={`text-[11px] font-bold uppercase  ${color} leading-none mb-1.5`}>{current?.label}</p>
           <p className="text-[10px] text-slate-500 font-bold leading-tight lowercase">{current?.desc}</p>
        </div>
@@ -886,13 +886,13 @@ function FARWizard({ initialData, onComplete }: any) {
           </div>
           <div className="space-y-1">
              <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
-             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
+             <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
           </div>
           <div className="space-y-1">
              <label className="text-[9px] font-bold text-slate-500 ">Impact Statement (Effect)</label>
-             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
+             <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
           </div>
-          <div className="bg-black/20 p-4 rounded-3xl border border-white/5 space-y-3">
+          <div className="bg-black/20 p-4 rounded-lg border border-white/5 space-y-3">
              <div className="flex items-center justify-between">
                 <label className="text-[9px] font-bold text-slate-500 ">Affected Infrastructure</label>
                 <div className="relative">
@@ -903,7 +903,7 @@ function FARWizard({ initialData, onComplete }: any) {
              <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
                 {devices?.filter((d: any) => !assetSearch || d.name.toLowerCase().includes(assetSearch.toLowerCase())).map((d: any) => (
                   <label key={d.id} 
-                    className={`flex items-center gap-3 p-2 rounded-xl border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
+                    className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer ${formData.affected_assets.includes(d.id) ? 'bg-rose-500/10 border-rose-500 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/10'}`}
                     onClick={e => e.stopPropagation()}
                   >
                     <input 
@@ -934,13 +934,13 @@ function FARWizard({ initialData, onComplete }: any) {
        </div>
 
        <div className="col-span-6 space-y-4">
-          <div className="bg-white/[0.02] p-5 rounded-[32px] border border-white/5 space-y-5">
+          <div className="bg-white/[0.02] p-5 rounded-lg border border-white/5 space-y-5">
              <GaugeSelector label="Severity" value={formData.severity} onChange={(v: any) => setFormData({ ...formData, severity: v })} levels={SEVERITY_LEVELS} color="text-rose-500" accent="bg-rose-500" />
              <GaugeSelector label="Occurrence" value={formData.occurrence} onChange={(v: any) => setFormData({ ...formData, occurrence: v })} levels={OCCURRENCE_LEVELS} color="text-amber-500" accent="bg-amber-500" />
              <GaugeSelector label="Detection" value={formData.detection} onChange={(v: any) => setFormData({ ...formData, detection: v })} levels={DETECTION_LEVELS} color="text-sky-400" accent="bg-sky-400" />
           </div>
 
-          <div className="bg-[#0f111a] rounded-[32px] p-5 border border-white/10 flex items-center justify-between relative overflow-hidden">
+          <div className="bg-[#0f111a] rounded-lg p-5 border border-white/10 flex items-center justify-between relative overflow-hidden">
              <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-[50px] pointer-events-none" />
              <div>
                 <p className="text-[9px] font-bold text-slate-500  mb-1 uppercase tracking-widest leading-none">Risk Priority Number (RPN)</p>
@@ -952,7 +952,7 @@ function FARWizard({ initialData, onComplete }: any) {
              <button 
                disabled={!formData.system_name || !formData.title || mutation.isPending} 
                onClick={() => mutation.mutate(formData)} 
-               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 "
+               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-4 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-2xl shadow-rose-600/20 active:scale-95 transition-all flex items-center gap-2 "
              >
                {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} COMMIT
              </button>
@@ -974,10 +974,10 @@ function CausalTab({ mode, onUpdate }: any) {
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
-          <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
+          <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
        </div>
        
-       <div className="flex-1 bg-black/40 border border-white/5 rounded-[32px] overflow-hidden flex flex-col shadow-2xl">
+       <div className="flex-1 bg-black/40 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl">
           <table className="w-full text-left border-collapse">
              <thead className="bg-white/[0.03] border-b border-white/10">
                 <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
@@ -1021,10 +1021,10 @@ function CausalTab({ mode, onUpdate }: any) {
        <AnimatePresence>
          {isAdding && (
            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-lg p-10 rounded-[40px] border border-amber-500/30 space-y-8">
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-amber-500/30 space-y-8">
                 <div className="flex items-center justify-between border-b border-white/5 pb-6">
                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500 border border-amber-500/20"><Zap size={24}/></div>
+                      <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/20"><Zap size={24}/></div>
                       <div>
                          <h3 className="text-xl font-bold uppercase tracking-tighter text-white">Add Root Cause</h3>
                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">Attribute the technical origin of failure</p>
@@ -1041,7 +1041,7 @@ function CausalTab({ mode, onUpdate }: any) {
                         value={newCause.cause_text} 
                         onChange={e => setNewCause({...newCause, cause_text: e.target.value})} 
                         placeholder="ENTER LOGICAL TRACE ORIGIN..." 
-                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white outline-none focus:border-amber-500 min-h-[100px] resize-none" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white outline-none focus:border-amber-500 min-h-[100px] resize-none" 
                       />
                    </div>
 
@@ -1060,7 +1060,7 @@ function CausalTab({ mode, onUpdate }: any) {
                         value={newCause.responsible_team} 
                         onChange={e => setNewCause({...newCause, responsible_team: e.target.value})} 
                         placeholder="E.G. PLATFORM INFRASTRUCTURE" 
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-amber-500 uppercase" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-amber-500 uppercase" 
                       />
                    </div>
                 </div>
@@ -1070,7 +1070,7 @@ function CausalTab({ mode, onUpdate }: any) {
                    <button 
                      disabled={!newCause.cause_text || mutation.isPending} 
                      onClick={() => mutation.mutate(newCause)} 
-                     className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-amber-600/20 transition-all flex items-center justify-center gap-2"
+                     className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-amber-600/20 transition-all flex items-center justify-center gap-2"
                    >
                      {mutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />} LOG ROOT CAUSE
                    </button>
@@ -1166,16 +1166,16 @@ function RoadmapTab({ mode, onUpdate }: any) {
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Defense Infrastructure Roadmap</h3>
           {!isAdding && (
             <div className="flex gap-2">
-               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); setNewAction({ ...newAction, steps: '', team: '', status: 'Not Started' }) }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-xl text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); setShowProjectCreate(true); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); setNewAction({ ...newAction, steps: '', team: '', status: 'Not Started' }) }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); setShowProjectCreate(true); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
             </div>
           )}
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
           {isAdding && actionType !== 'Prevention' && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-[32px] p-8 space-y-6 relative">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-lg p-8 space-y-6 relative">
                <div className="flex items-center justify-between">
                   <h4 className={`text-xl font-bold uppercase  tracking-tighter ${actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
@@ -1186,7 +1186,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      {actionType === 'Workaround' && (
                         <div className="space-y-2">
                            <label className="text-[10px] font-bold text-slate-500  uppercase">Procedural steps (Raw input - Manual Numbering)</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value})} placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed" />
+                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value})} placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed" />
                         </div>
                      )}
                      {actionType === 'Monitoring' && (
@@ -1201,7 +1201,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 value={monitoringSearch} 
                                 onChange={e => setMonitoringSearch(e.target.value)} 
                                 placeholder="Search monitors..." 
-                                className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500"
                               />
                            </div>
                            <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
@@ -1209,7 +1209,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 <button 
                                   key={m.id} 
                                   onClick={() => setNewAction({...newAction, monitoring_id: m.id})}
-                                  className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between group ${newAction.monitoring_id === m.id ? 'bg-sky-600/20 border-sky-500 shadow-lg shadow-sky-500/10' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                                  className={`w-full text-left p-4 rounded-lg border transition-all flex items-center justify-between group ${newAction.monitoring_id === m.id ? 'bg-sky-600/20 border-sky-500 shadow-lg shadow-sky-500/10' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
                                 >
                                    <div>
                                       <p className="text-[11px] font-bold text-white uppercase tracking-tight">{m.title}</p>
@@ -1219,13 +1219,13 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 </button>
                               ))}
                               {filteredMonitoring?.length === 0 && (
-                                <div className="py-10 text-center text-slate-700 text-[10px] font-bold border-2 border-dashed border-white/5 rounded-2xl">
+                                <div className="py-10 text-center text-slate-700 text-[10px] font-bold border-2 border-dashed border-white/5 rounded-lg">
                                    No existing monitors found for affected assets
                                 </div>
                               )}
                            </div>
                            <div className="text-[10px] text-slate-500 text-center uppercase tracking-widest">OR</div>
-                           <button onClick={() => setShowMonitoringCreate(true)} className="w-full py-4 bg-sky-600/10 border-2 border-dashed border-sky-500/30 rounded-2xl text-[10px] font-bold text-sky-400 hover:bg-sky-600/20 hover:border-sky-500/50 transition-all uppercase flex items-center justify-center gap-2">
+                           <button onClick={() => setShowMonitoringCreate(true)} className="w-full py-4 bg-sky-600/10 border-2 border-dashed border-sky-500/30 rounded-lg text-[10px] font-bold text-sky-400 hover:bg-sky-600/20 hover:border-sky-500/50 transition-all uppercase flex items-center justify-center gap-2">
                               <Plus size={14} /> Create New Monitoring Node
                            </button>
                         </div>
@@ -1236,11 +1236,11 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                            <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Owner Team</label>
-                           <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value})} placeholder="e.g. Platform SRE" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20" />
+                           <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value})} placeholder="e.g. Platform SRE" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20" />
                         </div>
                         <div className="space-y-1">
                            <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Initial Status</label>
-                           <select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-[11px] text-xs font-bold text-white outline-none focus:border-white/20 uppercase appearance-none">
+                           <select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-[11px] text-xs font-bold text-white outline-none focus:border-white/20 uppercase appearance-none">
                               <option value="Not Started">Not Started</option>
                               <option value="In Progress">In Progress</option>
                               <option value="On Hold">On Hold</option>
@@ -1251,18 +1251,18 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      </div>
 
                      {actionType === 'Workaround' && (
-                        <div className="bg-black/20 p-6 rounded-3xl border border-white/5 space-y-5">
+                        <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-5">
                            <div className="flex items-center justify-between">
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">BKM Alignment</label>
-                              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                              <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                                  <button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'input' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Paste Link</button>
                                  <button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'link' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Direct Link</button>
                               </div>
                            </div>
                            {newAction.bkm_mode === 'input' ? (
-                              <input value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value})} placeholder="PASTE EXTERNAL KNOWLEDGE LINK..." className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-blue-400 outline-none focus:border-amber-500" />
+                              <input value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value})} placeholder="PASTE EXTERNAL KNOWLEDGE LINK..." className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-blue-400 outline-none focus:border-amber-500" />
                            ) : (
-                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none uppercase appearance-none">
+                              <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none uppercase appearance-none">
                                  <option value="">SELECT BKM ARTIFACT...</option>
                                  {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
                               </select>
@@ -1271,13 +1271,13 @@ function RoadmapTab({ mode, onUpdate }: any) {
                         </div>
                      )}
 
-                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-5 rounded-2xl text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 ${actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20 hover:bg-sky-500' : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-500'}`}>Commit Strategic Action</button>
+                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-5 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 ${actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20 hover:bg-sky-500' : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-500'}`}>Commit Strategic Action</button>
                   </div>
                </div>
             </motion.div>
           )}
 
-          <div className="bg-black/40 border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+          <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
              <table className="w-full text-left border-collapse">
                 <thead className="bg-white/[0.03] border-b border-white/10">
                    <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
@@ -1303,7 +1303,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 </div>
                               ))}
                               {m.monitoring_item && (
-                                 <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-xl mt-2 group/item hover:bg-sky-500/10 transition-all">
+                                 <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-lg mt-2 group/item hover:bg-sky-500/10 transition-all">
                                     <Monitor size={14} className="text-sky-400" />
                                     <span className="text-sky-400 tracking-tight normal-case">Linked Monitor: {m.monitoring_item.title}</span>
                                  </div>
@@ -1424,14 +1424,14 @@ function RoadmapTab({ mode, onUpdate }: any) {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
          <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500 ">Analytical Research History</h3>
-            <button onClick={() => setIsLinking(true)} className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-xl text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
+            <button onClick={() => setIsLinking(true)} className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
          </div>
 
          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
             {linkedResearch.map((r: any) => (
-               <div key={r.id} className="bg-white/5 border border-white/5 rounded-3xl p-6 flex items-center justify-between group hover:bg-white/10 transition-all">
+               <div key={r.id} className="bg-white/5 border border-white/5 rounded-lg p-6 flex items-center justify-between group hover:bg-white/10 transition-all">
                   <div className="flex items-center gap-6">
-                     <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-400 border border-blue-500/20"><Activity size={24}/></div>
+                     <div className="p-4 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/20"><Activity size={24}/></div>
                      <div>
                         <h4 className="text-sm font-bold text-white uppercase tracking-tight">{r.title}</h4>
                         <div className="flex items-center gap-3 mt-1">
@@ -1441,8 +1441,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      </div>
                   </div>
                   <div className="flex gap-3">
-                     <button onClick={() => window.location.hash = '#/research'} className="p-2.5 bg-white/5 rounded-xl text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
-                     <button className="p-2.5 bg-white/5 rounded-xl text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
+                     <button onClick={() => window.location.hash = '#/research'} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
+                     <button className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
                   </div>
                </div>
             ))}
@@ -1457,7 +1457,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
          <AnimatePresence>
             {isLinking && (
                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-[40px] border border-white/10 space-y-6">
+                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-white/10 space-y-6">
                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
                         <h3 className="text-xl font-bold uppercase text-white tracking-tighter">Link Research</h3>
                         <button onClick={() => setIsLinking(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -1468,7 +1468,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                           value={search} 
                           onChange={e => setSearch(e.target.value)} 
                           placeholder="Search research artifacts..." 
-                          className="w-full bg-black/40 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-rose-500" 
+                          className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-rose-500" 
                         />
                      </div>
                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
@@ -1476,7 +1476,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                           <button 
                             key={r.id} 
                             onClick={() => linkMutation.mutate(r.id)}
-                            className="w-full text-left p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-rose-500/30 hover:bg-rose-500/5 transition-all group"
+                            className="w-full text-left p-4 rounded-lg bg-white/5 border border-white/5 hover:border-rose-500/30 hover:bg-rose-500/5 transition-all group"
                           >
                              <p className="text-[11px] font-bold text-white uppercase">{r.title}</p>
                              <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Status: {r.status}</p>

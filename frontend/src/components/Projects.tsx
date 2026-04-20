@@ -105,7 +105,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
             <input 
               value={formData.name} 
               onChange={e => setFormData({...formData, name: e.target.value})} 
-              className="w-full bg-slate-900 border border-white/10 rounded-2xl px-5 py-3 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all" 
+              className="w-full bg-slate-900 border border-white/10 rounded-lg px-5 py-3 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all" 
               placeholder="E.G. DATA CENTER MIGRATION 2026" 
             />
           </div>
@@ -136,29 +136,29 @@ export const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">Start Date</label>
-              <input type="date" value={formData.start_date.split('T')[0]} onChange={e => setFormData({...formData, start_date: new Date(e.target.value).toISOString()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" />
+              <input type="date" value={formData.start_date.split('T')[0]} onChange={e => setFormData({...formData, start_date: new Date(e.target.value).toISOString()})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" />
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">End Date</label>
-              <input type="date" value={formData.end_date.split('T')[0]} onChange={e => setFormData({...formData, end_date: new Date(e.target.value).toISOString()})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" />
+              <input type="date" value={formData.end_date.split('T')[0]} onChange={e => setFormData({...formData, end_date: new Date(e.target.value).toISOString()})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" />
             </div>
           </div>
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">Project Lead / Owner</label>
-            <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="E.G. JONATHAN REED" />
+            <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" placeholder="E.G. JONATHAN REED" />
           </div>
         </div>
 
         <div className="space-y-4">
            <div>
             <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">Project Objective</label>
-            <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-2xl px-5 py-3 text-sm font-bold text-white h-[140px] resize-none outline-none focus:border-blue-500" placeholder="Describe the project scope and expected outcomes..." />
+            <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-5 py-3 text-sm font-bold text-white h-[140px] resize-none outline-none focus:border-blue-500" placeholder="Describe the project scope and expected outcomes..." />
           </div>
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-1">Budget Allocation (USD)</label>
             <div className="relative">
                <DollarSign size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-               <input type="number" value={formData.budget} onChange={e => setFormData({...formData, budget: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-xs font-bold text-white outline-none" />
+               <input type="number" value={formData.budget} onChange={e => setFormData({...formData, budget: parseFloat(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-xs font-bold text-white outline-none" />
             </div>
           </div>
         </div>
@@ -170,25 +170,25 @@ export const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
                <Calendar size={14}/> <span>Schedule Milestones & Tasks</span>
             </h3>
          </div>
-         <div className="grid grid-cols-4 gap-4 items-end bg-white/5 p-6 rounded-3xl border border-white/5">
+         <div className="grid grid-cols-4 gap-4 items-end bg-white/5 p-6 rounded-lg border border-white/5">
             <div className="col-span-1">
                <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Task Name</label>
-               <input value={newTask.name} onChange={e => setNewTask({...newTask, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" placeholder="Phase 1: Analysis" />
+               <input value={newTask.name} onChange={e => setNewTask({...newTask, name: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" placeholder="Phase 1: Analysis" />
             </div>
             <div>
                <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">Start</label>
-               <input type="date" value={newTask.start} onChange={e => setNewTask({...newTask, start: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" />
+               <input type="date" value={newTask.start} onChange={e => setNewTask({...newTask, start: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" />
             </div>
             <div>
                <label className="text-[9px] font-black text-slate-500 uppercase mb-2 block">End</label>
-               <input type="date" value={newTask.end} onChange={e => setNewTask({...newTask, end: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none" />
+               <input type="date" value={newTask.end} onChange={e => setNewTask({...newTask, end: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" />
             </div>
-            <button onClick={addTask} className="h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all">+ Add Task</button>
+            <button onClick={addTask} className="h-10 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all">+ Add Task</button>
          </div>
 
          <div className="space-y-2">
             {formData.tasks_json.map((task: any, idx: number) => (
-              <div key={idx} className="flex items-center justify-between bg-white/5 px-6 py-3 rounded-2xl group">
+              <div key={idx} className="flex items-center justify-between bg-white/5 px-6 py-3 rounded-lg group">
                  <div className="flex items-center space-x-6">
                     <span className="w-6 h-6 rounded-full bg-blue-600/20 text-blue-400 text-[10px] font-black flex items-center justify-center border border-blue-500/20">{idx + 1}</span>
                     <span className="text-[11px] font-black text-white uppercase tracking-tight">{task.name}</span>
@@ -211,7 +211,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
         <button 
           disabled={isSaving || !formData.name} 
           onClick={() => onSave(formData)} 
-          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
         >
           {isSaving ? 'Synchronizing Execution Plan...' : (initialData.id ? 'Update Project Baseline' : 'Initialize Project Stream')}
         </button>
@@ -291,7 +291,7 @@ export default function Projects() {
       {/* Dynamic Header & Stats */}
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-5">
-           <div className="w-14 h-14 rounded-3xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 border-t border-white/20">
+           <div className="w-14 h-14 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 border-t border-white/20">
               <Briefcase size={28} />
            </div>
            <div>
@@ -301,7 +301,7 @@ export default function Projects() {
         </div>
 
         <div className="flex items-center space-x-6">
-           <div className="flex items-center space-x-8 px-8 py-3 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-md">
+           <div className="flex items-center space-x-8 px-8 py-3 bg-white/5 rounded-lg border border-white/5 backdrop-blur-md">
               <div className="text-center">
                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Active Streams</p>
                  <p className="text-xl font-black text-blue-400">{stats.active}</p>
@@ -323,11 +323,11 @@ export default function Projects() {
 
       <div className="flex-1 flex overflow-hidden space-x-8">
         {/* Project Vertical Nav */}
-        <div className="w-80 flex flex-col glass-panel rounded-[40px] border border-white/5 overflow-hidden shadow-2xl bg-[#0a0c14]/40">
+        <div className="w-80 flex flex-col glass-panel rounded-lg border border-white/5 overflow-hidden shadow-2xl bg-[#0a0c14]/40">
            <div className="p-6 border-b border-white/5 bg-white/5">
               <div className="relative">
                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                 <input placeholder="Filter Streams..." className="w-full bg-black/40 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-[11px] font-black uppercase text-white outline-none focus:border-blue-500/50 transition-all" />
+                 <input placeholder="Filter Streams..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-12 pr-4 py-3 text-[11px] font-black uppercase text-white outline-none focus:border-blue-500/50 transition-all" />
               </div>
            </div>
            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
@@ -376,8 +376,8 @@ export default function Projects() {
                    </div>
                    <div className="flex flex-col items-end space-y-4">
                       <div className="flex space-x-3">
-                         <button onClick={() => setActiveModal(selectedProject)} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 hover:text-white transition-all"><Edit2 size={20}/></button>
-                         <button onClick={() => setConfirmModal({ isOpen: true, id: selectedProject.id })} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-2xl text-rose-500 transition-all"><Trash2 size={20}/></button>
+                         <button onClick={() => setActiveModal(selectedProject)} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all"><Edit2 size={20}/></button>
+                         <button onClick={() => setConfirmModal({ isOpen: true, id: selectedProject.id })} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-rose-500 transition-all"><Trash2 size={20}/></button>
                       </div>
                       <div className="bg-black/40 p-6 rounded-[30px] border border-white/5 text-right min-w-[200px]">
                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Project Budget</p>
@@ -387,7 +387,7 @@ export default function Projects() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-8">
-                   <div className="glass-panel p-8 rounded-[40px] bg-blue-600/5 border-blue-500/10 space-y-4">
+                   <div className="glass-panel p-8 rounded-lg bg-blue-600/5 border-blue-500/10 space-y-4">
                       <div className="flex items-center justify-between">
                          <Target size={24} className="text-blue-400" />
                          <span className="text-[10px] font-black text-blue-400/60 uppercase">Operational KPI</span>
@@ -398,7 +398,7 @@ export default function Projects() {
                          <div className="h-full bg-blue-500" style={{ width: '65%' }} />
                       </div>
                    </div>
-                   <div className="glass-panel p-8 rounded-[40px] bg-emerald-600/5 border-emerald-500/10 space-y-4">
+                   <div className="glass-panel p-8 rounded-lg bg-emerald-600/5 border-emerald-500/10 space-y-4">
                       <div className="flex items-center justify-between">
                          <BarChart3 size={24} className="text-emerald-400" />
                          <span className="text-[10px] font-black text-emerald-400/60 uppercase">Aggregated Flow</span>
@@ -409,7 +409,7 @@ export default function Projects() {
                          {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#0a0c14] flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">P{i}</div>)}
                       </div>
                    </div>
-                   <div className="glass-panel p-8 rounded-[40px] bg-amber-600/5 border-amber-500/10 space-y-4">
+                   <div className="glass-panel p-8 rounded-lg bg-amber-600/5 border-amber-500/10 space-y-4">
                       <div className="flex items-center justify-between">
                          <Clock size={24} className="text-amber-400" />
                          <span className="text-[10px] font-black text-amber-400/60 uppercase">Temporal State</span>
@@ -453,7 +453,7 @@ export default function Projects() {
                       <div className="space-y-2">
                          {selectedProject.linked_device_ids?.length > 0 ? (
                            selectedProject.linked_device_ids.map((id: number) => (
-                             <div key={id} className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5 group hover:bg-white/10 transition-all">
+                             <div key={id} className="flex items-center justify-between bg-white/5 p-4 rounded-lg border border-white/5 group hover:bg-white/10 transition-all">
                                 <div className="flex items-center space-x-4">
                                    <Server size={18} className="text-indigo-400" />
                                    <span className="text-xs font-black text-slate-300 uppercase tracking-widest">ASSET-ID: {id}</span>
@@ -462,7 +462,7 @@ export default function Projects() {
                              </div>
                            ))
                          ) : (
-                           <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-3xl text-[10px] font-black uppercase text-slate-600 tracking-widest">No infrastructure binds</div>
+                           <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-lg text-[10px] font-black uppercase text-slate-600 tracking-widest">No infrastructure binds</div>
                          )}
                       </div>
                    </div>
@@ -474,7 +474,7 @@ export default function Projects() {
                       </h3>
                       <div className="space-y-2">
                         {selectedProject.tasks_json.map((task: any, idx: number) => (
-                           <div key={idx} className="flex items-center space-x-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                           <div key={idx} className="flex items-center space-x-4 bg-white/5 p-4 rounded-lg border border-white/5">
                               <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${task.progress === 100 ? 'bg-emerald-500 border-emerald-500' : 'border-white/10'}`}>
                                  {task.progress === 100 && <CheckCircle2 size={14} className="text-white" />}
                               </div>
@@ -492,7 +492,7 @@ export default function Projects() {
              </div>
            ) : (
              <div className="h-full flex flex-col items-center justify-center space-y-6 opacity-20">
-                <div className="w-32 h-32 rounded-[40px] bg-white/5 border border-white/10 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
                    <Briefcase size={64} />
                 </div>
                 <p className="text-[12px] font-black uppercase tracking-[0.5em] italic">Select Stream for Matrix Analysis</p>

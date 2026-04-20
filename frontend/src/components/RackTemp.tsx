@@ -63,20 +63,20 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
         style={{ left: x, top: y }}
-        className="fixed z-[110] w-48 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden p-1.5"
+        className="fixed z-[110] w-48 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden p-1.5"
       >
         <div className="px-3 py-2 border-b border-white/5 mb-1">
           <p className="text-[10px] font-black text-white uppercase tracking-tighter truncate">{deviceName}</p>
         </div>
         
-        <button onClick={() => { onShowConnections(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 rounded-xl flex items-center gap-3 transition-all group">
+        <button onClick={() => { onShowConnections(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 rounded-lg flex items-center gap-3 transition-all group">
           <div className="p-1.5 rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
             <Zap size={12} />
           </div>
           Show Connections
         </button>
         
-        <button onClick={() => { onEdit(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-xl flex items-center gap-3 transition-all group">
+        <button onClick={() => { onEdit(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-3 transition-all group">
           <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
             <Edit2 size={12} />
           </div>
@@ -85,7 +85,7 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
         
         <div className="h-px bg-white/5 my-1" />
         
-        <button onClick={() => { onDelete(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-500/10 rounded-xl flex items-center gap-3 transition-all group">
+        <button onClick={() => { onDelete(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-3 transition-all group">
           <div className="p-1.5 rounded-lg bg-rose-500/10 group-hover:bg-rose-500/20 transition-colors">
             <Trash2 size={12} />
           </div>
@@ -255,7 +255,7 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               top: Math.min(window.innerHeight - 150, Math.max(20, hoveredLine.mouseY - 40)),
               zIndex: 100
             }}
-            className="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 p-3 rounded-xl shadow-2xl pointer-events-none min-w-[200px]"
+            className="bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 p-3 rounded-lg shadow-2xl pointer-events-none min-w-[200px]"
           >
             <div className="flex items-center gap-2 mb-2">
               <div className="p-1.5 bg-blue-500/20 rounded-lg">
@@ -473,7 +473,7 @@ const RackElevation = ({
     !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 
   return (
-    <div className={`glass-panel flex-shrink-0 rounded-2xl overflow-hidden flex flex-col border transition-all group relative
+    <div className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
       ${viewMode === 'compact' ? 'w-52' : 'w-64'}
@@ -535,7 +535,7 @@ const RackElevation = ({
                         initial={{ opacity: 0, scale: 0.95, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                        className="absolute right-0 top-8 w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                        className="absolute right-0 top-8 w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
                       >
                         {onMove && (<>
                           <button onClick={() => { onMove('left'); setMenuOpen(false) }} className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2 transition-colors">
@@ -644,7 +644,7 @@ const SiteCapacityBar = ({ racks }: { racks: any[] }) => {
   ]
 
   return (
-    <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+    <div className="flex items-center gap-4 px-4 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
       {stats.map((s, i) => (
         <React.Fragment key={s.label}>
           {i > 0 && <div className="h-5 w-px bg-white/10" />}
@@ -669,7 +669,7 @@ const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDelete
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: 16 }}
-    className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-5 py-3 bg-slate-950/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl"
+    className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-5 py-3 bg-slate-950/95 backdrop-blur-xl border border-white/15 rounded-lg shadow-2xl"
   >
     <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest mr-2">{count} selected</span>
     <div className="h-4 w-px bg-white/10" />
@@ -742,12 +742,12 @@ const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMoun
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.97 }}
-        className="glass-panel w-full max-w-lg rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
+        className="glass-panel w-full max-w-lg rounded-lg overflow-hidden border border-white/10 shadow-2xl"
       >
         {/* Header */}
         <div className="px-6 py-5 bg-white/[0.03] border-b border-white/[0.07] flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`p-2.5 rounded-xl bg-white/5 border border-white/10 ${typeCfg.color}`}>
+            <div className={`p-2.5 rounded-lg bg-white/5 border border-white/10 ${typeCfg.color}`}>
               <Monitor size={18} />
             </div>
             <div className="min-w-0">
@@ -763,7 +763,7 @@ const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMoun
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-colors shrink-0 mt-0.5">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors shrink-0 mt-0.5">
             <X size={16} />
           </button>
         </div>
@@ -884,7 +884,7 @@ const DeviceDetailModal = ({ device, loc, rack, onClose, onUnmount, onUpdateMoun
         <div className="px-6 py-4 border-t border-white/[0.06] flex items-center justify-between gap-3">
           <button
             onClick={() => setConfirmUnmount(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-[9px] font-black uppercase hover:bg-rose-500/20 transition-all"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase hover:bg-rose-500/20 transition-all"
           >
             <Trash2 size={11} /> {device?.is_reservation ? 'Cancel Reservation' : 'Unmount Asset'}
           </button>
@@ -917,9 +917,9 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className="glass-panel w-[420px] p-8 rounded-3xl space-y-6 border border-violet-500/20">
+        className="glass-panel w-[420px] p-8 rounded-lg space-y-6 border border-violet-500/20">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-violet-500/15 rounded-xl border border-violet-500/20">
+          <div className="p-2.5 bg-violet-500/15 rounded-lg border border-violet-500/20">
             <ArrowRightLeft size={18} className="text-violet-400" />
           </div>
           <div>
@@ -939,7 +939,7 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
           <button
             disabled={!targetSiteId}
             onClick={() => { if (targetSiteId) { onRelocate(parseInt(targetSiteId)); onClose() } }}
-            className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-violet-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 py-3 bg-violet-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-violet-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Relocate
           </button>
@@ -1289,7 +1289,7 @@ export default function RackTemp() {
             <h1 className="text-2xl font-black uppercase tracking-tight italic leading-none">Racks</h1>
             <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
           </div>
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06] self-start">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] self-start">
             <button
               onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
               className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
@@ -1303,7 +1303,7 @@ export default function RackTemp() {
 
         <div className="flex items-center gap-3">
           {/* View mode toggle */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
             <button onClick={() => setViewMode('normal')} title="Normal"
               className={`p-1.5 rounded-lg transition-all ${viewMode === 'normal' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
               <Server size={13} />
@@ -1315,7 +1315,7 @@ export default function RackTemp() {
           </div>
 
           {/* Site View / Compare */}
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/[0.06]">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
             <button onClick={() => setShowCompareOnly(false)}
               className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               All
@@ -1333,7 +1333,7 @@ export default function RackTemp() {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search racks & devices..."
-              className="bg-white/5 border border-white/[0.06] rounded-xl pl-9 pr-8 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
+              className="bg-white/5 border border-white/[0.06] rounded-lg pl-9 pr-8 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
             />
             {searchTerm && (
               <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
@@ -1347,13 +1347,13 @@ export default function RackTemp() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowConnectionsList(true)}
-                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
               >
                 <List size={13} /> View List
               </button>
               <button
                 onClick={() => setFocusedConnection(null)}
-                className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
               >
                 <X size={13} /> Clear Connections
               </button>
@@ -1365,13 +1365,13 @@ export default function RackTemp() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
-                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
               >
                 <Plus size={13} /> Add Rack
               </button>
               <button
                 onClick={() => { setNewSite({ name: '', address: '' }); setIsAddingSite(true) }}
-                className="px-4 py-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
               >
                 <Plus size={13} /> Add Site
               </button>
@@ -1392,7 +1392,7 @@ export default function RackTemp() {
         <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center shrink-0">
           <button
             onClick={() => setActiveSite(null)}
-            className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+            className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
           >
             All
             {activeRacks && <span className="opacity-60 font-mono">{activeRacks.length}</span>}
@@ -1410,7 +1410,7 @@ export default function RackTemp() {
               <div key={s.id} className="relative group/site shrink-0">
                 <button
                   onClick={() => setActiveSite(s.id)}
-                  className={`pl-3 pr-9 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+                  className={`pl-3 pr-9 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
                 >
                   {s.name}
                   <span className={`text-[7px] font-black px-1 py-0.5 rounded-md tabular-nums ${
@@ -1442,7 +1442,7 @@ export default function RackTemp() {
                       <div className="fixed inset-0 z-[60]" onClick={() => setActiveSiteMenu(null)} />
                       <motion.div
                         initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-xl shadow-2xl z-[70] overflow-hidden p-1"
+                        className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
                         style={{
                           left: 'var(--site-menu-x, auto)',
                           top: 'var(--site-menu-y, auto)',
@@ -1511,7 +1511,7 @@ export default function RackTemp() {
 
         {displayedRacks.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/[0.06] space-y-3">
+            <div className="p-8 rounded-lg bg-white/[0.03] border border-white/[0.06] space-y-3">
               <Server size={40} className="text-slate-700 mx-auto" />
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">
                 {activeTab === 'deleted' ? 'No Purged Records' :
@@ -1616,7 +1616,7 @@ export default function RackTemp() {
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur">
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-96 space-y-4 shadow-2xl">
+            className="bg-slate-900 border border-white/10 rounded-lg p-6 w-96 space-y-4 shadow-2xl">
             <h3 className="text-sm font-black uppercase text-white">{confirmModal.title}</h3>
             <p className="text-xs text-slate-400">{confirmModal.message}</p>
             <div className="flex gap-2 pt-2">
@@ -1631,12 +1631,12 @@ export default function RackTemp() {
       {isProvisioning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="glass-panel w-[520px] p-8 rounded-3xl space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
+            className="glass-panel w-[520px] p-8 rounded-lg space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
               
               {/* Modal Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl border transition-colors ${provisionMode === 'reserve' ? 'bg-violet-500/15 border-violet-500/20' : 'bg-blue-500/15 border-blue-500/20'}`}>
+                  <div className={`p-2.5 rounded-lg border transition-colors ${provisionMode === 'reserve' ? 'bg-violet-500/15 border-violet-500/20' : 'bg-blue-500/15 border-blue-500/20'}`}>
                     {provisionMode === 'reserve' ? <Package size={18} className="text-violet-400" /> : <Server size={18} className="text-blue-400" />}
                   </div>
                   <div>
@@ -1648,13 +1648,13 @@ export default function RackTemp() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => { setIsProvisioning(null); setMountSearch('') }} className="p-2 hover:bg-white/10 rounded-xl text-slate-500 transition-colors">
+                <button onClick={() => { setIsProvisioning(null); setMountSearch('') }} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 transition-colors">
                   <X size={16} />
                 </button>
               </div>
 
               {/* Asset / Reserve Toggle */}
-              <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+              <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                 <button 
                   onClick={() => setProvisionMode('asset')}
                   className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${provisionMode === 'asset' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
@@ -1675,11 +1675,11 @@ export default function RackTemp() {
                       value={mountSearch}
                       onChange={e => setMountSearch(e.target.value)}
                       placeholder="Filter by name, type, or system..."
-                      className="w-full bg-black border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/60 transition-all placeholder:text-slate-700"
+                      className="w-full bg-black border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/60 transition-all placeholder:text-slate-700"
                     />
                   </div>
                   
-                  <div className="max-h-[180px] overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-2xl p-1.5 space-y-1">
+                  <div className="max-h-[180px] overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1">
                     {availableDevices?.filter((d: any) => {
                       const term = mountSearch.toLowerCase()
                       return d.name.toLowerCase().includes(term) || d.type.toLowerCase().includes(term) || d.system?.toLowerCase().includes(term)
@@ -1690,7 +1690,7 @@ export default function RackTemp() {
                         <button
                           key={d.id}
                           onClick={() => setIsProvisioning({ ...isProvisioning, device_id: String(d.id), size_u: d.size_u || 1 })}
-                          className={`w-full text-left px-4 py-2.5 rounded-xl transition-all flex items-center justify-between group ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
+                          className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center justify-between group ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                         >
                           <div className="min-w-0">
                             <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'group-hover:text-blue-400'}`}>{d.name}</p>
@@ -1714,7 +1714,7 @@ export default function RackTemp() {
                         value={reserveInfo.temporary_name}
                         onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value.toUpperCase() })}
                         placeholder="e.g. AI-NODE-CLUSTER-01"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
                       />
                     </div>
                     <div>
@@ -1723,7 +1723,7 @@ export default function RackTemp() {
                         type="date"
                         value={reserveInfo.est_date}
                         onChange={e => setReserveInfo({ ...reserveInfo, est_date: e.target.value })}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
                       />
                     </div>
                     <div>
@@ -1732,7 +1732,7 @@ export default function RackTemp() {
                         value={reserveInfo.poc}
                         onChange={e => setReserveInfo({ ...reserveInfo, poc: e.target.value })}
                         placeholder="Engineer Name"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
                       />
                     </div>
                   </div>
@@ -1745,7 +1745,7 @@ export default function RackTemp() {
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Size (U)</label>
                   <input type="number" min={1} value={isProvisioning.size_u || 1}
                     onChange={e => setIsProvisioning({ ...isProvisioning, size_u: parseInt(e.target.value) || 1 })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
                 </div>
                 <div>
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Mount Side</label>
@@ -1770,7 +1770,7 @@ export default function RackTemp() {
                 <button 
                   disabled={provisionMode === 'asset' && !isProvisioning.device_id}
                   onClick={() => { mountMutation.mutate(isProvisioning); setMountSearch('') }}
-                  className={`flex-2 px-10 py-4 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed border-2 border-white/10 ${provisionMode === 'reserve' ? 'bg-violet-600 shadow-violet-500/20' : 'bg-blue-600 shadow-blue-500/20'}`}>
+                  className={`flex-2 px-10 py-4 text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed border-2 border-white/10 ${provisionMode === 'reserve' ? 'bg-violet-600 shadow-violet-500/20' : 'bg-blue-600 shadow-blue-500/20'}`}>
                   {provisionMode === 'reserve' ? 'Confirm Reservation' : 'Mount Asset'}
                 </button>
               </div>
@@ -1781,9 +1781,9 @@ export default function RackTemp() {
         {(isAddingSite || isEditingSite) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[420px] p-8 rounded-3xl space-y-5 border border-emerald-500/20">
+              className="glass-panel w-[420px] p-8 rounded-lg space-y-5 border border-emerald-500/20">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/15 rounded-xl border border-emerald-500/20">
+                <div className="p-2.5 bg-emerald-500/15 rounded-lg border border-emerald-500/20">
                   <MapPin size={18} className="text-emerald-400" />
                 </div>
                 <h2 className="text-base font-black uppercase tracking-tight text-white">
@@ -1795,21 +1795,21 @@ export default function RackTemp() {
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Site Name</label>
                   <input value={isEditingSite ? isEditingSite.name : newSite.name}
                     onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value.toUpperCase() }) : setNewSite({ ...newSite, name: e.target.value.toUpperCase() })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
                     placeholder="e.g. DATA-CENTER-01" />
                 </div>
                 <div>
                   <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Physical Address</label>
                   <input value={isEditingSite ? isEditingSite.address : newSite.address}
                     onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, address: e.target.value }) : setNewSite({ ...newSite, address: e.target.value })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
                     placeholder="123 Silicon Valley Way..." />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setIsAddingSite(false); setIsEditingSite(null) }} className="flex-1 py-3 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
                 <button onClick={() => siteMutation.mutate(isEditingSite || newSite)}
-                  className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
                   {isEditingSite ? 'Save Changes' : 'Create Site'}
                 </button>
               </div>
@@ -1821,9 +1821,9 @@ export default function RackTemp() {
         {(isAddingRack || isEditingRack) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[440px] p-8 rounded-3xl space-y-5 border border-blue-500/20 my-auto">
+              className="glass-panel w-[440px] p-8 rounded-lg space-y-5 border border-blue-500/20 my-auto">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-500/15 rounded-xl border border-blue-500/20">
+                <div className="p-2.5 bg-blue-500/15 rounded-lg border border-blue-500/20">
                   <Server size={18} className="text-blue-400" />
                 </div>
                 <h2 className="text-base font-black uppercase tracking-tight text-white">
@@ -1845,7 +1845,7 @@ export default function RackTemp() {
                   <input
                     value={isEditingRack ? isEditingRack.name : newRack.name}
                     onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
                     placeholder="e.g. RACK-A01" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -1854,14 +1854,14 @@ export default function RackTemp() {
                     <input type="number" min={1} max={100}
                       value={isEditingRack ? isEditingRack.total_u : newRack.total_u}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, total_u: parseInt(e.target.value) }) : setNewRack({ ...newRack, total_u: parseInt(e.target.value) })}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
                   </div>
                   <div>
                     <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Max Power (kW)</label>
                     <input type="number" min={0} max={1000} step={0.5}
                       value={isEditingRack ? (isEditingRack.max_power_kw ?? 10.0) : newRack.max_power_kw}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, max_power_kw: parseFloat(e.target.value) }) : setNewRack({ ...newRack, max_power_kw: parseFloat(e.target.value) })}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
                   </div>
                 </div>
                 {isEditingRack && (
@@ -1881,7 +1881,7 @@ export default function RackTemp() {
                     if (!isEditingRack && !newRack.site_id) return toast.error('Site is required')
                     rackMutation.mutate(isEditingRack || newRack)
                   }}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
                   {isEditingRack ? 'Save Rack' : 'Deploy Rack'}
                 </button>
               </div>
@@ -1909,7 +1909,7 @@ export default function RackTemp() {
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-slate-900/95 border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
+              className="bg-slate-900/95 border border-white/10 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto"
             >
               {/* Step 1: Site Selection */}
               {restoreWizard.step === 'site-select' && (

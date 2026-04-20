@@ -59,7 +59,7 @@ export default function Intelligence() {
           onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
           onDragLeave={() => setDragActive(false)}
           onDrop={(e) => { e.preventDefault(); setDragActive(false); if(e.dataTransfer.files[0]) importMutation.mutate(e.dataTransfer.files[0]) }}
-          className={`glass-panel p-12 rounded-[40px] border-2 border-dashed transition-all flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden ${
+          className={`glass-panel p-12 rounded-lg border-2 border-dashed transition-all flex flex-col items-center justify-center text-center space-y-6 relative overflow-hidden ${
             status === 'uploading' ? 'border-blue-500 bg-blue-500/5' : 
             status === 'success' ? 'border-emerald-500 bg-emerald-500/5' :
             dragActive ? 'border-blue-400 bg-blue-500/10' : 'border-white/10 bg-slate-900/20'
@@ -80,7 +80,7 @@ export default function Intelligence() {
               </motion.div>
             ) : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-6">
-                <div className="w-20 h-20 bg-blue-500/10 rounded-3xl flex items-center justify-center">
+                <div className="w-20 h-20 bg-blue-500/10 rounded-lg flex items-center justify-center">
                   <Upload size={40} className="text-blue-500" />
                 </div>
                 <div className="space-y-2">
@@ -95,7 +95,7 @@ export default function Intelligence() {
         </div>
 
         {/* Clipboard Sector */}
-        <div className="glass-panel p-8 rounded-[40px] bg-slate-900/20 border border-white/5 flex flex-col space-y-4">
+        <div className="glass-panel p-8 rounded-lg bg-slate-900/20 border border-white/5 flex flex-col space-y-4">
            <div className="flex items-center space-x-3">
               <Clipboard size={18} className="text-amber-400" />
               <h3 className="font-bold text-sm uppercase tracking-widest">Registry Clipboard</h3>
@@ -103,13 +103,13 @@ export default function Intelligence() {
            <textarea 
              value={pasteData}
              onChange={(e) => setPasteData(e.target.value)}
-             className="flex-1 min-h-[140px] bg-slate-950/50 border border-white/5 rounded-2xl p-4 text-[10px] font-mono outline-none focus:border-amber-500/30 text-slate-300 custom-scrollbar" 
+             className="flex-1 min-h-[140px] bg-slate-950/50 border border-white/5 rounded-lg p-4 text-[10px] font-mono outline-none focus:border-amber-500/30 text-slate-300 custom-scrollbar" 
              placeholder="hostname,system_name,model,serial_number...&#10;SRV-PRD-01,ERP-CORE,R740,SN12345..."
            />
            <button 
              onClick={handlePasteImport}
              disabled={status === 'uploading' || !pasteData.trim()}
-             className="w-full py-4 bg-amber-600/10 text-amber-400 border border-amber-600/20 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+             className="w-full py-4 bg-amber-600/10 text-amber-400 border border-amber-600/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-600/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
            >
              <Save size={14}/>
              <span>Commit Raw Registry Data</span>
@@ -118,7 +118,7 @@ export default function Intelligence() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-blue-500 bg-slate-900/40">
+        <div className="glass-panel p-6 rounded-lg border-l-4 border-l-blue-500 bg-slate-900/40">
            <div className="flex items-center justify-between mb-4">
               <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">1. Blueprint Download</h4>
               <button onClick={handleDownloadTemplate} className="p-2 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 text-blue-400 transition-all"><Download size={16}/></button>
@@ -126,7 +126,7 @@ export default function Intelligence() {
            <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Standardized CSV blueprint supporting recursive HW/SW sub-relations.</p>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500 bg-slate-900/40">
+        <div className="glass-panel p-6 rounded-lg border-l-4 border-l-emerald-500 bg-slate-900/40">
            <div className="flex items-center space-x-3 mb-4">
               <CheckCircle2 size={18} className="text-emerald-400" />
               <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">2. Relational Logic</h4>
@@ -134,7 +134,7 @@ export default function Intelligence() {
            <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold">Automatically establishes 1:N (HW/SW) and N:1 (Logical System) entity groupings.</p>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl border-l-4 border-l-amber-500 bg-slate-900/40">
+        <div className="glass-panel p-6 rounded-lg border-l-4 border-l-amber-500 bg-slate-900/40">
            <div className="flex items-center space-x-3 mb-4">
               <AlertCircle size={18} className="text-amber-400" />
               <h4 className="font-black text-[10px] uppercase tracking-widest text-slate-400">3. Registry Deduplication</h4>

@@ -61,14 +61,14 @@ export default function AuditLogs() {
             <h1 className="text-2xl font-bold tracking-tight uppercase ">Audit Logs</h1>
             <p className="text-[10px] text-slate-500 mt-1 font-bold uppercase tracking-widest leading-relaxed">Immutable registry of all administrative transactions</p>
           </div>
-          <div className="flex bg-white/5 rounded-xl p-0.5 border border-white/5 space-x-1">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Density Laboratory">
                 <Activity size={16} />
              </button>
           </div>
         </div>
         
-        <div className="flex items-center space-x-3 bg-slate-900/50 p-2 rounded-xl border border-white/5">
+        <div className="flex items-center space-x-3 bg-slate-900/50 p-2 rounded-lg border border-white/5">
            <Calendar size={14} className="text-slate-500 ml-2" />
            <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-bold uppercase outline-none text-slate-300" />
            <span className="text-slate-600 font-bold">→</span>
@@ -84,7 +84,7 @@ export default function AuditLogs() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md mb-2">
+            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md mb-2">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
@@ -123,7 +123,7 @@ export default function AuditLogs() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative">
+      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
