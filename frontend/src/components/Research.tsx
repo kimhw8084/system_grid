@@ -20,6 +20,19 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 
 // --- Components ---
 
+const getPriorityInfo = (p: any) => {
+  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
+  const colors: any = {
+    'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+    'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+    'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+    'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
+  }
+  return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
+}
+
+const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
+
 const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
     <div>
@@ -699,9 +712,9 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
     
     const finalData = {
       ...formData,
-      type: formData.type?.toUpperCase(),
-      priority: formData.priority?.toUpperCase(),
-      status: formData.status?.toUpperCase()
+      type: safeUpper(formData.type),
+      priority: safeUpper(formData.priority),
+      status: safeUpper(formData.status)
     }
     onSave(finalData)
   }
@@ -784,7 +797,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                       key={p}
                       type="button"
                       onClick={() => setFormData({...formData, priority: p})}
-                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${formData.priority?.toUpperCase() === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${safeUpper(formData.priority) === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
                     >
                       {p}
                     </button>
@@ -952,17 +965,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     }
   }, [isEditing, formData, onSave])
 
-  const getPriorityInfo = (p: any) => {
-    const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
-    const colors: any = {
-      'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-      'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-      'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-      'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
-    }
-    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
-  }
-
   const pInfo = getPriorityInfo(formData.priority)
   
   const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value.toUpperCase(), label: o.label.toUpperCase() }))
@@ -978,7 +980,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status?.toUpperCase()}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
               </div>
@@ -1031,7 +1033,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                          label="Incident Type" 
-                         value={formData.incident_type?.toUpperCase()} 
+                         value={safeUpper(formData.incident_type)} 
                          onChange={(e: any) => setFormData({...formData, incident_type: e.target.value.toUpperCase()})} 
                          options={enumOptions('IncidentType')} 
                          disabled={!isEditing}
@@ -1051,7 +1053,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                          label="Detection Type" 
-                         value={formData.detection_type?.toUpperCase()} 
+                         value={safeUpper(formData.detection_type)} 
                          onChange={(e: any) => setFormData({...formData, detection_type: e.target.value.toUpperCase()})} 
                          options={enumOptions('DetectionType')} 
                          disabled={!isEditing}
@@ -1071,14 +1073,14 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                    <div className="grid grid-cols-2 gap-4">
                       <StyledSelect 
                         label="Priority"
-                        value={formData.priority?.toUpperCase()} 
+                        value={pInfo.label} 
                         onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
                         options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
                       <StyledSelect 
                         label="Status"
-                        value={formData.status?.toUpperCase()} 
+                        value={safeUpper(formData.status)} 
                         onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
                         options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
@@ -1233,10 +1235,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
              {/* 4. Operational Impact */}
              <SectionCard icon={ShieldAlert} title="Operational Impact" color="text-rose-400">
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                    <StyledSelect 
                       label="Impact Type" 
-                      value={formData.impact_type?.toUpperCase()} 
+                      value={safeUpper(formData.impact_type)} 
                       onChange={(e: any) => setFormData({...formData, impact_type: e.target.value.toUpperCase()})} 
                       options={enumOptions('ImpactType')} 
                       disabled={!isEditing}
@@ -1504,7 +1506,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
-      const formattedLog = { ...log, entry_type: log.entry_type.toUpperCase(), poc: log.poc.toUpperCase() }
+      const formattedLog = { ...log, entry_type: safeUpper(log.entry_type), poc: safeUpper(log.poc) }
       const res = await apiFetch(`/api/v1/investigations/${item.id}/logs`, {
         method: 'POST',
         body: JSON.stringify(formattedLog)
@@ -1521,8 +1523,8 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const handleSave = () => {
     const finalData = { 
       ...formData, 
-      status: formData.status?.toUpperCase(), 
-      priority: formData.priority?.toUpperCase() 
+      status: safeUpper(formData.status), 
+      priority: safeUpper(formData.priority) 
     }
     onSave(finalData)
     setIsEditing(false)
@@ -1532,17 +1534,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const sortedLogs = useMemo(() => {
      return [...(formData.progress_logs || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   }, [formData.progress_logs])
-
-  const getPriorityInfo = (p: any) => {
-    const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
-    const colors: any = {
-      'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-      'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-      'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-      'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
-    }
-    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
-  }
 
   const pInfo = getPriorityInfo(formData.priority)
 
@@ -1560,14 +1551,14 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                   <div className="flex items-center gap-2">
                     <div className="w-40">
                       <StyledSelect 
-                        value={formData.status?.toUpperCase()} 
+                        value={safeUpper(formData.status)} 
                         onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
                         options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                       />
                     </div>
                     <div className="w-40">
                       <StyledSelect 
-                        value={formData.priority?.toUpperCase()} 
+                        value={pInfo.label} 
                         onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
                         options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST'].map(s => ({value: s, label: s}))} 
                       />
@@ -1575,7 +1566,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status?.toUpperCase()}</div>
+                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
                     <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                   </div>
                 )}
@@ -1660,7 +1651,7 @@ function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: 
          <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
       </div>
       <div className={compact ? 'w-32' : 'w-48'}>
-         <StyledSelect label="Type" value={newLog.entry_type?.toUpperCase()} onChange={e => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={[{value:'DIAGNOSIS', label:'DIAGNOSIS'}, {value:'ACTION', label:'ACTION'}, {value:'OBSERVATION', label:'OBSERVATION'}, {value:'MILESTONE', label:'MILESTONE'}]} />
+         <StyledSelect label="Type" value={safeUpper(newLog.entry_type)} onChange={e => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={[{value:'DIAGNOSIS', label:'DIAGNOSIS'}, {value:'ACTION', label:'ACTION'}, {value:'OBSERVATION', label:'OBSERVATION'}, {value:'MILESTONE', label:'MILESTONE'}]} />
       </div>
       <div className={compact ? 'w-24' : 'w-40'}>
          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
@@ -1694,7 +1685,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
                     <div className={`${compact ? 'w-24' : 'w-32'} shrink-0 pt-0.5`}>
                        <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
-                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{l.entry_type?.toUpperCase()}</span>
+                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
                     </div>
                     <div className="flex-1">
                        <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
