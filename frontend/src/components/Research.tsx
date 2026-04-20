@@ -40,6 +40,20 @@ const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any
   </div>
 )
 
+const ImageThumbnail = ({ src }: { src: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  return (
+    <div className="relative inline-block mr-2 mb-2">
+      <img 
+        src={src} 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={`${isExpanded ? 'fixed inset-0 z-[200] m-auto max-w-[90vw] max-h-[90vh] shadow-2xl rounded-lg cursor-zoom-out border-2 border-purple-500/50' : 'h-24 w-auto rounded border border-white/10 hover:border-purple-500/50 cursor-zoom-in transition-all object-cover hover:scale-105'}`} 
+      />
+      {isExpanded && <div className="fixed inset-0 bg-black/90 z-[190] backdrop-blur-md" onClick={() => setIsExpanded(false)} />}
+    </div>
+  )
+}
+
 export default function Research() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -815,8 +829,45 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(false)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
-  const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
+  const [newTimeline, setNewTimeline] = useState({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [] })
   const [newMitigation, setNewMitigation] = useState({ type: 'Workaround', action_description: '', status: 'Planned' })
+
+  const handlePasteTimeline = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile()
+        if (file) {
+          const reader = new FileReader()
+          reader.onload = (event: any) => {
+             const base64 = event.target.result
+             setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
+             toast.success('Image Captured')
+          }
+          reader.readAsDataURL(file)
+        }
+      }
+    }
+  }
+
+  const handleAddTimeline = () => {
+    if (!newTimeline.description.trim()) {
+      toast.error("Description required")
+      return
+    }
+    const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
+    const updated = { ...formData, timeline }
+    setFormData(updated)
+    onSave(updated)
+    setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [] })
+    toast.success('Event Synchronized')
+  }
+
+  const handleDeleteTimeline = (id: number) => {
+    const updated = { ...formData, timeline: (formData.timeline || []).filter((t: any) => t.id !== id) }
+    setFormData(updated)
+    onSave(updated)
+  }
 
   const systemsList = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])), [devices])
   const filteredAssets = useMemo(() => {
@@ -865,13 +916,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
       'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
       'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
     }
-    const hints: any = {
-      'Highest': 'Global outage / FAB Halt',
-      'High': 'Critical degradation',
-      'Medium': 'Partial impact',
-      'Low': 'Minor glitch'
-    }
-    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5', hint: hints[val] }
+    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
   }
 
   const pInfo = getPriorityInfo(formData.priority)
@@ -885,14 +930,12 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="p-3 bg-purple-600/20 rounded-lg text-purple-400 border border-purple-500/30 shadow-inner"><ShieldAlert size={28} /></div>
+            <div className="w-14 h-14 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xs font-black">RCA</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RCA // INTEL NODE</span>
                 <div className="flex items-center gap-2">
                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
-                   <span className="text-[9px] font-bold text-slate-600 italic tracking-tight">{pInfo.hint}</span>
                 </div>
               </div>
               <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
@@ -901,11 +944,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => setIsEditing(!isEditing)} 
-              className={`px-8 py-3 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
+              className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
-            <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
@@ -1162,28 +1205,44 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
              <div className="flex-1 overflow-hidden flex flex-col">
                 {activeTab === 'Timeline' && (
                   <>
-                    <div className="p-6 border-b border-white/5 bg-white/5">
+                    <div className="p-6 border-b border-white/5 bg-white/5" onPaste={handlePasteTimeline}>
                         <div className="grid grid-cols-12 gap-3 items-end">
-                          <div className="col-span-12 lg:col-span-5">
+                          <div className="col-span-12 lg:col-span-4">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
-                              <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description (non-uppercase)..." />
+                              <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description..." />
                           </div>
-                          <div className="col-span-12 lg:col-span-3">
+                          <div className="col-span-12 lg:col-span-2">
+                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Owner</label>
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
+                          </div>
+                          <div className="col-span-12 lg:col-span-2">
+                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Team</label>
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
+                          </div>
+                          <div className="col-span-12 lg:col-span-2">
                             <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value})} options={enumOptions('EventType')} />
                           </div>
-                          <div className="col-span-12 lg:col-span-3">
+                          <div className="col-span-12 lg:col-span-2">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
                               <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
-                          <button onClick={() => {
-                              if (!newTimeline.description.trim()) {
-                                toast.error("Description cannot be empty")
-                                return
-                              }
-                              const timeline = [...(formData.timeline || []), { ...newTimeline, id: Date.now() }]
-                              setFormData({ ...formData, timeline })
-                              setNewTimeline({ event_type: 'Observation', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '' })
-                            }} className="col-span-1 p-2.5 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all"><Plus size={24} /></button>
+                          <div className="col-span-12 flex items-center justify-between mt-4 bg-black/40 p-3 rounded-lg border border-white/5">
+                             <div className="flex-1 flex items-center gap-4">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Evidence Cache:</label>
+                                <div className="flex gap-2 overflow-x-auto">
+                                   {(newTimeline.images || []).map((img: string, i: number) => (
+                                      <div key={i} className="relative w-10 h-10 shrink-0 border border-purple-500/30 rounded overflow-hidden">
+                                         <img src={img} className="w-full h-full object-cover" />
+                                         <button onClick={() => setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)})} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={8}/></button>
+                                      </div>
+                                   ))}
+                                   {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-black">Paste images here to cache for this event...</span>}
+                                </div>
+                             </div>
+                             <button onClick={handleAddTimeline} className="px-8 py-2.5 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center gap-2 border border-purple-400/50">
+                                <Plus size={16} /> Add Event
+                             </button>
+                          </div>
                         </div>
                     </div>
                     
@@ -1202,18 +1261,36 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all w-full">
                                   <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
                                   
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-32 shrink-0">
-                                          <p className="text-[11px] font-black text-white">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex items-start gap-8">
+                                        <div className="w-40 shrink-0 pt-1">
+                                          <p className="text-[12px] font-black text-white mb-1.5">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded border tracking-widest ${e.event_type === 'Detection' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'Resolution' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
                                         </div>
                                         <div>
-                                          <p className="text-base font-bold text-white tracking-tight leading-none normal-case">{e.description}</p>
-                                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 italic">{e.owner} {e.owner_team ? `// ${e.owner_team}` : ''}</p>
+                                          <p className="text-lg font-bold text-white tracking-tight leading-tight normal-case mb-2">{e.description}</p>
+                                          <div className="flex items-center gap-3">
+                                             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md">
+                                                <User size={10} className="text-purple-400" />
+                                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{e.owner || 'UNKNOWN OWNER'}</span>
+                                             </div>
+                                             {e.owner_team && (
+                                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                   // {e.owner_team}
+                                                </div>
+                                             )}
+                                          </div>
+                                          
+                                          {e.images && e.images.length > 0 && (
+                                             <div className="mt-4 flex gap-2 flex-wrap">
+                                                {e.images.map((img: string, idx: number) => (
+                                                   <ImageThumbnail key={idx} src={img} />
+                                                ))}
+                                             </div>
+                                          )}
                                         </div>
                                     </div>
-                                    <button onClick={() => setFormData({...formData, timeline: formData.timeline.filter((t:any)=>t.id!==e.id)})} className="opacity-0 group-hover:opacity-100 p-2 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={16}/></button>
+                                    <button onClick={() => handleDeleteTimeline(e.id)} className="opacity-0 group-hover:opacity-100 p-3 bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><Trash2 size={18}/></button>
                                   </div>
                               </div>
                             )
@@ -1316,13 +1393,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
       'Medium': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
       'Low': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
     }
-    const hints: any = {
-      'Highest': 'Critical Roadmap Probe',
-      'High': 'Strategic Investigation',
-      'Medium': 'Optimization Study',
-      'Low': 'Intel Gathering'
-    }
-    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5', hint: hints[val] }
+    return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
   }
 
   const pInfo = getPriorityInfo(formData.priority)
@@ -1334,11 +1405,9 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="p-3 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Search size={28} /></div>
+            <div className="w-14 h-14 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xs font-black">INV</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] leading-none">RESEARCH // INTEL NODE: {formData.id}</span>
-                
                 {isEditing ? (
                   <div className="flex items-center gap-2">
                     <div className="w-32">
@@ -1360,7 +1429,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                   <div className="flex items-center gap-2">
                     <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{formData.status}</div>
                     <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
-                    <span className="text-[9px] font-bold text-slate-600 italic tracking-tight">{pInfo.hint}</span>
                   </div>
                 )}
               </div>
@@ -1370,12 +1438,12 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => setIsEditing(!isEditing)} 
-              className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
+              className={`h-11 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock' : 'Edit'}
             </button>
-            <button onClick={handleSave} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
-            <button onClick={onClose} className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+            <button onClick={handleSave} className="h-11 px-6 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
+            <button onClick={onClose} className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
           </div>
         </div>
 
