@@ -67,7 +67,8 @@ const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onC
     }
   ]
 
-  const activeIdx = priorities.findIndex(p => p.id === (value || 'LOW').toUpperCase())
+  const normalizedValue = getPriorityInfo(value).label
+  const activeIdx = priorities.findIndex(p => p.id === normalizedValue)
 
   return (
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
