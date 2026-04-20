@@ -21,15 +21,81 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 // --- Components ---
 
 const getPriorityInfo = (p: any) => {
-  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 10 ? 'URGENT' : p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
+  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
   const colors: any = {
-    'URGENT': 'text-rose-500 border-rose-600 bg-rose-600/20 shadow-[0_0_10px_rgba(244,63,94,0.3)]',
     'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
     'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
     'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
     'LOW': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20'
   }
   return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
+}
+
+const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onChange: (v: string) => void, disabled?: boolean, type: 'RCA' | 'RESEARCH' }) => {
+  const priorities = [
+    { 
+      id: 'LOW', 
+      label: 'LOW', 
+      color: 'bg-emerald-500', 
+      border: 'border-emerald-500/30', 
+      text: 'text-emerald-400',
+      hint: type === 'RCA' ? 'MINOR ANOMALY / OPTIMIZATION' : 'GENERAL INTEL / NON-CRITICAL'
+    },
+    { 
+      id: 'MEDIUM', 
+      label: 'MEDIUM', 
+      color: 'bg-blue-500', 
+      border: 'border-blue-500/30', 
+      text: 'text-blue-400',
+      hint: type === 'RCA' ? 'PARTIAL SERVICE DEGRADATION' : 'SYSTEM BEHAVIOR INVESTIGATION'
+    },
+    { 
+      id: 'HIGH', 
+      label: 'HIGH', 
+      color: 'bg-amber-500', 
+      border: 'border-amber-500/30', 
+      text: 'text-amber-400',
+      hint: type === 'RCA' ? 'MAJOR IMPACT / CRITICAL FAIL' : 'SLA RISK / PERFORMANCE GAP'
+    },
+    { 
+      id: 'HIGHEST', 
+      label: 'HIGHEST', 
+      color: 'bg-rose-500', 
+      border: 'border-rose-500/30', 
+      text: 'text-rose-400',
+      hint: type === 'RCA' ? 'TOTAL OUTAGE / DATA INTEGRITY' : 'MISSION CRITICAL RE-ARCH'
+    }
+  ]
+
+  const activeIdx = priorities.findIndex(p => p.id === (value || 'LOW').toUpperCase())
+
+  return (
+    <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className="flex items-center justify-between px-1">
+         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Priority Gauge</label>
+         <div className={`text-[10px] font-black uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
+            {priorities[activeIdx]?.hint}
+         </div>
+      </div>
+      <div className="bg-slate-950 border border-white/10 rounded-lg p-1.5 flex gap-1 relative overflow-hidden">
+        {priorities.map((p, idx) => (
+          <button
+            key={p.id}
+            onClick={() => onChange(p.id)}
+            className={`flex-1 py-3.5 rounded-md transition-all relative z-10 group overflow-hidden ${idx === activeIdx ? 'bg-white/5 border border-white/10 shadow-xl' : 'hover:bg-white/[0.02]'}`}
+          >
+            <div className={`absolute bottom-0 left-0 right-0 h-[2px] transition-all ${idx <= activeIdx ? p.color : 'bg-white/5'}`} />
+            <span className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all ${idx === activeIdx ? p.text : 'text-slate-600 group-hover:text-slate-400'}`}>
+              {p.label}
+            </span>
+            {idx === activeIdx && (
+               <motion.div layoutId="gauge-glow" className={`absolute inset-0 ${p.color} opacity-5 blur-xl`} />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
@@ -144,7 +210,8 @@ export default function Research() {
     },
     onSuccess: (_, variables) => { 
       queryClient.invalidateQueries({ queryKey: [variables.type === 'RCA' ? 'rca-records' : 'investigations'] })
-      toast.success('System Intelligence Synchronized')
+      // Use a unique ID to prevent multiple toasts if called rapidly, though we will fix callers too
+      toast.success('System Intelligence Synchronized', { id: `sync-${variables.id || 'new'}` })
       setActiveModal(null)
     }
   })
@@ -176,9 +243,9 @@ export default function Research() {
   const stats = useMemo(() => {
     return {
       total: combinedData.length,
-      analyzing: combinedData.filter((i: any) => i.status === 'Analyzing' || i.status === 'Open' || i.status === 'Investigation').length,
+      analyzing: combinedData.filter((i: any) => i.status === 'ANALYZING' || i.status === 'OPEN' || i.status === 'INVESTIGATION').length,
       rca: combinedData.filter((i: any) => i.type === 'RCA').length,
-      urgent: combinedData.filter((i: any) => i.priority === 'Highest' || i.priority === 'High' || i.priority === 10 || i.priority >= 8).length
+      highest: combinedData.filter((i: any) => i.priority === 'HIGHEST' || i.priority >= 8).length
     }
   }, [combinedData])
 
@@ -468,7 +535,7 @@ export default function Research() {
         <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
         <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
         <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
-        <CompactSummary label="Critical/Highest" value={stats.urgent} icon={AlertTriangle} color="text-rose-500" />
+        <CompactSummary label="Highest Priority" value={stats.highest} icon={AlertTriangle} color="text-rose-500" />
       </div>
 
       <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
@@ -801,20 +868,12 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                  </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Priority</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(p => (
-                    <button 
-                      key={p}
-                      type="button"
-                      onClick={() => setFormData({...formData, priority: p})}
-                      className={`py-2.5 rounded-lg text-[10px] font-black uppercase transition-all border ${safeUpper(formData.priority) === p ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-4">
+                <PriorityGauge 
+                   value={formData.priority} 
+                   onChange={(v) => setFormData({...formData, priority: v})} 
+                   type={formData.type === 'RCA' ? 'RCA' : 'RESEARCH'}
+                />
               </div>
 
               <div>
@@ -998,6 +1057,36 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     })
   }, [failureModes, formData.target_systems, formData.impacted_asset_ids])
 
+  const handleTargetSystemsChange = (nextSystems: string[]) => {
+    if (!isEditing) return
+    
+    // Dependency Guard: Check if removing a system that has linked failure modes
+    const removedSystems = (formData.target_systems || []).filter(s => !nextSystems.includes(s))
+    if (removedSystems.length > 0) {
+      const activeFMs = (failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id))
+      const problematicSystems = removedSystems.filter(sys => 
+        activeFMs.some((fm: any) => (fm.system_name || fm.system) === sys)
+      )
+      
+      if (problematicSystems.length > 0) {
+        const fmNames = activeFMs
+          .filter((fm: any) => problematicSystems.includes(fm.system_name || fm.system))
+          .map((fm: any) => fm.title)
+          .join(', ')
+        toast.error(`DEPENDENCY BLOCK: Cannot remove ${problematicSystems.join(', ')}. Linked Failure Modes: ${fmNames}`, { duration: 5000, id: 'dep-guard' })
+        return
+      }
+    }
+    
+    setFormData({
+      ...formData, 
+      target_systems: nextSystems, 
+      impacted_asset_ids: [], 
+      impacted_service_ids: [], 
+      linked_failure_mode_ids: []
+    })
+  }
+
   // Analytics Calculation
   const timelineStats = useMemo(() => {
     const events = [...(formData.timeline || [])].sort((a, b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime())
@@ -1037,7 +1126,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-14 h-14 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xs font-black">RCA</div>
+            <div className="w-16 h-16 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xl font-black italic tracking-tighter">RCA</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
@@ -1131,13 +1220,12 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       </div>
                    </div>
 
-                   <div className="grid grid-cols-2 gap-4">
-                      <StyledSelect 
-                        label="Priority"
-                        value={getPriorityInfo(formData.priority).label} 
-                        onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
-                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(s => ({value: s, label: s}))} 
-                        disabled={!isEditing}
+                   <div className="space-y-4">
+                      <PriorityGauge 
+                        value={formData.priority} 
+                        onChange={(v) => setFormData({...formData, priority: v})} 
+                        disabled={!isEditing} 
+                        type="RCA"
                       />
                       <StyledSelect 
                         label="Status"
@@ -1146,8 +1234,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                         options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
-                   </div>
-                </div>
+                   </div>                </div>
              </SectionCard>
 
              {/* 2. System Context (Swapped with Problem Statement) */}
@@ -1178,7 +1265,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                            <SearchableMultiSelect 
                               label="Target System(s)" 
                               selected={formData.target_systems || []} 
-                              onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: [], linked_failure_mode_ids: []})} 
+                              onChange={handleTargetSystemsChange} 
                               options={systemsList} 
                               placeholder="Select Systems..." 
                               allowCustom={false}
@@ -1274,17 +1361,19 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                               <td className="py-2 px-2">
                                                  <div className="group relative cursor-help inline-block">
                                                     <div className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
-                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50">
-                                                       <div className="bg-slate-900 border border-white/10 rounded-lg p-2 shadow-2xl min-w-[150px]">
-                                                          {(fm.affected_assets || []).map((a: any) => (
-                                                             <div key={a.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5 border-b border-white/5 last:border-0">{a.name}</div>
-                                                          ))}
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
+                                                       <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[250px] max-w-[400px]">
+                                                          <p className="text-[9px] font-black uppercase text-slate-500 mb-2 border-b border-white/5 pb-1">Impacted Assets</p>
+                                                          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                                             {(fm.affected_assets || []).map((a: any) => (
+                                                                <div key={a.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5 truncate">• {a.name}</div>
+                                                             ))}
+                                                          </div>
                                                           {(fm.affected_assets || []).length === 0 && <div className="text-[8px] font-black text-slate-600">No assets linked</div>}
                                                        </div>
                                                     </div>
                                                  </div>
-                                              </td>
-                                              <td className="py-2 px-2 text-right">
+                                              </td>                                              <td className="py-2 px-2 text-right">
                                                  {isEditing && (
                                                     <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})} className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded">
                                                        <Trash2 size={12}/>
@@ -1399,25 +1488,26 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
                               <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
-                          <div 
-                             onClick={(e) => { e.stopPropagation(); setFocusedField('timeline'); }}
-                             className={`col-span-12 flex items-center justify-between mt-4 p-3 rounded-lg border-2 transition-all focus-trigger ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
-                          >
-                             <div className="flex-1 flex items-center gap-4">
+                          {/* Figure Field and Add Event Button (Separated) */}
+                          <div className="col-span-12 grid grid-cols-12 gap-3 mt-4">
+                             <div 
+                                onClick={(e) => { e.stopPropagation(); setFocusedField('timeline'); }}
+                                className={`col-span-10 flex items-center gap-4 p-3 rounded-lg border-2 transition-all focus-trigger ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
+                             >
                                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Figure(s):</label>
-                                <div className="flex gap-2 overflow-x-auto">
+                                <div className="flex-1 flex gap-2 overflow-x-auto custom-scrollbar">
                                    {(newTimeline.images || []).map((img: string, i: number) => (
-                                      <div key={i} className="relative w-10 h-10 shrink-0 border border-purple-500/30 rounded overflow-hidden">
+                                      <div key={i} className="relative w-10 h-10 shrink-0 border border-purple-500/30 rounded overflow-hidden shadow-lg">
                                          <img src={img} className="w-full h-full object-cover" />
-                                         <button onClick={(e) => { e.stopPropagation(); setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)}) }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={8}/></button>
+                                         <button onClick={(e) => { e.stopPropagation(); setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)}) }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5 hover:bg-rose-500 transition-colors"><X size={8}/></button>
                                       </div>
                                    ))}
-                                   {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-black">Paste images here to cache for this event...</span>}
+                                   {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-black italic">Paste images here to cache for this event...</span>}
                                 </div>
+                                {focusedField === 'timeline' && <span className="text-[8px] font-black uppercase text-purple-400 animate-pulse whitespace-nowrap">Ready to paste figures...</span>}
                              </div>
-                             <div className="flex items-center gap-3">
-                                {focusedField === 'timeline' && <span className="text-[8px] font-black uppercase text-purple-400 animate-pulse mr-2">Ready to paste figures...</span>}
-                                <button onClick={handleAddTimeline} className="h-12 px-8 bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center gap-2 border border-purple-400/50">
+                             <div className="col-span-2">
+                                <button onClick={handleAddTimeline} className="w-full h-full bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center justify-center gap-2 border border-purple-400/50 hover:bg-purple-500">
                                    <Plus size={16} /> Add Event
                                 </button>
                              </div>
@@ -1663,52 +1753,35 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-14 h-14 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xs font-black">INV</div>
+            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-black italic tracking-tighter">INV</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-40">
-                      <StyledSelect 
-                        value={safeUpper(formData.status)} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
-                        options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
-                      />
-                    </div>
-                    <div className="w-40">
-                      <StyledSelect 
-                        value={pInfo.label} 
-                        onChange={(e: any) => setFormData({...formData, priority: e.target.value.toUpperCase()})} 
-                        options={['LOW', 'MEDIUM', 'HIGH', 'HIGHEST', 'URGENT'].map(s => ({value: s, label: s}))} 
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
-                    <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                </div>
               </div>
               <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button 
-              onClick={() => setIsEditing(!isEditing)} 
-              className={`h-11 px-6 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-amber-500/20' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white'}`}
+              onClick={() => {
+                if (isEditing) handleSave()
+                setIsEditing(!isEditing)
+              }} 
+              className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
-              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Lock' : 'Edit'}
+              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
-            <button onClick={handleSave} className="h-11 px-6 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"><Save size={14}/> Sync Intelligence</button>
             <button 
-               onClick={() => {
-                  if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
-                  onClose()
-               }} 
-               className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
+              onClick={() => {
+                if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
+                onClose()
+              }} 
+              className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
             >
-               <X size={24}/>
+              <X size={24}/>
             </button>
           </div>
         </div>
@@ -1717,6 +1790,36 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         <div className="flex-1 flex overflow-hidden p-6 gap-6">
            {/* Analytical Fields (Left) */}
            <div className="w-[480px] flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+              <PriorityGauge 
+                value={formData.priority} 
+                onChange={(v) => setFormData({...formData, priority: v})} 
+                disabled={!isEditing} 
+                type="RESEARCH"
+              />
+              
+              <SectionCard icon={Info} title="Investigation Info" color="text-indigo-400">
+                <div className="space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                      <StyledSelect 
+                        label="Status"
+                        value={safeUpper(formData.status)} 
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                        options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED', 'MONITORING'].map(s => ({value: s, label: s}))} 
+                        disabled={!isEditing}
+                      />
+                      <div>
+                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Assigned Team</label>
+                         <input 
+                           readOnly={!isEditing}
+                           value={formData.assigned_team} 
+                           onChange={e => setFormData({...formData, assigned_team: e.target.value.toUpperCase()})} 
+                           className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold uppercase" 
+                         />
+                      </div>
+                   </div>
+                </div>
+              </SectionCard>
+
               <SectionCard icon={FileText} title="Context" color="text-blue-400">
                  <textarea 
                    readOnly={!isEditing}
