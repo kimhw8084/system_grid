@@ -35,7 +35,7 @@ const getPriorityInfo = (p: any) => {
 const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
 
 const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-[32px] flex items-center justify-between shadow-inner">
     <div>
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
       <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
@@ -45,7 +45,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
 )
 
 const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
-  <div className={`bg-white/5 border border-white/5 rounded-lg p-4 space-y-3 ${className}`}>
+  <div className={`bg-white/5 border border-white/5 rounded-[32px] p-4 space-y-3 ${className}`}>
     <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-1">
       <Icon size={14} className={color} />
       <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">{title}</h3>
@@ -471,7 +471,7 @@ export default function Research() {
         <CompactSummary label="Critical/Highest" value={stats.urgent} icon={AlertTriangle} color="text-rose-500" />
       </div>
 
-      <div className="flex-1 glass-panel rounded-2xl overflow-hidden ag-theme-alpine-dark relative border-white/5">
+      <div className="flex-1 glass-panel rounded-[40px] overflow-hidden ag-theme-alpine-dark relative border-white/5">
         {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
@@ -861,6 +861,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | null>(null)
+  const [newMitigation, setNewMitigation] = useState({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
   
   useEffect(() => {
     if (!isEditing) setFormData({ ...item })
@@ -868,6 +869,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
   const [editTimelineData, setEditTimelineData] = useState<any>(null)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  
   // Click-away logic for focus fields
   useEffect(() => {
     const handleClickAway = (e: MouseEvent) => {
@@ -882,7 +884,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const handleDeleteOwner = (owner: string) => {
     const nextOwners = (formData.owners || []).filter((o: string) => o !== owner)
     setFormData({ ...formData, owners: nextOwners })
-    if (!isEditing) onSave({ ...formData, owners: nextOwners })
   }
 
   // Navigation Safety
@@ -909,7 +910,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             if (focusedField === 'evidence') {
               const nextEvidence = [...(formData.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }]
               setFormData((prev: any) => ({ ...prev, evidence_json: nextEvidence }))
-              if (!isEditing) onSave({ ...formData, evidence_json: nextEvidence })
               toast.success('Evidence Captured')
             } else if (focusedField === 'timeline') {
               setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
@@ -942,7 +942,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     }]
     const updated = { ...formData, timeline }
     setFormData(updated)
-    onSave(updated)
     setNewTimeline({ event_type: 'OBSERVATION', description: '', event_time: now, owner: '', owner_team: '', images: [], created_at: now, updated_at: now })
     toast.success('Event Synchronized')
   }
@@ -950,7 +949,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   const handleDeleteTimeline = (id: number) => {
     const updated = { ...formData, timeline: (formData.timeline || []).filter((t: any) => t.id !== id) }
     setFormData(updated)
-    onSave(updated)
     toast.success('Event Purged')
   }
 
@@ -965,7 +963,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     )
     const updated = { ...formData, timeline }
     setFormData(updated)
-    onSave(updated)
     setEditingTimelineId(null)
     setEditTimelineData(null)
     toast.success('Event Updated')
@@ -1035,7 +1032,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4" onPaste={handlePaste}>
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1750px] h-full rounded-lg border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1750px] h-full rounded-[40px] border border-purple-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
@@ -1057,7 +1054,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 if (isEditing) {
                   onSave(formData)
                   lastSavedData.current = JSON.stringify(formData)
-                  toast.success('Registry Updated')
                 }
                 setIsEditing(!isEditing)
               }} 
@@ -1154,7 +1150,78 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 </div>
              </SectionCard>
 
-             {/* 2. Problem Statement */}
+             {/* 2. System Context (Swapped with Problem Statement) */}
+             <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all">
+                <button 
+                   onClick={() => setIsSystemContextOpen(!isSystemContextOpen)}
+                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
+                >
+                   <div className="flex items-center gap-2">
+                      <Database size={14} className="text-amber-400" />
+                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">System Context</h3>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      {!isSystemContextOpen && (formData.target_systems || []).length > 0 && (
+                         <div className="flex gap-1 overflow-hidden max-w-[150px]">
+                            {(formData.target_systems || []).map((s: string) => (
+                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase whitespace-nowrap">{s}</span>
+                            ))}
+                         </div>
+                      )}
+                      <ChevronDown size={14} className={`text-slate-500 transition-transform ${isSystemContextOpen ? 'rotate-180' : ''}`} />
+                   </div>
+                </button>
+                <AnimatePresence>
+                   {isSystemContextOpen && (
+                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4 space-y-4">
+                         <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
+                           <SearchableMultiSelect 
+                              label="Target System(s)" 
+                              selected={formData.target_systems || []} 
+                              onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: [], linked_failure_mode_ids: []})} 
+                              options={systemsList} 
+                              placeholder="Select Systems..." 
+                              allowCustom={false}
+                           />
+                         </div>
+                         <div className="space-y-4">
+                            <div>
+                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
+                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                  {filteredAssets.map((a: any) => (
+                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
+                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
+                                         const ids = formData.impacted_asset_ids || []
+                                         setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id), linked_failure_mode_ids: []})
+                                       }} className="sr-only" />
+                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/20'}`} />
+                                       <span className="truncate">{a.name}</span>
+                                    </label>
+                                  ))}
+                               </div>
+                            </div>
+                            <div>
+                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
+                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                                  {filteredServices.map((s: any) => (
+                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
+                                         const ids = formData.impacted_service_ids || []
+                                         setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
+                                       }} className="sr-only" />
+                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/20'}`} />
+                                       <span className="truncate">{s.name}</span>
+                                    </label>
+                                  ))}
+                               </div>
+                            </div>
+                         </div>
+                      </motion.div>
+                   )}
+                </AnimatePresence>
+             </div>
+
+             {/* 3. Problem Statement */}
              <SectionCard icon={FileText} title="Problem Statement" color="text-slate-400">
                 <div className="space-y-4">
                    <textarea 
@@ -1241,77 +1308,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 </div>
              </SectionCard>
 
-             {/* 3. System Context */}
-             <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all">
-                <button 
-                   onClick={() => setIsSystemContextOpen(!isSystemContextOpen)}
-                   className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
-                >
-                   <div className="flex items-center gap-2">
-                      <Database size={14} className="text-amber-400" />
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">System Context</h3>
-                   </div>
-                   <div className="flex items-center gap-4">
-                      {!isSystemContextOpen && (formData.target_systems || []).length > 0 && (
-                         <div className="flex gap-1 overflow-hidden max-w-[150px]">
-                            {(formData.target_systems || []).map((s: string) => (
-                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase whitespace-nowrap">{s}</span>
-                            ))}
-                         </div>
-                      )}
-                      <ChevronDown size={14} className={`text-slate-500 transition-transform ${isSystemContextOpen ? 'rotate-180' : ''}`} />
-                   </div>
-                </button>
-                <AnimatePresence>
-                   {isSystemContextOpen && (
-                      <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4 space-y-4">
-                         <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
-                           <SearchableMultiSelect 
-                              label="Target System(s)" 
-                              selected={formData.target_systems || []} 
-                              onChange={(next: string[]) => setFormData({...formData, target_systems: next, impacted_asset_ids: [], impacted_service_ids: [], linked_failure_mode_ids: []})} 
-                              options={systemsList} 
-                              placeholder="Select Systems..." 
-                              allowCustom={false}
-                           />
-                         </div>
-                         <div className="space-y-4">
-                            <div>
-                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
-                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                                  {filteredAssets.map((a: any) => (
-                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
-                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
-                                         const ids = formData.impacted_asset_ids || []
-                                         setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id), linked_failure_mode_ids: []})
-                                       }} className="sr-only" />
-                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_asset_ids?.includes(a.id) ? 'bg-amber-500 border-amber-500' : 'border-white/20'}`} />
-                                       <span className="truncate">{a.name}</span>
-                                    </label>
-                                  ))}
-                               </div>
-                            </div>
-                            <div>
-                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
-                               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                                  {filteredServices.map((s: any) => (
-                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
-                                       <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
-                                         const ids = formData.impacted_service_ids || []
-                                         setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
-                                       }} className="sr-only" />
-                                       <div className={`w-2 h-2 rounded-full border ${formData.impacted_service_ids?.includes(s.id) ? 'bg-indigo-500 border-indigo-500' : 'border-white/20'}`} />
-                                       <span className="truncate">{s.name}</span>
-                                    </label>
-                                  ))}
-                               </div>
-                            </div>
-                         </div>
-                      </motion.div>
-                   )}
-                </AnimatePresence>
-             </div>
-
              {/* 4. Operational Impact */}
              <SectionCard icon={ShieldAlert} title="Operational Impact" color="text-rose-400">
                 <div className="space-y-4">
@@ -1349,7 +1345,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                e.stopPropagation(); 
                                const nextEvidence = formData.evidence_json.filter((_:any,idx:number)=>idx!==i);
                                setFormData({...formData, evidence_json: nextEvidence});
-                               if (!isEditing) onSave({...formData, evidence_json: nextEvidence});
                             }} className="p-1.5 bg-rose-600 text-white rounded hover:bg-rose-500 transition-colors shadow-lg"><Trash2 size={12}/></button>
                          </div>
                       </div>
@@ -1466,7 +1461,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                             const isEditingEvent = editingTimelineId === e.id
                             return (
                               <div key={e.id} className="relative bg-white/5 border border-white/10 rounded-lg p-6 shadow-2xl group hover:bg-white/[0.08] transition-all w-full">
-                                  <div className={`absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
+                                  <div className={`absolute -left-[32px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg z-10 transition-transform group-hover:scale-125 ${typeColors[e.event_type] || 'bg-slate-500'}`} />
                                   
                                   <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 flex items-start gap-8">
@@ -1492,6 +1487,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                                 <div className="col-span-4">
                                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Team</label>
                                                    <input value={editTimelineData.owner_team} onChange={ev => setEditTimelineData({...editTimelineData, owner_team: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-purple-500/50" />
+                                                </div>
+                                                <div className="col-span-4">
+                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Type</label>
+                                                   <StyledSelect value={editTimelineData.event_type} onChange={(ev:any) => setEditTimelineData({...editTimelineData, event_type: ev.target.value.toUpperCase()})} options={enumOptions('EventType')} />
                                                 </div>
                                                 <div className="col-span-4">
                                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Event Time</label>
@@ -1562,9 +1561,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                              if (!newMitigation.action_description.trim()) { toast.error("Description required"); return; }
                              const nextMitigations = [...(formData.mitigations || []), { ...newMitigation, action_description: newMitigation.action_description.toUpperCase(), id: Date.now() }]
                              setFormData({...formData, mitigations: nextMitigations})
-                             onSave({...formData, mitigations: nextMitigations})
-                             setNewMitigation({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
-                          }} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
+                             setNewMitigation({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })                          }} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
                       </div>
 
                       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
@@ -1580,7 +1577,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                               <button onClick={() => {
                                  const nextMitigations = formData.mitigations.filter((x:any)=>x.id!==m.id)
                                  setFormData({...formData, mitigations: nextMitigations})
-                                 onSave({...formData, mitigations: nextMitigations})
                               }} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
                            </div>
                          ))}
@@ -1652,7 +1648,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     }
     onSave(finalData)
     setIsEditing(false)
-    toast.success('Intelligence Synchronized')
   }
 
   const sortedLogs = useMemo(() => {
@@ -1663,7 +1658,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-[40px] border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
         
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">

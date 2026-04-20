@@ -239,7 +239,7 @@ function MainLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans transition-colors duration-500">
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ duration: 500 }} />
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]">
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
@@ -309,23 +309,6 @@ function MainLayout() {
             </Link>
           </div>
         </header>
-
-        <div className="h-12 border-b border-[var(--glass-border)] bg-[var(--bg-header)]/50 backdrop-blur-md flex items-center px-8 space-x-2 overflow-x-auto custom-scrollbar shrink-0">
-           <NavTab icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} />
-           <NavTab icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} />
-           <NavTab icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} />
-           <NavTab icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} />
-           <NavTab icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} />
-           <NavTab icon={Share2} label="External" path="/external" active={location.pathname === "/external"} />
-           <NavTab icon={Network} label="Network" path="/network" active={location.pathname === "/network"} />
-           <NavTab icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} />
-           <NavTab icon={Search} label="Research" path="/research" active={location.pathname === "/research"} />
-           <NavTab icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} />
-           <NavTab icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} />
-           <NavTab icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} />
-           <NavTab icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} />
-           <NavTab icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} />
-        </div>
 
         <div className="flex-1 p-8 overflow-hidden relative">
           <Routes>
