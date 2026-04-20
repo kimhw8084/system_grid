@@ -73,25 +73,22 @@ const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onC
   return (
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between px-1">
-         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Priority Gauge</label>
+         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Priority Selection</label>
          <div className={`text-[10px] font-black uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
             {priorities[activeIdx]?.hint}
          </div>
       </div>
-      <div className="bg-slate-950 border border-white/10 rounded-lg p-1.5 flex gap-1 relative overflow-hidden">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
         {priorities.map((p, idx) => (
           <button
             key={p.id}
             onClick={() => onChange(p.id)}
-            className={`flex-1 py-3.5 rounded-md transition-all relative z-10 group overflow-hidden ${idx === activeIdx ? 'bg-white/5 border border-white/10 shadow-xl' : 'hover:bg-white/[0.02]'}`}
+            className={`min-w-[140px] flex-shrink-0 p-4 rounded-xl transition-all border-2 flex flex-col items-center gap-2 group ${idx === activeIdx ? p.border + ' bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
           >
-            <div className={`absolute bottom-0 left-0 right-0 h-[2px] transition-all ${idx <= activeIdx ? p.color : 'bg-white/5'}`} />
-            <span className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all ${idx === activeIdx ? p.text : 'text-slate-600 group-hover:text-slate-400'}`}>
+            <div className={`w-8 h-1 rounded-full ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
+            <span className={`text-[12px] font-black uppercase tracking-[0.2em] transition-all ${idx === activeIdx ? p.text : 'text-slate-500 group-hover:text-slate-400'}`}>
               {p.label}
             </span>
-            {idx === activeIdx && (
-               <motion.div layoutId="gauge-glow" className={`absolute inset-0 ${p.color} opacity-5 blur-xl`} />
-            )}
           </button>
         ))}
       </div>
@@ -120,20 +117,6 @@ const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any
     {children}
   </div>
 )
-
-const ImageThumbnail = ({ src }: { src: string }) => {
-  const [isExpanded, setIsExpanded] = useState(false)
-  return (
-    <div className="relative inline-block mr-2 mb-2">
-      <img 
-        src={src} 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={`${isExpanded ? 'fixed inset-0 z-[200] m-auto max-w-[90vw] max-h-[90vh] shadow-2xl rounded-lg cursor-zoom-out border-2 border-purple-500/50' : 'h-24 w-auto rounded border border-white/10 hover:border-purple-500/50 cursor-zoom-in transition-all object-cover hover:scale-105'}`} 
-      />
-      {isExpanded && <div className="fixed inset-0 bg-black/90 z-[190] backdrop-blur-md" onClick={() => setIsExpanded(false)} />}
-    </div>
-  )
-}
 
 export default function Research() {
   const queryClient = useQueryClient()
@@ -835,7 +818,10 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 {formData.type === 'RCA' ? <ShieldAlert size={20}/> : <Search size={20}/>} 
                 Initialize {formData.type}
               </h2>
-              <button onClick={() => setStep(0)} className="text-[9px] font-black uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
+              <div className="flex items-center gap-4">
+                <button onClick={() => setStep(0)} className="text-[9px] font-black uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
+                <button onClick={onClose} className="text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 underline tracking-widest">Abort</button>
+              </div>
             </div>
 
             <div className="space-y-5">
@@ -915,16 +901,25 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 }
 
 function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
-  const [formData, setFormData] = useState({ ...item })
+  const [formData, setFormData] = useState({ 
+    ...item, 
+    identification_steps_json: item.identification_steps_json || [],
+    rca_steps_json: item.rca_steps_json || [],
+    mitigation_logs_json: item.mitigation_logs_json || []
+  })
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
-  const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | null>(null)
-  const [newMitigation, setNewMitigation] = useState({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })
+  const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | 'investigation' | null>(null)
   
   useEffect(() => {
-    if (!isEditing) setFormData({ ...item })
+    if (!isEditing) setFormData({ 
+      ...item,
+      identification_steps_json: item.identification_steps_json || [],
+      rca_steps_json: item.rca_steps_json || [],
+      mitigation_logs_json: item.mitigation_logs_json || []
+    })
   }, [item, isEditing])
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
   const [editTimelineData, setEditTimelineData] = useState<any>(null)
@@ -940,23 +935,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     document.addEventListener('mousedown', handleClickAway)
     return () => document.removeEventListener('mousedown', handleClickAway)
   }, [])
-
-  const handleDeleteOwner = (owner: string) => {
-    const nextOwners = (formData.owners || []).filter((o: string) => o !== owner)
-    setFormData({ ...formData, owners: nextOwners })
-  }
-
-  // Navigation Safety
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isEditing) {
-        e.preventDefault()
-        e.returnValue = 'Unsaved changes will be lost. Exit?'
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isEditing])
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
@@ -974,8 +952,11 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
             } else if (focusedField === 'timeline') {
               setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
               toast.success('Figure Captured')
+            } else if (focusedField === 'investigation') {
+              window.dispatchEvent(new CustomEvent('investigation-paste', { detail: base64 }))
+              toast.success('Investigation Figure Captured')
             } else {
-              toast.error('Select a field to paste images (Evidence or Figures)')
+              toast.error('Select a field to paste images (Evidence, Timeline, or Investigation)')
             }
           }
           reader.readAsDataURL(file)
@@ -1059,8 +1040,6 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   }, [failureModes, formData.target_systems, formData.impacted_asset_ids])
 
   const handleTargetSystemsChange = (nextSystems: string[]) => {
-    if (!isEditing) return
-    
     // Dependency Guard: Check if removing a system that has linked failure modes
     const removedSystems = (formData.target_systems || []).filter(s => !nextSystems.includes(s))
     if (removedSystems.length > 0) {
@@ -1472,22 +1451,22 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                         <div className="grid grid-cols-12 gap-3 items-end">
                           <div className="col-span-12 lg:col-span-4">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
-                              <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description..." />
+                              <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Owner</label>
-                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
+                             <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Team</label>
-                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
+                             <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                             <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value.toUpperCase()})} options={enumOptions('EventType')} />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
-                              <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
+                              <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
                           {/* Figure Field and Add Event Button (Separated) */}
                           <div className="col-span-12 grid grid-cols-12 gap-3 mt-4">
@@ -1639,56 +1618,23 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                   </>
                 )}
 
-                {activeTab === 'Mitigation' && (
-                  <div className="p-6 flex-1 flex flex-col space-y-6 overflow-hidden">
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
-                          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Strategy</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                             <StyledSelect label="Type" value={newMitigation.type} onChange={(e:any) => setNewMitigation({...newMitigation, type: e.target.value.toUpperCase()})} options={['WORKAROUND', 'PREVENTIVE', 'MITIGATION', 'PERMANENT FIX'].map(v=>({value:v, label:v}))} />
-                             <StyledSelect label="Status" value={newMitigation.status} onChange={(e:any) => setNewMitigation({...newMitigation, status: e.target.value.toUpperCase()})} options={['PLANNED', 'IN PROGRESS', 'VERIFIED', 'COMPLETED'].map(v=>({value:v, label:v}))} />
-                          </div>
-                          <textarea value={newMitigation.action_description} onChange={e => setNewMitigation({...newMitigation, action_description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" placeholder="Action details..." />
-                          <button onClick={() => {
-                             if (!newMitigation.action_description.trim()) { toast.error("Description required"); return; }
-                             const nextMitigations = [...(formData.mitigations || []), { ...newMitigation, action_description: newMitigation.action_description.toUpperCase(), id: Date.now() }]
-                             setFormData({...formData, mitigations: nextMitigations})
-                             setNewMitigation({ type: 'WORKAROUND', action_description: '', status: 'PLANNED' })                          }} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Add Mitigation</button>
-                      </div>
-
-                      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-                         {(formData.mitigations || []).map((m: any) => (
-                           <div key={m.id} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
-                              <div className="flex items-center gap-6">
-                                 <div className="w-24 text-center">
-                                    <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-blue-500/30 text-blue-400 bg-blue-500/10">{m.type}</span>
-                                    <p className={`text-[8px] font-black uppercase mt-1.5 ${m.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{m.status}</p>
-                                 </div>
-                                 <p className="text-[11px] font-bold text-slate-200">{m.action_description}</p>
-                              </div>
-                              <button onClick={() => {
-                                 const nextMitigations = formData.mitigations.filter((x:any)=>x.id!==m.id)
-                                 setFormData({...formData, mitigations: nextMitigations})
-                              }} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
-                           </div>
-                         ))}
-                      </div>
-                  </div>
+                {activeTab === 'Investigation' && (
+                  <InvestigationTab 
+                    formData={formData} 
+                    setFormData={setFormData} 
+                    isEditing={isEditing} 
+                    failureModes={failureModes}
+                    setFocusedField={setFocusedField}
+                    focusedField={focusedField}
+                  />
                 )}
 
-                {activeTab === 'Investigation' && (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                     <div className="p-6">
-                        <SectionCard icon={Search} title="Investigation Narrative" color="text-indigo-400">
-                           <textarea 
-                              readOnly={!isEditing}
-                              value={formData.narrative_summary} 
-                              onChange={e => setFormData({...formData, narrative_summary: e.target.value})} 
-                              className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[12px] font-bold text-slate-300 outline-none min-h-[300px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                              placeholder="Record technical deep-dive findings, cause/effect chains, and logic here..."
-                           />
-                        </SectionCard>
-                     </div>
-                  </div>
+                {activeTab === 'Mitigation' && (
+                   <MitigationTab 
+                     formData={formData} 
+                     setFormData={setFormData} 
+                     isEditing={isEditing}
+                   />
                 )}
              </div>
           </div>
@@ -1929,5 +1875,196 @@ function IntelligenceStream({ logs, compact = false }: any) {
          </div>
       </div>
     </div>
+  )
+}
+
+function InvestigationTab({ formData, setFormData, isEditing, failureModes, setFocusedField, focusedField }: any) {
+  const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
+
+  useEffect(() => {
+    const handlePasteEvent = (e: any) => {
+      setNewStep(prev => ({ ...prev, images: [...prev.images, e.detail] }))
+    }
+    window.addEventListener('investigation-paste', handlePasteEvent)
+    return () => window.removeEventListener('investigation-paste', handlePasteEvent)
+  }, [])
+
+  const addStep = () => {
+    if (!newStep.text.trim()) return
+    const step = { 
+      ...newStep, 
+      id: Date.now(), 
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    setFormData({ ...formData, identification_steps_json: [...(formData.identification_steps_json || []), step] })
+    setNewStep({ text: '', images: [] })
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden p-6 gap-6">
+       <div className="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+          <SectionCard icon={Search} title="Root Cause Explanation" color="text-indigo-400">
+             <textarea 
+                readOnly={!isEditing}
+                value={formData.cause_of_failure || ''} 
+                onChange={e => setFormData({...formData, cause_of_failure: e.target.value})} 
+                className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[150px] resize-none"
+                placeholder="Explain the definitive root cause..."
+             />
+          </SectionCard>
+
+          <div className="space-y-4">
+             <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                   <ListTodo size={14}/> Identification Steps
+                </h3>
+             </div>
+             
+             {isEditing && (
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
+                   <div 
+                      onClick={() => setFocusedField('investigation')}
+                      className={`relative group focus-trigger ${focusedField === 'investigation' ? 'ring-2 ring-blue-500/50' : ''}`}
+                   >
+                      <textarea 
+                         value={newStep.text}
+                         onChange={e => setNewStep({...newStep, text: e.target.value})}
+                         className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[80px]"
+                         placeholder="Describe identification step... Paste figures here."
+                      />
+                      {focusedField === 'investigation' && (
+                         <div className="absolute top-2 right-2 flex items-center gap-2">
+                            <span className="text-[8px] font-black text-blue-400 uppercase animate-pulse">Paste Enabled</span>
+                         </div>
+                      )}
+                   </div>
+                   {newStep.images.length > 0 && (
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                         {newStep.images.map((img, i) => (
+                            <div key={i} className="relative w-16 h-16 shrink-0 rounded border border-white/10 overflow-hidden">
+                               <img src={img} className="w-full h-full object-cover" />
+                               <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={10}/></button>
+                            </div>
+                         ))}
+                      </div>
+                   )}
+                   <button onClick={addStep} className="w-full py-3 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all">Add Identification Step</button>
+                </div>
+             )}
+
+             <div className="space-y-4">
+                {(formData.identification_steps_json || []).map((step: any, idx: number) => (
+                   <div key={step.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 group relative">
+                      <div className="flex gap-4">
+                         <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-xs shrink-0">{idx + 1}</div>
+                         <div className="flex-1 space-y-3">
+                            <p className="text-[12px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
+                            {step.images?.length > 0 && (
+                               <div className="flex gap-2 overflow-x-auto pb-2">
+                                  {step.images.map((img: string, i: number) => (
+                                     <ImageThumbnail key={i} src={img} />
+                                  ))}
+                               </div>
+                            )}
+                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
+                               {isEditing && (
+                                  <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-300"><Trash2 size={14}/></button>
+                               )}
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                ))}
+             </div>
+          </div>
+       </div>
+
+       <div className="w-80 shrink-0 space-y-4">
+          <SectionCard icon={ShieldAlert} title="Linked Failures" color="text-purple-400">
+             <div className="space-y-2">
+                {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
+                   <div key={fm.id} className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-1">
+                      <p className="text-[10px] font-black text-purple-400 uppercase truncate">{fm.title}</p>
+                      <p className="text-[8px] font-black text-slate-500 uppercase">{fm.system_name || fm.system}</p>
+                   </div>
+                ))}
+                {(formData.linked_failure_mode_ids || []).length === 0 && (
+                   <p className="text-[9px] font-black text-slate-600 uppercase italic text-center py-4">No failures selected</p>
+                )}
+             </div>
+          </SectionCard>
+       </div>
+    </div>
+  )
+}
+
+function MitigationTab({ formData, setFormData, isEditing }: any) {
+  const [newLog, setNewLog] = useState({ type: 'WORKAROUND', description: '', status: 'PLANNED' })
+
+  const addLog = () => {
+    if (!newLog.description.trim()) return
+    const log = { ...newLog, id: Date.now(), timestamp: new Date().toISOString() }
+    setFormData({ ...formData, mitigation_logs_json: [...(formData.mitigation_logs_json || []), log] })
+    setNewLog({ type: 'WORKAROUND', description: '', status: 'PLANNED' })
+  }
+
+  const types = ['WORKAROUND', 'MONITORING', 'MITIGATION', 'PREVENTION']
+  const statuses = ['PLANNED', 'IN PROGRESS', 'VERIFIED', 'COMPLETED']
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-6">
+       {isEditing && (
+          <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
+             <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Log</h3>
+             <div className="grid grid-cols-2 gap-4">
+                <StyledSelect label="Log Type" value={newLog.type} onChange={(e:any) => setNewLog({...newLog, type: e.target.value})} options={types.map(t => ({value: t, label: t}))} />
+                <StyledSelect label="Status" value={newLog.status} onChange={(e:any) => setNewLog({...newLog, status: e.target.value})} options={statuses.map(s => ({value: s, label: s}))} />
+             </div>
+             <textarea value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-emerald-500/50 min-h-[80px] uppercase" placeholder="Strategy details..." />
+             <button onClick={addLog} className="h-12 w-full bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Capture Log</button>
+          </div>
+       )}
+
+       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+          {(formData.mitigation_logs_json || []).map((log: any, idx: number) => (
+             <div key={log.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
+                <div className="flex items-center gap-6">
+                   <div className="w-32 text-center">
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${log.type === 'PREVENTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
+                      <p className={`text-[8px] font-black uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
+                   </div>
+                   <div className="space-y-1">
+                      <p className="text-[11px] font-bold text-slate-200 uppercase">{log.description}</p>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
+                   </div>
+                </div>
+                {isEditing && (
+                   <button onClick={() => setFormData({...formData, mitigation_logs_json: formData.mitigation_logs_json.filter((_:any, i:number) => i !== idx)})} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                )}
+             </div>
+          ))}
+       </div>
+    </div>
+  )
+}
+
+function ImageThumbnail({ src }: { src: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  return (
+    <>
+      <div onClick={() => setIsOpen(true)} className="relative w-16 h-16 shrink-0 border border-white/10 rounded overflow-hidden shadow-lg cursor-zoom-in hover:border-blue-500/50 transition-all group">
+         <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+      </div>
+      <AnimatePresence>
+         {isOpen && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-10" onClick={() => setIsOpen(false)}>
+               <motion.img initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} src={src} className="max-w-full max-h-full rounded-lg shadow-2xl border border-white/10" />
+               <button className="absolute top-10 right-10 text-white/50 hover:text-white"><X size={40}/></button>
+            </div>
+         )}
+      </AnimatePresence>
+    </>
   )
 }

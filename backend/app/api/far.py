@@ -72,14 +72,33 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/modes/{mode_id}", response_model=schemas.FarFailureModeResponse)
 async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+    stmt = select(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.causes)
+    ).filter(models.FarFailureMode.id == mode_id)
     result = await db.execute(stmt)
-    mode = result.scalar_one_or_none()
+    mode = result.unique().scalar_one_or_none()
     if not mode: raise HTTPException(404)
     
+    # Track if we need to update RPN
+    rpn_fields = {'severity', 'occurrence', 'detection'}
+    needs_rpn = False
+    
     for k, v in data.items():
-        if hasattr(mode, k):
+        if k == 'affected_assets' and isinstance(v, list):
+            asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
+            asset_res = await db.execute(asset_stmt)
+            mode.affected_assets = list(asset_res.scalars().all())
+        elif k == 'cause_ids' and isinstance(v, list):
+            cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(v))
+            cause_res = await db.execute(cause_stmt)
+            mode.causes = list(cause_res.scalars().all())
+        elif hasattr(mode, k):
             setattr(mode, k, v)
+            if k in rpn_fields: needs_rpn = True
+            
+    if needs_rpn:
+        mode.rpn = mode.severity * mode.occurrence * mode.detection
             
     await db.commit()
     

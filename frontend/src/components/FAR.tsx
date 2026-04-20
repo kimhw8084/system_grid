@@ -405,6 +405,36 @@ export default function FAR() {
       hide: hiddenColumns.includes("status")
     },
     {
+      field: "linked_rcas",
+      headerName: "Incidents",
+      width: 100,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const rcas = p.data.linked_rcas || [];
+        if (rcas.length === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
+        return (
+          <div className="flex items-center justify-center h-full w-full">
+            <div className="group relative cursor-help">
+              <div className="bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
+                {rcas.length} Linked
+              </div>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
+                <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[200px]">
+                   <p className="text-[9px] font-black uppercase text-purple-400 mb-2 border-b border-white/5 pb-1">Linked RCA Records</p>
+                   <div className="space-y-1">
+                      {rcas.map((r: any) => (
+                        <div key={r.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5">• {r.title}</div>
+                      ))}
+                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
       headerName: "Action",
       width: 120,
       pinned: 'right',

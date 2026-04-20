@@ -313,6 +313,52 @@ class FarFailureModeResponse(BaseSchema):
     causes: List[FarFailureCauseResponse] = []
     mitigations: List[FarMitigationResponse] = []
     prevention_actions: List[FarPreventionResponse] = []
+    linked_rcas: List[Any] = []
+
+class RcaTimelineEventResponse(BaseSchema):
+    rca_id: int
+    event_time: datetime
+    event_type: str
+    description: str
+    owner: Optional[str] = None
+    owner_team: Optional[str] = None
+    images: Optional[List[str]] = []
+
+class RcaMitigationResponse(BaseSchema):
+    rca_id: int
+    mitigation_type: str
+    action_description: str
+    status: str = "Planned"
+
+class RcaRecordResponse(BaseSchema):
+    title: str
+    problem_statement: Optional[str] = None
+    trigger_source: Optional[str] = None
+    severity: Optional[str] = None
+    priority: int = 1
+    initial_symptoms: Optional[str] = None
+    occurrence_at: Optional[datetime] = None
+    detection_at: Optional[datetime] = None
+    acknowledged_at: Optional[datetime] = None
+    owner: Optional[str] = None
+    owners: Optional[List[str]] = []
+    incident_type: Optional[str] = None
+    detection_type: Optional[str] = None
+    impact_type: Optional[str] = None
+    target_systems: Optional[List[str]] = []
+    impacted_asset_ids: Optional[List[int]] = []
+    impacted_service_ids: Optional[List[int]] = []
+    identification_steps_json: Optional[List[Any]] = []
+    rca_steps_json: Optional[List[Any]] = []
+    mitigation_logs_json: Optional[List[Any]] = []
+    narrative_summary: Optional[str] = None
+    evidence_json: Optional[List[Any]] = []
+    cause_of_failure: Optional[str] = None
+    status: str = "Open"
+    
+    timeline: List[RcaTimelineEventResponse] = []
+    mitigations: List[RcaMitigationResponse] = []
+    linked_failure_modes: List[FarFailureModeResponse] = []
 
 class ProjectBase(BaseModel):
     name: str

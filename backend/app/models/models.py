@@ -552,6 +552,7 @@ class FarFailureMode(Base, BaseMixin):
     causes = relationship("FarFailureCause", secondary=far_mode_causes, back_populates="failure_modes")
     mitigations = relationship("FarMitigation", secondary=far_mode_mitigations)
     prevention_actions = relationship("FarPrevention", back_populates="failure_mode", cascade="all, delete-orphan")
+    linked_rcas = relationship("RcaRecord", secondary=rca_failure_mode_links, back_populates="linked_failure_modes")
 
 class FarFailureCause(Base, BaseMixin):
     __tablename__ = "far_failure_causes"
@@ -718,6 +719,7 @@ class RcaRecord(Base, BaseMixin):
     
     narrative_summary = Column(Text) # Step-by-step narrative
     evidence_json = Column(JSON, default=list) # [{ type: 'image|log|text', content: '...', timestamp: '...' }]
+    mitigation_logs_json = Column(JSON, default=list) # [{type, description, status, timestamp, images: []}]
     
     # Resolution Logic
     cause_of_failure = Column(Text)
@@ -736,7 +738,7 @@ class RcaRecord(Base, BaseMixin):
     mitigations = relationship("RcaMitigation", back_populates="rca", cascade="all, delete-orphan")
     knowledge_bkm = relationship("KnowledgeEntry")
     monitoring_config = relationship("MonitoringItem")
-    linked_failure_modes = relationship("FarFailureMode", secondary=rca_failure_mode_links)
+    linked_failure_modes = relationship("FarFailureMode", secondary=rca_failure_mode_links, back_populates="linked_rcas")
 
 class RcaTimelineEvent(Base, BaseMixin):
     __tablename__ = "rca_timeline_events"
