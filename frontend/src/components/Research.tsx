@@ -20,7 +20,7 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 
 // --- Components ---
 
-const getPriorityInfo = (p: any) => {
+export const getPriorityInfo = (p: any) => {
   const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
   const colors: any = {
     'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
@@ -31,7 +31,7 @@ const getPriorityInfo = (p: any) => {
   return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
 }
 
-const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onChange: (v: string) => void, disabled?: boolean, type: 'RCA' | 'RESEARCH' }) => {
+export const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onChange: (v: string) => void, disabled?: boolean, type: 'RCA' | 'RESEARCH' }) => {
   const priorities = [
     { 
       id: 'LOW', 
@@ -96,9 +96,9 @@ const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onC
   )
 }
 
-const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
+export const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
 
-const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
+export const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
     <div>
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
@@ -108,7 +108,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   </div>
 )
 
-const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
+export const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any) => (
   <div className={`bg-white/5 border border-white/5 rounded-lg p-4 space-y-3 ${className}`}>
     <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-1">
       <Icon size={14} className={color} />
@@ -639,7 +639,7 @@ export default function Research() {
   )
 }
 
-function SearchableMultiSelect({ label, selected = [], onChange, options = [], placeholder, allowCustom = true }: any) {
+export function SearchableMultiSelect({ label, selected = [], onChange, options = [], placeholder, allowCustom = true }: any) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -900,7 +900,7 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
   )
 }
 
-function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
+export function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
   const [formData, setFormData] = useState({
     ...item,
     identification_steps_json: item.identification_steps_json || [],
@@ -1867,7 +1867,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
   )
 }
 
-function InvestigationTab({ formData, setFormData, isEditing, failureModes, setFocusedField, focusedField }: any) {
+export function InvestigationTab({ formData, setFormData, isEditing, failureModes, setFocusedField, focusedField }: any) {
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
 
   useEffect(() => {
@@ -2039,7 +2039,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
   )
 }
 
-function ImageThumbnail({ src }: { src: string }) {
+export function ImageThumbnail({ src }: { src: string }) {
   const [isOpen, setIsOpen] = useState(false)
   return (
     <>

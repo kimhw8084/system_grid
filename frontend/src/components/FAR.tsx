@@ -19,6 +19,7 @@ import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
 import { MonitoringForm } from './MonitoringGrid'
 import { ProjectForm } from './Projects'
+import { EnhancedRcaDetails } from './Research'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -168,6 +169,9 @@ export default function FAR() {
   const [showMaturityHelp, setShowMaturityHelp] = useState(false)
   const [activeMetricHelp, setActiveMetricHelp] = useState<string | null>(null)
 
+  const [incidentListModal, setIncidentListModal] = useState<{show: boolean, rcas: any[]}>({ show: false, rcas: [] })
+  const [selectedRcaDetail, setSelectedRcaDetail] = useState<any>(null)
+
   // Column Picker & Style Lab State (Mirrored from AssetGrid)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
@@ -281,7 +285,7 @@ export default function FAR() {
     { 
       field: "severity", 
       headerName: "S", 
-      width: 50,
+      width: 70,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -302,7 +306,7 @@ export default function FAR() {
     { 
       field: "occurrence", 
       headerName: "O", 
-      width: 50,
+      width: 70,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -323,7 +327,7 @@ export default function FAR() {
     { 
       field: "detection", 
       headerName: "D", 
-      width: 50,
+      width: 70,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -344,7 +348,7 @@ export default function FAR() {
     { 
       field: "rpn", 
       headerName: "RPN", 
-      width: 70,
+      width: 80,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -407,18 +411,27 @@ export default function FAR() {
     {
       field: "linked_rcas",
       headerName: "Incidents",
-      width: 100,
+      width: 120,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const rcas = p.data.linked_rcas || [];
-        if (rcas.length === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
+        const count = rcas.length;
+        if (count === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
+        
+        const color = count >= 5 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
+                      count >= 2 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
+                      'bg-purple-500/20 text-purple-400 border-purple-500/30';
+
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className="group relative cursor-help">
-              <div className="bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">
-                {rcas.length} Linked
-              </div>
+            <div className="group relative">
+              <button 
+                onClick={() => setIncidentListModal({ show: true, rcas })}
+                className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer ${color}`}
+              >
+                <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{count}</span>
+              </button>
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
                 <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[200px]">
                    <p className="text-[9px] font-bold uppercase text-purple-400 mb-2 border-b border-white/5 pb-1">Linked RCA Records</p>
@@ -631,6 +644,62 @@ export default function FAR() {
           {selectedModeId && selectedMode && (
             <FailureDetailView mode={selectedMode} onClose={() => setSelectedModeId(null)} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['far'] })} />
           )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {incidentListModal.show && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-purple-500/30 space-y-6">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                <h2 className="text-xl font-bold uppercase tracking-tighter text-purple-400 flex items-center space-x-3">
+                   <ShieldAlert size={24}/> <span>Linked Incidents</span>
+                </h2>
+                <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
+              </div>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                {incidentListModal.rcas.map((r: any) => (
+                  <button 
+                    key={r.id}
+                    onClick={() => {
+                      setSelectedRcaDetail(r);
+                      setIncidentListModal({ show: false, rcas: [] });
+                    }}
+                    className="w-full bg-white/5 border border-white/10 p-4 rounded-lg flex items-center justify-between group hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-left"
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-tight">{r.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[8px] font-bold text-slate-500 uppercase">RCA-{r.id}</span>
+                        <span className="w-1 h-1 rounded-full bg-slate-700" />
+                        <span className="text-[8px] font-bold text-purple-400 uppercase">{r.status}</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-600 group-hover:text-purple-400 transition-colors" />
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="w-full py-3 bg-purple-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-purple-500/20">Close Registry</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedRcaDetail && (
+          <EnhancedRcaDetails 
+            item={selectedRcaDetail} 
+            devices={[]} // We can pass an empty array or fetch devices if needed
+            options={options}
+            failureModes={modes}
+            onClose={() => setSelectedRcaDetail(null)} 
+            onSave={() => {
+              setSelectedRcaDetail(null);
+              queryClient.invalidateQueries({ queryKey: ['far'] });
+            }}
+            fontSize={fontSize}
+            rowDensity={rowDensity}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
