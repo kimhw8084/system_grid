@@ -1093,7 +1093,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
   useEffect(() => {
     const currentData = JSON.stringify(formData)
     if (!isEditing && currentData !== lastSavedData.current) {
-        onSave({ ...formData, linked_failure_modes: formData.linked_failure_mode_ids })
+        onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
         lastSavedData.current = currentData
     }
   }, [isEditing, formData, onSave])
@@ -1123,7 +1123,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
             <button 
               onClick={() => {
                 if (isEditing) {
-                  onSave({ ...formData, linked_failure_modes: formData.linked_failure_mode_ids })
+                  onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
                   lastSavedData.current = JSON.stringify(formData)
                 }
                 setIsEditing(!isEditing)
@@ -1300,40 +1300,46 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                      placeholder="Describe the problem..."
                    />
                    
-                   <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all">
+                   <div className="bg-white/5 border border-white/5 rounded-lg overflow-visible transition-all shadow-inner">
                       <button 
                          onClick={() => setIsFailureModesOpen(!isFailureModesOpen)}
-                         className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
+                         className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
                       >
-                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Linked Failure Modes (FAR)</span>
-                         <ChevronDown size={14} className={`text-slate-500 transition-transform ${isFailureModesOpen ? 'rotate-180' : ''}`} />
+                         <div className="flex items-center gap-2">
+                            <Layers size={14} className="text-purple-400" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">Linked Failure Modes (FAR)</span>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-[9px] font-bold text-purple-400">{(formData.linked_failure_mode_ids || []).length} VECTORS</div>
+                            <ChevronDown size={14} className={`text-slate-500 transition-transform ${isFailureModesOpen ? 'rotate-180' : ''}`} />
+                         </div>
                       </button>
                       <AnimatePresence>
                          {isFailureModesOpen && (
-                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4">
-                         <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
-                                  <div className="flex items-center gap-2">
-                                     <div className="flex-1">
-                                        <SearchableMultiSelect 
-                                           selected={formData.linked_failure_mode_ids || []} 
-                                           onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
-                                           options={filteredFailureModes.map((fm: any) => ({ value: fm.id, label: `${fm.title} [${fm.system_name || fm.system}]` }))} 
-                                           placeholder="Add Failure Modes..." 
-                                           allowCustom={false}
-                                        />
+                            <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/40 p-5 space-y-4">
+                               {isEditing && (
+                                  <div className="flex flex-col gap-3">
+                                     <button 
+                                        onClick={() => setShowFailureWizard(true)}
+                                        className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg shadow-purple-600/20 active:scale-95 transition-all flex items-center justify-center gap-2 border border-purple-400/30"
+                                     >
+                                        <PlusCircle size={14} /> Link New Failure Mode Vector
+                                     </button>
+                                     <div className="flex items-center gap-2 px-1">
+                                        <div className="h-px flex-1 bg-white/5" />
+                                        <span className="text-[8px] font-bold text-slate-600 uppercase">Or Select Existing</span>
+                                        <div className="h-px flex-1 bg-white/5" />
                                      </div>
-                                     {isEditing && (
-                                        <button 
-                                           onClick={() => setShowFailureWizard(true)}
-                                           className="p-2.5 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-lg shadow-rose-500/10"
-                                           title="Create New Failure Mode Vector"
-                                        >
-                                           <Plus size={16} />
-                                        </button>
-                                     )}
+                                     <SearchableMultiSelect 
+                                        selected={formData.linked_failure_mode_ids || []} 
+                                        onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
+                                        options={filteredFailureModes.map((fm: any) => ({ value: fm.id, label: `${fm.title} [${fm.system_name || fm.system}]` }))} 
+                                        placeholder="Search failure modes..." 
+                                        allowCustom={false}
+                                     />
                                   </div>
-                               </div>
-                               <div className="mt-4 overflow-x-auto">
+                               )}
+                               <div className="overflow-x-auto">
                                   <table className="w-full text-left border-collapse">
                                      <thead>
                                         <tr className="border-b border-white/10">
@@ -1597,7 +1603,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                             </div>
                                          ) : (
                                             <>
-                                               <p className="text-[10px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
+                                               <p className="text-[11px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
                                                <div className="flex items-center gap-3">
                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
                                                       <User size={12} className="text-purple-400" />
