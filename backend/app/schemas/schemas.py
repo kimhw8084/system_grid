@@ -324,7 +324,7 @@ class FarFailureModeResponse(BaseSchema):
 class RcaTimelineEventResponse(BaseSchema):
     rca_id: int
     event_time: datetime
-    event_type: str
+    event_type: Optional[str] = None
     description: str
     owner: Optional[str] = None
     owner_team: Optional[str] = None
@@ -332,7 +332,7 @@ class RcaTimelineEventResponse(BaseSchema):
 
 class RcaMitigationResponse(BaseSchema):
     rca_id: int
-    mitigation_type: str
+    type: str
     action_description: str
     status: str = "Planned"
 

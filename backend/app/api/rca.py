@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from sqlalchemy.orm import joinedload
-from typing import List, Optional
+from sqlalchemy.orm import joinedload, selectinload
+from typing import List, Optional, Any
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
@@ -15,29 +15,31 @@ def filter_valid_columns(model, data):
     exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
     return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
-@router.get("/", response_model=List[schemas.RcaRecordResponse])
-async def get_rca_records(db: AsyncSession = Depends(get_db)):
-    query = select(models.RcaRecord).options(
+def get_rca_options():
+    """Reusable options for deep loading RCA records to satisfy RcaRecordResponse schema."""
+    return [
         joinedload(models.RcaRecord.timeline),
         joinedload(models.RcaRecord.mitigations),
         joinedload(models.RcaRecord.knowledge_bkm),
         joinedload(models.RcaRecord.monitoring_config),
-        joinedload(models.RcaRecord.linked_failure_modes)
-    ).filter(models.RcaRecord.is_deleted == False)
+        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.affected_assets),
+        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
+        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.mitigations),
+        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.prevention_actions),
+        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas)
+    ]
+
+@router.get("/", response_model=List[schemas.RcaRecordResponse])
+async def get_rca_records(db: AsyncSession = Depends(get_db)):
+    query = select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.is_deleted == False)
     result = await db.execute(query)
     return result.unique().scalars().all()
 
-@router.get("/{rca_id}")
+@router.get("/{rca_id}", response_model=schemas.RcaRecordResponse)
 async def get_rca_detail(rca_id: int, db: AsyncSession = Depends(get_db)):
-    query = select(models.RcaRecord).options(
-        joinedload(models.RcaRecord.timeline),
-        joinedload(models.RcaRecord.mitigations),
-        joinedload(models.RcaRecord.knowledge_bkm),
-        joinedload(models.RcaRecord.monitoring_config),
-        joinedload(models.RcaRecord.linked_failure_modes)
-    ).filter(models.RcaRecord.id == rca_id)
+    query = select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.id == rca_id)
     result = await db.execute(query)
-    record = result.scalar_one_or_none()
+    record = result.unique().scalar_one_or_none()
     if not record: raise HTTPException(404, "RCA Record not found")
     return record
 
@@ -47,9 +49,12 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.RcaRecord, data)
     
     # Handle ISO dates
-    for date_field in ["occurrence_at", "acknowledged_at"]:
+    for date_field in ["occurrence_at", "acknowledged_at", "detection_at"]:
         if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
-            clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+            try:
+                clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+            except Exception:
+                pass
         elif date_field in clean_data and not clean_data[date_field]:
             clean_data[date_field] = None
 
@@ -65,11 +70,7 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     # Re-fetch with all options to ensure fresh return
-    result = await db.execute(select(models.RcaRecord).options(
-        joinedload(models.RcaRecord.timeline),
-        joinedload(models.RcaRecord.mitigations),
-        joinedload(models.RcaRecord.linked_failure_modes)
-    ).filter(models.RcaRecord.id == record.id))
+    result = await db.execute(select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.id == record.id))
     record = result.unique().scalar_one()
     
     return record
@@ -90,7 +91,7 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     
     clean_data = filter_valid_columns(models.RcaRecord, data)
     
-    # Priority Mapping (Frontend uses strings, DB uses Integer for RcaRecord)
+    # Priority Mapping
     p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10}
     if "priority" in clean_data and isinstance(clean_data["priority"], str):
         clean_data["priority"] = p_map.get(clean_data["priority"].upper(), 1)
@@ -121,7 +122,7 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
         else:
             record.linked_failure_modes = []
 
-    # Sync Timeline (Sync list directly to avoid session desync)
+    # Sync Timeline
     if timeline_data is not None:
         new_timeline = []
         for t in timeline_data:
@@ -147,13 +148,7 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     await db.commit()
     
     # Re-fetch with all options to ensure fresh return
-    result = await db.execute(select(models.RcaRecord).options(
-        joinedload(models.RcaRecord.timeline),
-        joinedload(models.RcaRecord.mitigations),
-        joinedload(models.RcaRecord.knowledge_bkm),
-        joinedload(models.RcaRecord.monitoring_config),
-        joinedload(models.RcaRecord.linked_failure_modes)
-    ).filter(models.RcaRecord.id == rca_id))
+    result = await db.execute(select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.id == rca_id))
     record = result.unique().scalar_one()
     
     return record
