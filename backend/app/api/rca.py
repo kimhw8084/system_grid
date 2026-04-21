@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
+from ..schemas import schemas
 from datetime import datetime
 
 router = APIRouter(prefix="/rca", tags=["Incident RCA Management"])
@@ -14,7 +15,7 @@ def filter_valid_columns(model, data):
     exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
     return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
-@router.get("/")
+@router.get("/", response_model=List[schemas.RcaRecordResponse])
 async def get_rca_records(db: AsyncSession = Depends(get_db)):
     query = select(models.RcaRecord).options(
         joinedload(models.RcaRecord.timeline),
@@ -40,7 +41,7 @@ async def get_rca_detail(rca_id: int, db: AsyncSession = Depends(get_db)):
     if not record: raise HTTPException(404, "RCA Record not found")
     return record
 
-@router.post("/")
+@router.post("/", response_model=schemas.RcaRecordResponse)
 async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     linked_modes_data = data.pop("linked_failure_modes", [])
     clean_data = filter_valid_columns(models.RcaRecord, data)
@@ -62,10 +63,18 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
 
     db.add(record)
     await db.commit()
-    await db.refresh(record)
+    
+    # Re-fetch with all options to ensure fresh return
+    result = await db.execute(select(models.RcaRecord).options(
+        joinedload(models.RcaRecord.timeline),
+        joinedload(models.RcaRecord.mitigations),
+        joinedload(models.RcaRecord.linked_failure_modes)
+    ).filter(models.RcaRecord.id == record.id))
+    record = result.unique().scalar_one()
+    
     return record
 
-@router.put("/{rca_id}")
+@router.put("/{rca_id}", response_model=schemas.RcaRecordResponse)
 async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.RcaRecord).options(
         joinedload(models.RcaRecord.linked_failure_modes),
@@ -112,26 +121,26 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
         else:
             record.linked_failure_modes = []
 
-    # Sync Timeline (Brute force: delete and re-create for simplicity in sync)
+    # Sync Timeline (Sync list directly to avoid session desync)
     if timeline_data is not None:
-        await db.execute(delete(models.RcaTimelineEvent).where(models.RcaTimelineEvent.rca_id == rca_id))
+        new_timeline = []
         for t in timeline_data:
             t_clean = filter_valid_columns(models.RcaTimelineEvent, t)
-            t_clean["rca_id"] = rca_id
             if 'event_time' in t_clean and isinstance(t_clean['event_time'], str):
                 try:
                     t_clean['event_time'] = datetime.fromisoformat(t_clean['event_time'].replace('Z', '+00:00'))
                 except Exception:
                     pass
-            db.add(models.RcaTimelineEvent(**t_clean))
+            new_timeline.append(models.RcaTimelineEvent(**t_clean))
+        record.timeline = new_timeline
 
     # Sync Mitigations
     if mitigations_data is not None:
-        await db.execute(delete(models.RcaMitigation).where(models.RcaMitigation.rca_id == rca_id))
+        new_mitigations = []
         for m in mitigations_data:
             m_clean = filter_valid_columns(models.RcaMitigation, m)
-            m_clean["rca_id"] = rca_id
-            db.add(models.RcaMitigation(**m_clean))
+            new_mitigations.append(models.RcaMitigation(**m_clean))
+        record.mitigations = new_mitigations
         
     db.add(record)
     await db.flush()

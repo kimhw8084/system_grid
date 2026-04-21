@@ -9,7 +9,7 @@ import {
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
@@ -2098,29 +2098,54 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
              )}
 
              <div className="space-y-4">
-                {(formData.identification_steps_json || []).map((step: any, idx: number) => (
-                   <div key={step.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 group relative">
-                      <div className="flex gap-4">
-                         <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">{idx + 1}</div>
-                         <div className="flex-1 space-y-3">
-                            <p className="text-[12px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
-                            {step.images?.length > 0 && (
-                               <div className="flex gap-2 overflow-x-auto pb-2">
-                                  {step.images.map((img: string, i: number) => (
-                                     <ImageThumbnail key={i} src={img} />
-                                  ))}
-                               </div>
+                <Reorder.Group 
+                  axis="y" 
+                  values={formData.identification_steps_json || []} 
+                  onReorder={(next) => setFormData({ ...formData, identification_steps_json: next })}
+                  className="space-y-4"
+                >
+                  {(formData.identification_steps_json || []).map((step: any, idx: number) => (
+                    <Reorder.Item 
+                      key={step.id || idx} 
+                      value={step}
+                      dragListener={isEditing}
+                      className={`bg-white/5 border border-white/10 rounded-lg p-5 group relative ${isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                    >
+                        <div className="flex gap-4">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">{idx + 1}</div>
+                            {isEditing && (
+                              <div className="text-slate-600 group-hover:text-blue-400 transition-colors">
+                                <MoreVertical size={14} />
+                              </div>
                             )}
-                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
-                               {isEditing && (
-                                  <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-300"><Trash2 size={14}/></button>
-                               )}
-                            </div>
-                         </div>
-                      </div>
+                          </div>
+                          <div className="flex-1 space-y-3">
+                              <p className="text-[12px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
+                              {step.images?.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {step.images.map((img: string, i: number) => (
+                                      <ImageThumbnail key={i} src={img} />
+                                    ))}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
+                                {isEditing && (
+                                    <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-300 transition-colors"><Trash2 size={14}/></button>
+                                )}
+                              </div>
+                          </div>
+                        </div>
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+                {(formData.identification_steps_json || []).length === 0 && (
+                   <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
+                      <ListTodo size={40} className="text-slate-500" />
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">No Identification Steps Documented</p>
                    </div>
-                ))}
+                )}
              </div>
           </div>
        </div>
