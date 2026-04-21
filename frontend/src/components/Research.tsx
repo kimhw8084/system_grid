@@ -21,8 +21,9 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 // --- Components ---
 
 export const getPriorityInfo = (p: any) => {
-  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
+  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 10 ? 'URGENT' : p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
   const colors: any = {
+    'URGENT': 'text-rose-600 border-rose-600/40 bg-rose-600/20',
     'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
     'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
     'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
@@ -64,6 +65,14 @@ export const PriorityGauge = ({ value, onChange, disabled, type }: { value: stri
       border: 'border-rose-500/30', 
       text: 'text-rose-400',
       hint: type === 'RCA' ? 'TOTAL OUTAGE / DATA INTEGRITY' : 'MISSION CRITICAL RE-ARCH'
+    },
+    { 
+      id: 'URGENT', 
+      label: 'URGENT', 
+      color: 'bg-rose-700', 
+      border: 'border-rose-700/30', 
+      text: 'text-rose-600',
+      hint: type === 'RCA' ? 'IMMEDIATE FAB STOPPAGE' : 'CRITICAL PRODUCTION DEFECT'
     }
   ]
 
@@ -78,7 +87,7 @@ export const PriorityGauge = ({ value, onChange, disabled, type }: { value: stri
             {priorities[activeIdx]?.hint}
          </div>
       </div>
-      <div className="grid grid-cols-4 gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {priorities.map((p, idx) => (
           <button
             key={p.id}
@@ -1088,13 +1097,22 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
     }
   }, [formData.timeline])
 
+  // Helper to strip metadata for comparison to prevent infinite save loops
+  const stripMetadata = (data: any) => {
+    const { updated_at, created_at, ...rest } = data;
+    // Also strip metadata from nested arrays
+    if (rest.timeline) rest.timeline = rest.timeline.map(({ updated_at, created_at, ...t }: any) => t);
+    if (rest.mitigations) rest.mitigations = rest.mitigations.map(({ updated_at, created_at, ...m }: any) => m);
+    return JSON.stringify(rest);
+  };
+
   // Auto-save logic
-  const lastSavedData = useRef(JSON.stringify(item))
+  const lastSavedData = useRef(stripMetadata(item))
   useEffect(() => {
-    const currentData = JSON.stringify(formData)
-    if (!isEditing && currentData !== lastSavedData.current) {
+    const currentDataStripped = stripMetadata(formData)
+    if (!isEditing && currentDataStripped !== lastSavedData.current) {
         onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
-        lastSavedData.current = currentData
+        lastSavedData.current = currentDataStripped
     }
   }, [isEditing, formData, onSave])
 
@@ -1124,10 +1142,11 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
               onClick={() => {
                 if (isEditing) {
                   onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
-                  lastSavedData.current = JSON.stringify(formData)
+                  lastSavedData.current = stripMetadata(formData)
                 }
                 setIsEditing(!isEditing)
-              }}              className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
+              }}
+              className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
@@ -1296,7 +1315,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                      readOnly={!isEditing}
                      value={formData.problem_statement} 
                      onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[19px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                      placeholder="Describe the problem..."
                    />
                    
@@ -1413,7 +1432,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                         readOnly={!isEditing}
                         value={formData.impact_description} 
                         onChange={e => setFormData({...formData, impact_description: e.target.value})} 
-                        className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
+                        className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[19px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
                         placeholder="Describe the operational impact..." 
                       />
                    </div>
@@ -1577,7 +1596,8 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                   <textarea 
                                                      value={editTimelineData.description} 
                                                      onChange={ev => setEditTimelineData({...editTimelineData, description: ev.target.value})}
-                                                     className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
+                                                     className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[19px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
+
                                                   />
                                                </div>
                                                <div className="col-span-4">
@@ -1603,7 +1623,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                             </div>
                                          ) : (
                                             <>
-                                               <p className="text-[11px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
+                                               <p className="text-[19px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
                                                <div className="flex items-center gap-3">
                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
                                                       <User size={12} className="text-purple-400" />
@@ -1798,6 +1818,19 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
+
+  // Sync formData with item prop when it changes (e.g. from background refresh)
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData({ 
+        ...item,
+        systems: item.systems || [],
+        impacted_device_ids: item.impacted_device_ids || [],
+        mitigation_items: item.mitigation_items || [],
+        monitoring_items: item.monitoring_items || []
+      })
+    }
+  }, [item, isEditing])
 
   // Navigation Safety
   useEffect(() => {
@@ -2007,7 +2040,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
                        <span className="text-[7px] font-bold uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
                     </div>
                     <div className="flex-1">
-                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-bold text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
+                       <p className={`${compact ? 'text-[19px]' : 'text-[24px]'} font-bold text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
                        <div className="flex items-center gap-2 mt-2">
                           <User size={10} className="text-slate-600" />
                           <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
@@ -2127,7 +2160,7 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
                             )}
                           </div>
                           <div className="flex-1 space-y-3">
-                              <p className="text-[12px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
+                              <p className="text-[20px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
                               {step.images?.length > 0 && (
                                 <div className="flex gap-2 overflow-x-auto pb-2">
                                     {step.images.map((img: string, i: number) => (
@@ -2211,7 +2244,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
                       <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
-                      <p className="text-[11px] font-bold text-slate-200 uppercase">{log.description}</p>
+                      <p className="text-[19px] font-bold text-slate-200 uppercase">{log.description}</p>
                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
                    </div>
                 </div>

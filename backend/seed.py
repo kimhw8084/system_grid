@@ -526,6 +526,12 @@ def seed():
             occ_at = datetime.now() - timedelta(hours=random.randint(5, 24))
             det_at = occ_at + timedelta(minutes=random.randint(1, 15))
             ack_at = det_at + timedelta(minutes=random.randint(5, 30))
+            
+            # Ensure impacted assets actually belong to the target system
+            system_assets = [a for a in all_workers if a.system == sys_name]
+            impacted_assets = random.sample(system_assets, min(len(system_assets), 2)) if system_assets else []
+            impacted_asset_ids = [a.id for a in impacted_assets]
+
             rca = RcaRecord(
                 title=title,
                 problem_statement=f"Unexpected {title} resulting in intermittent system failures and degraded performance in {sys_name}.",
@@ -545,7 +551,7 @@ def seed():
                 incident_type=random.choice(["Network Outage", "Database Failure", "Application Crash", "Hardware Fault"]),
                 detection_type=random.choice(["Automated Alert", "Manual Observation", "Customer Report"]),
                 impact_type=random.choice(["Service Unavailable", "Data Loss", "Performance Degradation"]),
-                impacted_asset_ids=[random.choice(all_workers).id for _ in range(2)],
+                impacted_asset_ids=impacted_asset_ids,
                 impacted_service_ids=[],
                 status="Resolved" if priority < 8 else "Investigation",
                 fab_impact_json={"categories": ["Wafer Loss", "Line Stoppage"], "explanation": "Critical sensor feedback loop interrupted.", "severity": 3 if priority > 7 else 1},
@@ -578,6 +584,11 @@ def seed():
             ("Security Audit - Q2", "Security", "URGENT", ["FIN-CORE"], "Security", "Compliance")
         ]
         for title, cat, priority, sys_list, res_domain, fail_domain in investigation_seeds:
+            # Ensure impacted assets actually belong to the target systems
+            system_assets = [a for a in all_workers if a.system in sys_list]
+            impacted_assets = random.sample(system_assets, min(len(system_assets), 3)) if system_assets else []
+            impacted_device_ids = [a.id for a in impacted_assets]
+
             inv = Investigation(
                 title=title,
                 problem_statement=f"Investigating {title} to identify potential improvements and risks.",
@@ -588,7 +599,7 @@ def seed():
                 priority=priority,
                 systems=sys_list,
                 initiation_at=datetime.now() - timedelta(days=random.randint(1, 10)),
-                impacted_device_ids=[random.choice(all_workers).id for _ in range(3)],
+                impacted_device_ids=impacted_device_ids,
                 assigned_team="Engineering",
                 impact="Potential performance degradation if left unaddressed.",
                 trigger_event="Observed gradual increase in resource consumption.",
