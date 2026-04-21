@@ -73,20 +73,20 @@ const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onC
   return (
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between px-1">
-         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Priority Selection</label>
-         <div className={`text-[10px] font-black uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
+         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Priority Selection</label>
+         <div className={`text-[10px] font-bold uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
             {priorities[activeIdx]?.hint}
          </div>
       </div>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
+      <div className="grid grid-cols-4 gap-1">
         {priorities.map((p, idx) => (
           <button
             key={p.id}
             onClick={() => onChange(p.id)}
-            className={`min-w-[140px] flex-shrink-0 p-4 rounded-xl transition-all border-2 flex flex-col items-center gap-2 group ${idx === activeIdx ? p.border + ' bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
+            className={`p-2 rounded-lg transition-all border-2 flex flex-col items-center gap-1 group ${idx === activeIdx ? p.border + ' bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
           >
-            <div className={`w-8 h-1 rounded-full ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
-            <span className={`text-[12px] font-black uppercase tracking-[0.2em] transition-all ${idx === activeIdx ? p.text : 'text-slate-500 group-hover:text-slate-400'}`}>
+            <div className={`w-6 h-0.5 rounded-full ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
+            <span className={`text-[9px] font-bold uppercase tracking-widest transition-all ${idx === activeIdx ? p.text : 'text-slate-500 group-hover:text-slate-400'}`}>
               {p.label}
             </span>
           </button>
@@ -102,7 +102,7 @@ const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
   <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
     <div>
       <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
-      <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
+      <p className="text-2xl font-bold text-white tracking-tighter">{value}</p>
     </div>
     <div className={`p-2 rounded-md bg-white/5 ${color}`}><Icon size={18} /></div>
   </div>
@@ -112,7 +112,7 @@ const SectionCard = ({ icon: Icon, title, color, children, className = "" }: any
   <div className={`bg-white/5 border border-white/5 rounded-lg p-4 space-y-3 ${className}`}>
     <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-1">
       <Icon size={14} className={color} />
-      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">{title}</h3>
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-white/70">{title}</h3>
     </div>
     {children}
   </div>
@@ -283,7 +283,7 @@ export default function Research() {
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
                 <div className="bg-slate-900 border border-white/20 rounded-lg p-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)] whitespace-nowrap">
                   {sys.map((s: string, i: number) => (
-                    <div key={i} className="text-[10px] font-black uppercase text-blue-400 px-2 py-0.5 border-b border-white/5 last:border-0">{s}</div>
+                    <div key={i} className="text-[10px] font-bold uppercase text-blue-400 px-2 py-0.5 border-b border-white/5 last:border-0">{s}</div>
                   ))}
                 </div>
               </div>
@@ -402,7 +402,7 @@ export default function Research() {
       headerName: "Owner", 
       width: 140, 
       filter: true, 
-      cellClass: 'text-center font-black uppercase text-blue-400', 
+      cellClass: 'text-center font-bold uppercase text-blue-400', 
       headerClass: 'text-center',
       valueGetter: (p: any) => {
         if (p.data.type === 'RCA') {
@@ -457,7 +457,7 @@ export default function Research() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center gap-2 text-white">
+              <h1 className="text-2xl font-bold uppercase tracking-tight italic flex items-center gap-2 text-white">
                 <Shield size={24} className="text-blue-500" /> Research Matrix
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Unified System Intelligence & RCA Engine</p>
@@ -467,7 +467,7 @@ export default function Research() {
         <div className="flex items-center space-x-3">
           <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
@@ -480,7 +480,7 @@ export default function Research() {
 
           <button 
             onClick={() => setActiveModal({ title: '', status: 'Open', priority: 'Low', type: null, problem_statement: '', systems: [], target_systems: [] })} 
-            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
           >
             <PlusCircle size={14}/> Add Research
           </button>
@@ -494,18 +494,18 @@ export default function Research() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3 text-blue-400">
                      <Activity size={16} />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest">Density Laboratory</span>
                   </div>
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-                        <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                        <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                      </div>
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
-                        <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                        <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                      </div>
                   </div>
                </div>
@@ -526,7 +526,7 @@ export default function Research() {
         {(isLoading || rcaLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
              <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Intelligence Matrix...</p>
+             <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing Intelligence Matrix...</p>
           </div>
         )}
         <AgGridReact
@@ -546,7 +546,7 @@ export default function Research() {
           {showColumnPicker && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2"><Sliders size={14} /> <span>Toggle Columns</span></h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2"><Sliders size={14} /> <span>Toggle Columns</span></h3>
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
@@ -556,7 +556,7 @@ export default function Research() {
                     <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                        {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                   </label>
                 ))}
               </div>
@@ -677,7 +677,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
 
   return (
     <div className="space-y-1 relative" ref={containerRef}>
-      {label && <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">{label}</label>}
+      {label && <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block px-1">{label}</label>}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2.5 text-[11px] font-bold text-slate-300 cursor-pointer flex items-center justify-between hover:border-white/20 transition-all min-h-[40px] relative z-10"
@@ -688,7 +688,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
               const val = typeof s === 'string' ? s : (s.value || s)
               const lbl = typeof s === 'string' ? s : (s.label || s)
               return (
-                <span key={val} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase border border-blue-500/30 flex items-center gap-1 group/badge">
+                <span key={val} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border border-blue-500/30 flex items-center gap-1 group/badge">
                   {lbl}
                   <button onClick={(e) => { e.stopPropagation(); toggleOption(s); }} className="hover:text-rose-400 transition-colors">
                     <X size={10} />
@@ -737,7 +737,7 @@ function SearchableMultiSelect({ label, selected = [], onChange, options = [], p
                       onClick={() => toggleOption(opt)}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all group ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-white/5 text-slate-400'}`}
                     >
-                      <span className={`text-[10px] font-black uppercase tracking-tight ${isNew ? 'text-blue-400 italic' : ''}`}>{lbl}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-tight ${isNew ? 'text-blue-400 italic' : ''}`}>{lbl}</span>
                       <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                         {isSelected && <Check size={10} className="text-white" />}
                         {isNew && !isSelected && <Plus size={10} className="text-blue-400" />}
@@ -788,7 +788,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
         {step === 0 ? (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter">Initialize Research Flow</h2>
+              <h2 className="text-2xl font-bold uppercase italic text-white tracking-tighter">Initialize Research Flow</h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Select the nature of this investigation</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -809,28 +809,28 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 onClick={() => { setFormData({...formData, type: 'RESEARCH'}); setStep(1); }}
               />
             </div>
-            <button onClick={onClose} className="w-full py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Abort Initialization</button>
+            <button onClick={onClose} className="w-full py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Abort Initialization</button>
           </div>
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <h2 className={`text-xl font-black uppercase italic flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
+              <h2 className={`text-xl font-bold uppercase italic flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
                 {formData.type === 'RCA' ? <ShieldAlert size={20}/> : <Search size={20}/>} 
                 Initialize {formData.type}
               </h2>
               <div className="flex items-center gap-4">
-                <button onClick={() => setStep(0)} className="text-[9px] font-black uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
-                <button onClick={onClose} className="text-[9px] font-black uppercase text-rose-500 hover:text-rose-400 underline tracking-widest">Abort</button>
+                <button onClick={() => setStep(0)} className="text-[9px] font-bold uppercase text-slate-500 hover:text-white underline tracking-widest">Change Type</button>
+                <button onClick={onClose} className="text-[9px] font-bold uppercase text-rose-500 hover:text-rose-400 underline tracking-widest">Abort</button>
               </div>
             </div>
 
             <div className="space-y-5">
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
                 <input 
                   value={formData.title} 
                   onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-black uppercase" 
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-bold uppercase" 
                   placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE..." : "E.G. CLUSTER LATENCY OPTIMIZATION..."} 
                 />
               </div>
@@ -845,7 +845,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                     allowCustom={false}
                  />
                  <div>
-                    <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">{formData.type === 'RCA' ? 'Incident Date/Time' : 'Initiation Date/Time'}</label>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">{formData.type === 'RCA' ? 'Incident Date/Time' : 'Initiation Date/Time'}</label>
                     <input 
                       type="datetime-local" 
                       value={formData.type === 'RCA' ? (formData.occurrence_at?.slice(0, 16) || '') : (formData.initiation_at?.slice(0, 16) || '')} 
@@ -864,7 +864,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Problem Statement / Narrative Goal</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Problem Statement / Narrative Goal</label>
                 <textarea 
                   value={formData.problem_statement} 
                   onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
@@ -875,8 +875,8 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
             </div>
 
             <div className="flex space-x-4 pt-2">
-              <button onClick={onClose} className="flex-1 py-3.5 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-all">Cancel</button>
-              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
+              <button onClick={onClose} className="flex-1 py-3.5 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-all">Cancel</button>
+              <button onClick={handleFinish} className={`flex-[2] py-3.5 ${formData.type === 'RCA' ? 'bg-purple-600 shadow-purple-500/20' : 'bg-blue-600 shadow-blue-500/20'} text-white rounded-lg text-[10px] font-bold uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 tracking-[0.2em]`}>
                 {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Zap size={16} />} 
                 Launch {formData.type} Flow
               </button>
@@ -893,7 +893,7 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
     <button onClick={onClick} className={`p-6 rounded-lg border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
       <div className={`p-3 rounded-lg bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
       <div>
-        <h3 className={`text-sm font-black uppercase italic tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
+        <h3 className={`text-sm font-bold uppercase italic tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
         <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
       </div>
     </button>
@@ -901,13 +901,13 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 }
 
 function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
-  const [formData, setFormData] = useState({ 
-    ...item, 
+  const [formData, setFormData] = useState({
+    ...item,
     identification_steps_json: item.identification_steps_json || [],
     rca_steps_json: item.rca_steps_json || [],
-    mitigation_logs_json: item.mitigation_logs_json || []
-  })
-  const [isEditing, setIsEditing] = useState(false)
+    mitigation_logs_json: item.mitigation_logs_json || [],
+    linked_failure_mode_ids: item.linked_failure_modes?.map((fm: any) => fm.id) || item.linked_failure_mode_ids || []
+  })  const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
@@ -1091,7 +1091,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
   useEffect(() => {
     const currentData = JSON.stringify(formData)
     if (!isEditing && currentData !== lastSavedData.current) {
-        onSave(formData)
+        onSave({ ...formData, linked_failure_modes: formData.linked_failure_mode_ids })
         lastSavedData.current = currentData
     }
   }, [isEditing, formData, onSave])
@@ -1106,27 +1106,26 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xl font-black italic tracking-tighter">RCA</div>
+            <div className="w-16 h-16 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xl font-bold italic tracking-tighter">RCA</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
               </div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-bold uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => {
                 if (isEditing) {
-                  onSave(formData)
+                  onSave({ ...formData, linked_failure_modes: formData.linked_failure_mode_ids })
                   lastSavedData.current = JSON.stringify(formData)
                 }
                 setIsEditing(!isEditing)
-              }} 
-              className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
+              }}              className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
@@ -1169,7 +1168,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          disabled={!isEditing}
                       />
                       <div>
-                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Incident Datetime</label>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">Incident Datetime</label>
                          <input 
                            type="datetime-local" 
                            readOnly={!isEditing}
@@ -1189,7 +1188,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          disabled={!isEditing}
                       />
                       <div>
-                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Detection Datetime</label>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">Detection Datetime</label>
                          <input 
                            type="datetime-local" 
                            readOnly={!isEditing}
@@ -1225,13 +1224,13 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                 >
                    <div className="flex items-center gap-2">
                       <Database size={14} className="text-amber-400" />
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/70">System Context</h3>
+                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-white/70">System Context</h3>
                    </div>
                    <div className="flex items-center gap-4">
                       {!isSystemContextOpen && (formData.target_systems || []).length > 0 && (
                          <div className="flex gap-1 overflow-hidden max-w-[150px]">
                             {(formData.target_systems || []).map((s: string) => (
-                               <span key={s} className="text-[8px] font-black text-amber-500/60 uppercase whitespace-nowrap">{s}</span>
+                               <span key={s} className="text-[8px] font-bold text-amber-500/60 uppercase whitespace-nowrap">{s}</span>
                             ))}
                          </div>
                       )}
@@ -1253,10 +1252,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          </div>
                          <div className="space-y-4">
                             <div>
-                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
+                               <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
                                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredAssets.map((a: any) => (
-                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
+                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
                                        <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
                                          const ids = formData.impacted_asset_ids || []
                                          setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id), linked_failure_mode_ids: []})
@@ -1268,10 +1267,10 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                </div>
                             </div>
                             <div>
-                               <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
+                               <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
                                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredServices.map((s: any) => (
-                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-black uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
                                        <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
                                          const ids = formData.impacted_service_ids || []
                                          setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
@@ -1304,7 +1303,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                          onClick={() => setIsFailureModesOpen(!isFailureModesOpen)}
                          className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
                       >
-                         <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Linked Failure Modes (FAR)</span>
+                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">Linked Failure Modes (FAR)</span>
                          <ChevronDown size={14} className={`text-slate-500 transition-transform ${isFailureModesOpen ? 'rotate-180' : ''}`} />
                       </button>
                       <AnimatePresence>
@@ -1323,33 +1322,33 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   <table className="w-full text-left border-collapse">
                                      <thead>
                                         <tr className="border-b border-white/10">
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">Failure Mode</th>
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">System</th>
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2">Server</th>
-                                           <th className="text-[8px] font-black uppercase text-slate-500 py-2 px-2 text-right">Delete</th>
+                                           <th className="text-[8px] font-bold uppercase text-slate-500 py-2 px-2">Failure Mode</th>
+                                           <th className="text-[8px] font-bold uppercase text-slate-500 py-2 px-2">System</th>
+                                           <th className="text-[8px] font-bold uppercase text-slate-500 py-2 px-2">Server</th>
+                                           <th className="text-[8px] font-bold uppercase text-slate-500 py-2 px-2 text-right">Delete</th>
                                         </tr>
                                      </thead>
                                      <tbody>
                                         {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
                                            <tr key={fm.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                               <td className="py-2 px-2">
-                                                 <div className="text-[9px] font-black uppercase text-purple-400 truncate max-w-[150px]">{fm.title}</div>
+                                                 <div className="text-[9px] font-bold uppercase text-purple-400 truncate max-w-[150px]">{fm.title}</div>
                                               </td>
                                               <td className="py-2 px-2">
-                                                 <div className="text-[9px] font-black uppercase text-slate-400">{fm.system_name || fm.system}</div>
+                                                 <div className="text-[9px] font-bold uppercase text-slate-400">{fm.system_name || fm.system}</div>
                                               </td>
                                               <td className="py-2 px-2">
                                                  <div className="group relative cursor-help inline-block">
-                                                    <div className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
+                                                    <div className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
                                                        <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[250px] max-w-[400px]">
-                                                          <p className="text-[9px] font-black uppercase text-slate-500 mb-2 border-b border-white/5 pb-1">Impacted Assets</p>
+                                                          <p className="text-[9px] font-bold uppercase text-slate-500 mb-2 border-b border-white/5 pb-1">Impacted Assets</p>
                                                           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                                              {(fm.affected_assets || []).map((a: any) => (
-                                                                <div key={a.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5 truncate">• {a.name}</div>
+                                                                <div key={a.id} className="text-[8px] font-bold text-slate-300 uppercase py-0.5 truncate">• {a.name}</div>
                                                              ))}
                                                           </div>
-                                                          {(fm.affected_assets || []).length === 0 && <div className="text-[8px] font-black text-slate-600">No assets linked</div>}
+                                                          {(fm.affected_assets || []).length === 0 && <div className="text-[8px] font-bold text-slate-600">No assets linked</div>}
                                                        </div>
                                                     </div>
                                                  </div>
@@ -1364,7 +1363,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                         ))}
                                         {(formData.linked_failure_mode_ids || []).length === 0 && (
                                            <tr>
-                                              <td colSpan={4} className="py-8 text-center text-[9px] font-black uppercase text-slate-600 italic">No linked failure modes</td>
+                                              <td colSpan={4} className="py-8 text-center text-[9px] font-bold uppercase text-slate-600 italic">No linked failure modes</td>
                                            </tr>
                                         )}
                                      </tbody>
@@ -1388,7 +1387,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       disabled={!isEditing}
                    />
                    <div>
-                      <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Impact Narrative</label>
+                      <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">Impact Narrative</label>
                       <textarea 
                         readOnly={!isEditing}
                         value={formData.impact_description} 
@@ -1422,7 +1421,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                       <Plus size={20} />
                    </div>
                 </div>
-                {focusedField === 'evidence' && <p className="text-[8px] font-black uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
+                {focusedField === 'evidence' && <p className="text-[8px] font-bold uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
              </SectionCard>
           </div>
 
@@ -1430,14 +1429,13 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
           <div className="flex-1 flex flex-col bg-[#020617]/30 overflow-hidden">
              {/* Navigation Tabs */}
              <div className="flex bg-white/5 border-b border-white/5 p-1 gap-1 shrink-0">
-                {['Timeline', 'Mitigation', 'Investigation'].map(tab => (
+                {['Timeline', 'Investigation'].map(tab => (
                    <button 
                      key={tab}
                      onClick={() => setActiveTab(tab)}
-                     className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                    >
                       {tab === 'Timeline' && <History size={14} className="inline mr-2" />}
-                      {tab === 'Mitigation' && <ShieldCheck size={14} className="inline mr-2" />}
                       {tab === 'Investigation' && <Search size={14} className="inline mr-2" />}
                       {tab}
                    </button>
@@ -1450,23 +1448,23 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                     <div className="p-6 border-b border-white/5 bg-white/5">
                         <div className="grid grid-cols-12 gap-3 items-end">
                           <div className="col-span-12 lg:col-span-4">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Description</label>
                               <input value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="Raw description..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
-                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Owner</label>
+                             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Owner</label>
                              <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="NAME..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
-                             <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Team</label>
+                             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Team</label>
                              <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50" placeholder="TEAM..." />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
                             <StyledSelect label="Type" value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value.toUpperCase()})} options={enumOptions('EventType')} />
                           </div>
                           <div className="col-span-12 lg:col-span-2">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
-                              <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[11px] font-black text-slate-400 outline-none [color-scheme:dark]" />
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Event Time</label>
+                              <input type="datetime-local" value={newTimeline.event_time.slice(0, 16)} onChange={e => setNewTimeline({...newTimeline, event_time: new Date(e.target.value).toISOString()})} className="w-full h-11 bg-slate-950 border border-white/10 rounded-lg px-4 text-[11px] font-bold text-slate-400 outline-none [color-scheme:dark]" />
                           </div>
                           {/* Figure Field and Add Event Button (Separated) */}
                           <div className="col-span-12 grid grid-cols-12 gap-3 mt-4">
@@ -1474,7 +1472,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                 onClick={(e) => { e.stopPropagation(); setFocusedField('timeline'); }}
                                 className={`col-span-10 flex items-center gap-4 p-3 rounded-lg border-2 transition-all focus-trigger ${focusedField === 'timeline' ? 'bg-purple-500/5 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'bg-black/40 border-white/5'}`}
                              >
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block shrink-0">Figure(s):</label>
+                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block shrink-0">Figure(s):</label>
                                 <div className="flex-1 flex gap-2 overflow-x-auto custom-scrollbar">
                                    {(newTimeline.images || []).map((img: string, i: number) => (
                                       <div key={i} className="relative w-10 h-10 shrink-0 border border-purple-500/30 rounded overflow-hidden shadow-lg">
@@ -1482,12 +1480,12 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                          <button onClick={(e) => { e.stopPropagation(); setNewTimeline({...newTimeline, images: newTimeline.images.filter((_:any, idx:number)=>idx!==i)}) }} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5 hover:bg-rose-500 transition-colors"><X size={8}/></button>
                                       </div>
                                    ))}
-                                   {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-black italic">Paste images here to cache for this event...</span>}
+                                   {newTimeline.images?.length === 0 && <span className="text-[8px] text-slate-600 uppercase font-bold italic">Paste images here to cache for this event...</span>}
                                 </div>
-                                {focusedField === 'timeline' && <span className="text-[8px] font-black uppercase text-purple-400 animate-pulse whitespace-nowrap">Ready to paste figures...</span>}
+                                {focusedField === 'timeline' && <span className="text-[8px] font-bold uppercase text-purple-400 animate-pulse whitespace-nowrap">Ready to paste figures...</span>}
                              </div>
                              <div className="col-span-2">
-                                <button onClick={handleAddTimeline} className="w-full h-full bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-black uppercase text-[10px] flex items-center justify-center gap-2 border border-purple-400/50 hover:bg-purple-500">
+                                <button onClick={handleAddTimeline} className="w-full h-full bg-purple-600 text-white rounded-lg shadow-xl active:scale-95 transition-all font-bold uppercase text-[10px] flex items-center justify-center gap-2 border border-purple-400/50 hover:bg-purple-500">
                                    <Plus size={16} /> Add Event
                                 </button>
                              </div>
@@ -1500,19 +1498,19 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                        <div className="px-6 py-2 bg-purple-600/10 border-b border-white/5 flex items-center justify-between">
                           <div className="flex items-center gap-8">
                              <div className="flex flex-col">
-                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Timeline Start</span>
-                                <span className="text-[10px] font-black text-purple-400">{timelineStats.start}</span>
+                                <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Timeline Start</span>
+                                <span className="text-[10px] font-bold text-purple-400">{timelineStats.start}</span>
                              </div>
                              <div className="w-px h-6 bg-white/10" />
                              <div className="flex flex-col">
-                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Timeline End</span>
-                                <span className="text-[10px] font-black text-blue-400">{timelineStats.end}</span>
+                                <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Timeline End</span>
+                                <span className="text-[10px] font-bold text-blue-400">{timelineStats.end}</span>
                              </div>
                           </div>
                           <div className="flex items-center gap-3 px-4 py-1 bg-white/5 rounded-full border border-white/10">
                              <Clock size={12} className="text-emerald-400" />
-                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Duration:</span>
-                             <span className="text-[11px] font-black text-emerald-400 tabular-nums">{timelineStats.duration}</span>
+                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Duration:</span>
+                             <span className="text-[11px] font-bold text-emerald-400 tabular-nums">{timelineStats.duration}</span>
                           </div>
                        </div>
                     )}
@@ -1536,51 +1534,50 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                   <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 flex items-start gap-8">
                                         <div className="w-40 shrink-0 pt-1">
-                                          <p className="text-[12px] font-black text-white mb-1.5">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                                          <span className={`text-[10px] font-black uppercase px-3 py-1 rounded border tracking-widest ${e.event_type === 'DETECTION' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
+                                          <p className="text-[12px] font-bold text-white mb-1.5">{new Date(e.event_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                          <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded border tracking-widest ${e.event_type === 'DETECTION' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : e.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{e.event_type}</span>
                                         </div>
                                         <div className="flex-1">
-                                          {isEditingEvent ? (
-                                             <div className="grid grid-cols-12 gap-4 bg-black/60 p-5 rounded-lg border border-purple-500/40 shadow-2xl">
-                                                <div className="col-span-12">
-                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Description</label>
-                                                   <textarea 
-                                                      value={editTimelineData.description} 
-                                                      onChange={ev => setEditTimelineData({...editTimelineData, description: ev.target.value})}
-                                                      className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
-                                                   />
-                                                </div>
-                                                <div className="col-span-4">
-                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Owner</label>
-                                                   <input value={editTimelineData.owner} onChange={ev => setEditTimelineData({...editTimelineData, owner: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-purple-500/50" />
-                                                </div>
-                                                <div className="col-span-4">
-                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Team</label>
-                                                   <input value={editTimelineData.owner_team} onChange={ev => setEditTimelineData({...editTimelineData, owner_team: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-white outline-none focus:border-purple-500/50" />
-                                                </div>
-                                                <div className="col-span-4">
-                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Type</label>
-                                                   <StyledSelect value={editTimelineData.event_type} onChange={(ev:any) => setEditTimelineData({...editTimelineData, event_type: ev.target.value.toUpperCase()})} options={enumOptions('EventType')} />
-                                                </div>
-                                                <div className="col-span-4">
-                                                   <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Event Time</label>
-                                                   <input type="datetime-local" value={editTimelineData.event_time.slice(0, 16)} onChange={ev => setEditTimelineData({...editTimelineData, event_time: new Date(ev.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black text-slate-400 outline-none [color-scheme:dark]" />
-                                                </div>
-                                                <div className="col-span-12 flex justify-end gap-2 pt-2">
-                                                   <button onClick={() => { setEditingTimelineId(null); setEditTimelineData(null); }} className="h-10 px-6 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                                                   <button onClick={saveTimelineUpdate} className="h-10 px-8 bg-purple-600 text-white rounded text-[10px] font-black uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all">Save Event</button>
-                                                </div>
-                                             </div>
-                                          ) : (
-                                             <>
-                                                <p className="text-[11px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
-                                                <div className="flex items-center gap-3">
-                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
+                                         {isEditingEvent ? (
+                                            <div className="grid grid-cols-12 gap-4 bg-black/60 p-5 rounded-lg border border-purple-500/40 shadow-2xl">
+                                               <div className="col-span-12">
+                                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Description</label>
+                                                  <textarea 
+                                                     value={editTimelineData.description} 
+                                                     onChange={ev => setEditTimelineData({...editTimelineData, description: ev.target.value})}
+                                                     className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
+                                                  />
+                                               </div>
+                                               <div className="col-span-4">
+                                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Owner</label>
+                                                  <input value={editTimelineData.owner} onChange={ev => setEditTimelineData({...editTimelineData, owner: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-purple-500/50" />
+                                               </div>
+                                               <div className="col-span-4">
+                                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Team</label>
+                                                  <input value={editTimelineData.owner_team} onChange={ev => setEditTimelineData({...editTimelineData, owner_team: ev.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-purple-500/50" />
+                                               </div>
+                                               <div className="col-span-4">
+                                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Type</label>
+                                                  <StyledSelect value={editTimelineData.event_type} onChange={(ev:any) => setEditTimelineData({...editTimelineData, event_type: ev.target.value.toUpperCase()})} options={enumOptions('EventType')} />
+                                               </div>
+                                               <div className="col-span-4">
+                                                  <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1 block">Event Time</label>
+                                                  <input type="datetime-local" value={editTimelineData.event_time.slice(0, 16)} onChange={ev => setEditTimelineData({...editTimelineData, event_time: new Date(ev.target.value).toISOString()})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-1.5 text-[10px] font-bold text-slate-400 outline-none [color-scheme:dark]" />
+                                               </div>
+                                               <div className="col-span-12 flex justify-end gap-2 pt-2">
+                                                  <button onClick={() => { setEditingTimelineId(null); setEditTimelineData(null); }} className="h-10 px-6 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                                                  <button onClick={saveTimelineUpdate} className="h-10 px-8 bg-purple-600 text-white rounded text-[10px] font-bold uppercase shadow-lg shadow-purple-500/20 active:scale-95 transition-all">Save Event</button>
+                                               </div>
+                                            </div>
+                                         ) : (
+                                            <>
+                                               <p className="text-[8px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
+                                               <div className="flex items-center gap-3">                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
                                                       <User size={12} className="text-purple-400" />
-                                                      <span className="text-[9px] font-black text-purple-300 uppercase tracking-widest">{e.owner || 'N/A'}</span>
+                                                      <span className="text-[9px] font-bold text-purple-300 uppercase tracking-widest">{e.owner || 'N/A'}</span>
                                                    </div>
                                                    {e.owner_team && (
-                                                      <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                                      <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                                          {e.owner_team}
                                                       </div>
                                                    )}
@@ -1600,8 +1597,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                                     <div className="flex flex-col items-end gap-4">
                                        <div className="text-right shrink-0">
                                           <div className="flex flex-col">
-                                             <span className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">Created: {new Date(e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
-                                             <span className="text-[8px] font-black text-blue-500/60 uppercase tracking-tighter">Modified: {new Date(e.updated_at || e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                             <span className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">Created: {new Date(e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                             <span className="text-[8px] font-bold text-blue-500/60 uppercase tracking-tighter">Modified: {new Date(e.updated_at || e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
                                           </div>
                                        </div>
                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
@@ -1628,16 +1625,7 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
                     focusedField={focusedField}
                   />
                 )}
-
-                {activeTab === 'Mitigation' && (
-                   <MitigationTab 
-                     formData={formData} 
-                     setFormData={setFormData} 
-                     isEditing={isEditing}
-                   />
-                )}
-             </div>
-          </div>
+                </div>          </div>
         </div>
       </motion.div>
     </div>
@@ -1700,15 +1688,15 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-black italic tracking-tighter">INV</div>
+            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-bold italic tracking-tighter">INV</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
-                   <div className={`px-3 py-1 rounded border text-[10px] font-black uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
+                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
               </div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-bold uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -1717,7 +1705,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                 if (isEditing) handleSave()
                 setIsEditing(!isEditing)
               }} 
-              className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
+              className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
@@ -1755,7 +1743,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                         disabled={!isEditing}
                       />
                       <div>
-                         <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-1">Assigned Team</label>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">Assigned Team</label>
                          <input 
                            readOnly={!isEditing}
                            value={formData.assigned_team} 
@@ -1796,7 +1784,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    readOnly={!isEditing}
                    value={formData.resolution_steps} 
                    onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-black text-emerald-400/80 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-emerald-400/80 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                  />
               </SectionCard>
            </div>
@@ -1816,19 +1804,19 @@ function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: 
   return (
     <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-lg p-4' : 'rounded-lg p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
       <div className="flex-1 space-y-2">
-         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
-         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
+         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
+         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-bold text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
       </div>
       <div className={compact ? 'w-32' : 'w-48'}>
          <StyledSelect label="Type" value={safeUpper(newLog.entry_type)} onChange={e => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={[{value:'DIAGNOSIS', label:'DIAGNOSIS'}, {value:'ACTION', label:'ACTION'}, {value:'OBSERVATION', label:'OBSERVATION'}, {value:'MILESTONE', label:'MILESTONE'}]} />
       </div>
       <div className={compact ? 'w-24' : 'w-40'}>
-         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
-         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
+         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
+         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-bold text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
       </div>
       <div className={compact ? 'w-40' : 'w-56'}>
-         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
-         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-black text-slate-400 outline-none [color-scheme:dark]`} />
+         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
+         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-bold text-slate-400 outline-none [color-scheme:dark]`} />
       </div>
       <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className={`${compact ? 'p-3' : 'p-4'} bg-blue-600 text-white rounded-lg shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center`}><Plus size={compact ? 18 : 24} /></button>
     </div>
@@ -1839,8 +1827,8 @@ function IntelligenceStream({ logs, compact = false }: any) {
   return (
     <div className={`flex-1 bg-slate-950/50 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl`}>
       <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
-         <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{logs.length} Pulse Captured</span>
+         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
+         <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{logs.length} Pulse Captured</span>
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
          <div className="relative pl-12 space-y-6">
@@ -1852,15 +1840,15 @@ function IntelligenceStream({ logs, compact = false }: any) {
                  
                  <div className={`flex ${compact ? 'gap-4' : 'gap-8'}`}>
                     <div className={`${compact ? 'w-24' : 'w-32'} shrink-0 pt-0.5`}>
-                       <p className="text-[11px] font-black text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
-                       <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
+                       <p className="text-[11px] font-bold text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
+                       <span className="text-[7px] font-bold uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
                     </div>
                     <div className="flex-1">
-                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-black text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
+                       <p className={`${compact ? 'text-[11px]' : 'text-base'} font-bold text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
                        <div className="flex items-center gap-2 mt-2">
                           <User size={10} className="text-slate-600" />
-                          <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
+                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
                        </div>
                     </div>
                  </div>
@@ -1869,7 +1857,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
             {logs.length === 0 && (
                <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
                   <Activity size={40} className="text-slate-500" />
-                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
                </div>
             )}
          </div>
@@ -1916,7 +1904,7 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
 
           <div className="space-y-4">
              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2">
                    <ListTodo size={14}/> Identification Steps
                 </h3>
              </div>
@@ -1935,7 +1923,7 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
                       />
                       {focusedField === 'investigation' && (
                          <div className="absolute top-2 right-2 flex items-center gap-2">
-                            <span className="text-[8px] font-black text-blue-400 uppercase animate-pulse">Paste Enabled</span>
+                            <span className="text-[8px] font-bold text-blue-400 uppercase animate-pulse">Paste Enabled</span>
                          </div>
                       )}
                    </div>
@@ -1949,7 +1937,7 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
                          ))}
                       </div>
                    )}
-                   <button onClick={addStep} className="w-full py-3 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all">Add Identification Step</button>
+                   <button onClick={addStep} className="w-full py-3 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 transition-all">Add Identification Step</button>
                 </div>
              )}
 
@@ -1957,7 +1945,7 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
                 {(formData.identification_steps_json || []).map((step: any, idx: number) => (
                    <div key={step.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 group relative">
                       <div className="flex gap-4">
-                         <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-xs shrink-0">{idx + 1}</div>
+                         <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">{idx + 1}</div>
                          <div className="flex-1 space-y-3">
                             <p className="text-[12px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
                             {step.images?.length > 0 && (
@@ -1968,7 +1956,7 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
                                </div>
                             )}
                             <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
+                               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
                                {isEditing && (
                                   <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-300"><Trash2 size={14}/></button>
                                )}
@@ -1986,12 +1974,12 @@ function InvestigationTab({ formData, setFormData, isEditing, failureModes, setF
              <div className="space-y-2">
                 {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
                    <div key={fm.id} className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-1">
-                      <p className="text-[10px] font-black text-purple-400 uppercase truncate">{fm.title}</p>
-                      <p className="text-[8px] font-black text-slate-500 uppercase">{fm.system_name || fm.system}</p>
+                      <p className="text-[10px] font-bold text-purple-400 uppercase truncate">{fm.title}</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase">{fm.system_name || fm.system}</p>
                    </div>
                 ))}
                 {(formData.linked_failure_mode_ids || []).length === 0 && (
-                   <p className="text-[9px] font-black text-slate-600 uppercase italic text-center py-4">No failures selected</p>
+                   <p className="text-[9px] font-bold text-slate-600 uppercase italic text-center py-4">No failures selected</p>
                 )}
              </div>
           </SectionCard>
@@ -2017,13 +2005,13 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
     <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-6">
        {isEditing && (
           <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
-             <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Log</h3>
+             <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-400 flex items-center gap-2"><Plus size={14}/> Add Mitigation Log</h3>
              <div className="grid grid-cols-2 gap-4">
                 <StyledSelect label="Log Type" value={newLog.type} onChange={(e:any) => setNewLog({...newLog, type: e.target.value})} options={types.map(t => ({value: t, label: t}))} />
                 <StyledSelect label="Status" value={newLog.status} onChange={(e:any) => setNewLog({...newLog, status: e.target.value})} options={statuses.map(s => ({value: s, label: s}))} />
              </div>
              <textarea value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-emerald-500/50 min-h-[80px] uppercase" placeholder="Strategy details..." />
-             <button onClick={addLog} className="h-12 w-full bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Capture Log</button>
+             <button onClick={addLog} className="h-12 w-full bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Capture Log</button>
           </div>
        )}
 
@@ -2032,12 +2020,12 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
              <div key={log.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
                 <div className="flex items-center gap-6">
                    <div className="w-32 text-center">
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${log.type === 'PREVENTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
-                      <p className={`text-[8px] font-black uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
+                      <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${log.type === 'PREVENTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
+                      <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
                       <p className="text-[11px] font-bold text-slate-200 uppercase">{log.description}</p>
-                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
+                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
                    </div>
                 </div>
                 {isEditing && (

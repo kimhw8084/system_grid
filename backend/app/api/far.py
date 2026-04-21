@@ -17,7 +17,8 @@ async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Dep
         joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions)
+        joinedload(models.FarFailureMode.prevention_actions),
+        joinedload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.is_deleted == False)
     
     if system:
@@ -65,7 +66,8 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions)
+        joinedload(models.FarFailureMode.prevention_actions),
+        joinedload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.id == mode.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
@@ -107,7 +109,8 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
         joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
         joinedload(models.FarFailureMode.mitigations),
         joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions)
+        joinedload(models.FarFailureMode.prevention_actions),
+        joinedload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.id == mode_id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()

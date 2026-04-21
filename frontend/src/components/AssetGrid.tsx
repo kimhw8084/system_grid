@@ -44,7 +44,7 @@ const SharedServiceModals = ({
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Layers size={28}/> <span>Modify Service Configuration</span>
                   </h2>
                   <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -61,8 +61,8 @@ const SharedServiceModals = ({
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
-                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
+                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
                   </div>
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>
@@ -88,34 +88,34 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-12 text-slate-500">
           <RefreshCcw size={20} className="animate-spin mb-2" />
-          <p className="text-[10px] font-black uppercase">Loading services...</p>
+          <p className="text-[10px] font-bold uppercase">Loading services...</p>
         </div>
       )}
       {!isLoading && (<table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Service Name</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Status</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Environment</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Version</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Service Name</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Type</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Status</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Environment</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Version</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {services?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-3 font-black text-blue-400">{s.name}</td>
-              <td className="px-4 py-3 text-slate-400 uppercase font-black text-[11px]">{s.service_type}</td>
+              <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
+              <td className="px-4 py-3 text-slate-400 uppercase font-bold text-[11px]">{s.service_type}</td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase border ${
+                 <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase border ${
                     s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
                     s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
                  }`}>{s.status}</span>
               </td>
-              <td className="px-4 py-3 text-center text-slate-500 uppercase font-black">{s.environment}</td>
+              <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold">{s.environment}</td>
               <td className="px-4 py-3 text-center font-mono text-slate-600">{s.version || 'N/A'}</td>
               <td className="px-4 py-3 text-center">
                  <div className="flex items-center justify-center space-x-1">
@@ -138,7 +138,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
             </tr>
           ))}
           {!services?.length && !isLoading && (
-            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-black uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
+            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
           )}
         </tbody>
       </table>
@@ -159,7 +159,7 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+            <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Tag size={24}/> <span>Update Status</span>
             </h2>
             {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
@@ -172,11 +172,11 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
             placeholder="Select Status..."
           />
           <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
              <button 
                disabled={!selectedStatus}
                onClick={() => onApply(selectedStatus)} 
-               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -199,7 +199,7 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
           <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+            <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                <Globe size={24}/> <span>Update Environment</span>
             </h2>
             {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
@@ -212,11 +212,11 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
             placeholder="Select Environment..."
           />
           <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
              <button
                disabled={!selectedEnv}
                onClick={() => onApply(selectedEnv)}
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
              >
                 Apply to Selection
              </button>
@@ -297,8 +297,8 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
          <div className="flex items-center space-x-3">
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Metadata</span>
-            {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-black uppercase tracking-tighter">{error}</span></div>}
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Service Metadata</span>
+            {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-bold uppercase tracking-tighter">{error}</span></div>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
             <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
@@ -327,7 +327,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
             <button onClick={() => {
                 const n = [...tableRows, { key: '', value: '' }];
                 setTableRows(n);
-            }} className="text-[9px] font-black text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
+            }} className="text-[9px] font-bold text-blue-400 uppercase tracking-widest mt-2 hover:text-blue-300 transition-colors">+ Add Attribute Pair</button>
           </div>
         ) : (
           <textarea 
@@ -353,24 +353,24 @@ const MetadataViewer = ({ data }: { data: any }) => {
   }
   return (
     <div className="p-6 space-y-4">
-      <h3 className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
+      <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-[0.2em]">Metadata Inspection</h3>
       <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
         <table className="w-full text-[10px]">
           <thead className="bg-white/5 border-b border-white/5">
             <tr>
-              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Key</th>
-              <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Value</th>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Key</th>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Value</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {Object.entries(obj).map(([k, v]) => (
               <tr key={k} className="hover:bg-white/5 transition-colors">
-                <td className="px-4 py-2 font-black uppercase text-slate-400">{k}</td>
+                <td className="px-4 py-2 font-bold uppercase text-slate-400">{k}</td>
                 <td className="px-4 py-2 text-slate-200">{String(v)}</td>
               </tr>
             ))}
             {Object.keys(obj).length === 0 && (
-              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No additional payload data</td></tr>
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No additional payload data</td></tr>
             )}
           </tbody>
         </table>
@@ -415,25 +415,25 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
               value={filter.name} 
               onChange={e => setFilter({ ...filter, name: e.target.value })} 
               placeholder="Search Assets..." 
-              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 transition-all" 
+              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 transition-all" 
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={filter.system} onChange={e => setFilter({ ...filter, system: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-slate-400 outline-none">
+            <select value={filter.system} onChange={e => setFilter({ ...filter, system: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
               <option value="">All Systems</option>
               {getOptions('LogicalSystem').map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-slate-400 outline-none">
+            <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
               <option value="">All Types</option>
               {ASSET_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-slate-400 outline-none">
+            <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
               <option value="">All Statuses</option>
               {STATUS_ITEMS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select value={filter.env} onChange={e => setFilter({ ...filter, env: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-black uppercase text-slate-400 outline-none">
+            <select value={filter.env} onChange={e => setFilter({ ...filter, env: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
               <option value="">All Envs</option>
               {ENVIRONMENT_ITEMS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -447,8 +447,8 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
               className={`w-full flex flex-col p-3 rounded-lg transition-all text-left relative overflow-hidden group ${selectedId === a.id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400'}`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-black text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
-                <span className={`text-[11px] font-black px-1.5 py-0.5 rounded border ${
+                <span className="font-bold text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded border ${
                   a.status === 'Active' ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-400' :
                   a.status === 'Maintenance' ? 'bg-amber-500/20 border-amber-500/20 text-amber-400' :
                   a.status === 'Failed' ? 'bg-rose-500/20 border-rose-500/20 text-rose-400' :
@@ -459,7 +459,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   {a.status}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-[11px] font-black opacity-60">
+              <div className="flex items-center space-x-2 text-[11px] font-bold opacity-60">
                 <span>{a.system}</span>
                 <span className="w-1 h-1 rounded-full bg-current opacity-30" />
                 <span>{a.type}</span>
@@ -468,7 +468,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </button>
           ))}
           {!filteredAssets.length && (
-            <div className="py-20 text-center text-slate-600 italic text-[10px] font-black uppercase tracking-widest">No matching assets</div>
+            <div className="py-20 text-center text-slate-600 italic text-[10px] font-bold uppercase tracking-widest">No matching assets</div>
           )}
         </div>
       </div>
@@ -485,17 +485,17 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                       <Box size={32} />
                    </div>
                    <div>
-                      <h1 className="text-4xl font-black uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
+                      <h1 className="text-4xl font-bold uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
                       <div className="flex items-center space-x-3 mt-1">
-                        <span className="text-blue-400 font-black uppercase tracking-[0.2em] text-[12px]">{selectedAsset.system}</span>
+                        <span className="text-blue-400 font-bold uppercase tracking-[0.2em] text-[12px]">{selectedAsset.system}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                        <span className="text-slate-500 font-black uppercase tracking-[0.1em] text-[10px]">{selectedAsset.type} // {selectedAsset.environment}</span>
+                        <span className="text-slate-500 font-bold uppercase tracking-[0.1em] text-[10px]">{selectedAsset.type} // {selectedAsset.environment}</span>
                       </div>
                    </div>
                 </div>
               </div>
               <div className="flex flex-col items-end space-y-3">
-                 <div className={`px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest shadow-2xl ${
+                 <div className={`px-6 py-2 rounded-full border text-[10px] font-bold uppercase tracking-widest shadow-2xl ${
                     selectedAsset.status === 'Active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-emerald-500/5' :
                     selectedAsset.status === 'Maintenance' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 shadow-amber-500/5' :
                     selectedAsset.status === 'Failed' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-rose-500/5' :
@@ -505,7 +505,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                  }`}>
                    {selectedAsset.status} STATUS
                  </div>
-                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-black uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[10px] font-bold uppercase text-slate-400 hover:text-white hover:bg-white/10 transition-all">
                     <Edit2 size={14}/> <span>Modify Config</span>
                  </button>
               </div>
@@ -516,16 +516,16 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                <div className="space-y-6">
                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                      <Globe size={16} className="text-indigo-400" />
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Connectivity & Access</h3>
+                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Connectivity & Access</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                      <div className="bg-black/20 p-5 rounded-lg border border-white/5">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</p>
-                        <p className="text-xl font-mono text-blue-400 font-black">{selectedAsset.primary_ip || '---.---.---.---'}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</p>
+                        <p className="text-xl font-mono text-blue-400 font-bold">{selectedAsset.primary_ip || '---.---.---.---'}</p>
                      </div>
                      <div className="bg-black/20 p-5 rounded-lg border border-white/5">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</p>
-                        <p className="text-xl font-mono text-indigo-400 font-black">{selectedAsset.management_ip || '---.---.---.---'}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</p>
+                        <p className="text-xl font-mono text-indigo-400 font-bold">{selectedAsset.management_ip || '---.---.---.---'}</p>
                      </div>
                   </div>
                   {selectedAsset.management_url && (
@@ -533,8 +533,8 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                        <div className="flex items-center space-x-4">
                           <Terminal size={24} className="text-indigo-400" />
                           <div>
-                             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Management Console</p>
-                             <p className="text-xs font-black text-white truncate max-w-[200px]">{selectedAsset.management_url}</p>
+                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Management Console</p>
+                             <p className="text-xs font-bold text-white truncate max-w-[200px]">{selectedAsset.management_url}</p>
                           </div>
                        </div>
                        <ArrowRightLeft size={16} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
@@ -546,24 +546,24 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                <div className="space-y-6">
                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                      <CpuIcon size={16} className="text-amber-400" />
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hardware & System</h3>
+                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System</h3>
                   </div>
                   <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-y-6 gap-x-12">
                      <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Platform</p>
-                        <p className="text-xs font-black text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Platform</p>
+                        <p className="text-xs font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
                      </div>
                      <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Identity Tag / SN</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Identity Tag / SN</p>
                         <p className="text-xs font-mono text-white uppercase">{selectedAsset.asset_tag || 'NO TAG'} // {selectedAsset.serial_number || 'NO SN'}</p>
                      </div>
                      <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Operating System</p>
-                        <p className="text-xs font-black text-blue-400 uppercase">{selectedAsset.os_name} {selectedAsset.os_version}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Operating System</p>
+                        <p className="text-xs font-bold text-blue-400 uppercase">{selectedAsset.os_name} {selectedAsset.os_version}</p>
                      </div>
                      <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">Rack Placement</p>
-                        <p className="text-xs font-black text-white uppercase">{selectedAsset.rack_name || 'UNPLACED'} // {selectedAsset.u_start ? `${selectedAsset.u_start}U` : '--'}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Rack Placement</p>
+                        <p className="text-xs font-bold text-white uppercase">{selectedAsset.rack_name || 'UNPLACED'} // {selectedAsset.u_start ? `${selectedAsset.u_start}U` : '--'}</p>
                      </div>
                   </div>
                </div>
@@ -573,7 +573,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="space-y-6">
                <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                   <HardDrive size={16} className="text-emerald-400" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Resource Registry ({selectedAsset.hardware_summary})</h3>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Resource Registry ({selectedAsset.hardware_summary})</h3>
                </div>
                <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
@@ -585,7 +585,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                <div className="space-y-6">
                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                      <Layers size={16} className="text-blue-400" />
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
+                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
                   <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
@@ -600,37 +600,37 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                <div className="space-y-6">
                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                      <Calendar size={16} className="text-rose-400" />
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics</h3>
+                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics</h3>
                   </div>
                   <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-8">
                      <div className="space-y-6">
                         <div>
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Commissioning</p>
-                           <p className="text-xs font-black text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
-                           <p className="text-[9px] font-black text-blue-400 mt-1 uppercase tracking-tighter italic">Engine Age: {selectedAsset.hardware_age}</p>
+                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Commissioning</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-[9px] font-bold text-blue-400 mt-1 uppercase tracking-tighter italic">Engine Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Warranty Term</p>
-                           <p className="text-xs font-black text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
+                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Warranty Term</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
                         </div>
                      </div>
                      <div className="space-y-6 text-right">
                         <div>
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Procurement</p>
-                           <p className="text-xs font-black text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Procurement</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div>
-                           <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Retirement EOL</p>
-                           <p className="text-xs font-black text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
+                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Retirement EOL</p>
+                           <p className="text-xs font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
                         </div>
                      </div>
                   </div>
                   <div className="flex items-center justify-between p-5 bg-black/20 rounded-lg border border-white/5">
                      <div className="flex items-center space-x-3">
                         <Activity size={16} className="text-blue-400" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Power Payload (Avg/Max)</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Power Payload (Avg/Max)</span>
                      </div>
-                     <span className="text-xs font-mono text-white font-black">{selectedAsset.power_typical_w}W // {selectedAsset.power_max_w}W</span>
+                     <span className="text-xs font-mono text-white font-bold">{selectedAsset.power_typical_w}W // {selectedAsset.power_max_w}W</span>
                   </div>
                </div>
             </div>
@@ -639,7 +639,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="space-y-6 pb-12">
                <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
                   <LinkIcon size={16} className="text-indigo-400" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Dependency Vectors</h3>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Dependency Vectors</h3>
                </div>
                <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <RelationsTable deviceId={selectedAsset.id} />
@@ -651,7 +651,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="p-6 bg-white/5 rounded-full border border-white/10 opacity-20 animate-pulse">
                <FileText size={64} />
             </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] italic">Select Asset for Detailed Inspection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.5em] italic">Select Asset for Detailed Inspection</p>
           </div>
         )}
       </div>
@@ -791,10 +791,10 @@ export default function AssetGrid() {
       pinned: 'left',
       filter: true,
       cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-blue-400',
+      cellClass: 'text-center font-bold text-blue-400',
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
-        <span className="font-black text-blue-400">{p.value}</span>
+        <span className="font-bold text-blue-400">{p.value}</span>
       )
     },
     { field: "system", headerName: "System", width: 110, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center', headerClass: 'text-center' },
@@ -815,7 +815,7 @@ export default function AssetGrid() {
           Firewall: 'text-orange-400',
           'Load Balancer': 'text-purple-400'
         }
-        return <span className={`font-black ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+        return <span className={`font-bold ${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
       }
     },
     { 
@@ -837,7 +837,7 @@ export default function AssetGrid() {
         return (
           <div className="flex items-center justify-center h-full">
             <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span className="font-black tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
+              <span className="font-bold tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
                 {p.value}
               </span>
             </div>
@@ -846,12 +846,12 @@ export default function AssetGrid() {
       }
     },
 
-    { field: "environment", headerName: "Env", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black text-slate-400', headerClass: 'text-center' },
-    { field: "owner", headerName: "Owner", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
-    { field: "manufacturer", headerName: "Make", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
-    { field: "model", headerName: "Model", width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
-    { field: "os_name", headerName: "OS", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
-    { field: "os_version", headerName: "Ver", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "environment", headerName: "Env", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center' },
+    { field: "owner", headerName: "Owner", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "manufacturer", headerName: "Make", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "model", headerName: "Model", width: 90, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "os_name", headerName: "OS", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "os_version", headerName: "Ver", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
     { 
       field: "primary_ip", 
       headerName: "Primary IP", 
@@ -876,7 +876,7 @@ export default function AssetGrid() {
       width: 150, 
       filter: true,
       cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-slate-400',
+      cellClass: 'text-center font-bold text-slate-400',
       headerClass: 'text-center'
     },
     { 
@@ -885,7 +885,7 @@ export default function AssetGrid() {
       width: 80, 
       filter: true,
       cellStyle: { fontSize: `${fontSize}px` },
-      cellClass: 'text-center font-black text-slate-500',
+      cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center'
     },
     { 
@@ -899,7 +899,7 @@ export default function AssetGrid() {
         <div className="flex items-center justify-center h-full">
            <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
-              <span className="font-black" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+              <span className="font-bold" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
            </div>
         </div>
       ) : (
@@ -907,8 +907,8 @@ export default function AssetGrid() {
       )
     },
 
-    { field: "site_name", headerName: "Site", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
-    { field: "rack_name", headerName: "Rack", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-black', headerClass: 'text-center' },
+    { field: "site_name", headerName: "Site", width: 100, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { field: "rack_name", headerName: "Rack", width: 80, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: 'text-center font-bold', headerClass: 'text-center' },
     { 
       field: "depth", 
       headerName: "Depth", 
@@ -916,7 +916,7 @@ export default function AssetGrid() {
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span className="font-black text-slate-500" style={{ fontSize: `${fontSize}px` }}>{p.value || 'Full'}</span>
+      cellRenderer: (p: any) => <span className="font-bold text-slate-500" style={{ fontSize: `${fontSize}px` }}>{p.value || 'Full'}</span>
     },
     { 
       field: "mount_orientation", 
@@ -925,7 +925,7 @@ export default function AssetGrid() {
       filter: true,
       cellClass: 'text-center', 
       headerClass: 'text-center', 
-      cellRenderer: (p: any) => p.value ? <span className="font-black text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize}px` }}>registry</span>
+      cellRenderer: (p: any) => p.value ? <span className="font-bold text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize}px` }}>registry</span>
     },
     { field: "u_start", headerName: "U Pos", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
     { field: "size_u", headerName: "Size", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
@@ -963,25 +963,25 @@ export default function AssetGrid() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic">Assets</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Infrastructure Asset Registry</p>
+              <h1 className="text-2xl font-bold uppercase tracking-tight italic">Assets</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
            </div>
 
            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
-                <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     <LayoutGrid size={14}/> <span>Table</span>
                 </button>
-                <button onClick={() => setViewMode('report')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                <button onClick={() => setViewMode('report')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     <FileText size={14}/> <span>List</span>
                 </button>
            </div>
 
            {viewMode === 'grid' && (
              <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
-                  <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                       Existing
                   </button>
-                  <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                  <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                       Purged
                   </button>
              </div>
@@ -992,7 +992,7 @@ export default function AssetGrid() {
           <div className="flex items-center space-x-3">
             <div className="relative">
                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
             <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5">
@@ -1013,13 +1013,13 @@ export default function AssetGrid() {
               <AnimatePresence>
                 {showBulkMenu && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
-                     <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
+                     <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
                      {activeTab === 'deleted' ? (
-                       <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                       <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
                      ) : (
                        <>
-                          <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                          <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
+                          <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                          <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
                        </>
                      )}
                      <div className="h-px bg-white/5 mx-2 my-1" />
@@ -1027,13 +1027,13 @@ export default function AssetGrid() {
                          const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
                          const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
                          openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
-                      }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+                      }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
+            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
           </div>
         )}
       </div>
@@ -1050,31 +1050,31 @@ export default function AssetGrid() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
                   
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
                             className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
                      </div>
 
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
                         <div className="flex items-center space-x-2">
                             <input 
                             type="range" min="0" max="20" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
                             className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
                             />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
+                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
                      </div>
                   </div>
@@ -1090,7 +1090,7 @@ export default function AssetGrid() {
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
-               <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing asset registry...</p>
+               <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing asset registry...</p>
             </div>
           )}
           <AgGridReact 
@@ -1147,7 +1147,7 @@ export default function AssetGrid() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-black uppercase flex items-center space-x-4 text-blue-400">
+                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
                      <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
                   </h2>
                   <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -1165,15 +1165,15 @@ export default function AssetGrid() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
                   <div>
-                    <h2 className="text-2xl font-black uppercase text-blue-400">{activeDetails.name}</h2>
+                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
                     <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className="text-[10px] font-mono text-blue-400/80 uppercase tracking-widest" title="Primary IP">{activeDetails.primary_ip || 'NO PRIMARY IP'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className="text-[10px] font-mono text-indigo-400/80 uppercase tracking-widest" title="Management IP">{activeDetails.management_ip || 'NO MGMT IP'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AGE: {activeDetails.hardware_age}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">AGE: {activeDetails.hardware_age}</p>
                     </div>
                   </div>
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -1258,14 +1258,14 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
         <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
-                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
-                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
+                    <button onClick={() => setMode('view')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'view' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Read-Only View</button>
+                    <button onClick={() => setMode('edit')} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${mode === 'edit' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>Edit Metadata</button>
                 </div>
                 {mode === 'edit' && (
                     <button 
                         disabled={!!metadataError}
                         onClick={() => onSave(localData)} 
-                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
                     >
                         Save Metadata
                     </button>
@@ -1308,7 +1308,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
                     {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                             {t}
                         </button>
                     ))}
@@ -1358,7 +1358,7 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
          <input value={newComp.manufacturer} onChange={e => setNewComp({...newComp, manufacturer: e.target.value})} placeholder="Manufacturer" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
          <input value={newComp.specs} onChange={e => setNewComp({...newComp, specs: e.target.value})} placeholder="Specifications" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
          <input type="number" value={newComp.count} onChange={e => setNewComp({...newComp, count: parseInt(e.target.value)})} className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] outline-none" />
-         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Add</button>
+         <button onClick={() => { if(!newComp.name) return toast.error("Name required"); mutation.mutate(newComp) }} className="bg-blue-600 text-white rounded-lg text-[9px] font-bold uppercase">Add</button>
       </div>
       <HWTable deviceId={deviceId} />
     </div>
@@ -1405,11 +1405,11 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
       <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Category</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Component</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Specs</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Qty</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Category</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Component</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Specs</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Qty</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -1424,10 +1424,10 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                         className="w-24 mx-auto"
                     />
                 ) : (
-                    <span className="font-black uppercase text-blue-400">{h.category}</span>
+                    <span className="font-bold uppercase text-blue-400">{h.category}</span>
                 )}
               </td>
-              <td className="px-4 py-2 font-black text-slate-200 text-center">
+              <td className="px-4 py-2 font-bold text-slate-200 text-center">
                 {editingId === h.id ? (
                     <input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : h.name}
@@ -1457,7 +1457,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1505,18 +1505,18 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
            />
          </div>
          <div className="col-span-1">
-            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Identity</label>
+            <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Identity</label>
             <input value={newSec.username} onChange={e => setNewSec({...newSec, username: e.target.value})} placeholder="Identity / Username" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
-            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
+            <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Sensitive Value</label>
             <input type="password" value={newSec.encrypted_payload} onChange={e => setNewSec({...newSec, encrypted_payload: e.target.value})} placeholder="Value" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
          <div className="col-span-1">
-            <label className="text-[9px] font-black text-slate-500 uppercase block mb-1 px-1">Notes</label>
+            <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 px-1">Notes</label>
             <input value={newSec.notes} onChange={e => setNewSec({...newSec, notes: e.target.value})} placeholder="Purpose / Note" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
          </div>
-         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
+         <button onClick={() => { if(!newSec.username || !newSec.encrypted_payload) return toast.error("Identity/Value required"); mutation.mutate(newSec) }} className="h-[38px] bg-emerald-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Add</button>
       </div>
       <SecretsTable deviceId={deviceId} />
     </div>
@@ -1562,17 +1562,17 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
       <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Type</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Identity</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Payload</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Notes</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Type</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Identity</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Payload</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Notes</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {secrets?.map((s: any) => (
             <tr key={s.id} className="hover:bg-white/5 transition-colors">
-              <td className="px-4 py-2 font-black uppercase text-amber-500/80">
+              <td className="px-4 py-2 font-bold uppercase text-amber-500/80">
                 {editingId === s.id ? (
                     <StyledSelect
                         value={editData.secret_type}
@@ -1582,7 +1582,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
                     />
                 ) : s.secret_type}
               </td>
-              <td className="px-4 py-2 font-black text-slate-200">
+              <td className="px-4 py-2 font-bold text-slate-200">
                 {editingId === s.id ? (
                     <input value={editData.username} onChange={e => setEditData({...editData, username: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1.5 text-[11px] w-full outline-none focus:border-blue-500" />
                 ) : s.username}
@@ -1619,7 +1619,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No credentials stored</td></tr>}
+          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No credentials stored</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1702,8 +1702,8 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
       <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-6">
          <div className="grid grid-cols-11 gap-4 items-end">
             <div className="col-span-3">
-               <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
-               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-lg px-4 py-2.5 text-xs text-blue-400 font-black uppercase truncate">
+               <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
+               <div className="w-full bg-blue-600/10 border border-blue-500/20 rounded-lg px-4 py-2.5 text-xs text-blue-400 font-bold uppercase truncate">
                   {currentDevice?.name || 'Local'}
                </div>
             </div>
@@ -1749,12 +1749,12 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
          <div className="flex items-center justify-between pt-2 border-t border-white/5">
             <div className="flex items-center space-x-2">
-               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Vector Classification:</span>
-               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{newRel.relationship_type}</span>
+               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vector Classification:</span>
+               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{newRel.relationship_type}</span>
             </div>
             <button 
               onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
-              className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center space-x-2"
             >
                <Plus size={14} /> <span>Establish Vector</span>
             </button>
@@ -1794,10 +1794,10 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
       <table className="w-full text-[11px]">
         <thead className="bg-white/5 border-b border-white/5">
           <tr>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Local Identity</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Relationship Type</th>
-            <th className="px-4 py-2 text-left font-black uppercase tracking-widest text-slate-500">Peer Entity</th>
-            <th className="px-4 py-2 text-center font-black uppercase tracking-widest text-slate-500">Actions</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Local Identity</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Relationship Type</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Peer Entity</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -1826,8 +1826,8 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                      </select>
                    ) : (
                      <div className="flex flex-col">
-                        <span className="font-black text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
-                        <span className={`text-[11px] font-black uppercase w-fit mt-1 ${isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        <span className="font-bold text-white uppercase tracking-tight">{currentDevice?.name || 'Local'}</span>
+                        <span className={`text-[11px] font-bold uppercase w-fit mt-1 ${isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
                           {localRole}
                         </span>
                      </div>
@@ -1844,7 +1844,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                     </select>
                   ) : (
                     <div className="flex flex-col items-center">
-                       <span className="font-black text-slate-500 uppercase tracking-widest text-[11px] mb-1">{r.relationship_type}</span>
+                       <span className="font-bold text-slate-500 uppercase tracking-widest text-[11px] mb-1">{r.relationship_type}</span>
                        <div className="flex items-center space-x-2 text-slate-600">
                           <div className="h-px w-8 bg-white/10" />
                           <ArrowRightLeft size={10} className={isSource ? "" : "rotate-180"} />
@@ -1869,8 +1869,8 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                       </select>
                     ) : (
                       <div className="flex flex-col">
-                         <span className="font-black text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
-                         <span className={`text-[11px] font-black uppercase w-fit mt-1 ${!isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
+                         <span className="font-bold text-blue-400 uppercase tracking-tight">{peer?.name || 'Unknown Entity'}</span>
+                         <span className={`text-[11px] font-bold uppercase w-fit mt-1 ${!isSource ? 'text-emerald-400' : 'text-slate-400'}`}>
                            {peerRole}
                          </span>
                       </div>
@@ -1892,7 +1892,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               </tr>
             )
           })}
-          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-black uppercase italic">No relationships defined</td></tr>}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relationships defined</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1979,7 +1979,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              onClick={() => !isDisabled && setActiveSubTab(t)}
              disabled={isDisabled}
              title={isDisabled ? 'Save asset first' : ''}
-             className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+             className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''} ${activeSubTab === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
              {t === 'config' ? 'Base Config' : t === 'relations' ? 'Relationships' : t}
            </button>
          )
@@ -1989,9 +1989,9 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
       {activeSubTab === 'config' && (
         <div className="grid grid-cols-3 gap-6">
           <div className="col-span-1 space-y-4">
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
+             <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity</h3>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Hostname</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Hostname</label>
                 <input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} 
@@ -2009,7 +2009,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              />
              <div className="grid grid-cols-2 gap-2">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Owner</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Owner</label>
                     <input value={formData.owner} onChange={e => setFormData({...formData, owner: e.target.value})} placeholder="Owner" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/50" />
                 </div>
                 <StyledSelect
@@ -2023,7 +2023,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
           </div>
 
           <div className="col-span-1 space-y-4">
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
+             <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Classification</h3>
              <div className="grid grid-cols-2 gap-2">
                 <StyledSelect
                     label="Asset Type"
@@ -2043,7 +2043,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
              </div>
              <div className="grid grid-cols-2 gap-2">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Height (U)</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Height (U)</label>
                     <input type="number" value={formData.size_u || 1} onChange={e => setFormData({...formData, size_u: parseInt(e.target.value)})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div />
@@ -2060,18 +2060,18 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                 onChange={e => setFormData({...formData, environment: e.target.value})}
                 options={ENVIRONMENT_ITEMS}
              />
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3 mt-6">Management & Connectivity</h3>
+             <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3 mt-6">Management & Connectivity</h3>
              <div className="space-y-3">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Primary IP Address</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Primary IP Address</label>
                     <input value={formData.primary_ip || ""} onChange={e => setFormData({...formData, primary_ip: e.target.value})} placeholder="e.g. 10.0.0.100" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-mono outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management IP Address</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Management IP Address</label>
                     <input value={formData.management_ip || ""} onChange={e => setFormData({...formData, management_ip: e.target.value})} placeholder="e.g. 10.0.0.50" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-mono outline-none focus:border-indigo-500" />
                 </div>
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Management URL / Console</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Management URL / Console</label>
                     <input value={formData.management_url || ""} onChange={e => setFormData({...formData, management_url: e.target.value})} placeholder="https://..." className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-indigo-500" />
                 </div>
              </div>
@@ -2079,30 +2079,30 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
           </div>
 
           <div className="col-span-1 space-y-4">
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-amber-600 pl-3">Software & Hardware</h3>
+             <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-amber-600 pl-3">Software & Hardware</h3>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Manufacturer & Model</label>
                 <div className="flex space-x-2">
                    <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                    <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Operating System & Version</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Operating System & Version</label>
                 <div className="flex space-x-2">
                    <input value={formData.os_name} onChange={e => setFormData({...formData, os_name: e.target.value.toUpperCase()})} placeholder="Ubuntu" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                    <input value={formData.os_version} onChange={e => setFormData({...formData, os_version: e.target.value})} placeholder="24.04 LTS" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Serial / Asset Tag</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Serial / Asset Tag</label>
                 <div className="flex space-x-2">
                     <input value={formData.serial_number} onChange={e => setFormData({...formData, serial_number: e.target.value})} placeholder="Serial" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                     <input value={formData.asset_tag} onChange={e => setFormData({...formData, asset_tag: e.target.value})} placeholder="Asset Tag" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
              </div>
              <div>
-                <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Power Consumption (Watts)</label>
                 <div className="flex space-x-2">
                     <div className="w-1/2">
                       <input type="number" min={0} step={0.1} value={formData.power_typical_w || 0} onChange={e => setFormData({...formData, power_typical_w: parseFloat(e.target.value) || 0})} placeholder="0" className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none font-mono" />
@@ -2114,24 +2114,24 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                     </div>
                 </div>
              </div>
-             <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest border-l-2 border-emerald-500 pl-3 mt-6">Lifecycle & Logistics</h3>
+             <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-500 pl-3 mt-6">Lifecycle & Logistics</h3>
              <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Purchase Date</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Purchase Date</label>
                     <input type="date" value={formData.purchase_date ? formData.purchase_date.split('T')[0] : ""} onChange={e => setFormData({...formData, purchase_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none" />
                 </div>
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Installation Date</label>
                     <input type="date" value={formData.install_date ? formData.install_date.split('T')[0] : ""} onChange={e => setFormData({...formData, install_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-emerald-500/30" />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">Warranty End</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Warranty End</label>
                     <input type="date" value={formData.warranty_end ? formData.warranty_end.split('T')[0] : ""} onChange={e => setFormData({...formData, warranty_end: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-amber-500/30" />
                 </div>
                 <div>
-                    <label className="text-[9px] font-black text-slate-400 uppercase block mb-1 px-1">EOL / Retirement</label>
+                    <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">EOL / Retirement</label>
                     <input type="date" value={formData.eol_date ? formData.eol_date.split('T')[0] : ""} onChange={e => setFormData({...formData, eol_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] outline-none border-rose-500/30" />
                 </div>
              </div>
@@ -2149,9 +2149,9 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
         </div>
       )}
 
-      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add hardware components</div>)}
-      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add credentials</div>)}
-      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-black uppercase text-[10px]">Save the asset first to add relationships</div>)}
+      {activeSubTab === 'hardware' && (formData.id ? <HWTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add hardware components</div>)}
+      {activeSubTab === 'secrets' && (formData.id ? <SecretsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add credentials</div>)}
+      {activeSubTab === 'relations' && (formData.id ? <RelationshipsTab deviceId={formData.id} /> : <div className="py-20 text-center text-slate-500 font-bold uppercase text-[10px]">Save the asset first to add relationships</div>)}
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
         <button
@@ -2160,7 +2160,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
             if(!formData.name || !formData.system) return toast.error("Hostname and Logical System are mandatory");
             onSave({ data: formData })
           }}
-          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-lg text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
+          className={`flex-1 py-4 ${metadataError || isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-blue-600'} text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-2`}
         >
           {isSaving && <RefreshCcw size={14} className="animate-spin" />}
           <span>Save Asset</span>

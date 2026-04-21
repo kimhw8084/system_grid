@@ -502,7 +502,10 @@ def seed():
             db.flush()
             cause.resolutions.append(res)
             
-            db.add(FarMitigation(mitigation_type="Workaround", mitigation_steps="Periodic service restart every 12h", responsible_team="SRE"))
+            mit = FarMitigation(mitigation_type="Workaround", mitigation_steps="Periodic service restart every 12h", responsible_team="SRE")
+            db.add(mit)
+            db.flush()
+            mode.mitigations.append(mit)
             
             db.add(FarPrevention(
                 failure_mode_id=mode.id,

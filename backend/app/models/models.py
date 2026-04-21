@@ -749,6 +749,7 @@ class RcaTimelineEvent(Base, BaseMixin):
     owner = Column(String) # Added owner
     owner_team = Column(String) # Added owner_team
     involved_pocs = Column(JSON, default=list) # List of names/IDs
+    images = Column(JSON, default=list) # Added images support
     
     rca = relationship("RcaRecord", back_populates="timeline")
 

@@ -416,15 +416,15 @@ export default function FAR() {
         return (
           <div className="flex items-center justify-center h-full w-full">
             <div className="group relative cursor-help">
-              <div className="bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-md text-[10px] font-black uppercase">
+              <div className="bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase">
                 {rcas.length} Linked
               </div>
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
                 <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[200px]">
-                   <p className="text-[9px] font-black uppercase text-purple-400 mb-2 border-b border-white/5 pb-1">Linked RCA Records</p>
+                   <p className="text-[9px] font-bold uppercase text-purple-400 mb-2 border-b border-white/5 pb-1">Linked RCA Records</p>
                    <div className="space-y-1">
                       {rcas.map((r: any) => (
-                        <div key={r.id} className="text-[8px] font-black text-slate-300 uppercase py-0.5">• {r.title}</div>
+                        <div key={r.id} className="text-[8px] font-bold text-slate-300 uppercase py-0.5">• {r.title}</div>
                       ))}
                    </div>
                 </div>
@@ -605,12 +605,8 @@ export default function FAR() {
                 quickFilterText={searchTerm}
                 animateRows={true}
                 enableCellTextSelection={true}
-                autoSizeStrategy={autoSizeStrategy}
                 rowSelection="multiple"
                 onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
-                onGridReady={(params: any) => {
-                  setTimeout(() => params.api.sizeColumnsToFit(), 100);
-                }}
               />
               <AnimatePresence>
                 {showColumnPicker && (
