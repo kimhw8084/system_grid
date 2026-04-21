@@ -528,6 +528,13 @@ far_mode_mitigations = Table(
     Column("mitigation_id", Integer, ForeignKey("far_mitigations.id", ondelete="CASCADE"))
 )
 
+# Join table for RcaRecord <-> FarFailureMode N:N relationship
+rca_failure_mode_links = Table(
+    "rca_failure_mode_links", Base.metadata,
+    Column("rca_id", Integer, ForeignKey("rca_records.id", ondelete="CASCADE")),
+    Column("failure_mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+)
+
 class FarFailureMode(Base, BaseMixin):
     __tablename__ = "far_failure_modes"
     system_name = Column(String, index=True)
@@ -672,13 +679,6 @@ class Project(Base, BaseMixin):
     is_deleted = Column(Boolean, default=False)
 
 # --- INCIDENT RCA (ROOT CAUSE ANALYSIS) MODULE ---
-
-# Join table for RcaRecord <-> FarFailureMode N:N relationship
-rca_failure_mode_links = Table(
-    "rca_failure_mode_links", Base.metadata,
-    Column("rca_id", Integer, ForeignKey("rca_records.id", ondelete="CASCADE")),
-    Column("failure_mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
-)
 
 class RcaRecord(Base, BaseMixin):
     __tablename__ = "rca_records"
