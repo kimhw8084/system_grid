@@ -34,9 +34,16 @@ class RackBase(BaseModel):
 class RackCreate(RackBase):
     site_id: Optional[int] = None
 
+class DeviceTinyResponse(BaseSchema):
+    name: str
+    system: Optional[str] = None
+    type: Optional[str] = None
+    status: Optional[str] = None
+    primary_ip: Optional[str] = None
+
 class RackResponse(RackBase, BaseSchema):
     site_name: Optional[str] = None
-    devices: List[Any] = []
+    devices: List[DeviceTinyResponse] = []
 
 class DeviceBase(BaseModel):
     name: str
@@ -98,13 +105,6 @@ class DeviceResponse(DeviceBase, BaseSchema):
     hardware_summary: Optional[str] = "No Components"
     hardware_age: Optional[str] = "N/A"
     open_incident_count: Optional[int] = 0
-
-class DeviceTinyResponse(BaseSchema):
-    name: str
-    system: Optional[str] = None
-    type: Optional[str] = None
-    status: Optional[str] = None
-    primary_ip: Optional[str] = None
 
 class MaintenanceWindowBase(BaseModel):
     title: str
@@ -298,6 +298,12 @@ class FarPreventionResponse(BaseSchema):
     target_date: Optional[datetime] = None
     responsible_team: Optional[str] = None
 
+class RcaRecordTinyResponse(BaseSchema):
+    title: str
+    severity: Optional[str] = None
+    status: str = "Open"
+    incident_type: Optional[str] = None
+
 class FarFailureModeResponse(BaseSchema):
     system_name: str
     title: str
@@ -313,7 +319,7 @@ class FarFailureModeResponse(BaseSchema):
     causes: List[FarFailureCauseResponse] = []
     mitigations: List[FarMitigationResponse] = []
     prevention_actions: List[FarPreventionResponse] = []
-    linked_rcas: List[Any] = []
+    linked_rcas: List[RcaRecordTinyResponse] = []
 
 class RcaTimelineEventResponse(BaseSchema):
     rca_id: int

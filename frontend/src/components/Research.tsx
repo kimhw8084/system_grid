@@ -907,7 +907,8 @@ function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onS
     rca_steps_json: item.rca_steps_json || [],
     mitigation_logs_json: item.mitigation_logs_json || [],
     linked_failure_mode_ids: item.linked_failure_modes?.map((fm: any) => fm.id) || item.linked_failure_mode_ids || []
-  })  const [isEditing, setIsEditing] = useState(false)
+  });
+  const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
