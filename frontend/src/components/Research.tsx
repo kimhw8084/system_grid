@@ -203,9 +203,12 @@ export default function Research() {
     },
     onSuccess: (_, variables) => { 
       queryClient.invalidateQueries({ queryKey: [variables.type === 'RCA' ? 'rca-records' : 'investigations'] })
-      // Use a unique ID to prevent multiple toasts if called rapidly, though we will fix callers too
+      // Use a unique ID to prevent multiple toasts if called rapidly
       toast.success('System Intelligence Synchronized', { id: `sync-${variables.id || 'new'}` })
       setActiveModal(null)
+    },
+    onError: (error: any) => {
+      toast.error(`Synchronization Failure: ${error.message || 'Unknown Error'}`, { id: 'sync-error' })
     }
   })
 
@@ -910,28 +913,85 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
 }
 
 export function EnhancedRcaDetails({ item, devices, options, failureModes, onClose, onSave, fontSize, rowDensity }: any) {
-  const [formData, setFormData] = useState({
+  // Robust normalization for comparison to prevent infinite save loops
+  const normalizeForComparison = (data: any) => {
+    if (!data) return "";
+    const p_map: any = { "LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10 };
+    
+    const clean = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) {
+        return obj.map(clean).filter(v => v !== undefined);
+      }
+      const newObj: any = {};
+      Object.keys(obj).sort().forEach(key => {
+        if (['updated_at', 'created_at', 'id', 'rca_id', 'is_deleted', 'created_by_user_id'].includes(key)) return;
+        let val = obj[key];
+        
+        // Normalize priority
+        if (key === 'priority' && typeof val === 'string') val = p_map[val.toUpperCase()] || 1;
+        
+        // Normalize linked failure modes to IDs only for comparison
+        if (key === 'linked_failure_modes' && Array.isArray(val)) {
+          newObj['linked_failure_mode_ids'] = val.map((m: any) => typeof m === 'object' ? m.id : m).sort();
+          return;
+        }
+        if (key === 'linked_failure_mode_ids' && Array.isArray(val)) {
+          newObj['linked_failure_mode_ids'] = [...val].sort();
+          return;
+        }
+
+        // Normalize empty values
+        if (val === null || val === undefined) return;
+        if (Array.isArray(val) && val.length === 0) return;
+        
+        newObj[key] = clean(val);
+      });
+      return newObj;
+    };
+    return JSON.stringify(clean(data));
+  };
+
+  const [formData, setFormData] = useState(() => ({
     ...item,
     identification_steps_json: item.identification_steps_json || [],
     rca_steps_json: item.rca_steps_json || [],
     mitigation_logs_json: item.mitigation_logs_json || [],
     linked_failure_mode_ids: item.linked_failure_modes?.map((fm: any) => fm.id) || item.linked_failure_mode_ids || []
-  });
+  }));
+
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('Timeline')
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | 'investigation' | null>(null)
   const [showFailureWizard, setShowFailureWizard] = useState(false)
-  
+
+  // Track server-side changes to prevent redundant syncs
+  const prevItemNormalized = useRef(normalizeForComparison(item));
+  // Track the state we last successfully saved or received to drive auto-save
+  const lastAcknowledgedData = useRef(normalizeForComparison(formData)); // Initial state
+
   useEffect(() => {
-    if (!isEditing) setFormData({ 
-      ...item,
-      identification_steps_json: item.identification_steps_json || [],
-      rca_steps_json: item.rca_steps_json || [],
-      mitigation_logs_json: item.mitigation_logs_json || []
-    })
-  }, [item, isEditing])
+    const incomingNormalized = normalizeForComparison(item);
+
+    // If the server record actually changed, we pull it
+    if (incomingNormalized !== prevItemNormalized.current) {
+      if (!isEditing) {
+        setFormData({ 
+          ...item,
+          identification_steps_json: item.identification_steps_json || [],
+          rca_steps_json: item.rca_steps_json || [],
+          mitigation_logs_json: item.mitigation_logs_json || [],
+          linked_failure_mode_ids: item.linked_failure_modes?.map((fm: any) => fm.id) || item.linked_failure_mode_ids || []
+        });
+        // Also update lastAcknowledgedData so we don't immediately auto-save the same data back
+        lastAcknowledgedData.current = incomingNormalized;
+      }
+      prevItemNormalized.current = incomingNormalized;
+    }
+  }, [item, isEditing]);
+
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
   const [editTimelineData, setEditTimelineData] = useState<any>(null)
   const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -1097,24 +1157,20 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
     }
   }, [formData.timeline])
 
-  // Helper to strip metadata for comparison to prevent infinite save loops
-  const stripMetadata = (data: any) => {
-    const { updated_at, created_at, ...rest } = data;
-    // Also strip metadata from nested arrays
-    if (rest.timeline) rest.timeline = rest.timeline.map(({ updated_at, created_at, ...t }: any) => t);
-    if (rest.mitigations) rest.mitigations = rest.mitigations.map(({ updated_at, created_at, ...m }: any) => m);
-    return JSON.stringify(rest);
-  };
-
-  // Auto-save logic
-  const lastSavedData = useRef(stripMetadata(item))
+  // Auto-save logic with debounce/stability
   useEffect(() => {
-    const currentDataStripped = stripMetadata(formData)
-    if (!isEditing && currentDataStripped !== lastSavedData.current) {
-        onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
-        lastSavedData.current = currentDataStripped
+    if (isEditing) return;
+    
+    const currentNormalized = normalizeForComparison(formData);
+    if (currentNormalized !== lastAcknowledgedData.current) {
+        onSave({ 
+          ...formData, 
+          linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) 
+        });
+        // Optimistically update lastAcknowledgedData to prevent loop
+        lastAcknowledgedData.current = currentNormalized;
     }
-  }, [isEditing, formData, onSave])
+  }, [isEditing, formData, onSave]);
 
   const pInfo = getPriorityInfo(formData.priority)
   const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value.toUpperCase(), label: o.label.toUpperCase() }))
@@ -1141,8 +1197,9 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
             <button 
               onClick={() => {
                 if (isEditing) {
+                  const currentNormalized = normalizeForComparison(formData);
                   onSave({ ...formData, linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) })
-                  lastSavedData.current = stripMetadata(formData)
+                  lastAcknowledgedData.current = currentNormalized;
                 }
                 setIsEditing(!isEditing)
               }}
@@ -1815,22 +1872,68 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          }
 
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
-  const [formData, setFormData] = useState({ ...item })
+  const normalizeForComparison = (data: any) => {
+    if (!data) return "";
+    const clean = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(clean).filter(v => v !== undefined);
+      const newObj: any = {};
+      Object.keys(obj).sort().forEach(key => {
+        if (['updated_at', 'created_at', 'id', 'created_by_user_id'].includes(key)) return;
+        let val = obj[key];
+        if (val === null || val === undefined) return;
+        if (Array.isArray(val) && val.length === 0) return;
+        newObj[key] = clean(val);
+      });
+      return newObj;
+    };
+    return JSON.stringify(clean(data));
+  };
+
+  const [formData, setFormData] = useState(() => ({ 
+    ...item,
+    systems: item.systems || [],
+    impacted_device_ids: item.impacted_device_ids || [],
+    mitigation_items: item.mitigation_items || [],
+    monitoring_items: item.monitoring_items || []
+  }))
   const [isEditing, setIsEditing] = useState(false)
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
+  
+  const prevItemNormalized = useRef(normalizeForComparison(item));
+  const lastAcknowledgedData = useRef(normalizeForComparison(formData));
 
   // Sync formData with item prop when it changes (e.g. from background refresh)
   useEffect(() => {
-    if (!isEditing) {
-      setFormData({ 
-        ...item,
-        systems: item.systems || [],
-        impacted_device_ids: item.impacted_device_ids || [],
-        mitigation_items: item.mitigation_items || [],
-        monitoring_items: item.monitoring_items || []
-      })
+    const incomingNormalized = normalizeForComparison(item);
+    if (incomingNormalized !== prevItemNormalized.current) {
+      if (!isEditing) {
+        setFormData({ 
+          ...item,
+          systems: item.systems || [],
+          impacted_device_ids: item.impacted_device_ids || [],
+          mitigation_items: item.mitigation_items || [],
+          monitoring_items: item.monitoring_items || []
+        })
+        lastAcknowledgedData.current = incomingNormalized;
+      }
+      prevItemNormalized.current = incomingNormalized;
     }
   }, [item, isEditing])
+
+  // Auto-save logic
+  useEffect(() => {
+    if (isEditing) return;
+    const currentNormalized = normalizeForComparison(formData);
+    if (currentNormalized !== lastAcknowledgedData.current) {
+        onSave({ 
+          ...formData,
+          status: safeUpper(formData.status),
+          priority: safeUpper(formData.priority)
+        });
+        lastAcknowledgedData.current = currentNormalized;
+    }
+  }, [isEditing, formData, onSave]);
 
   // Navigation Safety
   useEffect(() => {
@@ -1860,16 +1963,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     }
   })
 
-  const handleSave = () => {
-    const finalData = { 
-      ...formData, 
-      status: safeUpper(formData.status), 
-      priority: safeUpper(formData.priority) 
-    }
-    onSave(finalData)
-    setIsEditing(false)
-  }
-
   const sortedLogs = useMemo(() => {
      return [...(formData.progress_logs || [])].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   }, [formData.progress_logs])
@@ -1897,7 +1990,15 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => {
-                if (isEditing) handleSave()
+                if (isEditing) {
+                  const finalData = { 
+                    ...formData, 
+                    status: safeUpper(formData.status), 
+                    priority: safeUpper(formData.priority) 
+                  }
+                  onSave(finalData)
+                  lastAcknowledgedData.current = normalizeForComparison(finalData);
+                }
                 setIsEditing(!isEditing)
               }} 
               className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
