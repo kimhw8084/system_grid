@@ -913,6 +913,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
   const [isFailureModesOpen, setIsFailureModesOpen] = useState(true)
   const [isSystemContextOpen, setIsSystemContextOpen] = useState(false)
   const [focusedField, setFocusedField] = useState<'evidence' | 'timeline' | 'investigation' | null>(null)
+  const [showFailureWizard, setShowFailureWizard] = useState(false)
   
   useEffect(() => {
     if (!isEditing) setFormData({ 
@@ -1310,14 +1311,27 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       <AnimatePresence>
                          {isFailureModesOpen && (
                             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/20 p-4">
-                               <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
-                                  <SearchableMultiSelect 
-                                     selected={formData.linked_failure_mode_ids || []} 
-                                     onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
-                                     options={filteredFailureModes.map((fm: any) => ({ value: fm.id, label: `${fm.title} [${fm.system_name || fm.system}]` }))} 
-                                     placeholder="Add Failure Modes..." 
-                                     allowCustom={false}
-                                  />
+                         <div className={!isEditing ? 'pointer-events-none opacity-80' : ''}>
+                                  <div className="flex items-center gap-2">
+                                     <div className="flex-1">
+                                        <SearchableMultiSelect 
+                                           selected={formData.linked_failure_mode_ids || []} 
+                                           onChange={(next: number[]) => setFormData({...formData, linked_failure_mode_ids: next})} 
+                                           options={filteredFailureModes.map((fm: any) => ({ value: fm.id, label: `${fm.title} [${fm.system_name || fm.system}]` }))} 
+                                           placeholder="Add Failure Modes..." 
+                                           allowCustom={false}
+                                        />
+                                     </div>
+                                     {isEditing && (
+                                        <button 
+                                           onClick={() => setShowFailureWizard(true)}
+                                           className="p-2.5 bg-rose-600/20 text-rose-400 border border-rose-500/30 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-lg shadow-rose-500/10"
+                                           title="Create New Failure Mode Vector"
+                                        >
+                                           <Plus size={16} />
+                                        </button>
+                                     )}
+                                  </div>
                                </div>
                                <div className="mt-4 overflow-x-auto">
                                   <table className="w-full text-left border-collapse">
@@ -1424,6 +1438,17 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                 </div>
                 {focusedField === 'evidence' && <p className="text-[8px] font-bold uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
              </SectionCard>
+
+             <div className="pt-6 border-t border-white/5 space-y-2 opacity-40 hover:opacity-100 transition-opacity">
+                <div className="flex items-center justify-between px-2">
+                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Record Created</span>
+                   <span className="text-[10px] font-bold text-slate-400">{new Date(formData.created_at).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between px-2">
+                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Last Synchronized</span>
+                   <span className="text-[10px] font-bold text-blue-400">{new Date(formData.updated_at).toLocaleString()}</span>
+                </div>
+             </div>
           </div>
 
           {/* Right Pane with Tabs */}
@@ -1572,8 +1597,9 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                             </div>
                                          ) : (
                                             <>
-                                               <p className="text-[8px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
-                                               <div className="flex items-center gap-3">                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
+                                               <p className="text-[10px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
+                                               <div className="flex items-center gap-3">
+                                                  <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
                                                       <User size={12} className="text-purple-400" />
                                                       <span className="text-[9px] font-bold text-purple-300 uppercase tracking-widest">{e.owner || 'N/A'}</span>
                                                    </div>
@@ -1583,7 +1609,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                       </div>
                                                    )}
                                                 </div>
-                                                
+
                                                 {e.images && e.images.length > 0 && (
                                                    <div className="mt-4 flex gap-2 flex-wrap">
                                                       {e.images.map((img: string, idx: number) => (
@@ -1593,45 +1619,174 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                 )}
                                              </>
                                           )}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-4">
-                                       <div className="text-right shrink-0">
+                                         </div>
+                                         </div>
+                                         <div className="flex flex-col items-end gap-4">
+                                         <div className="text-right shrink-0">
                                           <div className="flex flex-col">
-                                             <span className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">Created: {new Date(e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
-                                             <span className="text-[8px] font-bold text-blue-500/60 uppercase tracking-tighter">Modified: {new Date(e.updated_at || e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                             <span className="text-[9.5px] font-bold text-slate-600 uppercase tracking-tighter">Created: {new Date(e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+                                             <span className="text-[9.5px] font-bold text-blue-500/60 uppercase tracking-tighter">Modified: {new Date(e.updated_at || e.created_at || e.event_time).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
                                           </div>
-                                       </div>
-                                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                         </div>
+                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                           <button onClick={() => startEditingTimeline(e)} className="w-11 h-11 flex items-center justify-center bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20"><Edit2 size={16}/></button>
                                           <button onClick={() => handleDeleteTimeline(e.id)} className="w-11 h-11 flex items-center justify-center bg-rose-500/10 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all border border-rose-500/20"><Trash2 size={16}/></button>
-                                       </div>
-                                    </div>
-                                  </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                    </div>
-                  </>
-                )}
+                                         </div>
+                                         </div>
+                                         </div>
+                                         </div>
+                                         )
+                                         })}
+                                         </div>
+                                         </div>
+                                         </>
+                                         )}
 
-                {activeTab === 'Investigation' && (
-                  <InvestigationTab 
-                    formData={formData} 
-                    setFormData={setFormData} 
-                    isEditing={isEditing} 
-                    failureModes={failureModes}
-                    setFocusedField={setFocusedField}
-                    focusedField={focusedField}
-                  />
-                )}
-                </div>          </div>
-        </div>
-      </motion.div>
-    </div>
-  )
-}
+                                         {activeTab === 'Investigation' && (
+                                         <InvestigationTab 
+                                         formData={formData} 
+                                         setFormData={setFormData} 
+                                         isEditing={isEditing} 
+                                         failureModes={failureModes}
+                                         setFocusedField={setFocusedField}
+                                         focusedField={focusedField}
+                                         />
+                                         )}
+                                         </div>          </div>
+                                         </div>
+
+                                         {/* RCA Metadata Footer for Sidebar */}
+                                         <AnimatePresence>
+                                         {showFailureWizard && (
+                                         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
+                                         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-lg border border-rose-500/20 overflow-hidden shadow-2xl">
+                                         <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+                                         <div>
+                                         <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">Direct Risk Entry</h1>
+                                         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Synched to RCA Context // Logical Discrepancy Guard Active</p>
+                                         </div>
+                                         <button onClick={() => setShowFailureWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+                                         </div>
+                                         <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                                         <SimplifiedFailureWizard 
+                                         restrictedSystems={formData.target_systems || []}
+                                         onComplete={(newFM: any) => {
+                                         setShowFailureWizard(false);
+                                         // Auto-link the new failure mode
+                                         setFormData((prev: any) => ({
+                                         ...prev,
+                                         linked_failure_mode_ids: [...(prev.linked_failure_mode_ids || []), newFM.id]
+                                         }));
+                                         toast.success(`Vector ${newFM.title} Linked to RCA`);
+                                         onSave({ ...formData, linked_failure_mode_ids: [...(formData.linked_failure_mode_ids || []), newFM.id] });
+                                         }} 
+                                         />
+                                         </div>
+                                         </motion.div>
+                                         </div>
+                                         )}
+                                         </AnimatePresence>
+                                         </motion.div>
+                                         </div>
+                                         )
+                                         }
+
+                                         function SimplifiedFailureWizard({ restrictedSystems, onComplete }: any) {
+                                         const [formData, setFormData] = useState<any>({ 
+                                         system_name: restrictedSystems[0] || '', 
+                                         failure_type: 'Software',
+                                         title: '', 
+                                         effect: '', 
+                                         severity: 1, 
+                                         occurrence: 1, 
+                                         detection: 1, 
+                                         affected_assets: []
+                                         })
+
+                                         const queryClient = useQueryClient()
+                                         const { data: devices } = useQuery({ queryKey: ['devices', formData.system_name], enabled: !!formData.system_name, queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${encodeURIComponent(formData.system_name)}`)).json() })
+
+                                         const mutation = useMutation({ 
+                                         mutationFn: async (data: any) => {
+                                         const res = await apiFetch('/api/v1/far/modes', { method: 'POST', body: JSON.stringify(data) })
+                                         return res.json()
+                                         }, 
+                                         onSuccess: (newFM) => { 
+                                         queryClient.invalidateQueries({ queryKey: ['far'] });
+                                         onComplete(newFM); 
+                                         } 
+                                         })
+
+                                         const rpn = formData.severity * formData.occurrence * formData.detection
+
+                                         return (
+                                         <div className="grid grid-cols-12 gap-6 font-bold uppercase tracking-tight">
+                                         <div className="col-span-6 space-y-4">
+                                         <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-1">
+                                         <label className="text-[9px] font-bold text-slate-500 ">Restricted System Context *</label>
+                                         <StyledSelect 
+                                         options={restrictedSystems.map((s: string) => ({ label: s, value: s }))} 
+                                         value={formData.system_name} 
+                                         onChange={e => setFormData({ ...formData, system_name: e.target.value })} 
+                                         />
+                                         </div>
+                                         <div className="space-y-1">
+                                         <label className="text-[9px] font-bold text-slate-500 ">Failure Type *</label>
+                                         <StyledSelect 
+                                         options={[
+                                         { value: 'Software', label: 'Software' },
+                                         { value: 'Hardware', label: 'Hardware' },
+                                         { value: 'Network', label: 'Network' },
+                                         { value: 'Process', label: 'Process' }
+                                         ]} 
+                                         value={formData.failure_type} 
+                                         onChange={e => setFormData({ ...formData, failure_type: e.target.value })} 
+                                         />
+                                         </div>
+                                         </div>
+                                         <div className="space-y-1">
+                                         <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
+                                         <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DB_CONN_POOL_EXHAUSTED" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500" />
+                                         </div>
+                                         <div className="space-y-1">
+                                         <label className="text-[9px] font-bold text-slate-500 ">Effect Description</label>
+                                         <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="Systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500" />
+                                         </div>
+                                         </div>
+
+                                         <div className="col-span-6 space-y-4">
+                                         <div className="bg-white/[0.02] p-5 rounded-lg border border-white/5 space-y-6">
+                                         <div className="grid grid-cols-3 gap-4">
+                                         <div className="space-y-2">
+                                         <label className="text-[10px] text-slate-500 text-center block">S</label>
+                                         <input type="number" min="1" max="10" value={formData.severity} onChange={e => setFormData({...formData, severity: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-rose-500 font-bold" />
+                                         </div>
+                                         <div className="space-y-2">
+                                         <label className="text-[10px] text-slate-500 text-center block">O</label>
+                                         <input type="number" min="1" max="10" value={formData.occurrence} onChange={e => setFormData({...formData, occurrence: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-amber-500 font-bold" />
+                                         </div>
+                                         <div className="space-y-2">
+                                         <label className="text-[10px] text-slate-500 text-center block">D</label>
+                                         <input type="number" min="1" max="10" value={formData.detection} onChange={e => setFormData({...formData, detection: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-sky-400 font-bold" />
+                                         </div>
+                                         </div>
+                                         <div className="flex items-center justify-between px-4 py-3 bg-black/40 border border-white/5 rounded-lg">
+                                         <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">RPN Index:</span>
+                                         <span className="text-2xl font-bold text-white">{rpn}</span>
+                                         </div>
+                                         </div>
+                                         <button 
+                                         disabled={!formData.title || mutation.isPending} 
+                                         onClick={() => mutation.mutate(formData)} 
+                                         className="w-full bg-rose-600 hover:bg-rose-500 text-white py-4 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                                         >
+                                         Commit Failure & Link to RCA
+                                         </button>
+                                         </div>
+                                         </div>
+                                         )
+                                         }
 
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
   const [formData, setFormData] = useState({ ...item })

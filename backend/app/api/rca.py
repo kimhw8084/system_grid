@@ -89,7 +89,10 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     # Handle ISO dates
     for date_field in ["occurrence_at", "acknowledged_at", "detection_at"]:
         if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
-            clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+            try:
+                clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
+            except Exception:
+                pass
         elif date_field in clean_data and not clean_data[date_field]:
             clean_data[date_field] = None
 
@@ -116,7 +119,10 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
             t_clean = filter_valid_columns(models.RcaTimelineEvent, t)
             t_clean["rca_id"] = rca_id
             if 'event_time' in t_clean and isinstance(t_clean['event_time'], str):
-                t_clean['event_time'] = datetime.fromisoformat(t_clean['event_time'].replace('Z', '+00:00'))
+                try:
+                    t_clean['event_time'] = datetime.fromisoformat(t_clean['event_time'].replace('Z', '+00:00'))
+                except Exception:
+                    pass
             db.add(models.RcaTimelineEvent(**t_clean))
 
     # Sync Mitigations
@@ -127,8 +133,20 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
             m_clean["rca_id"] = rca_id
             db.add(models.RcaMitigation(**m_clean))
         
+    db.add(record)
+    await db.flush()
     await db.commit()
-    await db.refresh(record)
+    
+    # Re-fetch with all options to ensure fresh return
+    result = await db.execute(select(models.RcaRecord).options(
+        joinedload(models.RcaRecord.timeline),
+        joinedload(models.RcaRecord.mitigations),
+        joinedload(models.RcaRecord.knowledge_bkm),
+        joinedload(models.RcaRecord.monitoring_config),
+        joinedload(models.RcaRecord.linked_failure_modes)
+    ).filter(models.RcaRecord.id == rca_id))
+    record = result.unique().scalar_one()
+    
     return record
 
 @router.delete("/{rca_id}")
