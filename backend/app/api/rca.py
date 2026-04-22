@@ -18,15 +18,15 @@ def filter_valid_columns(model, data):
 def get_rca_options():
     """Reusable options for deep loading RCA records to satisfy RcaRecordResponse schema."""
     return [
-        joinedload(models.RcaRecord.timeline),
-        joinedload(models.RcaRecord.mitigations),
-        joinedload(models.RcaRecord.knowledge_bkm),
-        joinedload(models.RcaRecord.monitoring_config),
-        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.affected_assets),
-        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
-        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.mitigations),
-        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.prevention_actions),
-        joinedload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas)
+        selectinload(models.RcaRecord.timeline),
+        selectinload(models.RcaRecord.mitigations),
+        selectinload(models.RcaRecord.knowledge_bkm),
+        selectinload(models.RcaRecord.monitoring_config),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.affected_assets),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.mitigations),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.prevention_actions),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas)
     ]
 
 @router.get("/", response_model=List[schemas.RcaRecordResponse])
@@ -83,9 +83,9 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
 @router.put("/{rca_id}", response_model=schemas.RcaRecordResponse)
 async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.RcaRecord).options(
-        joinedload(models.RcaRecord.linked_failure_modes),
-        joinedload(models.RcaRecord.timeline),
-        joinedload(models.RcaRecord.mitigations)
+        selectinload(models.RcaRecord.linked_failure_modes),
+        selectinload(models.RcaRecord.timeline),
+        selectinload(models.RcaRecord.mitigations)
     ).filter(models.RcaRecord.id == rca_id))
     record = result.unique().scalar_one_or_none()
     if not record: raise HTTPException(404, "RCA Record not found")

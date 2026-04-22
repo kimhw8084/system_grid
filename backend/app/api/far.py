@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
@@ -14,11 +14,11 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 @router.get("/modes", response_model=List[schemas.FarFailureModeResponse])
 async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
-        joinedload(models.FarFailureMode.mitigations),
-        joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions),
-        joinedload(models.FarFailureMode.linked_rcas)
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.mitigations),
+        selectinload(models.FarFailureMode.affected_assets),
+        selectinload(models.FarFailureMode.prevention_actions),
+        selectinload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.is_deleted == False)
     
     if system:
@@ -64,11 +64,11 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     
     # Reload with all relationships to avoid MissingGreenlet during serialization
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
-        joinedload(models.FarFailureMode.mitigations),
-        joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions),
-        joinedload(models.FarFailureMode.linked_rcas)
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.mitigations),
+        selectinload(models.FarFailureMode.affected_assets),
+        selectinload(models.FarFailureMode.prevention_actions),
+        selectinload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.id == mode.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
@@ -107,11 +107,11 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     
     # Reload with full relations
     stmt = select(models.FarFailureMode).options(
-        joinedload(models.FarFailureMode.causes).joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm),
-        joinedload(models.FarFailureMode.mitigations),
-        joinedload(models.FarFailureMode.affected_assets),
-        joinedload(models.FarFailureMode.prevention_actions),
-        joinedload(models.FarFailureMode.linked_rcas)
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.mitigations),
+        selectinload(models.FarFailureMode.affected_assets),
+        selectinload(models.FarFailureMode.prevention_actions),
+        selectinload(models.FarFailureMode.linked_rcas)
     ).filter(models.FarFailureMode.id == mode_id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
@@ -172,8 +172,8 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     
     stmt = select(models.FarFailureCause).options(
-        joinedload(models.FarFailureCause.failure_modes),
-        joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm)
+        selectinload(models.FarFailureCause.failure_modes),
+        selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm)
     ).filter(models.FarFailureCause.id == cause.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()

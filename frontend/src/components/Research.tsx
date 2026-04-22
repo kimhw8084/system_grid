@@ -1639,11 +1639,11 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
           </div>
 
           {/* Right Pane with Tabs */}
-          <div className="flex-1 flex flex-col bg-[#020617]/30 overflow-hidden">
+          <div className="flex-1 flex flex-col bg-[#020617]/30 overflow-visible">
              {/* Navigation Tabs */}
              <div className="flex bg-white/5 border-b border-white/5 p-1 gap-1 shrink-0">
                 {['Timeline', 'Investigation'].map(tab => (
-                   <button 
+                   <button
                      key={tab}
                      onClick={() => setActiveTab(tab)}
                      className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
@@ -1655,8 +1655,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                 ))}
              </div>
 
-             <div className="flex-1 overflow-hidden flex flex-col">
-                {activeTab === 'Timeline' && (
+             <div className="flex-1 overflow-visible flex flex-col">                {activeTab === 'Timeline' && (
                   <>
                     <div className="p-6 border-b border-white/5 bg-white/5">
                         <div className="grid grid-cols-12 gap-3 items-end">
@@ -2124,9 +2123,9 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
            ))}
         </div>
 
-        <div className="flex-1 overflow-hidden p-8">
+        <div className="flex-1 overflow-visible p-8">
            {activeTab === 'CONTEXT' && (
-              <div className="h-full flex gap-8 overflow-hidden">
+              <div className="h-full flex gap-8 overflow-visible">
                  {/* Analytical Fields */}
                  <div className="w-[500px] flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-4">
                     <PriorityGauge value={formData.priority} onChange={(v) => setFormData({...formData, priority: v})} disabled={!isEditing} type="RESEARCH" />
@@ -2391,6 +2390,12 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
     syncMutation.mutate({ id: fmId, metadata: newMetadata })
   }
 
+  const updateSyncText = (fmId: number, type: string, text: string) => {
+    const fm = (failureModes || []).find((f: any) => f.id === fmId)
+    const newMetadata = { ...(fm?.metadata_json || {}), [`sync_${type.toLowerCase()}`]: text }
+    syncMutation.mutate({ id: fmId, metadata: newMetadata })
+  }
+
   const statusOptions = [
     { value: 'NOT_STARTED', label: 'NOT STARTED', color: 'text-slate-500' },
     { value: 'IN_PROGRESS', label: 'IN PROGRESS', color: 'text-blue-400' },
@@ -2403,8 +2408,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden p-6 gap-8">
-       {/* 1. Failure Resolution Matrix (Header) */}
+    <div className="flex-1 flex flex-col overflow-visible p-6 gap-8">       {/* 1. Failure Resolution Matrix (Header) */}
        <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-visible shadow-2xl">
           <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
              <div className="flex items-center gap-3">
@@ -2416,8 +2420,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
              </div>
           </div>
           
-          <div className="overflow-visible max-h-64 overflow-y-auto custom-scrollbar">
-             <table className="w-full text-left border-collapse">
+          <div className="overflow-visible custom-scrollbar">             <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 z-10">
                    <tr className="border-b border-white/10 bg-black/40 backdrop-blur-md">
                       <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500">Linked Failure Mode</th>
@@ -2785,7 +2788,7 @@ function ActionMatrix({ selectedFailure, syncMutation, updateSyncText, settingsO
   const selectedCause = useMemo(() => selectedFailure.causes?.find((c:any) => c.id === selectedCauseId), [selectedFailure.causes, selectedCauseId])
 
   return (
-    <div className="h-full flex flex-col gap-6 overflow-hidden">
+    <div className="h-full flex flex-col gap-6 overflow-visible">
        <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-2 scrollbar-hide">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest shrink-0">Select Cause:</span>
           {(selectedFailure.causes || []).map((cause: any) => (
