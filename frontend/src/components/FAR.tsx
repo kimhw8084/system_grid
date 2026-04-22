@@ -1068,7 +1068,15 @@ function CausalTab({ mode, onUpdate }: any) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
+          <div className="flex items-center gap-4">
+             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
+             {mode.linked_rcas?.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                   <Activity size={12} className="text-purple-400" />
+                   <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">{mode.linked_rcas.length} Research Cases Linked</span>
+                </div>
+             )}
+          </div>
           <button onClick={() => setIsAdding(true)} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
        </div>
        
@@ -1086,18 +1094,18 @@ function CausalTab({ mode, onUpdate }: any) {
              <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
                 {mode.causes?.map((c: any) => (
                   <tr key={c.id} className="hover:bg-white/[0.02] transition-colors group">
-                     <td className="px-8 py-5 text-white ">{c.cause_text}</td>
+                     <td className="px-8 py-5 text-white normal-case leading-relaxed">{c.cause_text}</td>
                      <td className="px-8 py-5 text-center">
                         <div className="flex items-center justify-center gap-2">
                            <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
                               <div className="h-full bg-amber-500" style={{ width: `${c.occurrence_level * 10}%` }} />
                            </div>
-                           <span className="text-amber-500 w-4">{c.occurrence_level}</span>
+                           <span className="text-amber-500 w-4 font-black">{c.occurrence_level}</span>
                         </div>
                      </td>
-                     <td className="px-8 py-5 text-slate-400">{c.responsible_team || 'UNASSIGNED'}</td>
+                     <td className="px-8 py-5 text-slate-400 font-black">{c.responsible_team || 'UNASSIGNED'}</td>
                      <td className="px-8 py-5 text-center">
-                        <span className={`px-3 py-1 rounded-lg text-[9px] font-bold ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
+                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
                            {c.resolutions?.length || 0} BKMS
                         </span>
                      </td>
@@ -1378,8 +1386,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
                    <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
                       <th className="px-8 py-4">Shield Type</th>
                       <th className="px-8 py-4">Deployment Protocol / Plan</th>
+                      <th className="px-8 py-4 text-center">Research</th>
                       <th className="px-8 py-4 text-center">Status</th>
-                      <th className="px-8 py-4">Owner Unit</th>
                       <th className="px-8 py-4 text-right">Ops</th>
                    </tr>
                 </thead>
@@ -1387,28 +1395,39 @@ function RoadmapTab({ mode, onUpdate }: any) {
                    {mode.mitigations?.map((m: any) => (
                      <tr key={m.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="px-8 py-5">
-                           <span className={`px-3 py-1 rounded-lg text-[9px] font-bold ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
                         </td>
                         <td className="px-8 py-5 text-white  max-w-xl">
                            <div className="space-y-1">
                               {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
-                                   <span className="text-slate-600 text-[9px] font-bold">{i + 1}</span>
-                                   <span className="normal-case">{line}</span>
+                                   <span className="text-slate-600 text-[9px] font-black italic">{i + 1}</span>
+                                   <span className="normal-case font-medium text-slate-300">{line}</span>
                                 </div>
                               ))}
                               {m.monitoring_item && (
                                  <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-lg mt-2 group/item hover:bg-sky-500/10 transition-all">
                                     <Monitor size={14} className="text-sky-400" />
-                                    <span className="text-sky-400 tracking-tight normal-case">Linked Monitor: {m.monitoring_item.title}</span>
+                                    <span className="text-sky-400 tracking-tight normal-case font-black">Linked Monitor: {m.monitoring_item.title}</span>
                                  </div>
                               )}
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
-                           <span className="px-3 py-1 bg-slate-800 border border-white/10 rounded-lg text-[9px] font-bold text-slate-400">NOMINAL</span>
+                           {mode.linked_rcas?.length > 0 ? (
+                              <div className="flex flex-col items-center gap-1">
+                                 <Activity size={14} className="text-purple-400" />
+                                 <span className="text-[8px] font-black text-purple-400 uppercase">Linked Case</span>
+                              </div>
+                           ) : (
+                              <span className="text-[8px] font-bold text-slate-700 uppercase">None</span>
+                           )}
                         </td>
-                        <td className="px-8 py-5 text-slate-500">{m.responsible_team}</td>
+                        <td className="px-8 py-5 text-center">
+                           <span className={`px-3 py-1 rounded-lg text-[9px] font-black border ${m.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-white/10'}`}>
+                              {m.status?.toUpperCase() || 'PLANNED'}
+                           </span>
+                        </td>
                         <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                            <button className="p-2 text-slate-600 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
                         </td>

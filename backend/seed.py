@@ -581,7 +581,7 @@ def seed():
             ("Kernel Memory Leak Analysis", "General", "MEDIUM", ["K8S-CLUSTER-01"], "Infrastructure", "Software Bug"),
             ("Database Query Optimization", "Maintenance", "LOW", ["SAP-PROD"], "Database", "Performance"),
             ("External API Latency Study", "Troubleshooting", "HIGH", ["GLOBAL-DNS"], "Network", "External Factor"),
-            ("Security Audit - Q2", "Security", "URGENT", ["FIN-CORE"], "Security", "Compliance")
+            ("Security Audit - Q2", "Security", "HIGHEST", ["FIN-CORE"], "Security", "Compliance")
         ]
         for title, cat, priority, sys_list, res_domain, fail_domain in investigation_seeds:
             # Ensure impacted assets actually belong to the target systems

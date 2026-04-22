@@ -49,7 +49,7 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.RcaRecord, data)
     
     # Priority Mapping
-    p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10}
+    p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 10}
     if "priority" in clean_data and isinstance(clean_data["priority"], str):
         clean_data["priority"] = p_map.get(clean_data["priority"].upper(), 1)
 
@@ -97,7 +97,7 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     clean_data = filter_valid_columns(models.RcaRecord, data)
     
     # Priority Mapping
-    p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10}
+    p_map = {"LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 10}
     if "priority" in clean_data and isinstance(clean_data["priority"], str):
         clean_data["priority"] = p_map.get(clean_data["priority"].upper(), 1)
 

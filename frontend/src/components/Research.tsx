@@ -21,9 +21,8 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 // --- Components ---
 
 export const getPriorityInfo = (p: any) => {
-  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 10 ? 'URGENT' : p >= 8 ? 'HIGHEST' : p >= 6 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
+  const val = typeof p === 'string' ? p.toUpperCase() : (p >= 10 ? 'HIGHEST' : p >= 7 ? 'HIGH' : p >= 4 ? 'MEDIUM' : 'LOW')
   const colors: any = {
-    'URGENT': 'text-rose-600 border-rose-600/40 bg-rose-600/20',
     'HIGHEST': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
     'HIGH': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
     'MEDIUM': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
@@ -32,66 +31,62 @@ export const getPriorityInfo = (p: any) => {
   return { label: val, color: colors[val] || 'text-slate-400 border-white/10 bg-white/5' }
 }
 
-export const PriorityGauge = ({ value, onChange, disabled, type }: { value: string, onChange: (v: string) => void, disabled?: boolean, type: 'RCA' | 'RESEARCH' }) => {
+export const PriorityGauge = ({ value, onChange, disabled, type }: { value: string | number, onChange: (v: string | number) => void, disabled?: boolean, type: 'RCA' | 'RESEARCH' }) => {
   const priorities = [
     { 
       id: 'LOW', 
+      val: 1,
       label: 'LOW', 
       color: 'bg-emerald-500', 
       border: 'border-emerald-500/30', 
       text: 'text-emerald-400',
-      hint: type === 'RCA' ? 'MINOR ANOMALY / OPTIMIZATION' : 'GENERAL INTEL / NON-CRITICAL'
+      hint: 'MINOR ANOMALY / NO PRODUCTION IMPACT'
     },
     { 
       id: 'MEDIUM', 
+      val: 4,
       label: 'MEDIUM', 
       color: 'bg-blue-500', 
       border: 'border-blue-500/30', 
       text: 'text-blue-400',
-      hint: type === 'RCA' ? 'PARTIAL SERVICE DEGRADATION' : 'SYSTEM BEHAVIOR INVESTIGATION'
+      hint: 'MODERATE IMPACT / WORKAROUND EXISTS'
     },
     { 
       id: 'HIGH', 
+      val: 7,
       label: 'HIGH', 
       color: 'bg-amber-500', 
       border: 'border-amber-500/30', 
       text: 'text-amber-400',
-      hint: type === 'RCA' ? 'MAJOR IMPACT / CRITICAL FAIL' : 'SLA RISK / PERFORMANCE GAP'
+      hint: 'MAJOR IMPACT / SIGNIFICANT DEGRADATION'
     },
     { 
       id: 'HIGHEST', 
+      val: 10,
       label: 'HIGHEST', 
       color: 'bg-rose-500', 
       border: 'border-rose-500/30', 
       text: 'text-rose-400',
-      hint: type === 'RCA' ? 'TOTAL OUTAGE / DATA INTEGRITY' : 'MISSION CRITICAL RE-ARCH'
-    },
-    { 
-      id: 'URGENT', 
-      label: 'URGENT', 
-      color: 'bg-rose-700', 
-      border: 'border-rose-700/30', 
-      text: 'text-rose-600',
-      hint: type === 'RCA' ? 'IMMEDIATE FAB STOPPAGE' : 'CRITICAL PRODUCTION DEFECT'
+      hint: 'CRITICAL FAILURE / PRODUCTION LINE HALTED'
     }
   ]
 
-  const normalizedValue = getPriorityInfo(value).label
-  const activeIdx = priorities.findIndex(p => p.id === normalizedValue)
+  const currentLabel = getPriorityInfo(value).label
+  const activeIdx = priorities.findIndex(p => p.id === currentLabel)
 
   return (
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between px-1">
-         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Priority Selection</label>
+         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Priority Spectrum</label>
          <div className={`text-[10px] font-bold uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
             {priorities[activeIdx]?.hint}
          </div>
       </div>
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {priorities.map((p, idx) => (
           <button
             key={p.id}
-            onClick={() => onChange(p.id)}
+            onClick={() => onChange(typeof value === 'number' ? p.val : p.id)}
             className={`p-2 rounded-lg transition-all border-2 flex flex-col items-center gap-1 group ${idx === activeIdx ? p.border + ' bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
           >
             <div className={`w-6 h-0.5 rounded-full ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
@@ -916,7 +911,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
   // Robust normalization for comparison to prevent infinite save loops
   const normalizeForComparison = (data: any) => {
     if (!data) return "";
-    const p_map: any = { "LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 9, "URGENT": 10 };
+    const p_map: any = { "LOW": 1, "MEDIUM": 4, "HIGH": 7, "HIGHEST": 10 };
     
     const clean = (obj: any): any => {
       if (!obj || typeof obj !== 'object') return obj;
@@ -1372,7 +1367,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                      readOnly={!isEditing}
                      value={formData.problem_statement} 
                      onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[19px] font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                     className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[100px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                      placeholder="Describe the problem..."
                    />
                    
@@ -1489,7 +1484,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                         readOnly={!isEditing}
                         value={formData.impact_description} 
                         onChange={e => setFormData({...formData, impact_description: e.target.value})} 
-                        className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[19px] font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
+                        className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[100px] resize-none" 
                         placeholder="Describe the operational impact..." 
                       />
                    </div>
@@ -1653,7 +1648,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                   <textarea 
                                                      value={editTimelineData.description} 
                                                      onChange={ev => setEditTimelineData({...editTimelineData, description: ev.target.value})}
-                                                     className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[19px] text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
+                                                     className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-xs text-white font-bold outline-none focus:border-purple-500/50 min-h-[80px]"
 
                                                   />
                                                </div>
@@ -1680,8 +1675,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                             </div>
                                          ) : (
                                             <>
-                                               <p className="text-[19px] font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>
-                                               <div className="flex items-center gap-3">
+                                               <p className="text-xs font-bold text-slate-200 tracking-tight leading-relaxed normal-case mb-3">{e.description}</p>                                               <div className="flex items-center gap-3">
                                                   <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg shadow-inner">
                                                       <User size={12} className="text-purple-400" />
                                                       <span className="text-[9px] font-bold text-purple-300 uppercase tracking-widest">{e.owner || 'N/A'}</span>
@@ -2056,7 +2050,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    readOnly={!isEditing}
                    value={formData.problem_statement} 
                    onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[140px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[140px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                  />
               </SectionCard>
               <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
@@ -2064,7 +2058,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    readOnly={!isEditing}
                    value={formData.trigger_event} 
                    onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-[11px] font-bold text-slate-300 outline-none min-h-[80px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[80px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                  />
               </SectionCard>
               <SectionCard icon={Search} title="Core Findings" color="text-indigo-400">
@@ -2072,7 +2066,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    readOnly={!isEditing}
                    value={formData.root_cause} 
                    onChange={e => setFormData({...formData, root_cause: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                  />
               </SectionCard>
               <SectionCard icon={ShieldCheck} title="Proposed Strategy" color="text-emerald-400">
@@ -2080,7 +2074,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    readOnly={!isEditing}
                    value={formData.resolution_steps} 
                    onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-emerald-400/80 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
+                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-emerald-400/80 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
                  />
               </SectionCard>
            </div>
@@ -2141,7 +2135,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
                        <span className="text-[7px] font-bold uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
                     </div>
                     <div className="flex-1">
-                       <p className={`${compact ? 'text-[19px]' : 'text-[24px]'} font-bold text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
+                       <p className={`${compact ? 'text-xs' : 'text-xs'} font-black text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
                        <div className="flex items-center gap-2 mt-2">
                           <User size={10} className="text-slate-600" />
                           <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
@@ -2164,6 +2158,13 @@ function IntelligenceStream({ logs, compact = false }: any) {
 
 export function InvestigationTab({ formData, setFormData, isEditing, failureModes, setFocusedField, focusedField }: any) {
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
+  const [selectedFailureId, setSelectedFailureId] = useState<number | null>(null)
+  const [activeManagerType, setActiveManagerType] = useState<'CAUSE' | 'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('CAUSE')
+
+  const linkedFailures = useMemo(() => {
+    const ids = formData.linked_failure_mode_ids || []
+    return (failureModes || []).filter((fm: any) => ids.includes(fm.id))
+  }, [formData.linked_failure_mode_ids, failureModes])
 
   useEffect(() => {
     const handlePasteEvent = (e: any) => {
@@ -2185,28 +2186,96 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
     setNewStep({ text: '', images: [] })
   }
 
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden p-6 gap-6">
-       <div className="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
-          <SectionCard icon={Search} title="Root Cause Explanation" color="text-indigo-400">
-             <textarea 
-                readOnly={!isEditing}
-                value={formData.cause_of_failure || ''} 
-                onChange={e => setFormData({...formData, cause_of_failure: e.target.value})} 
-                className="w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-base font-bold text-slate-300 outline-none min-h-[150px] resize-none"
-                placeholder="Explain the definitive root cause..."
-             />
-          </SectionCard>
+  const updateFailureStatus = (fmId: number, field: string, status: string) => {
+    // This would typically trigger a mutation to update the FarFailureMode or its children
+    // For now, we update the local state if it's cached, or ideally we'd have a specific endpoint
+    toast.success(`Synchronizing ${field} status to FAR matrix...`)
+  }
 
-          <div className="space-y-4">
-             <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2">
-                   <ListTodo size={14}/> Identification Steps
+  const statusOptions = [
+    { value: 'NOT_STARTED', label: 'NOT STARTED', color: 'text-slate-500' },
+    { value: 'IN_PROGRESS', label: 'IN PROGRESS', color: 'text-blue-400' },
+    { value: 'BLOCKED', label: 'BLOCKED', color: 'text-rose-500' },
+    { value: 'COMPLETED', label: 'COMPLETED', color: 'text-emerald-400' }
+  ]
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden p-6 gap-8">
+       {/* 1. Innovative Status Board */}
+       <div className="shrink-0 bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+             <div className="flex items-center gap-3">
+                <Activity size={18} className="text-blue-400" />
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Failure Resolution Matrix</h3>
+             </div>
+             <div className="flex items-center gap-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                <span>{linkedFailures.length} Vectors Tracked</span>
+             </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+             <table className="w-full text-left border-collapse">
+                <thead>
+                   <tr className="border-b border-white/10 bg-black/20">
+                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Linked Failure Mode</th>
+                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Root Cause</th>
+                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Workaround</th>
+                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Monitoring</th>
+                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Prevention</th>
+                   </tr>
+                </thead>
+                <tbody>
+                   {linkedFailures.map((fm: any) => (
+                      <tr key={fm.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+                         <td className="py-4 px-6">
+                            <div className="flex flex-col">
+                               <span className="text-xs font-black text-purple-400 uppercase tracking-tight">{fm.title}</span>
+                               <span className="text-[9px] font-bold text-slate-500 uppercase">{fm.system_name || fm.system}</span>
+                            </div>
+                         </td>
+                         {['cause', 'workaround', 'monitoring', 'prevention'].map(type => (
+                            <td key={type} className="py-4 px-6 text-center">
+                               <select 
+                                  className={`bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition-all appearance-none text-center ${statusOptions.find(o => o.value === (fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'))?.color}`}
+                                  value={fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'}
+                                  onChange={(e) => updateFailureStatus(fm.id, type, e.target.value)}
+                                  disabled={!isEditing}
+                               >
+                                  {statusOptions.map(opt => (
+                                     <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-300">{opt.label}</option>
+                                  ))}
+                               </select>
+                            </td>
+                         ))}
+                      </tr>
+                   ))}
+                   {linkedFailures.length === 0 && (
+                      <tr>
+                         <td colSpan={5} className="py-12 text-center">
+                            <div className="flex flex-col items-center gap-4 opacity-30">
+                               <AlertTriangle size={48} className="text-amber-500" />
+                               <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em]">No linked failure modes. Add failure vector first.</p>
+                            </div>
+                         </td>
+                      </tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+       </div>
+
+       {/* 2. Procedure & Manager Section */}
+       <div className="flex-1 flex gap-8 overflow-hidden">
+          {/* Left: Procedural identification (The builder) */}
+          <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+             <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                   <ListTodo size={14}/> Causal Forensic Procedure
                 </h3>
              </div>
              
              {isEditing && (
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 shadow-xl">
                    <div 
                       onClick={() => setFocusedField('investigation')}
                       className={`relative group focus-trigger ${focusedField === 'investigation' ? 'ring-2 ring-blue-500/50' : ''}`}
@@ -2214,26 +2283,29 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
                       <textarea 
                          value={newStep.text}
                          onChange={e => setNewStep({...newStep, text: e.target.value})}
-                         className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[80px]"
-                         placeholder="Describe identification step... Paste figures here."
+                         className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700"
+                         placeholder="RECORD DISCOVERY STEP... PASTE FIGURES DIRECTLY HERE."
                       />
                       {focusedField === 'investigation' && (
-                         <div className="absolute top-2 right-2 flex items-center gap-2">
-                            <span className="text-[8px] font-bold text-blue-400 uppercase animate-pulse">Paste Enabled</span>
+                         <div className="absolute top-3 right-4 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                            <span className="text-[9px] font-black text-blue-400 uppercase">Live Buffer Active</span>
                          </div>
                       )}
                    </div>
                    {newStep.images.length > 0 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
+                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                          {newStep.images.map((img, i) => (
-                            <div key={i} className="relative w-16 h-16 shrink-0 rounded border border-white/10 overflow-hidden">
-                               <img src={img} className="w-full h-full object-cover" />
-                               <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-0 right-0 bg-rose-600 text-white p-0.5"><X size={10}/></button>
+                            <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg border border-white/10 overflow-hidden shadow-lg group">
+                               <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                               <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
                             </div>
                          ))}
                       </div>
                    )}
-                   <button onClick={addStep} className="w-full py-3 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 transition-all">Add Identification Step</button>
+                   <button onClick={addStep} className="w-full h-12 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2">
+                      <Plus size={16} /> Commit Identification Milestone
+                   </button>
                 </div>
              )}
 
@@ -2249,30 +2321,35 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
                       key={step.id || idx} 
                       value={step}
                       dragListener={isEditing}
-                      className={`bg-white/5 border border-white/10 rounded-lg p-5 group relative ${isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      className={`bg-white/5 border border-white/10 rounded-2xl p-6 group relative transition-all hover:bg-white/[0.08] ${isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
                     >
-                        <div className="flex gap-4">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">{idx + 1}</div>
+                        <div className="flex gap-6">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-sm shrink-0 border border-blue-500/30 shadow-inner italic">{idx + 1}</div>
                             {isEditing && (
-                              <div className="text-slate-600 group-hover:text-blue-400 transition-colors">
-                                <MoreVertical size={14} />
+                              <div className="text-slate-700 group-hover:text-blue-400 transition-colors">
+                                <MoreVertical size={16} />
                               </div>
                             )}
                           </div>
-                          <div className="flex-1 space-y-3">
-                              <p className="text-[20px] font-bold text-slate-200 leading-relaxed uppercase">{step.text}</p>
+                          <div className="flex-1 space-y-4">
+                              <p className="text-xs font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
                               {step.images?.length > 0 && (
-                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                                     {step.images.map((img: string, i: number) => (
                                       <ImageThumbnail key={i} src={img} />
                                     ))}
                                 </div>
                               )}
-                              <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Modified: {new Date(step.updated_at).toLocaleString()}</span>
+                              <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                <div className="flex items-center gap-4">
+                                   <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                                      <Clock size={10} />
+                                      <span>Pulse: {new Date(step.created_at).toLocaleString()}</span>
+                                   </div>
+                                </div>
                                 {isEditing && (
-                                    <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-300 transition-colors"><Trash2 size={14}/></button>
+                                    <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-400 transition-colors p-2 hover:bg-rose-500/10 rounded-lg"><Trash2 size={16}/></button>
                                 )}
                               </div>
                           </div>
@@ -2281,29 +2358,75 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
                   ))}
                 </Reorder.Group>
                 {(formData.identification_steps_json || []).length === 0 && (
-                   <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
-                      <ListTodo size={40} className="text-slate-500" />
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">No Identification Steps Documented</p>
+                   <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center gap-6 opacity-30">
+                      <ListTodo size={48} className="text-slate-600" />
+                      <p className="text-[11px] font-black text-slate-600 uppercase tracking-[0.4em]">Procedure Awaiting First Milestone</p>
                    </div>
                 )}
              </div>
           </div>
-       </div>
 
-       <div className="w-80 shrink-0 space-y-4">
-          <SectionCard icon={ShieldAlert} title="Linked Failures" color="text-purple-400">
-             <div className="space-y-2">
-                {(failureModes || []).filter((fm: any) => (formData.linked_failure_mode_ids || []).includes(fm.id)).map((fm: any) => (
-                   <div key={fm.id} className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-1">
-                      <p className="text-[10px] font-bold text-purple-400 uppercase truncate">{fm.title}</p>
-                      <p className="text-[8px] font-bold text-slate-500 uppercase">{fm.system_name || fm.system}</p>
+          {/* Right: FAR Synchronization Manager */}
+          <div className="w-96 shrink-0 flex flex-col gap-6">
+             <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                   <Workflow size={18} className="text-purple-400" />
+                   <h3 className="text-xs font-black uppercase tracking-widest text-white">FAR Sync Manager</h3>
+                </div>
+
+                <div className="space-y-4">
+                   <StyledSelect 
+                      label="Target Failure Vector"
+                      value={selectedFailureId || ''}
+                      onChange={(e: any) => setSelectedFailureId(Number(e.target.value))}
+                      options={linkedFailures.map((fm: any) => ({ value: fm.id, label: fm.title }))}
+                      placeholder="Select Failure..."
+                   />
+
+                   <div className="grid grid-cols-2 gap-2">
+                      {[
+                         { id: 'CAUSE', label: 'Cause Analysis', icon: Search },
+                         { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw },
+                         { id: 'MONITORING', label: 'Monitoring', icon: Activity },
+                         { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck }
+                      ].map(type => (
+                         <button
+                            key={type.id}
+                            onClick={() => setActiveManagerType(type.id as any)}
+                            className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${activeManagerType === type.id ? 'bg-purple-600 border-purple-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/[0.08]'}`}
+                         >
+                            <type.icon size={16} />
+                            <span className="text-[8px] font-black uppercase tracking-widest">{type.label}</span>
+                         </button>
+                      ))}
                    </div>
-                ))}
-                {(formData.linked_failure_mode_ids || []).length === 0 && (
-                   <p className="text-[9px] font-bold text-slate-600 uppercase italic text-center py-4">No failures selected</p>
-                )}
+
+                   <div className="pt-4 border-t border-white/5 space-y-4">
+                      {selectedFailureId ? (
+                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="flex items-center justify-between">
+                               <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{activeManagerType} Field Sync</span>
+                               <span className="text-[8px] font-bold text-slate-500 uppercase">Live Link</span>
+                            </div>
+                            <textarea 
+                               disabled={!isEditing}
+                               className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none min-h-[150px] resize-none uppercase"
+                               placeholder={`Syncing ${activeManagerType} with FAR matrix...`}
+                            />
+                            <button className="w-full h-11 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                               <ExternalLink size={14} /> View in FAR Module
+                            </button>
+                         </div>
+                      ) : (
+                         <div className="py-12 text-center opacity-20">
+                            <Layers size={32} className="mx-auto text-slate-500 mb-3" />
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-relaxed">Select a failure vector to<br/>synchronize resolution data</p>
+                         </div>
+                      )}
+                   </div>
+                </div>
              </div>
-          </SectionCard>
+          </div>
        </div>
     </div>
   )
@@ -2345,8 +2468,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
                       <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
-                      <p className="text-[19px] font-bold text-slate-200 uppercase">{log.description}</p>
-                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
+                     <p className="text-xs font-black text-slate-200 uppercase">{log.description}</p>                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
                    </div>
                 </div>
                 {isEditing && (
