@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink } from 'lucide-react'
+import ForceGraph2D from 'react-force-graph-2d'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -922,6 +923,11 @@ export default function AssetTemp() {
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
 
+  const { data: allConnections } = useQuery({ 
+    queryKey: ['connections-map-all'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+  })
+
   const mutation = useMutation({
     mutationFn: async ({ data }: any) => {
       const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
@@ -1240,6 +1246,9 @@ export default function AssetTemp() {
                 <button onClick={() => setViewMode('report')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                     <FileText size={14}/> <span>List</span>
                 </button>
+                <button onClick={() => setViewMode('map')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'map' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    <Globe size={14}/> <span>Map</span>
+                </button>
            </div>
 
            {viewMode === 'grid' && (
@@ -1423,7 +1432,7 @@ export default function AssetTemp() {
             )}
           </AnimatePresence>
         </div>
-      ) : (
+      ) : viewMode === 'report' ? (
         <AssetReportView 
            assets={inventoryAssets} 
            selectedId={selectedAssetId} 
@@ -1433,6 +1442,14 @@ export default function AssetTemp() {
            onViewServiceDetails={(s: any) => setActiveServiceDetails(s)}
            onEditService={(s: any) => setActiveServiceEdit(s)}
         />
+      ) : (
+        <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
+           <AssetMap 
+             assets={inventoryAssets} 
+             connections={allConnections || []}
+             systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
+           />
+        </div>
       )}
       <StatusBulkUpdateModal
         isOpen={isBulkStatusOpen}
@@ -1636,15 +1653,15 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   const queryClient = useQueryClient()
 
   // Source all network info from the connections table (network view's source)
-  const { data: allConnections, isLoading: isConnsLoading } = useQuery({ 
+  const { data: connectionsData, isLoading: isConnsLoading } = useQuery({ 
     queryKey: ['connections'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
   })
 
   const connections = useMemo(() => {
-    if (!allConnections) return []
-    return allConnections.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId)
-  }, [allConnections, deviceId])
+    if (!connectionsData) return []
+    return connectionsData.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId)
+  }, [connectionsData, deviceId])
 
   if (isConnsLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
 
@@ -1747,7 +1764,7 @@ const SecurityTab = ({ device }: { device: any }) => {
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json())
   })
 
-  const { data: allConnections } = useQuery({ 
+  const { data: fabricConnections } = useQuery({ 
     queryKey: ['connections'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
   })
@@ -1760,7 +1777,7 @@ const SecurityTab = ({ device }: { device: any }) => {
     if (device?.management_ip) ips.push({ value: device.management_ip, label: `Mgmt: ${device.management_ip}` })
     
     // Add all IPs discovered in the fabric (connections) for this asset
-    const relatedConns = allConnections?.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
+    const relatedConns = fabricConnections?.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
     relatedConns.forEach((c: any) => {
       const isSrc = c.source_device_id === deviceId
       const ip = isSrc ? c.source_ip : c.target_ip
@@ -1783,7 +1800,7 @@ const SecurityTab = ({ device }: { device: any }) => {
     })
     
     return Array.from(uniqueIPsMap.values())
-  }, [device, allConnections, deviceId])
+  }, [device, fabricConnections, deviceId])
 
 
   const mutation = useMutation({    mutationFn: async (data: any) => {
@@ -2945,6 +2962,191 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
           {isSaving && <RefreshCcw size={14} className="animate-spin" />}
           <span>Save Asset</span>
         </button>
+      </div>
+    </div>
+  )
+}
+
+function AssetMap({ assets, connections, systemsList }: any) {
+  const [selectedSystems, setSelectedSystems] = useState<string[]>([])
+  const [depth, setDepth] = useState(1)
+  const [selectedNode, setSelectedNode] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const graphData = useMemo(() => {
+    // 1. Build initial nodes from selected systems or search
+    let rootNodes = assets.filter((a: any) => 
+      (selectedSystems.length === 0 || selectedSystems.includes(a.system)) &&
+      (!searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+
+    const nodes = new Map<number, any>()
+    const links: any[] = []
+    const processedNodes = new Set<number>()
+
+    const addConnections = (currentNodeIds: number[], currentDepth: number) => {
+      if (currentDepth > depth) return
+      
+      const nextNodeIds: number[] = []
+      
+      connections.forEach((conn: any) => {
+        if (currentNodeIds.includes(conn.source_device_id) || currentNodeIds.includes(conn.target_device_id)) {
+          const srcId = conn.source_device_id
+          const dstId = conn.target_device_id
+          
+          const src = assets.find((a: any) => a.id === srcId)
+          const dst = assets.find((a: any) => a.id === dstId)
+          
+          if (src && dst) {
+            if (!nodes.has(srcId)) nodes.set(srcId, { ...src, id: srcId, label: src.name })
+            if (!nodes.has(dstId)) nodes.set(dstId, { ...dst, id: dstId, label: dst.name })
+            
+            links.push({ source: srcId, target: dstId, type: conn.connection_type })
+            
+            if (!processedNodes.has(srcId)) nextNodeIds.push(srcId)
+            if (!processedNodes.has(dstId)) nextNodeIds.push(dstId)
+          }
+        }
+      })
+      
+      currentNodeIds.forEach(id => processedNodes.add(id))
+      if (nextNodeIds.length > 0) addConnections(nextNodeIds, currentDepth + 1)
+    }
+
+    if (rootNodes.length > 0) {
+      rootNodes.forEach((a: any) => nodes.set(a.id, { ...a, id: a.id, label: a.name }))
+      addConnections(rootNodes.map((a: any) => a.id), 1)
+    }
+
+    return {
+      nodes: Array.from(nodes.values()),
+      links: links
+    }
+  }, [assets, connections, selectedSystems, depth, searchTerm])
+
+  return (
+    <div className="h-full flex flex-col relative">
+      {/* Controls Overlay */}
+      <div className="absolute top-6 left-6 z-10 w-80 space-y-4 pointer-events-none">
+         <div className="glass-panel p-6 rounded-lg border border-white/10 shadow-2xl pointer-events-auto space-y-6 bg-slate-900/50 backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+               <div className="flex items-center gap-3">
+                  <Share2 size={18} className="text-indigo-400" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Map Controller</h3>
+               </div>
+               <div className="px-2 py-0.5 rounded bg-indigo-600/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">{graphData.nodes.length} NODES</div>
+            </div>
+
+            <div className="space-y-4">
+               <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Primary Systems</label>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                     {systemsList.map((sys: string) => (
+                        <button
+                           key={sys}
+                           onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
+                           className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+                        >
+                           {sys}
+                        </button>
+                     ))}
+                  </div>
+               </div>
+
+               <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Propagation Depth: {depth}</label>
+                  <input 
+                    type="range" min="1" max="5" step="1" 
+                    value={depth} onChange={e => setDepth(Number(e.target.value))}
+                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                  <div className="flex justify-between text-[8px] font-bold text-slate-600 uppercase mt-1">
+                     <span>Direct</span>
+                     <span>Extended</span>
+                  </div>
+               </div>
+
+               <div className="relative">
+                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="FOCUS SEARCH..." 
+                    className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest" 
+                  />
+               </div>
+            </div>
+         </div>
+
+         {selectedNode && (
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-lg border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
+               <div className="flex items-start justify-between">
+                  <div>
+                     <p className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">{selectedNode.system}</p>
+                     <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none">{selectedNode.name}</h4>
+                  </div>
+                  <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
+               </div>
+               <div className="grid grid-cols-2 gap-3">
+                  <div className="p-2 rounded bg-white/5 border border-white/5">
+                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
+                     <p className="text-[9px] font-black text-emerald-400 uppercase">{selectedNode.status}</p>
+                  </div>
+                  <div className="p-2 rounded bg-white/5 border border-white/5">
+                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Environment</p>
+                     <p className="text-[9px] font-black text-amber-500 uppercase">{selectedNode.environment}</p>
+                  </div>
+               </div>
+               <div className="pt-2">
+                  <button className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-black uppercase tracking-widest transition-all">Deep Inspection</button>
+               </div>
+            </motion.div>
+         )}
+      </div>
+
+      <div className="flex-1 w-full h-full">
+         <ForceGraph2D
+           graphData={graphData}
+           nodeLabel="label"
+           nodeColor={n => n.system === 'External' ? '#f43f5e' : n.environment === 'Production' ? '#6366f1' : '#10b981'}
+           nodeRelSize={6}
+           nodeCanvasObject={(node: any, ctx, globalScale) => {
+             const label = node.label
+             const fontSize = 12/globalScale
+             ctx.font = `${fontSize}px Inter, sans-serif`
+             const textWidth = ctx.measureText(label).width
+             const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number]
+
+             ctx.fillStyle = 'rgba(2, 6, 23, 0.8)'
+             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 + 8, bckgDimensions[0], bckgDimensions[1])
+
+             ctx.textAlign = 'center'
+             ctx.textBaseline = 'middle'
+             ctx.fillStyle = node.color
+             ctx.fillText(label, node.x, node.y + 8)
+
+             // Draw node point
+             ctx.beginPath()
+             ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false)
+             ctx.fillStyle = node.color
+             ctx.fill()
+           }}
+           linkColor={() => 'rgba(255, 255, 255, 0.1)'}
+           linkDirectionalArrowLength={3.5}
+           linkDirectionalArrowRelPos={1}
+           linkCurvature={0.25}
+           onNodeClick={node => setSelectedNode(node)}
+           backgroundColor="#020617"
+         />
+      </div>
+
+      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
+         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 bg-slate-900/50 backdrop-blur-md">
+            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
+            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
+            <div className="h-px bg-white/5 mx-1" />
+            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
+         </div>
       </div>
     </div>
   )
