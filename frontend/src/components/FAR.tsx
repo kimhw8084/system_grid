@@ -1172,6 +1172,7 @@ function CausalTab({ mode, onUpdate }: any) {
                    <th className="px-8 py-4">Root Cause Description (Logical Origin)</th>
                    <th className="px-8 py-4 text-center">Occur Lv</th>
                    <th className="px-8 py-4">Responsible Unit</th>
+                   <th className="px-8 py-4">Linked Incidents</th>
                    <th className="px-8 py-4 text-center">BKMs</th>
                    <th className="px-8 py-4 text-right">Ops</th>
                 </tr>
@@ -1189,6 +1190,17 @@ function CausalTab({ mode, onUpdate }: any) {
                         </div>
                      </td>
                      <td className="px-8 py-5 text-slate-400 font-black">{c.responsible_team || 'UNASSIGNED'}</td>
+                     <td className="px-8 py-5">
+                        <div className="flex flex-col gap-1">
+                           {(mode.linked_rcas || []).map((r: any) => (
+                              <div key={r.id} className="flex items-center gap-1.5 text-[8px] text-purple-400">
+                                 <Activity size={8} />
+                                 <span className="truncate max-w-[120px]">{r.title}</span>
+                              </div>
+                           ))}
+                           {(!mode.linked_rcas || mode.linked_rcas.length === 0) && <span className="text-slate-700 text-[8px]">NONE</span>}
+                        </div>
+                     </td>
                      <td className="px-8 py-5 text-center">
                         <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
                            {c.resolutions?.length || 0} BKMS
@@ -1586,14 +1598,15 @@ function RoadmapTab({ mode, onUpdate }: any) {
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
-                           {mode.linked_rcas?.length > 0 ? (
-                              <div className="flex flex-col items-center gap-1">
-                                 <Activity size={14} className="text-purple-400" />
-                                 <span className="text-[8px] font-black text-purple-400 uppercase">Linked Case</span>
-                              </div>
-                           ) : (
-                              <span className="text-[8px] font-bold text-slate-700 uppercase">None</span>
-                           )}
+                           <div className="flex flex-col items-center gap-1">
+                              {(mode.linked_rcas || []).map((r: any) => (
+                                 <div key={r.id} className="flex items-center gap-1.5 text-[8px] text-purple-400">
+                                    <Activity size={8} />
+                                    <span className="truncate max-w-[120px]">{r.title}</span>
+                                 </div>
+                              ))}
+                              {(!mode.linked_rcas || mode.linked_rcas.length === 0) && <span className="text-slate-700 text-[8px]">NONE</span>}
+                           </div>
                         </td>
                         <td className="px-8 py-5 text-center">
                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black border ${m.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-white/10'}`}>

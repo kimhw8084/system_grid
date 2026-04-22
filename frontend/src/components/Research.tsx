@@ -123,6 +123,18 @@ export const SectionCard = ({ icon: Icon, title, color, children, className = ""
   </div>
 )
 
+export const SummaryCard = ({ icon: Icon, label, value, color }: any) => (
+  <div className="flex items-center gap-4 group">
+     <div className={`p-2.5 rounded-lg bg-white/5 border border-white/10 group-hover:border-white/20 transition-all ${color}`}>
+        <Icon size={18} />
+     </div>
+     <div className="flex flex-col">
+        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</span>
+        <span className="text-[10px] font-bold text-slate-200 uppercase tracking-tight">{value}</span>
+     </div>
+  </div>
+)
+
 export default function Research() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -147,6 +159,7 @@ export default function Research() {
   }
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectedYear, setSelectedYear] = useState<string>('ALL')
 
   const { data: investigations, isLoading } = useQuery({ 
     queryKey: ['investigations'], 
@@ -234,6 +247,28 @@ export default function Research() {
     return [...invs, ...rcas].sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
   }, [investigations, rcaRecords])
 
+  const availableYears = useMemo(() => {
+    const years = new Set<string>()
+    combinedData.forEach((item: any) => {
+      const date = item.incident_at || item.occurrence_at || item.created_at
+      if (date) {
+        years.add(new Date(date).getFullYear().toString())
+      }
+    })
+    // Add dummy years for testing
+    years.add('2026')
+    years.add('2025')
+    return ['ALL', ...Array.from(years).sort((a, b) => b.localeCompare(a))]
+  }, [combinedData])
+
+  const filteredData = useMemo(() => {
+    if (selectedYear === 'ALL') return combinedData
+    return combinedData.filter((item: any) => {
+      const date = item.incident_at || item.occurrence_at || item.created_at
+      return date && new Date(date).getFullYear().toString() === selectedYear
+    })
+  }, [combinedData, selectedYear])
+
   useEffect(() => {
     if (activeDetails) {
        const fresh = combinedData.find((d: any) => d.id === activeDetails.id && d.type === activeDetails.type)
@@ -243,12 +278,12 @@ export default function Research() {
 
   const stats = useMemo(() => {
     return {
-      total: combinedData.length,
-      analyzing: combinedData.filter((i: any) => i.status === 'ANALYZING' || i.status === 'OPEN' || i.status === 'INVESTIGATION').length,
-      rca: combinedData.filter((i: any) => i.type === 'RCA').length,
-      highest: combinedData.filter((i: any) => i.priority === 'HIGHEST' || i.priority >= 8).length
+      total: filteredData.length,
+      analyzing: filteredData.filter((i: any) => i.status === 'ANALYZING' || i.status === 'OPEN' || i.status === 'INVESTIGATION').length,
+      rca: filteredData.filter((i: any) => i.type === 'RCA').length,
+      highest: filteredData.filter((i: any) => i.priority === 'HIGHEST' || i.priority >= 8).length
     }
-  }, [combinedData])
+  }, [filteredData])
 
   const columnDefs = useMemo(() => [
     { 
@@ -561,11 +596,24 @@ export default function Research() {
         )}
       </AnimatePresence>
 
-      <div className="flex justify-center gap-3">
-        <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
-        <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
-        <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
-        <CompactSummary label="Highest Priority" value={stats.highest} icon={AlertTriangle} color="text-rose-500" />
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
+          {availableYears.map(year => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={`px-4 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-center gap-3">
+          <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
+          <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
+          <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
+          <CompactSummary label="Highest Priority" value={stats.highest} icon={AlertTriangle} color="text-rose-500" />
+        </div>
       </div>
 
       <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
@@ -577,7 +625,7 @@ export default function Research() {
         )}
         <AgGridReact
           ref={gridRef}
-          rowData={combinedData}
+          rowData={filteredData}
           columnDefs={columnDefs as any}
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
@@ -1604,7 +1652,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                    <button 
                      key={tab}
                      onClick={() => setActiveTab(tab)}
-                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                    >
                       {tab === 'Timeline' && <History size={14} className="inline mr-2" />}
                       {tab === 'Investigation' && <Search size={14} className="inline mr-2" />}
@@ -1791,7 +1839,6 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          <InvestigationTab 
                                          formData={formData} 
                                          setFormData={setFormData} 
-                                         isEditing={isEditing} 
                                          failureModes={failureModes}
                                          setFocusedField={setFocusedField}
                                          focusedField={focusedField}
@@ -1800,7 +1847,6 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          </div>          </div>
                                          </div>
 
-                                         {/* RCA Metadata Footer for Sidebar */}
                                          <AnimatePresence>
                                          {showFailureWizard && (
                                          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
@@ -1857,7 +1903,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          return res.json()
                                          }, 
                                          onSuccess: (newFM) => { 
-                                         queryClient.invalidateQueries({ queryKey: ['far'] });
+                                         queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] });
                                          onComplete(newFM); 
                                          } 
                                          })
@@ -1960,12 +2006,13 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     monitoring_items: item.monitoring_items || []
   }))
   const [isEditing, setIsEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'CONTEXT' | 'INTELLIGENCE'>('CONTEXT')
   const [newLog, setNewLog] = useState({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
   
   const prevItemNormalized = useRef(normalizeForComparison(item));
   const lastAcknowledgedData = useRef(normalizeForComparison(formData));
 
-  // Sync formData with item prop when it changes (e.g. from background refresh)
+  // Sync formData with item prop when it changes
   useEffect(() => {
     const incomingNormalized = normalizeForComparison(item);
     if (incomingNormalized !== prevItemNormalized.current) {
@@ -1997,18 +2044,6 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     }
   }, [isEditing, formData, onSave]);
 
-  // Navigation Safety
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isEditing) {
-        e.preventDefault()
-        e.returnValue = 'Unsaved changes will be lost. Exit?'
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isEditing])
-
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
       const formattedLog = { ...log, entry_type: safeUpper(log.entry_type), poc: safeUpper(log.poc) }
@@ -2021,7 +2056,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, progress_logs: [...(prev.progress_logs || []), data] }))
       setNewLog({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
-      toast.success('Pulse Captured')
+      toast.success('Intelligence Pulse Captured')
     }
   })
 
@@ -2033,122 +2068,144 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4">
-      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(37,99,235,0.1)]">
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1600px] h-full rounded-lg border border-white/10 overflow-hidden flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)] bg-[#020617]">
         
         {/* Header Block */}
-        <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
+        <div className="px-8 py-6 border-b border-white/5 bg-white/2 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-bold italic tracking-tighter">INV</div>
+            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-black italic tracking-tighter">INV</div>
             <div>
-              <div className="flex items-center space-x-4 mb-1.5">
+              <div className="flex items-center space-x-4 mb-2">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
-                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className="px-3 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-[9px] font-black text-blue-400 uppercase tracking-widest">RESEARCH_{item.id}</div>
+                   <div className={`px-3 py-1 rounded border text-[9px] font-black uppercase tracking-widest ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {new Date(formData.updated_at || formData.created_at).toLocaleString()}</span>
               </div>
-              <h1 className="text-3xl font-bold uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => {
                 if (isEditing) {
-                  const finalData = { 
-                    ...formData, 
-                    status: safeUpper(formData.status), 
-                    priority: safeUpper(formData.priority) 
-                  }
+                  const finalData = { ...formData, status: safeUpper(formData.status), priority: safeUpper(formData.priority) }
                   onSave(finalData)
                   lastAcknowledgedData.current = normalizeForComparison(finalData);
                 }
                 setIsEditing(!isEditing)
               }} 
-              className={`h-12 px-8 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
+              className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >
-              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
+              {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Analysis' : 'Enter Research Mode'}
             </button>
-            <button 
-              onClick={onClose} 
-              className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
-            >
+            <button onClick={onClose} className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
               <X size={24}/>
             </button>
           </div>
         </div>
 
+        {/* Summary Banner (Sticky) */}
+        <div className="px-8 py-4 bg-black/40 border-b border-white/5 flex items-center gap-8 shrink-0">
+           <SummaryCard icon={Activity} label="Current Status" value={safeUpper(formData.status)} color={pInfo.color} />
+           <SummaryCard icon={User} label="Primary POC" value={formData.poc || 'SYSTEM_AUTO'} color="text-indigo-400" />
+           <SummaryCard icon={Database} label="Impacted Systems" value={formData.systems?.length || 0} color="text-purple-400" />
+           <SummaryCard icon={ShieldAlert} label="Intelligence Density" value={formData.progress_logs?.length || 0} color="text-emerald-400" />
+        </div>
 
-        <div className="flex-1 flex overflow-hidden p-6 gap-6">
-           {/* Analytical Fields (Left) */}
-           <div className="w-[480px] flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-              <PriorityGauge 
-                value={formData.priority} 
-                onChange={(v) => setFormData({...formData, priority: v})} 
-                disabled={!isEditing} 
-                type="RESEARCH"
-              />
-              
-              <SectionCard icon={Info} title="Investigation Info" color="text-indigo-400">
-                <div className="space-y-4">
-                   <div className="grid grid-cols-2 gap-4">
-                      <StyledSelect 
-                        label="Status"
-                        value={safeUpper(formData.status)} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
-                        options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED', 'MONITORING'].map(s => ({value: s, label: s}))} 
-                        disabled={!isEditing}
-                      />
-                      <div>
-                         <label className="text-[9px] font-bold text-slate-500 uppercase block tracking-widest px-1 mb-1">Assigned Team</label>
-                         <input 
-                           readOnly={!isEditing}
-                           value={formData.assigned_team} 
-                           onChange={e => setFormData({...formData, assigned_team: e.target.value.toUpperCase()})} 
-                           className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold uppercase" 
-                         />
-                      </div>
-                   </div>
-                </div>
-              </SectionCard>
+        {/* Navigation Tabs */}
+        <div className="px-8 bg-black/20 border-b border-white/5 flex items-center gap-8 shrink-0">
+           {[
+              { id: 'CONTEXT', label: 'System Context', icon: LayoutGrid },
+              { id: 'INTELLIGENCE', label: 'Intelligence Stream', icon: History }
+           ].map(tab => (
+              <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-4 text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 border-b-2 ${activeTab === tab.id ? 'text-blue-400 border-blue-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+              >
+                <tab.icon size={14} /> {tab.label}
+              </button>
+           ))}
+        </div>
 
-              <SectionCard icon={FileText} title="Context" color="text-blue-400">
-                 <textarea 
-                   readOnly={!isEditing}
-                   value={formData.problem_statement} 
-                   onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[140px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                 />
-              </SectionCard>
-              <SectionCard icon={Zap} title="Triggers" color="text-amber-400">
-                 <textarea 
-                   readOnly={!isEditing}
-                   value={formData.trigger_event} 
-                   onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[80px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                 />
-              </SectionCard>
-              <SectionCard icon={Search} title="Core Findings" color="text-indigo-400">
-                 <textarea 
-                   readOnly={!isEditing}
-                   value={formData.root_cause} 
-                   onChange={e => setFormData({...formData, root_cause: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                 />
-              </SectionCard>
-              <SectionCard icon={ShieldCheck} title="Proposed Strategy" color="text-emerald-400">
-                 <textarea 
-                   readOnly={!isEditing}
-                   value={formData.resolution_steps} 
-                   onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
-                   className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-emerald-400/80 outline-none min-h-[180px] resize-none ${!isEditing && 'cursor-default opacity-80'}`} 
-                 />
-              </SectionCard>
-           </div>
+        <div className="flex-1 overflow-hidden p-8">
+           {activeTab === 'CONTEXT' && (
+              <div className="h-full flex gap-8 overflow-hidden">
+                 {/* Analytical Fields */}
+                 <div className="w-[500px] flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-4">
+                    <PriorityGauge value={formData.priority} onChange={(v) => setFormData({...formData, priority: v})} disabled={!isEditing} type="RESEARCH" />
+                    
+                    <SectionCard icon={Info} title="Logical Definition" color="text-indigo-400">
+                       <div className="grid grid-cols-2 gap-4">
+                          <StyledSelect 
+                            label="Lifecycle Status"
+                            value={safeUpper(formData.status)} 
+                            onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                            options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED', 'MONITORING'].map(s => ({value: s, label: s}))} 
+                            disabled={!isEditing}
+                          />
+                          <div>
+                             <label className="text-[9px] font-black text-slate-500 uppercase block tracking-widest px-1 mb-2">Assigned Team</label>
+                             <input 
+                               readOnly={!isEditing}
+                               value={formData.assigned_team} 
+                               onChange={e => setFormData({...formData, assigned_team: e.target.value.toUpperCase()})} 
+                               className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold uppercase" 
+                             />
+                          </div>
+                       </div>
+                    </SectionCard>
 
-           {/* Forensic Timeline (Right) */}
-           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-              <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
-              <IntelligenceStream logs={sortedLogs} />
-           </div>
+                    <SectionCard icon={FileText} title="Problem Statement" color="text-blue-400">
+                       <textarea 
+                         readOnly={!isEditing}
+                         value={formData.problem_statement} 
+                         onChange={e => setFormData({...formData, problem_statement: e.target.value})} 
+                         className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[140px] resize-none uppercase ${!isEditing && 'cursor-default opacity-80'}`} 
+                       />
+                    </SectionCard>
+                    <SectionCard icon={Zap} title="Investigation Triggers" color="text-amber-400">
+                       <textarea 
+                         readOnly={!isEditing}
+                         value={formData.trigger_event} 
+                         onChange={e => setFormData({...formData, trigger_event: e.target.value})} 
+                         className={`w-full bg-slate-950 border border-white/5 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none min-h-[100px] resize-none uppercase ${!isEditing && 'cursor-default opacity-80'}`} 
+                       />
+                    </SectionCard>
+                 </div>
+
+                 {/* Discovery Matrix */}
+                 <div className="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
+                    <SectionCard icon={Search} title="Discovery & Analysis Findings" color="text-indigo-400">
+                       <textarea 
+                         readOnly={!isEditing}
+                         value={formData.root_cause} 
+                         onChange={e => setFormData({...formData, root_cause: e.target.value})} 
+                         className={`w-full bg-slate-950 border border-white/5 rounded-lg p-6 text-xs font-bold text-slate-300 outline-none min-h-[250px] resize-none uppercase ${!isEditing && 'cursor-default opacity-80'}`} 
+                         placeholder="RECORD CRITICAL SYSTEM DISCOVERIES AND LOGICAL OBSERVATIONS..."
+                       />
+                    </SectionCard>
+                    <SectionCard icon={ShieldCheck} title="Proposed Mitigation Architecture" color="text-emerald-400">
+                       <textarea 
+                         readOnly={!isEditing}
+                         value={formData.resolution_steps} 
+                         onChange={e => setFormData({...formData, resolution_steps: e.target.value})} 
+                         className={`w-full bg-slate-950 border border-white/5 rounded-lg p-6 text-xs font-bold text-emerald-400 outline-none min-h-[250px] resize-none uppercase ${!isEditing && 'cursor-default opacity-80'}`} 
+                         placeholder="DEFINE RESOLUTION STRATEGY AND ARCHITECTURAL SAFEGUARDS..."
+                       />
+                    </SectionCard>
+                 </div>
+              </div>
+           )}
+
+           {activeTab === 'INTELLIGENCE' && (
+              <div className="h-full flex flex-col gap-6 overflow-hidden">
+                 <IntelligenceInput newLog={newLog} setNewLog={setNewLog} logMutation={logMutation} />
+                 <IntelligenceStream logs={sortedLogs} />
+              </div>
+           )}
         </div>
       </motion.div>
     </div>
@@ -2157,66 +2214,85 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
 
 function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: any) {
   return (
-    <div className={`bg-white/5 border border-white/10 ${compact ? 'rounded-lg p-4' : 'rounded-lg p-6'} flex items-end gap-4 shrink-0 shadow-2xl`}>
-      <div className="flex-1 space-y-2">
-         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block px-1">Live Intelligence Pulse</label>
-         <input value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-4 py-2 text-[11px]' : 'px-5 py-3 text-[12px]'} font-bold text-white outline-none focus:border-blue-500 uppercase`} placeholder="Record observation pulse..." />
-      </div>
-      <div className={compact ? 'w-32' : 'w-48'}>
-         <StyledSelect label="Type" value={safeUpper(newLog.entry_type)} onChange={e => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={[{value:'DIAGNOSIS', label:'DIAGNOSIS'}, {value:'ACTION', label:'ACTION'}, {value:'OBSERVATION', label:'OBSERVATION'}, {value:'MILESTONE', label:'MILESTONE'}]} />
-      </div>
-      <div className={compact ? 'w-24' : 'w-40'}>
-         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">POC</label>
-         <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-bold text-white outline-none focus:border-blue-500 uppercase`} placeholder="NAME..." />
-      </div>
-      <div className={compact ? 'w-40' : 'w-56'}>
-         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Pulse Time</label>
-         <input type="datetime-local" value={newLog.timestamp?.slice(0, 16)} onChange={e => setNewLog({...newLog, timestamp: new Date(e.target.value).toISOString()})} className={`w-full bg-slate-950 border border-white/10 rounded-lg ${compact ? 'px-2 py-2 text-[10px]' : 'px-4 py-2.5 text-[11px]'} font-bold text-slate-400 outline-none [color-scheme:dark]`} />
-      </div>
-      <button disabled={!newLog.entry_text || logMutation.isPending} onClick={() => logMutation.mutate(newLog)} className={`${compact ? 'p-3' : 'p-4'} bg-blue-600 text-white rounded-lg shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center`}><Plus size={compact ? 18 : 24} /></button>
+    <div className={`bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl ${compact ? 'p-4' : 'p-6'}`}>
+       <div className="flex items-center justify-between border-b border-white/5 pb-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2"><Plus size={14}/> Capture Intelligence Pulse</h3>
+          <div className="flex gap-2">
+             <StyledSelect label="Log Type" value={newLog.entry_type} onChange={(e:any) => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={['DIAGNOSIS', 'HYPOTHESIS', 'OBSERVATION', 'ACTION', 'RESULT'].map(t => ({value: t, label: t}))} />
+             <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} placeholder="POC..." className="w-32 bg-slate-950 border border-white/10 rounded px-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 uppercase" />
+          </div>
+       </div>
+       <textarea value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 min-h-[100px] uppercase placeholder:text-slate-700" placeholder="Capture logical system findings..." />
+       <button onClick={() => logMutation.mutate(newLog)} className="h-12 w-full bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"><Activity size={16}/> Record Intelligence</button>
     </div>
   )
 }
 
 function IntelligenceStream({ logs, compact = false }: any) {
   return (
-    <div className={`flex-1 bg-slate-950/50 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl`}>
-      <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
-         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Progressive Intelligence Stream</p>
-         <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">{logs.length} Pulse Captured</span>
-      </div>
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-         <div className="relative pl-12 space-y-6">
-            <div className="absolute left-6 top-2 bottom-2 w-1 bg-blue-500/20 rounded-full" />
-            
-            {logs.map((l: any, i: number) => (
-              <div key={i} className={`relative bg-white/5 border border-white/10 ${compact ? 'rounded-lg p-3' : 'rounded-lg p-5'} group hover:bg-white/[0.08] transition-all shadow-lg w-full`}>
-                 <div className="absolute -left-[30px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,241,0.5)] z-10 transition-transform group-hover:scale-125" />
-                 
-                 <div className={`flex ${compact ? 'gap-4' : 'gap-8'}`}>
-                    <div className={`${compact ? 'w-24' : 'w-32'} shrink-0 pt-0.5`}>
-                       <p className="text-[11px] font-bold text-white leading-none mb-1.5">{new Date(l.timestamp).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                       <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-2">{new Date(l.timestamp).toLocaleDateString()}</p>
-                       <span className="text-[7px] font-bold uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-inner">{safeUpper(l.entry_type)}</span>
-                    </div>
-                    <div className="flex-1">
-                       <p className={`${compact ? 'text-xs' : 'text-xs'} font-black text-slate-200 leading-relaxed tracking-tight uppercase`}>{l.entry_text}</p>
-                       <div className="flex items-center gap-2 mt-2">
-                          <User size={10} className="text-slate-600" />
-                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{l.poc || 'SYSTEM'}</span>
-                       </div>
-                    </div>
-                 </div>
-              </div>
-            ))}
-            {logs.length === 0 && (
-               <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
-                  <Activity size={40} className="text-slate-500" />
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
-               </div>
-            )}
-         </div>
-      </div>
+    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+       {logs.length > 0 ? logs.map((log: any, idx: number) => (
+          <div key={log.id || idx} className="flex gap-6 group">
+             <div className="flex flex-col items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${log.entry_type === 'ACTION' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{log.entry_type[0]}</div>
+                <div className="w-px flex-1 bg-white/5 my-2" />
+             </div>
+             <div className="flex-1 pb-6">
+                <div className="flex items-center gap-3 mb-2">
+                   <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{log.entry_type}</span>
+                   <span className="text-[9px] font-bold text-slate-600 uppercase">{new Date(log.timestamp).toLocaleString()}</span>
+                   <span className="text-[9px] font-bold text-blue-400/70 uppercase">BY: {log.poc || 'SYSTEM'}</span>
+                </div>
+                <div className="bg-white/5 border border-white/5 rounded-lg p-4 group-hover:bg-white/[0.08] transition-all">
+                   <p className="text-[11px] font-bold text-slate-300 leading-relaxed uppercase">{log.entry_text}</p>
+                </div>
+             </div>
+          </div>
+       )) : (
+          <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-20">
+             <Activity size={40} className="text-slate-500" />
+             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em]">Intelligence Stream Awaiting Initial Pulse</p>
+          </div>
+       )}
+    </div>
+  )
+}
+
+export const ModernStatusPicker = ({ value, onChange, options }: any) => {
+  const current = options.find((o: any) => o.value === value) || options[0]
+  const [isOpen, setIsOpen] = useState(false)
+  
+  return (
+    <div className="relative flex justify-center">
+      <button 
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all border ${current.color.replace('text-', 'border-').replace('text-', 'bg-')}/10 ${current.color} hover:scale-105 active:scale-95`}
+      >
+        {current.label}
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)} />
+            <motion.div 
+              initial={{ opacity: 0, y: 5 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: 5 }}
+              className="absolute top-full mt-1 z-[110] bg-slate-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[120px]"
+            >
+              {options.map((opt: any) => (
+                <button
+                  key={opt.value}
+                  onClick={(e) => { e.stopPropagation(); onChange(opt.value); setIsOpen(false); }}
+                  className={`w-full px-4 py-2 text-[9px] font-black uppercase text-left hover:bg-white/5 transition-all ${opt.value === value ? opt.color : 'text-slate-400'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -2224,13 +2300,19 @@ function IntelligenceStream({ logs, compact = false }: any) {
 export function InvestigationTab({ formData, setFormData, failureModes, setFocusedField, focusedField }: any) {
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
   const [selectedFailureId, setSelectedFailureId] = useState<number | null>(null)
-  const [activeSubTab, setActiveSubTab] = useState<'PROCEDURE' | 'ACTIONS'>('PROCEDURE')
+  const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
+  const [activeSubTab, setActiveSubTab] = useState<'CAUSES' | 'ACTIONS'>('CAUSES')
   const [activeActionType, setActiveActionType] = useState<'CAUSE' | 'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('CAUSE')
+  const [isAddingCause, setIsAddingCause] = useState(false)
+  const [newCause, setNewCause] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
+  const [expandedCauseIds, setExpandedCauseIds] = useState<number[]>([])
 
   const linkedFailures = useMemo(() => {
     const ids = formData.linked_failure_mode_ids || []
     return (failureModes || []).filter((fm: any) => ids.includes(fm.id))
   }, [formData.linked_failure_mode_ids, failureModes])
+
+  const selectedFailure = useMemo(() => linkedFailures.find(f => f.id === selectedFailureId), [linkedFailures, selectedFailureId])
 
   // Auto-select first failure if none selected
   useEffect(() => {
@@ -2247,12 +2329,13 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
     return () => window.removeEventListener('investigation-paste', handlePasteEvent)
   }, [])
 
-  const addStep = () => {
+  const addStep = (causeId: number) => {
     if (!newStep.text.trim()) return
     const step = { 
       ...newStep, 
       id: Date.now(), 
-      failure_id: selectedFailureId, 
+      failure_id: selectedFailureId,
+      cause_id: causeId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -2270,10 +2353,25 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['far'] })
+      queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
       queryClient.invalidateQueries({ queryKey: ['investigations'] })
       queryClient.invalidateQueries({ queryKey: ['rca-records'] })
       toast.success('FAR Vector Synchronized')
+    }
+  })
+
+  const causeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/causes', { 
+        method: 'POST', 
+        body: JSON.stringify({ ...data, mode_ids: [selectedFailureId] }) 
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Root Cause Logged');
+      setIsAddingCause(false);
+      queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
     }
   })
 
@@ -2296,8 +2394,9 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
     { value: 'COMPLETED', label: 'COMPLETED', color: 'text-emerald-400' }
   ]
 
-  const selectedFailure = linkedFailures.find(f => f.id === selectedFailureId)
-  const failureSteps = (formData.identification_steps_json || []).filter((s: any) => s.failure_id === selectedFailureId)
+  const toggleCauseExpand = (id: number) => {
+    setExpandedCauseIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6 gap-8">
@@ -2342,16 +2441,11 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                          </td>
                          {['cause', 'workaround', 'monitoring', 'prevention'].map(type => (
                             <td key={type} className="py-3 px-6 text-center">
-                               <select 
-                                  className={`bg-transparent text-[9px] font-black uppercase outline-none cursor-pointer hover:bg-white/5 px-2 py-0.5 rounded transition-all appearance-none text-center ${statusOptions.find(o => o.value === (fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'))?.color}`}
+                               <ModernStatusPicker 
                                   value={fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'}
-                                  onChange={(e) => updateFailureStatus(fm.id, type, e.target.value)}
-                                  onClick={(e) => e.stopPropagation()}
-                               >
-                                  {statusOptions.map(opt => (
-                                     <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-300">{opt.label}</option>
-                                  ))}
-                               </select>
+                                  onChange={(val: string) => updateFailureStatus(fm.id, type, val)}
+                                  options={statusOptions}
+                               />
                             </td>
                          ))}
                       </tr>
@@ -2377,10 +2471,10 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
              <>
                 <div className="flex items-center gap-6 border-b border-white/5 pb-2">
                    <button 
-                      onClick={() => setActiveSubTab('PROCEDURE')}
-                      className={`text-[11px] font-black uppercase tracking-[0.2em] pb-2 transition-all border-b-2 ${activeSubTab === 'PROCEDURE' ? 'text-blue-400 border-blue-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                      onClick={() => setActiveSubTab('CAUSES')}
+                      className={`text-[11px] font-black uppercase tracking-[0.2em] pb-2 transition-all border-b-2 ${activeSubTab === 'CAUSES' ? 'text-blue-400 border-blue-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                    >
-                      RCA Procedure
+                      Causes
                    </button>
                    <button 
                       onClick={() => setActiveSubTab('ACTIONS')}
@@ -2395,117 +2489,230 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                 </div>
 
                 <div className="flex-1 overflow-hidden">
-                   {activeSubTab === 'PROCEDURE' && (
-                      <div className="h-full flex gap-8 overflow-hidden">
-                         <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
-                               <div 
-                                  onClick={() => setFocusedField('investigation')}
-                                  className={`relative group focus-trigger ${focusedField === 'investigation' ? 'ring-2 ring-blue-500/50' : ''}`}
-                               >
-                                  <textarea 
-                                     value={newStep.text}
-                                     onChange={e => setNewStep({...newStep, text: e.target.value})}
-                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[120px] uppercase placeholder:text-slate-700"
-                                     placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
-                                  />
-                                  {focusedField === 'investigation' && (
-                                     <div className="absolute top-3 right-4 flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Paste Active</span>
-                                     </div>
-                                  )}
-                               </div>
-                               {newStep.images.length > 0 && (
-                                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                                     {newStep.images.map((img, i) => (
-                                        <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg border border-white/10 overflow-hidden shadow-lg group">
-                                           <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                           <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
-                                        </div>
-                                     ))}
-                                  </div>
-                               )}
-                               <button onClick={addStep} className="w-full h-12 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2">
-                                  <Plus size={16} /> Commit Procedural Milestone
-                               </button>
-                            </div>
+                   {activeSubTab === 'CAUSES' && (
+                      <div className="h-full flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+                         <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Root Cause Attribution Matrix</h4>
+                            <button 
+                              onClick={() => setIsAddingCause(true)}
+                              className="px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-[9px] font-black uppercase hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-500/10"
+                            >
+                               + Add New Cause
+                            </button>
+                         </div>
 
-                            <div className="space-y-4">
-                               {failureSteps.map((step: any, idx: number) => (
-                                  <div key={step.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-6 group relative transition-all hover:bg-white/[0.08]">
-                                     <div className="flex gap-6">
-                                       <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-sm shrink-0 border border-blue-500/30 shadow-inner italic">{idx + 1}</div>
-                                       <div className="flex-1 space-y-4">
-                                           <p className="text-xs font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
-                                           {step.images?.length > 0 && (
-                                             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                                                 {step.images.map((img: string, i: number) => (
-                                                   <ImageThumbnail key={i} src={img} />
-                                                 ))}
-                                             </div>
-                                           )}
-                                           <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                             <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                                <Clock size={10} />
-                                                <span>Pulse: {new Date(step.created_at).toLocaleString()}</span>
-                                             </div>
-                                             <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="text-rose-500 hover:text-rose-400 transition-colors p-2 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
-                                           </div>
-                                       </div>
+                         {isAddingCause && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-blue-600/5 border border-blue-500/20 rounded-lg p-6 space-y-4">
+                               <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                  <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Define Root Cause Origin</h5>
+                                  <button onClick={() => setIsAddingCause(false)} className="text-slate-600 hover:text-white"><X size={16}/></button>
+                               </div>
+                               <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Logical Origin Description</label>
+                                     <input 
+                                       value={newCause.cause_text}
+                                       onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})}
+                                       className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase"
+                                       placeholder="E.G., MEMORY_LEAK_IN_SCHEDULER"
+                                     />
+                                  </div>
+                                  <div className="space-y-1">
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Responsible Team</label>
+                                     <input 
+                                       value={newCause.responsible_team}
+                                       onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})}
+                                       className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase"
+                                       placeholder="E.G., PLATFORM_SRE"
+                                     />
+                                  </div>
+                               </div>
+                               <button 
+                                 onClick={() => causeMutation.mutate(newCause)}
+                                 disabled={!newCause.cause_text || causeMutation.isPending}
+                                 className="w-full py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                               >
+                                  {causeMutation.isPending ? <RefreshCcw size={14} className="animate-spin mx-auto" /> : 'Confirm Root Cause Attribution'}
+                               </button>
+                            </motion.div>
+                         )}
+
+                         <div className="space-y-3">
+                            {(selectedFailure.causes || []).map((cause: any) => (
+                               <div key={cause.id} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden group hover:border-white/20 transition-all">
+                                  <div 
+                                    onClick={() => toggleCauseExpand(cause.id)}
+                                    className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02]"
+                                  >
+                                     <div className="flex items-center gap-4">
+                                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/20 shadow-inner">
+                                           <Zap size={16} />
+                                        </div>
+                                        <div>
+                                           <h5 className="text-[11px] font-black text-white uppercase tracking-tight">{cause.cause_text}</h5>
+                                           <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{cause.responsible_team || 'SYSTEM_CORE'}</p>
+                                        </div>
+                                     </div>
+                                     <div className="flex items-center gap-6">
+                                        <div className="text-right">
+                                           <p className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] mb-0.5">Occurrence</p>
+                                           <p className="text-[10px] font-black text-blue-400 tracking-tighter">LVL {cause.occurrence_level || 5}</p>
+                                        </div>
+                                        <div className={`transition-transform duration-300 ${expandedCauseIds.includes(cause.id) ? 'rotate-180' : ''}`}>
+                                           <ChevronDown size={18} className="text-slate-500" />
+                                        </div>
                                      </div>
                                   </div>
-                               ))}
-                               {failureSteps.length === 0 && (
-                                  <div className="py-20 text-center border border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
-                                     <ListTodo size={40} className="text-slate-600" />
-                                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em]">Procedure Awaiting First Milestone</p>
-                                  </div>
-                                )}
-                            </div>
+
+                                  <AnimatePresence>
+                                     {expandedCauseIds.includes(cause.id) && (
+                                        <motion.div 
+                                          initial={{ height: 0, opacity: 0 }} 
+                                          animate={{ height: 'auto', opacity: 1 }} 
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="overflow-hidden bg-black/40 border-t border-white/5"
+                                        >
+                                           <div className="p-6 space-y-6">
+                                              <div className="flex items-center justify-between">
+                                                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest italic">Cause Identification Procedure</p>
+                                                 <div className="h-px flex-1 mx-6 bg-blue-500/10" />
+                                              </div>
+
+                                              {/* Identification Steps Input */}
+                                              <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-4">
+                                                 <div 
+                                                   onClick={() => setFocusedField(`investigation_${cause.id}`)}
+                                                   className={`relative group focus-trigger ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50' : ''}`}
+                                                 >
+                                                    <textarea 
+                                                       value={newStep.text}
+                                                       onChange={e => setNewStep({...newStep, text: e.target.value})}
+                                                       className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
+                                                       placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
+                                                    />
+                                                    {focusedField === `investigation_${cause.id}` && (
+                                                       <div className="absolute top-3 right-4 flex items-center gap-2">
+                                                          <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                                                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Paste Active</span>
+                                                       </div>
+                                                    )}
+                                                 </div>
+                                                 {newStep.images.length > 0 && (
+                                                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                       {newStep.images.map((img, i) => (
+                                                          <div key={i} className="relative w-20 h-20 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
+                                                             <img src={img} className="w-full h-full object-cover" />
+                                                             <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                                                          </div>
+                                                       ))}
+                                                    </div>
+                                                 )}
+                                                 <button 
+                                                   onClick={() => addStep(cause.id)} 
+                                                   className="w-full py-3 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                                                 >
+                                                    <Plus size={14} /> Commit Identification Milestone
+                                                 </button>
+                                              </div>
+
+                                              {/* Steps Stream */}
+                                              <div className="space-y-4">
+                                                 {(formData.identification_steps_json || []).filter((s: any) => s.failure_id === selectedFailureId && s.cause_id === cause.id).map((step: any, idx: number) => (
+                                                    <div key={step.id || idx} className="flex gap-6 group">
+                                                       <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-400 font-black text-[10px] shrink-0 border border-blue-500/20 shadow-inner italic">{idx + 1}</div>
+                                                       <div className="flex-1 space-y-3 pt-1">
+                                                          <p className="text-[11px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                                          {step.images?.length > 0 && (
+                                                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                                                {step.images.map((img: string, i: number) => (
+                                                                  <ImageThumbnail key={i} src={img} />
+                                                                ))}
+                                                            </div>
+                                                          )}
+                                                          <div className="flex items-center justify-between pt-2">
+                                                            <div className="flex items-center gap-1.5 text-[7px] font-bold text-slate-600 uppercase tracking-widest">
+                                                               <Clock size={8} />
+                                                               <span>{new Date(step.created_at).toLocaleString()}</span>
+                                                            </div>
+                                                            <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                                                          </div>
+                                                       </div>
+                                                    </div>
+                                                 ))}
+                                              </div>
+                                           </div>
+                                        </motion.div>
+                                     )}
+                                  </AnimatePresence>
+                               </div>
+                            ))}
+                            {(selectedFailure.causes || []).length === 0 && (
+                               <div className="py-20 text-center border border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-20">
+                                  <Zap size={40} className="text-slate-600" />
+                                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em]">No root cause origins establishing for this vector</p>
+                               </div>
+                            )}
                          </div>
                       </div>
                    )}
 
                    {activeSubTab === 'ACTIONS' && (
-                      <div className="h-full flex gap-8 overflow-hidden">
-                         <div className="w-64 shrink-0 flex flex-col gap-2">
+                      <div className="h-full flex flex-col gap-6 overflow-hidden">
+                         <div className="flex justify-center gap-4 shrink-0">
                             {[
-                               { id: 'CAUSE', label: 'Cause Analysis', icon: Search, color: 'text-blue-400' },
-                               { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw, color: 'text-amber-400' },
-                               { id: 'MONITORING', label: 'Monitoring', icon: Activity, color: 'text-sky-400' },
-                               { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck, color: 'text-emerald-400' }
+                               { id: 'CAUSE', label: 'Cause Analysis', icon: Search, color: 'text-blue-400', bg: 'bg-blue-400' },
+                               { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw, color: 'text-amber-400', bg: 'bg-amber-400' },
+                               { id: 'MONITORING', label: 'Monitoring', icon: Activity, color: 'text-sky-400', bg: 'bg-sky-400' },
+                               { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-400' }
                             ].map(type => (
                                <button
                                   key={type.id}
                                   onClick={() => setActiveActionType(type.id as any)}
-                                  className={`p-4 rounded-lg border flex items-center gap-4 transition-all ${activeActionType === type.id ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/[0.08]'}`}
+                                  className={`px-8 py-3 rounded-xl border flex items-center gap-3 transition-all relative group overflow-hidden ${activeActionType === type.id ? 'bg-white/5 border-white/20 shadow-2xl' : 'bg-white/2 border-white/5 text-slate-500 hover:bg-white/5'}`}
                                >
-                                  <type.icon size={18} className={activeActionType === type.id ? 'text-white' : type.color} />
-                                  <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
+                                  {activeActionType === type.id && (
+                                     <motion.div layoutId="action-active" className={`absolute inset-0 ${type.bg}/5 pointer-events-none`} />
+                                  )}
+                                  <type.icon size={16} className={activeActionType === type.id ? type.color : 'text-slate-600 group-hover:text-slate-400'} />
+                                  <span className={`text-[10px] font-black uppercase tracking-widest ${activeActionType === type.id ? 'text-white' : ''}`}>{type.label}</span>
+                                  {activeActionType === type.id && <div className={`w-1 h-1 rounded-full ${type.bg} absolute right-4`} />}
                                </button>
                             ))}
                          </div>
 
-                         <div className="flex-1 bg-black/40 border border-white/10 rounded-lg p-8 space-y-6 flex flex-col shadow-2xl overflow-y-auto custom-scrollbar">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                               <div className="flex items-center gap-3">
-                                  {activeActionType === 'CAUSE' && <Search size={18} className="text-blue-400" />}
-                                  {activeActionType === 'WORKAROUND' && <RefreshCcw size={18} className="text-amber-400" />}
-                                  {activeActionType === 'MONITORING' && <Activity size={18} className="text-sky-400" />}
-                                  {activeActionType === 'PREVENTION' && <ShieldCheck size={18} className="text-emerald-400" />}
-                                  <h3 className="text-sm font-black uppercase tracking-widest text-white">{activeActionType} STRATEGY</h3>
+                         <div className="flex-1 bg-[#05070a] border border-white/10 rounded-2xl p-10 space-y-8 flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-6">
+                               <div className="flex items-center gap-4">
+                                  <div className={`p-4 rounded-2xl bg-white/5 border border-white/10 ${
+                                     activeActionType === 'CAUSE' ? 'text-blue-400' : 
+                                     activeActionType === 'WORKAROUND' ? 'text-amber-400' :
+                                     activeActionType === 'MONITORING' ? 'text-sky-400' : 'text-emerald-400'
+                                  }`}>
+                                     {activeActionType === 'CAUSE' && <Search size={24} />}
+                                     {activeActionType === 'WORKAROUND' && <RefreshCcw size={24} />}
+                                     {activeActionType === 'MONITORING' && <Activity size={24} />}
+                                     {activeActionType === 'PREVENTION' && <ShieldCheck size={24} />}
+                                  </div>
+                                  <div>
+                                     <h3 className="text-xl font-black uppercase tracking-tighter text-white">{activeActionType} Deployment Strategy</h3>
+                                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Direct Synchronization with FAR Registry</p>
+                                  </div>
                                </div>
-                               <div className="px-3 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-slate-500 uppercase tracking-widest">Auto-Sync Active</div>
+                               <div className="flex flex-col items-end gap-1">
+                                  <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic">Vector Compliance</span>
+                                  <div className="flex items-center gap-1">
+                                     <span className="text-[10px] font-black text-emerald-500 uppercase">Active Sync</span>
+                                  </div>
+                               </div>
                             </div>
 
-                            <div className="flex-1 flex flex-col gap-4">
-                               <label className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">Detailed Implementation Record</label>
+                            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Detailed Strategic Documentation</label>
                                <textarea 
                                   value={selectedFailure.metadata_json?.[`sync_${activeActionType.toLowerCase()}`] || ''}
                                   onChange={(e) => updateSyncText(selectedFailure.id, activeActionType, e.target.value)}
-                                  className="flex-1 bg-slate-950 border border-white/10 rounded-xl p-6 text-xs font-bold text-slate-200 outline-none uppercase leading-relaxed shadow-inner min-h-[300px]"
-                                  placeholder={`DESCRIBE THE ${activeActionType} FOR THIS VECTOR...`}
+                                  className="flex-1 bg-slate-950/80 border border-white/10 rounded-2xl p-8 text-xs font-bold text-slate-300 outline-none uppercase leading-relaxed shadow-inner placeholder:text-slate-800 focus:border-white/20 transition-all custom-scrollbar"
+                                  placeholder={`ENTER ${activeActionType} ARCHITECTURE & IMPLEMENTATION DETAILS FOR THIS VECTOR...`}
                                />
                             </div>
                          </div>
