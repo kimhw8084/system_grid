@@ -538,6 +538,7 @@ rca_failure_mode_links = Table(
 class FarFailureMode(Base, BaseMixin):
     __tablename__ = "far_failure_modes"
     system_name = Column(String, index=True)
+    failure_type = Column(String, default="Design")
     title = Column(String, index=True)
     effect = Column(Text)
     

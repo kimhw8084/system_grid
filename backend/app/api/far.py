@@ -34,6 +34,7 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     
     mode = models.FarFailureMode(
         system_name=data.get('system_name'),
+        failure_type=data.get('failure_type', 'Design'),
         title=data.get('title'),
         effect=data.get('effect'),
         severity=data.get('severity', 1),

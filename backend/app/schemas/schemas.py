@@ -306,6 +306,7 @@ class RcaRecordTinyResponse(BaseSchema):
 
 class FarFailureModeResponse(BaseSchema):
     system_name: str
+    failure_type: str = "Design"
     title: str
     effect: Optional[str] = None
     severity: int = 1

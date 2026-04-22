@@ -7,7 +7,8 @@ import {
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
-  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon
+  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon,
+  Workflow, ExternalLink
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -103,9 +104,9 @@ export const PriorityGauge = ({ value, onChange, disabled, type }: { value: stri
 export const safeUpper = (val: any) => (val?.toString() || '').toUpperCase()
 
 export const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between shadow-inner w-64">
     <div>
-      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
       <p className="text-2xl font-bold text-white tracking-tighter">{value}</p>
     </div>
     <div className={`p-2 rounded-md bg-white/5 ${color}`}><Icon size={18} /></div>
@@ -133,8 +134,17 @@ export default function Research() {
   const [showConfig, setShowConfig] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeModal, setActiveModal] = useState<any>(null)
-  const [activeDetails, setActiveDetails] = useState<any>(null)
+  const [activeModal, _setActiveModal] = useState<any>(null)
+  const [activeDetails, _setActiveDetails] = useState<any>(null)
+
+  const setActiveModal = (val: any) => {
+    if (val) _setActiveDetails(null)
+    _setActiveModal(val)
+  }
+  const setActiveDetails = (val: any) => {
+    if (val) _setActiveModal(null)
+    _setActiveDetails(val)
+  }
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
@@ -432,11 +442,41 @@ export default function Research() {
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("problem_statement")
     },
+    { 
+      field: "incident_type", 
+      headerName: "Incident Type", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-slate-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      hide: hiddenColumns.includes("incident_type")
+    },
+    { 
+      field: "created_by_user_id", 
+      headerName: "Created By", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-blue-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'SYSTEM'}</span>,
+      hide: hiddenColumns.includes("created_by_user_id")
+    },
+    { 
+      field: "owner", 
+      headerName: "Edited By", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-purple-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      hide: hiddenColumns.includes("owner")
+    },
     {
       field: "actions",
       headerName: "Action",
-      width: 120,
-      minWidth: 120,
+      width: 100,
+      minWidth: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -445,7 +485,6 @@ export default function Research() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => setActiveDetails(p.data)} title="Inspect Record" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit Record" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
                <button onClick={() => setConfirmModal({ 
                  isOpen: true, 
                  title: `Purge ${p.data.type}`, 
@@ -522,7 +561,7 @@ export default function Research() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="flex justify-center gap-3">
         <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
         <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
         <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
@@ -768,6 +807,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
   const [step, setStep] = useState(item.type ? 1 : 0)
   
   const systems = useMemo(() => Array.from(new Set(devices?.map((d: any) => d.system) || [])).filter(Boolean), [devices])
+  const enumOptions = (cat: string) => (options || []).filter((o: any) => o.category === cat).map((o: any) => ({ value: o.value.toUpperCase(), label: o.label.toUpperCase() }))
 
   const handleFinish = () => {
     if (!formData.title || !formData.type) {
@@ -862,7 +902,13 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                  </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <StyledSelect 
+                   label="Incident Type" 
+                   value={safeUpper(formData.incident_type)} 
+                   onChange={(e: any) => setFormData({...formData, incident_type: e.target.value.toUpperCase()})} 
+                   options={enumOptions('IncidentType')} 
+                />
                 <PriorityGauge 
                    value={formData.priority} 
                    onChange={(v) => setFormData({...formData, priority: v})} 
@@ -1183,6 +1229,16 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                 <div className="flex items-center gap-2">
                    <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
                    <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
+                      <div className="flex flex-col">
+                         <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Record Created</span>
+                         <span className="text-[10px] font-bold text-blue-400">{formData.created_at ? new Date(formData.created_at).toLocaleString() : 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col">
+                         <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Last Synchronized</span>
+                         <span className="text-[10px] font-bold text-emerald-400">{formData.updated_at ? new Date(formData.updated_at).toLocaleString() : 'N/A'}</span>
+                      </div>
+                   </div>
                 </div>
               </div>
               <h1 className="text-3xl font-bold uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
@@ -1410,7 +1466,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                      />
                                   </div>
                                )}
-                               <div className="overflow-x-auto">
+                               <div className="overflow-visible">
                                   <table className="w-full text-left border-collapse">
                                      <thead>
                                         <tr className="border-b border-white/10">
@@ -1432,7 +1488,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                               <td className="py-2 px-2">
                                                  <div className="group relative cursor-help inline-block">
                                                     <div className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[9999] pointer-events-none">
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[10000] pointer-events-none">
                                                        <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[250px] max-w-[400px]">
                                                           <p className="text-[9px] font-bold uppercase text-slate-500 mb-2 border-b border-white/5 pb-1">Impacted Assets</p>
                                                           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -1444,9 +1500,24 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                        </div>
                                                     </div>
                                                  </div>
-                                              </td>                                              <td className="py-2 px-2 text-right">
+                                              </td>
+                                              <td className="py-2 px-2 text-right">
                                                  {isEditing && (
-                                                    <button onClick={() => setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})} className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded">
+                                                    <button 
+                                                      onClick={() => {
+                                                        const m = fm.metadata_json || {}
+                                                        const hasWork = (m.status_cause && m.status_cause !== 'NOT_STARTED') || 
+                                                                        (m.status_workaround && m.status_workaround !== 'NOT_STARTED') || 
+                                                                        (m.status_monitoring && m.status_monitoring !== 'NOT_STARTED') || 
+                                                                        (m.status_prevention && m.status_prevention !== 'NOT_STARTED');
+                                                        if (hasWork) {
+                                                           toast.error("DATA LOSS PREVENTION: Resolution work detected. Purge resolution entries in FAR module before unlinking.", { duration: 4000 });
+                                                           return;
+                                                        }
+                                                        setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})
+                                                      }} 
+                                                      className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded"
+                                                    >
                                                        <Trash2 size={12}/>
                                                     </button>
                                                  )}
@@ -2186,10 +2257,33 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
     setNewStep({ text: '', images: [] })
   }
 
+  const queryClient = useQueryClient()
+  const syncMutation = useMutation({
+    mutationFn: async ({ id, metadata }: any) => {
+      const res = await apiFetch(`/api/v1/far/modes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ metadata_json: metadata })
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['far'] })
+      queryClient.invalidateQueries({ queryKey: ['investigations'] })
+      queryClient.invalidateQueries({ queryKey: ['rca-records'] })
+      toast.success('FAR Vector Synchronized')
+    }
+  })
+
   const updateFailureStatus = (fmId: number, field: string, status: string) => {
-    // This would typically trigger a mutation to update the FarFailureMode or its children
-    // For now, we update the local state if it's cached, or ideally we'd have a specific endpoint
-    toast.success(`Synchronizing ${field} status to FAR matrix...`)
+    const fm = failureModes.find((f: any) => f.id === fmId)
+    const newMetadata = { ...(fm?.metadata_json || {}), [`status_${field}`]: status }
+    syncMutation.mutate({ id: fmId, metadata: newMetadata })
+  }
+
+  const updateSyncText = (fmId: number, type: string, text: string) => {
+    const fm = failureModes.find((f: any) => f.id === fmId)
+    const newMetadata = { ...(fm?.metadata_json || {}), [`sync_${type.toLowerCase()}`]: text }
+    syncMutation.mutate({ id: fmId, metadata: newMetadata })
   }
 
   const statusOptions = [
@@ -2410,6 +2504,8 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
                             </div>
                             <textarea 
                                disabled={!isEditing}
+                               value={linkedFailures.find(f => f.id === selectedFailureId)?.metadata_json?.[`sync_${activeManagerType.toLowerCase()}`] || ''}
+                               onChange={(e) => updateSyncText(selectedFailureId, activeManagerType, e.target.value.toUpperCase())}
                                className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none min-h-[150px] resize-none uppercase"
                                placeholder={`Syncing ${activeManagerType} with FAR matrix...`}
                             />

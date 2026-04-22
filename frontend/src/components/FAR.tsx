@@ -107,22 +107,22 @@ const maturityLevels = [
 const METRIC_DEFINITIONS: any = {
   SRI: {
     title: "System Reliability Index (SRI)",
-    formula: "100 * (1 - (Avg RPN / 500))",
+    formula: "SRI = 100 × [1 - (RPN_avg / 500)]",
     description: "Represents the aggregate health of the infrastructure's risk profile. A score of 100 signifies zero documented risk exposure, while lower scores indicate high-criticality failure modes with frequent occurrence or visibility gaps."
   },
   RiskDensity: {
     title: "Risk Density Profile",
-    formula: "Total Accumulated RPN / Total Affected Infrastructure Assets",
+    formula: "D_risk = Σ RPN / Σ Assets_affected",
     description: "Measures risk concentration across assets. High density indicates that a small number of physical or logical assets are bearing a disproportionate amount of system-wide failure risk."
   },
   MitigationRatio: {
     title: "Global Mitigation Coverage",
-    formula: "(Count of Modes with Active Mitigations / Total Documented Modes) * 100",
+    formula: "M_cov = (N_mitigated / N_total) × 100",
     description: "Evaluates the breadth of the defense-in-depth strategy. Measures the percentage of failure modes that have at least one verified Monitoring or temporary Workaround protocol established."
   },
   AvgSeverity: {
     title: "Mean Failure Criticality",
-    formula: "Arithmetic Mean of RPN [Σ RPN / N]",
+    formula: "RPN_avg = (1 / N) Σ RPN_i",
     description: "The average Risk Priority Number across the entire registry. Used to monitor long-term trends in the inherent severity of documented risks, independent of the number of entries."
   }
 }
@@ -141,14 +141,14 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
         </div>
         <div className="space-y-4">
           <div>
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Mathematical Derivation</p>
-            <div className="bg-black/40 border border-white/5 rounded-lg p-4 font-mono text-[11px] text-blue-300">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Mathematical Derivation</p>
+            <div className="bg-black/40 border border-white/5 rounded-lg p-6 font-serif text-lg italic text-blue-300 text-center shadow-inner">
                {def.formula}
             </div>
           </div>
           <div>
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2">Functional Definition</p>
-            <p className="text-[12px] text-slate-300 leading-relaxed font-bold uppercase tracking-tight ">
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Functional Definition</p>
+            <p className="text-[13px] text-slate-300 leading-relaxed font-bold tracking-tight ">
               {def.description}
             </p>
           </div>
@@ -167,6 +167,7 @@ export default function FAR() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [showMaturityHelp, setShowMaturityHelp] = useState(false)
+  const [showRpnHelp, setShowRpnHelp] = useState(false)
   const [activeMetricHelp, setActiveMetricHelp] = useState<string | null>(null)
 
   const [incidentListModal, setIncidentListModal] = useState<{show: boolean, rcas: any[]}>({ show: false, rcas: [] })
@@ -295,7 +296,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -316,7 +317,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -337,7 +338,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -358,7 +359,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -398,7 +399,7 @@ export default function FAR() {
 
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colorClass}`}>
+            <div onClick={() => setShowMaturityHelp(true)} className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${colorClass}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 Lv{ml.lv} {ml.label}
               </span>
@@ -407,6 +408,44 @@ export default function FAR() {
         )
       },
       hide: hiddenColumns.includes("status")
+    },
+    {
+      headerName: "Vectors",
+      width: 140,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const m = p.data.mitigations || [];
+        const c = p.data.causes || [];
+        const mons = m.filter((i:any) => i.mitigation_type === 'Monitoring').length;
+        const wrks = m.filter((i:any) => i.mitigation_type === 'Workaround').length;
+        const prevs = (p.data.prevention_actions || []).length;
+        const res = c.flatMap((i:any) => i.resolutions || []).length;
+        
+        return (
+          <div className="flex items-center justify-center gap-1.5 h-full">
+             <div title="Causes / Resolutions" className="flex flex-col items-center">
+                <span className="text-[7px] text-slate-500 font-bold uppercase">C/R</span>
+                <span className="text-[9px] font-bold text-blue-400 leading-none">{c.length}/{res}</span>
+             </div>
+             <div className="w-px h-4 bg-white/5" />
+             <div title="Workarounds" className="flex flex-col items-center">
+                <span className="text-[7px] text-slate-500 font-bold uppercase">W</span>
+                <span className="text-[9px] font-bold text-amber-400 leading-none">{wrks}</span>
+             </div>
+             <div className="w-px h-4 bg-white/5" />
+             <div title="Monitoring" className="flex flex-col items-center">
+                <span className="text-[7px] text-slate-500 font-bold uppercase">M</span>
+                <span className="text-[9px] font-bold text-sky-400 leading-none">{mons}</span>
+             </div>
+             <div className="w-px h-4 bg-white/5" />
+             <div title="Prevention" className="flex flex-col items-center">
+                <span className="text-[7px] text-slate-500 font-bold uppercase">P</span>
+                <span className="text-[9px] font-bold text-emerald-400 leading-none">{prevs}</span>
+             </div>
+          </div>
+        )
+      }
     },
     {
       field: "linked_rcas",
@@ -445,11 +484,33 @@ export default function FAR() {
             </div>
           </div>
         );
-      }
+      },
+      hide: hiddenColumns.includes("linked_rcas")
+    },
+    { 
+      field: "failure_type", 
+      headerName: "Type", 
+      width: 100, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-slate-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'DESIGN'}</span>,
+      hide: hiddenColumns.includes("failure_type")
+    },
+    { 
+      field: "created_by_user_id", 
+      headerName: "Created By", 
+      width: 120, 
+      filter: true, 
+      cellClass: 'text-center font-bold text-blue-400 uppercase', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'SYSTEM'}</span>,
+      hide: hiddenColumns.includes("created_by_user_id")
     },
     {
       headerName: "Action",
-      width: 120,
+      width: 100,
+      minWidth: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -457,7 +518,6 @@ export default function FAR() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
                <button onClick={() => openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
@@ -528,17 +588,19 @@ export default function FAR() {
            </div>
 
            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Laboratory">
-                <Activity size={16} />
-             </button>
-             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration">
-                <Sliders size={16} />
-             </button>
-             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Matrix Registry Enums">
-                <Settings size={16} />
-             </button>
-          </div>
-
+               <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Laboratory">
+                  <Activity size={16} />
+               </button>
+               <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration">
+                  <Sliders size={16} />
+               </button>
+               <button onClick={() => setShowRpnHelp(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-amber-400 rounded-lg transition-all" title="RPN Definition Matrix">
+                  <HelpCircle size={16} />
+               </button>
+               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Matrix Registry Enums">
+                  <Settings size={16} />
+               </button>
+            </div>
            <button 
              onClick={() => { setSelectedModeId(null); setShowWizard(true); }}
              className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
@@ -569,19 +631,17 @@ export default function FAR() {
       </AnimatePresence>
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>GLOBAL_REALM</button>
-         {availableSystems.map(sys => (
-           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
+         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>ALL</button>
+         {availableSystems.map(sys => (           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
          ))}
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="flex justify-center gap-4">
          <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? "emerald" : "rose"} onHelp={() => setActiveMetricHelp("SRI")} />
          <StatCard id="RiskDensity" label="Risk Density" value={metrics.riskDensity} suffix="RPN/ASSET" color="amber" onHelp={() => setActiveMetricHelp("RiskDensity")} />
          <StatCard id="MitigationRatio" label="Mitigation Ratio" value={metrics.mitRatio} suffix="%" color="sky" onHelp={() => setActiveMetricHelp("MitigationRatio")} />
          <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp("AvgSeverity")} />
       </div>
-
       <div className="flex-1 min-h-0 flex flex-col glass-panel rounded-lg border-white/5 bg-[#0a0c14]/40 overflow-hidden">
            <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -648,37 +708,63 @@ export default function FAR() {
 
       <AnimatePresence>
         {incidentListModal.show && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-purple-500/30 space-y-6">
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-8 rounded-lg border border-purple-500/30 space-y-6 flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <h2 className="text-xl font-bold uppercase tracking-tighter text-purple-400 flex items-center space-x-3">
-                   <ShieldAlert size={24}/> <span>Linked Incidents</span>
+                   <ShieldAlert size={24}/> <span>Linked Incident Forensic Registry</span>
                 </h2>
-                <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
+                <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
               </div>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                {incidentListModal.rcas.map((r: any) => (
-                  <button 
-                    key={r.id}
-                    onClick={() => {
-                      setSelectedRcaDetail(r);
-                      setIncidentListModal({ show: false, rcas: [] });
-                    }}
-                    className="w-full bg-white/5 border border-white/10 p-4 rounded-lg flex items-center justify-between group hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-left"
-                  >
-                    <div>
-                      <p className="text-[10px] font-bold text-white uppercase tracking-tight">{r.title}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[8px] font-bold text-slate-500 uppercase">RCA-{r.id}</span>
-                        <span className="w-1 h-1 rounded-full bg-slate-700" />
-                        <span className="text-[8px] font-bold text-purple-400 uppercase">{r.status}</span>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-slate-600 group-hover:text-purple-400 transition-colors" />
-                  </button>
-                ))}
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse">
+                   <thead className="sticky top-0 bg-slate-900 border-b border-white/10 z-10">
+                      <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                         <th className="py-3 px-4 w-12 text-center italic text-blue-400">#</th>
+                         <th className="py-3 px-4 w-16">ID</th>
+                         <th className="py-3 px-4">Incident Title</th>
+                         <th className="py-3 px-4 w-40">Occurrence Datetime</th>
+                         <th className="py-3 px-4 w-32">Lead Owner</th>
+                         <th className="py-3 px-4 w-24 text-center">Status</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-white/5">
+                      {incidentListModal.rcas.map((r: any, idx: number) => (
+                        <tr 
+                          key={r.id}
+                          onClick={() => {
+                            setSelectedRcaDetail(r);
+                            setIncidentListModal({ show: false, rcas: [] });
+                          }}
+                          className="group cursor-pointer hover:bg-purple-500/5 transition-colors"
+                        >
+                          <td className="py-4 px-4 text-center text-[10px] font-bold text-slate-600 italic group-hover:text-blue-400">{idx + 1}</td>
+                          <td className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">RCA-{r.id}</td>
+                          <td className="py-4 px-4">
+                             <div className="text-[11px] font-bold text-slate-200 uppercase group-hover:text-white transition-colors leading-tight">{r.title}</div>
+                          </td>
+                          <td className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                             {r.occurrence_at ? new Date(r.occurrence_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'N/A'}
+                          </td>
+                          <td className="py-4 px-4">
+                             <div className="text-[10px] font-bold text-blue-400/70 group-hover:text-blue-400 uppercase tracking-widest truncate max-w-[120px]">
+                                {r.owners?.[0] || r.owner || 'N/A'}
+                             </div>
+                          </td>
+                          <td className="py-4 px-4">
+                             <div className="flex justify-center">
+                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${
+                                   r.status === 'RESOLVED' || r.status === 'CLOSED' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-purple-400 border-purple-500/30 bg-purple-500/10'
+                                }`}>{r.status}</span>
+                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
               </div>
-              <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="w-full py-3 bg-purple-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-purple-500/20">Close Registry</button>
+              <button onClick={() => setIncidentListModal({ show: false, rcas: [] })} className="w-full py-3.5 bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">Dismiss Registry View</button>
             </motion.div>
           </div>
         )}
@@ -711,7 +797,7 @@ export default function FAR() {
                    <button onClick={() => setShowMaturityHelp(false)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                 </div>
                 <div className="p-4 space-y-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                   <table className="w-full text-[10px]">
+                   <table className="w-full text-xs">
                       <thead className="bg-white/5 border-b border-white/5">
                          <tr>
                             <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Lv</th>
@@ -720,11 +806,11 @@ export default function FAR() {
                          </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                         {maturityLevels.map(ml => (
+                         {[...maturityLevels].reverse().map(ml => (
                            <tr key={ml.lv} className="hover:bg-white/5 transition-colors">
                               <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded font-bold text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
                               <td className="px-4 py-3 font-bold text-white uppercase ">{ml.label}</td>
-                              <td className="px-4 py-3 text-slate-400 font-bold uppercase tracking-tight">{ml.tooltip}</td>
+                              <td className="px-4 py-3 text-slate-400 font-bold tracking-tight">{ml.tooltip}</td>
                            </tr>
                          ))}
                       </tbody>
@@ -732,6 +818,10 @@ export default function FAR() {
                 </div>
              </motion.div>
           </div>
+        )}
+
+        {showRpnHelp && (
+          <RpnDefinitionModal onClose={() => setShowRpnHelp(false)} />
         )}
       </AnimatePresence>
 
@@ -784,9 +874,9 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   const bgColors: any = { emerald: 'bg-emerald-500/5', rose: 'bg-rose-500/5', amber: 'bg-amber-500/5', sky: 'bg-sky-500/5' }
   const textColors: any = { emerald: 'text-emerald-400', rose: 'text-rose-400', amber: 'text-amber-400', sky: 'text-sky-400' }
   return (
-    <div className={`glass-panel p-4 rounded-lg border-white/5 ${bgColors[color]} flex flex-col justify-between group overflow-hidden relative min-h-[90px]`}>
+    <div className={`glass-panel p-4 rounded-lg border-white/5 ${bgColors[color]} flex flex-col justify-between group overflow-hidden relative min-h-[90px] w-64`}>
       <div className="flex items-center justify-between relative z-10">
-         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+         <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</p>
          <button onClick={onHelp} className="p-1 text-slate-600 hover:text-white transition-colors"><HelpCircle size={12}/></button>
       </div>
       <div className="flex items-baseline gap-1 relative z-10 leading-none mt-2">
