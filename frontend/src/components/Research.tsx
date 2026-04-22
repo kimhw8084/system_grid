@@ -18,6 +18,7 @@ import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
+import { GaugeSelector } from './FAR'
 
 // --- Components ---
 
@@ -1112,7 +1113,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
             } else if (focusedField === 'timeline') {
               setNewTimeline((prev: any) => ({ ...prev, images: [...(prev.images || []), base64] }))
               toast.success('Figure Captured')
-            } else if (focusedField === 'investigation') {
+            } else if (focusedField === 'investigation' || focusedField?.startsWith('investigation_')) {
               window.dispatchEvent(new CustomEvent('investigation-paste', { detail: base64 }))
               toast.success('Investigation Figure Captured')
             } else {
@@ -1247,18 +1248,22 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
   }, [formData.timeline])
 
   // Auto-save logic with debounce/stability
+  const saveTimeout = useRef<any>(null);
   useEffect(() => {
     if (isEditing) return;
     
     const currentNormalized = normalizeForComparison(formData);
     if (currentNormalized !== lastAcknowledgedData.current) {
-        onSave({ 
-          ...formData, 
-          linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) 
-        });
-        // Optimistically update lastAcknowledgedData to prevent loop
-        lastAcknowledgedData.current = currentNormalized;
+        if (saveTimeout.current) clearTimeout(saveTimeout.current);
+        saveTimeout.current = setTimeout(() => {
+           onSave({ 
+             ...formData, 
+             linked_failure_modes: (formData.linked_failure_mode_ids || []).map((id: number) => ({ id })) 
+           });
+           lastAcknowledgedData.current = currentNormalized;
+        }, 1000);
     }
+    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); }
   }, [isEditing, formData, onSave]);
 
   const pInfo = getPriorityInfo(formData.priority)
@@ -1631,17 +1636,6 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                 </div>
                 {focusedField === 'evidence' && <p className="text-[8px] font-bold uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
              </SectionCard>
-
-             <div className="pt-6 border-t border-white/5 space-y-2 opacity-40 hover:opacity-100 transition-opacity">
-                <div className="flex items-center justify-between px-2">
-                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Record Created</span>
-                   <span className="text-[10px] font-bold text-slate-400">{new Date(formData.created_at).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between px-2">
-                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Last Synchronized</span>
-                   <span className="text-[10px] font-bold text-blue-400">{new Date(formData.updated_at).toLocaleString()}</span>
-                </div>
-             </div>
           </div>
 
           {/* Right Pane with Tabs */}
@@ -2273,12 +2267,12 @@ export const ModernStatusPicker = ({ value, onChange, options }: any) => {
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)} />
+            <div className="fixed inset-0 z-[1000]" onClick={() => setIsOpen(false)} />
             <motion.div 
               initial={{ opacity: 0, y: 5 }} 
               animate={{ opacity: 1, y: 0 }} 
               exit={{ opacity: 0, y: 5 }}
-              className="absolute top-full mt-1 z-[110] bg-slate-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[120px]"
+              className="absolute top-full mt-1 z-[1100] bg-slate-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[120px]"
             >
               {options.map((opt: any) => (
                 <button
@@ -2297,15 +2291,15 @@ export const ModernStatusPicker = ({ value, onChange, options }: any) => {
   )
 }
 
-export function InvestigationTab({ formData, setFormData, failureModes, setFocusedField, focusedField }: any) {
+export function InvestigationTab({ formData, setFormData, failureModes, setFocusedField, focusedField, options: settingsOptions }: any) {
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
   const [selectedFailureId, setSelectedFailureId] = useState<number | null>(null)
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
   const [activeSubTab, setActiveSubTab] = useState<'CAUSES' | 'ACTIONS'>('CAUSES')
-  const [activeActionType, setActiveActionType] = useState<'CAUSE' | 'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('CAUSE')
   const [isAddingCause, setIsAddingCause] = useState(false)
   const [newCause, setNewCause] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
   const [expandedCauseIds, setExpandedCauseIds] = useState<number[]>([])
+  const [editingStepId, setEditingStepId] = useState<number | null>(null)
 
   const linkedFailures = useMemo(() => {
     const ids = formData.linked_failure_mode_ids || []
@@ -2331,16 +2325,31 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
 
   const addStep = (causeId: number) => {
     if (!newStep.text.trim()) return
-    const step = { 
-      ...newStep, 
-      id: Date.now(), 
-      failure_id: selectedFailureId,
-      cause_id: causeId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+    
+    if (editingStepId !== null) {
+      const updatedSteps = (formData.identification_steps_json || []).map((s: any) => 
+        s.id === editingStepId ? { ...s, text: newStep.text, images: newStep.images, updated_at: new Date().toISOString() } : s
+      )
+      setFormData({ ...formData, identification_steps_json: updatedSteps })
+      setEditingStepId(null)
+    } else {
+      const step = { 
+        ...newStep, 
+        id: Date.now(), 
+        failure_id: selectedFailureId,
+        cause_id: causeId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      setFormData({ ...formData, identification_steps_json: [...(formData.identification_steps_json || []), step] })
     }
-    setFormData({ ...formData, identification_steps_json: [...(formData.identification_steps_json || []), step] })
     setNewStep({ text: '', images: [] })
+  }
+
+  const editStep = (step: any) => {
+    setEditingStepId(step.id)
+    setNewStep({ text: step.text, images: step.images || [] })
+    setFocusedField(`investigation_${step.cause_id}`)
   }
 
   const queryClient = useQueryClient()
@@ -2371,19 +2380,14 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
     onSuccess: () => {
       toast.success('Root Cause Logged');
       setIsAddingCause(false);
+      setNewCause({ cause_text: '', occurrence_level: 5, responsible_team: '' })
       queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })
     }
   })
 
   const updateFailureStatus = (fmId: number, field: string, status: string) => {
-    const fm = failureModes.find((f: any) => f.id === fmId)
+    const fm = (failureModes || []).find((f: any) => f.id === fmId)
     const newMetadata = { ...(fm?.metadata_json || {}), [`status_${field}`]: status }
-    syncMutation.mutate({ id: fmId, metadata: newMetadata })
-  }
-
-  const updateSyncText = (fmId: number, type: string, text: string) => {
-    const fm = failureModes.find((f: any) => f.id === fmId)
-    const newMetadata = { ...(fm?.metadata_json || {}), [`sync_${type.toLowerCase()}`]: text }
     syncMutation.mutate({ id: fmId, metadata: newMetadata })
   }
 
@@ -2401,7 +2405,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6 gap-8">
        {/* 1. Failure Resolution Matrix (Header) */}
-       <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-hidden shadow-2xl">
+       <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-visible shadow-2xl">
           <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
              <div className="flex items-center gap-3">
                 <Activity size={18} className="text-purple-400" />
@@ -2412,7 +2416,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
              </div>
           </div>
           
-          <div className="overflow-x-auto max-h-48 overflow-y-auto custom-scrollbar">
+          <div className="overflow-visible max-h-64 overflow-y-auto custom-scrollbar">
              <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 z-10">
                    <tr className="border-b border-white/10 bg-black/40 backdrop-blur-md">
@@ -2423,7 +2427,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                       <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Prevention</th>
                    </tr>
                 </thead>
-                <tbody>
+                <tbody className="overflow-visible">
                    {linkedFailures.map((fm: any) => (
                       <tr 
                         key={fm.id} 
@@ -2440,7 +2444,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                             </div>
                          </td>
                          {['cause', 'workaround', 'monitoring', 'prevention'].map(type => (
-                            <td key={type} className="py-3 px-6 text-center">
+                            <td key={type} className="py-3 px-6 text-center overflow-visible">
                                <ModernStatusPicker 
                                   value={fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'}
                                   onChange={(val: string) => updateFailureStatus(fm.id, type, val)}
@@ -2502,38 +2506,72 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                          </div>
 
                          {isAddingCause && (
-                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-blue-600/5 border border-blue-500/20 rounded-lg p-6 space-y-4">
-                               <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                                  <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Define Root Cause Origin</h5>
-                                  <button onClick={() => setIsAddingCause(false)} className="text-slate-600 hover:text-white"><X size={16}/></button>
+                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-blue-600/5 border border-blue-500/20 rounded-lg p-8 space-y-6 shadow-2xl">
+                               <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                                  <div className="flex items-center gap-3">
+                                     <Zap size={20} className="text-blue-400" />
+                                     <h3 className="text-lg font-black text-white uppercase tracking-tighter">Attribute Root Cause</h3>
+                                  </div>
+                                  <button onClick={() => setIsAddingCause(false)} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
                                </div>
-                               <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Logical Origin Description</label>
-                                     <input 
-                                       value={newCause.cause_text}
-                                       onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})}
-                                       className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase"
-                                       placeholder="E.G., MEMORY_LEAK_IN_SCHEDULER"
+
+                               <div className="grid grid-cols-2 gap-8">
+                                  <div className="space-y-6">
+                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">description</label>
+                                        <textarea 
+                                          autoFocus
+                                          value={newCause.cause_text} 
+                                          onChange={e => setNewCause({...newCause, cause_text: e.target.value.toUpperCase()})} 
+                                          placeholder="ENTER LOGICAL TRACE ORIGIN..." 
+                                          className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-xs font-bold text-white outline-none focus:border-blue-500 min-h-[100px] resize-none uppercase" 
+                                        />
+                                     </div>
+
+                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Responsible Team / Unit</label>
+                                        <input 
+                                          value={newCause.responsible_team} 
+                                          onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})} 
+                                          placeholder="E.G. PLATFORM INFRASTRUCTURE" 
+                                          className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-blue-500 uppercase" 
+                                        />
+                                     </div>
+                                  </div>
+
+                                  <div className="space-y-6 bg-black/40 p-6 rounded-xl border border-white/5">
+                                     <GaugeSelector 
+                                        label="Occurrence Probability" 
+                                        value={newCause.occurrence_level} 
+                                        onChange={(v: number) => setNewCause({...newCause, occurrence_level: v})} 
+                                        levels={[
+                                           { value: 10, label: 'CERTAIN', desc: 'Inevitable. Occurs multiple times per day. Constant risk exposure.' },
+                                           { value: 9, label: 'VERY HIGH', desc: 'Likely to occur daily. High-frequency failure profile.' },
+                                           { value: 8, label: 'HIGH', desc: 'Likely to occur weekly. Recurring operational disruption.' },
+                                           { value: 7, label: 'MODERATELY HIGH', desc: 'Occurs once or twice per month. Periodic impact.' },
+                                           { value: 6, label: 'MODERATE', desc: 'Occurs once every few months. Occasional risk.' },
+                                           { value: 5, label: 'LOW', desc: 'Occurs once or twice per year. Infrequent failure mode.' },
+                                           { value: 4, label: 'VERY LOW', desc: 'Occurs once every few years. Rare occurrence.' },
+                                           { value: 3, label: 'REMOTE', desc: 'Unlikely but possible. Minimal historical evidence.' },
+                                           { value: 2, label: 'VERY REMOTE', desc: 'Extremely unlikely. Speculative failure mode.' },
+                                           { value: 1, label: 'NEARLY IMPOSSIBLE', desc: 'Never expected to occur. Theoretical risk only.' },
+                                        ]} 
+                                        color="text-blue-400" 
+                                        accent="bg-blue-400" 
                                      />
                                   </div>
-                                  <div className="space-y-1">
-                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Responsible Team</label>
-                                     <input 
-                                       value={newCause.responsible_team}
-                                       onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})}
-                                       className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black text-white outline-none focus:border-blue-500 uppercase"
-                                       placeholder="E.G., PLATFORM_SRE"
-                                     />
-                                  </div>
                                </div>
-                               <button 
-                                 onClick={() => causeMutation.mutate(newCause)}
-                                 disabled={!newCause.cause_text || causeMutation.isPending}
-                                 className="w-full py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-                               >
-                                  {causeMutation.isPending ? <RefreshCcw size={14} className="animate-spin mx-auto" /> : 'Confirm Root Cause Attribution'}
-                               </button>
+
+                               <div className="flex gap-4">
+                                  <button onClick={() => setIsAddingCause(false)} className="flex-1 py-4 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+                                  <button 
+                                    disabled={!newCause.cause_text || causeMutation.isPending} 
+                                    onClick={() => causeMutation.mutate(newCause)} 
+                                    className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                                  >
+                                    {causeMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />} LOG ROOT CAUSE
+                                  </button>
+                               </div>
                             </motion.div>
                          )}
 
@@ -2580,22 +2618,25 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
 
                                               {/* Identification Steps Input */}
                                               <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-4">
-                                                 <div 
-                                                   onClick={() => setFocusedField(`investigation_${cause.id}`)}
-                                                   className={`relative group focus-trigger ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50' : ''}`}
-                                                 >
-                                                    <textarea 
-                                                       value={newStep.text}
-                                                       onChange={e => setNewStep({...newStep, text: e.target.value})}
-                                                       className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
-                                                       placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
-                                                    />
-                                                    {focusedField === `investigation_${cause.id}` && (
-                                                       <div className="absolute top-3 right-4 flex items-center gap-2">
-                                                          <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                                                          <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Paste Active</span>
-                                                       </div>
-                                                    )}
+                                                 <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">description</label>
+                                                    <div 
+                                                      onClick={() => setFocusedField(`investigation_${cause.id}`)}
+                                                      className={`relative group focus-trigger ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50' : ''}`}
+                                                    >
+                                                       <textarea 
+                                                          value={newStep.text}
+                                                          onChange={e => setNewStep({...newStep, text: e.target.value})}
+                                                          className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
+                                                          placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
+                                                       />
+                                                       {focusedField === `investigation_${cause.id}` && (
+                                                          <div className="absolute top-3 right-4 flex items-center gap-2">
+                                                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                                                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Paste Active</span>
+                                                          </div>
+                                                       )}
+                                                    </div>
                                                  </div>
                                                  {newStep.images.length > 0 && (
                                                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -2611,8 +2652,12 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                                                    onClick={() => addStep(cause.id)} 
                                                    className="w-full py-3 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                                                  >
-                                                    <Plus size={14} /> Commit Identification Milestone
+                                                    {editingStepId !== null ? <Save size={14} /> : <Plus size={14} />} 
+                                                    {editingStepId !== null ? 'Update Identification Milestone' : 'Commit Identification Milestone'}
                                                  </button>
+                                                 {editingStepId !== null && (
+                                                   <button onClick={() => { setEditingStepId(null); setNewStep({ text: '', images: [] }); }} className="w-full py-2 text-[9px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel Edit</button>
+                                                 )}
                                               </div>
 
                                               {/* Steps Stream */}
@@ -2621,7 +2666,13 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                                                     <div key={step.id || idx} className="flex gap-6 group">
                                                        <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-400 font-black text-[10px] shrink-0 border border-blue-500/20 shadow-inner italic">{idx + 1}</div>
                                                        <div className="flex-1 space-y-3 pt-1">
-                                                          <p className="text-[11px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                                          <div className="flex items-start justify-between">
+                                                             <p className="text-[11px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button onClick={() => editStep(step)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><Edit2 size={12}/></button>
+                                                                <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><Trash2 size={12}/></button>
+                                                             </div>
+                                                          </div>
                                                           {step.images?.length > 0 && (
                                                             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                                                                 {step.images.map((img: string, i: number) => (
@@ -2629,12 +2680,9 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                                                                 ))}
                                                             </div>
                                                           )}
-                                                          <div className="flex items-center justify-between pt-2">
-                                                            <div className="flex items-center gap-1.5 text-[7px] font-bold text-slate-600 uppercase tracking-widest">
-                                                               <Clock size={8} />
-                                                               <span>{new Date(step.created_at).toLocaleString()}</span>
-                                                            </div>
-                                                            <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="text-rose-500 hover:text-rose-400 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                                                          <div className="flex items-center gap-1.5 text-[7px] font-bold text-slate-600 uppercase tracking-widest pt-1">
+                                                             <Clock size={8} />
+                                                             <span>{new Date(step.created_at).toLocaleString()}</span>
                                                           </div>
                                                        </div>
                                                     </div>
@@ -2657,66 +2705,13 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                    )}
 
                    {activeSubTab === 'ACTIONS' && (
-                      <div className="h-full flex flex-col gap-6 overflow-hidden">
-                         <div className="flex justify-center gap-4 shrink-0">
-                            {[
-                               { id: 'CAUSE', label: 'Cause Analysis', icon: Search, color: 'text-blue-400', bg: 'bg-blue-400' },
-                               { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw, color: 'text-amber-400', bg: 'bg-amber-400' },
-                               { id: 'MONITORING', label: 'Monitoring', icon: Activity, color: 'text-sky-400', bg: 'bg-sky-400' },
-                               { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-400' }
-                            ].map(type => (
-                               <button
-                                  key={type.id}
-                                  onClick={() => setActiveActionType(type.id as any)}
-                                  className={`px-8 py-3 rounded-xl border flex items-center gap-3 transition-all relative group overflow-hidden ${activeActionType === type.id ? 'bg-white/5 border-white/20 shadow-2xl' : 'bg-white/2 border-white/5 text-slate-500 hover:bg-white/5'}`}
-                               >
-                                  {activeActionType === type.id && (
-                                     <motion.div layoutId="action-active" className={`absolute inset-0 ${type.bg}/5 pointer-events-none`} />
-                                  )}
-                                  <type.icon size={16} className={activeActionType === type.id ? type.color : 'text-slate-600 group-hover:text-slate-400'} />
-                                  <span className={`text-[10px] font-black uppercase tracking-widest ${activeActionType === type.id ? 'text-white' : ''}`}>{type.label}</span>
-                                  {activeActionType === type.id && <div className={`w-1 h-1 rounded-full ${type.bg} absolute right-4`} />}
-                               </button>
-                            ))}
-                         </div>
-
-                         <div className="flex-1 bg-[#05070a] border border-white/10 rounded-2xl p-10 space-y-8 flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                               <div className="flex items-center gap-4">
-                                  <div className={`p-4 rounded-2xl bg-white/5 border border-white/10 ${
-                                     activeActionType === 'CAUSE' ? 'text-blue-400' : 
-                                     activeActionType === 'WORKAROUND' ? 'text-amber-400' :
-                                     activeActionType === 'MONITORING' ? 'text-sky-400' : 'text-emerald-400'
-                                  }`}>
-                                     {activeActionType === 'CAUSE' && <Search size={24} />}
-                                     {activeActionType === 'WORKAROUND' && <RefreshCcw size={24} />}
-                                     {activeActionType === 'MONITORING' && <Activity size={24} />}
-                                     {activeActionType === 'PREVENTION' && <ShieldCheck size={24} />}
-                                  </div>
-                                  <div>
-                                     <h3 className="text-xl font-black uppercase tracking-tighter text-white">{activeActionType} Deployment Strategy</h3>
-                                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Direct Synchronization with FAR Registry</p>
-                                  </div>
-                               </div>
-                               <div className="flex flex-col items-end gap-1">
-                                  <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic">Vector Compliance</span>
-                                  <div className="flex items-center gap-1">
-                                     <span className="text-[10px] font-black text-emerald-500 uppercase">Active Sync</span>
-                                  </div>
-                               </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Detailed Strategic Documentation</label>
-                               <textarea 
-                                  value={selectedFailure.metadata_json?.[`sync_${activeActionType.toLowerCase()}`] || ''}
-                                  onChange={(e) => updateSyncText(selectedFailure.id, activeActionType, e.target.value)}
-                                  className="flex-1 bg-slate-950/80 border border-white/10 rounded-2xl p-8 text-xs font-bold text-slate-300 outline-none uppercase leading-relaxed shadow-inner placeholder:text-slate-800 focus:border-white/20 transition-all custom-scrollbar"
-                                  placeholder={`ENTER ${activeActionType} ARCHITECTURE & IMPLEMENTATION DETAILS FOR THIS VECTOR...`}
-                               />
-                            </div>
-                         </div>
-                      </div>
+                      <ActionMatrix 
+                        selectedFailure={selectedFailure} 
+                        syncMutation={syncMutation} 
+                        updateSyncText={updateSyncText}
+                        settingsOptions={settingsOptions}
+                        onUpdate={() => queryClient.invalidateQueries({ queryKey: ['far-failure-modes'] })}
+                      />
                    )}
                 </div>
              </>
@@ -2726,6 +2721,249 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                 <p className="text-sm font-black text-slate-600 uppercase tracking-[0.5em]">Select Failure Vector to Investigate</p>
              </div>
           )}
+       </div>
+    </div>
+  )
+}
+
+function ActionMatrix({ selectedFailure, syncMutation, updateSyncText, settingsOptions, onUpdate }: any) {
+  const [activeActionType, setActiveActionType] = useState<'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('WORKAROUND')
+  const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
+  const [newAction, setNewAction] = useState<any>({ steps: '', team: '', status: 'Not Started', bkm_mode: 'link', bkm_content: '', bkm_id: null, monitoring_id: null })
+  
+  const queryClient = useQueryClient()
+  const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
+  const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await apiFetch('/api/v1/devices/')).json() })
+
+  // Initialize selectedCauseId
+  useEffect(() => {
+    if (!selectedCauseId && selectedFailure.causes?.length > 0) {
+      setSelectedCauseId(selectedFailure.causes[0].id)
+    }
+  }, [selectedFailure.causes, selectedCauseId])
+
+  const mutation = useMutation({ 
+    mutationFn: async (data: any) => {
+      const isPrevention = activeActionType === 'PREVENTION';
+      let payload: any = { 
+        responsible_team: data.team.toUpperCase(), 
+        status: data.status,
+        cause_id: selectedCauseId
+      }
+      
+      if (isPrevention) {
+        payload.prevention_action = data.steps || 'Architectural Hardening';
+        payload.failure_mode_id = selectedFailure.id;
+        const res = await apiFetch('/api/v1/far/prevention', { method: 'POST', body: JSON.stringify(payload) });
+        return res.json();
+      } else {
+        payload.mitigation_type = activeActionType === 'WORKAROUND' ? 'Workaround' : 'Monitoring';
+        payload.mode_ids = [selectedFailure.id];
+        if (activeActionType === 'MONITORING') {
+          payload.monitoring_item_id = data.monitoring_id;
+        } else if (activeActionType === 'WORKAROUND') {
+          payload.mitigation_steps = data.steps;
+          if (data.bkm_mode === 'link' && data.bkm_id) {
+            payload.metadata_json = { linked_bkm_id: data.bkm_id };
+          } else if (data.bkm_mode === 'input' && data.bkm_content) {
+            payload.metadata_json = { external_bkm_link: data.bkm_content };
+          }
+        }
+        const res = await apiFetch('/api/v1/far/mitigations', { method: 'POST', body: JSON.stringify(payload) });
+        return res.json();
+      }
+    }, 
+    onSuccess: () => { 
+      toast.success(`${activeActionType} Strategic Action Deployed`); 
+      setIsAdding(false); 
+      onUpdate();
+    } 
+  })
+
+  const selectedCause = useMemo(() => selectedFailure.causes?.find((c:any) => c.id === selectedCauseId), [selectedFailure.causes, selectedCauseId])
+
+  return (
+    <div className="h-full flex flex-col gap-6 overflow-hidden">
+       <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-2 scrollbar-hide">
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest shrink-0">Select Cause:</span>
+          {(selectedFailure.causes || []).map((cause: any) => (
+             <button 
+                key={cause.id}
+                onClick={() => setSelectedCauseId(cause.id)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight border transition-all whitespace-nowrap ${selectedCauseId === cause.id ? 'bg-blue-600/10 border-blue-500 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'}`}
+             >
+                {cause.cause_text}
+             </button>
+          ))}
+          {selectedFailure.causes?.length === 0 && <span className="text-[10px] font-black text-slate-700 uppercase italic">No causes attributed yet</span>}
+       </div>
+
+       <div className="flex justify-center gap-4 shrink-0">
+          {[
+             { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw, color: 'text-amber-400', bg: 'bg-amber-400' },
+             { id: 'MONITORING', label: 'Monitoring', icon: Activity, color: 'text-sky-400', bg: 'bg-sky-400' },
+             { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-400' }
+          ].map(type => (
+             <button
+                key={type.id}
+                onClick={() => setActiveActionType(type.id as any)}
+                className={`px-8 py-3 rounded-xl border flex items-center gap-3 transition-all relative group overflow-hidden ${activeActionType === type.id ? 'bg-white/5 border-white/20 shadow-2xl' : 'bg-white/2 border-white/5 text-slate-500 hover:bg-white/5'}`}
+             >
+                {activeActionType === type.id && (
+                   <motion.div layoutId="action-active" className={`absolute inset-0 ${type.bg}/5 pointer-events-none`} />
+                )}
+                <type.icon size={16} className={activeActionType === type.id ? type.color : 'text-slate-600 group-hover:text-slate-400'} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${activeActionType === type.id ? 'text-white' : ''}`}>{type.label}</span>
+                {activeActionType === type.id && <div className={`w-1 h-1 rounded-full ${type.bg} absolute right-4`} />}
+             </button>
+          ))}
+       </div>
+
+       <div className="flex-1 bg-[#05070a] border border-white/10 rounded-2xl p-8 space-y-6 flex flex-col shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between border-b border-white/5 pb-4">
+             <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl bg-white/5 border border-white/10 ${
+                   activeActionType === 'WORKAROUND' ? 'text-amber-400' :
+                   activeActionType === 'MONITORING' ? 'text-sky-400' : 'text-emerald-400'
+                }`}>
+                   {activeActionType === 'WORKAROUND' && <RefreshCcw size={20} />}
+                   {activeActionType === 'MONITORING' && <Activity size={20} />}
+                   {activeActionType === 'PREVENTION' && <ShieldCheck size={20} />}
+                </div>
+                <div>
+                   <h3 className="text-lg font-black uppercase tracking-tighter text-white">{activeActionType} Strategy</h3>
+                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-0.5 italic">Linked to: {selectedCause?.cause_text || 'SELECT CAUSE'}</p>
+                </div>
+             </div>
+             <button 
+               onClick={() => setIsAdding(true)}
+               disabled={!selectedCauseId}
+               className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+                  activeActionType === 'WORKAROUND' ? 'bg-amber-600/20 border border-amber-500/30 text-amber-500 hover:bg-amber-600 hover:text-white' :
+                  activeActionType === 'MONITORING' ? 'bg-sky-600/20 border border-sky-500/30 text-sky-400 hover:bg-sky-600 hover:text-white' :
+                  'bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600 hover:text-white'
+               }`}
+             >
+                + Deploy {activeActionType}
+             </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+             {isAdding && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-6">
+                   <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                         {activeActionType === 'WORKAROUND' && (
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">procedural steps (Auto-numbering active)</label>
+                               <textarea 
+                                 value={newAction.steps} 
+                                 onChange={e => setNewAction({...newAction, steps: e.target.value})} 
+                                 placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." 
+                                 className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed uppercase" 
+                               />
+                            </div>
+                         )}
+                         {activeActionType === 'MONITORING' && (
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Link Active Monitor</label>
+                               <select 
+                                 value={newAction.monitoring_id} 
+                                 onChange={e => setNewAction({...newAction, monitoring_id: e.target.value})} 
+                                 className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500 uppercase appearance-none"
+                               >
+                                  <option value="">SELECT MONITORING NODE...</option>
+                                  {monitoring?.map((m: any) => <option key={m.id} value={m.id}>{m.title} [{m.device_name}]</option>)}
+                               </select>
+                               <div className="text-center text-[9px] font-black text-slate-700 uppercase italic">OR</div>
+                               <button className="w-full py-3 border-2 border-dashed border-sky-500/30 rounded-lg text-[9px] font-black text-sky-400 hover:bg-sky-600/10 transition-all uppercase">Create New Monitoring Node</button>
+                            </div>
+                         )}
+                      </div>
+                      <div className="space-y-4">
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Owner Team</label>
+                               <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value.toUpperCase()})} placeholder="e.g. PLATFORM SRE" className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-white/20 uppercase" />
+                            </div>
+                            <div className="space-y-1">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">status</label>
+                               <select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-white/20 uppercase appearance-none">
+                                  <option value="Not Started">NOT STARTED</option>
+                                  <option value="In Progress">IN PROGRESS</option>
+                                  <option value="Completed">COMPLETED</option>
+                               </select>
+                            </div>
+                         </div>
+                         {activeActionType === 'WORKAROUND' && (
+                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">BKM Alignment</label>
+                               <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none appearance-none uppercase">
+                                  <option value="">LINK BKM ARTIFACT...</option>
+                                  {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
+                               </select>
+                            </div>
+                         )}
+                         <div className="pt-4 flex gap-3">
+                            <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
+                            <button onClick={() => mutation.mutate(newAction)} className={`flex-[2] py-3 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xl transition-all ${
+                               activeActionType === 'WORKAROUND' ? 'bg-amber-600 shadow-amber-600/20' : 
+                               activeActionType === 'MONITORING' ? 'bg-sky-600 shadow-sky-600/20' : 'bg-emerald-600 shadow-emerald-600/20'
+                            }`}>Commit Deployment</button>
+                         </div>
+                      </div>
+                   </div>
+                </motion.div>
+             )}
+
+             <div className="space-y-3">
+                {[
+                   ...(selectedFailure.mitigations || []).filter((m: any) => m.cause_id === selectedCauseId),
+                   ...(selectedFailure.prevention_actions || []).filter((p: any) => p.cause_id === selectedCauseId).map((p: any) => ({ ...p, mitigation_type: 'Prevention', mitigation_steps: p.prevention_action }))
+                ].map((m: any) => (
+                   <div key={m.id + (m.mitigation_type || 'p')} className="bg-white/5 border border-white/10 rounded-xl p-6 flex items-center justify-between group hover:border-white/20 transition-all">
+                      <div className="flex items-center gap-6">
+                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                            m.mitigation_type === 'Monitoring' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 
+                            m.mitigation_type === 'Prevention' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                            'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                         }`}>
+                            {m.mitigation_type === 'Monitoring' ? <Activity size={20} /> : 
+                             m.mitigation_type === 'Prevention' ? <ShieldCheck size={20} /> :
+                             <RefreshCcw size={20} />}
+                         </div>
+                         <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                               <span className="text-[11px] font-black text-white uppercase tracking-tight">{m.mitigation_type} Protocol</span>
+                               <span className={`px-2 py-0.5 rounded text-[8px] font-black border ${m.status === 'Completed' || m.status === 'Verified' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-slate-500 border-white/10'}`}>{m.status?.toUpperCase()}</span>
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400 leading-relaxed uppercase max-w-2xl">
+                               {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
+                                 <div key={i} className="flex gap-2">
+                                    <span className="text-slate-600 italic">{i + 1}.</span>
+                                    <span>{line}</span>
+                                 </div>
+                               ))}
+                               {m.monitoring_item && <span className="text-sky-400 font-black">Linked Monitor: {m.monitoring_item.title}</span>}
+                            </div>
+                         </div>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-1">
+                         <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Owner Team</span>
+                         <span className="text-[10px] font-black text-slate-300 uppercase">{m.responsible_team || 'SYSTEM_AUTO'}</span>
+                      </div>
+                   </div>
+                ))}
+                {(selectedFailure.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).length === 0 && selectedFailure.prevention_actions?.filter((p: any) => p.cause_id === selectedCauseId).length === 0) && (
+                   <div className="py-20 text-center opacity-20 border border-dashed border-white/5 rounded-xl flex flex-col items-center gap-4">
+                      <Shield size={40} className="text-slate-600" />
+                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em]">No strategic actions established for this cause</p>
+                   </div>
+                )}
+             </div>
+          </div>
        </div>
     </div>
   )

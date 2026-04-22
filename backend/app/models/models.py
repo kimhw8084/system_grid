@@ -586,6 +586,10 @@ class FarMitigation(Base, BaseMixin):
     mitigation_type = Column(String) 
     mitigation_steps = Column(Text)
     responsible_team = Column(String)
+    status = Column(String, default="Not Started")
+    
+    # Link to a specific Cause
+    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
     
     # Link to a specific Monitoring Item if type is 'Monitoring'
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
@@ -594,6 +598,7 @@ class FarMitigation(Base, BaseMixin):
 class FarPrevention(Base, BaseMixin):
     __tablename__ = "far_prevention"
     failure_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
     prevention_action = Column(Text)
     status = Column(String, default="Open") # Open, In Progress, Verified, Completed
     target_date = Column(DateTime, nullable=True)

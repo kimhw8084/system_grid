@@ -1003,7 +1003,7 @@ function HeaderScore({ label, value, color }: any) {
   )
 }
 
-function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
+export function GaugeSelector({ label, value, onChange, levels, color, accent }: any) {
   const current = levels.find((l: any) => l.value === value)
   return (
     <div className="space-y-3">
@@ -1373,6 +1373,7 @@ function CausalTab({ mode, onUpdate }: any) {
 function RoadmapTab({ mode, onUpdate }: any) {
   const [isAdding, setIsAdding] = useState(false)
   const [actionType, setActionType] = useState('Workaround')
+  const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
   const [newAction, setNewAction] = useState<any>({ steps: '', team: '', status: 'Not Started', bkm_mode: 'link', bkm_content: '', bkm_id: null, monitoring_id: null })
   const [monitoringSearch, setMonitoringSearch] = useState('')
   const [showMonitoringCreate, setShowMonitoringCreate] = useState(false)
@@ -1383,6 +1384,13 @@ function RoadmapTab({ mode, onUpdate }: any) {
   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await apiFetch('/api/v1/devices/')).json() })
   const { data: settingsOptions } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+
+  // Initialize selectedCauseId
+  useEffect(() => {
+    if (!selectedCauseId && mode.causes?.length > 0) {
+      setSelectedCauseId(mode.causes[0].id)
+    }
+  }, [mode.causes, selectedCauseId])
 
   const filteredMonitoring = useMemo(() => {
     if (!monitoring) return []
@@ -1398,16 +1406,16 @@ function RoadmapTab({ mode, onUpdate }: any) {
     mutationFn: async (data: any) => {
       let payload: any = { 
         mitigation_type: actionType, 
-        responsible_team: data.team, 
+        responsible_team: data.team.toUpperCase(), 
         mode_ids: [mode.id],
-        status: data.status
+        status: data.status,
+        cause_id: selectedCauseId
       }
       
       if (actionType === 'Monitoring') {
         payload.monitoring_item_id = data.monitoring_id
       } else if (actionType === 'Workaround') {
         payload.mitigation_steps = data.steps
-        // Handle BKM linking/embedding
         if (data.bkm_mode === 'link' && data.bkm_id) {
           payload.metadata_json = { linked_bkm_id: data.bkm_id }
         } else if (data.bkm_mode === 'input' && data.bkm_content) {
@@ -1433,38 +1441,43 @@ function RoadmapTab({ mode, onUpdate }: any) {
     }
   })
 
-  const projectMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiFetch('/api/v1/projects/', { method: 'POST', body: JSON.stringify({ ...data, linked_device_ids: mode.affected_assets?.map((a:any)=>a.id) || [] }) })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: () => {
-      toast.success('Prevention Project Initiated')
-      setShowProjectCreate(false)
-      setIsAdding(false)
-      onUpdate()
-    }
-  })
+  const selectedCause = useMemo(() => mode.causes?.find((c:any) => c.id === selectedCauseId), [mode.causes, selectedCauseId])
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
+       <div className="flex items-center gap-4 shrink-0 overflow-x-auto pb-2 scrollbar-hide">
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest shrink-0">Select Root Cause:</span>
+          {(mode.causes || []).map((cause: any) => (
+             <button 
+                key={cause.id}
+                onClick={() => setSelectedCauseId(cause.id)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight border transition-all whitespace-nowrap ${selectedCauseId === cause.id ? 'bg-rose-600/10 border-rose-500 text-rose-500' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'}`}
+             >
+                {cause.cause_text}
+             </button>
+          ))}
+          {mode.causes?.length === 0 && <span className="text-[10px] font-black text-slate-700 uppercase italic">No causes attributed to this vector</span>}
+       </div>
+
        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Defense Infrastructure Roadmap</h3>
+          <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Strategic Mitigation Roadmap</h3>
           {!isAdding && (
             <div className="flex gap-2">
-               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); setNewAction({ ...newAction, steps: '', team: '', status: 'Not Started' }) }} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Workaround</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all">+ Add Monitoring</button>
-               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); setShowProjectCreate(true); }} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all">+ Add Prevention</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Workaround'); }} disabled={!selectedCauseId} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all disabled:opacity-20">+ Add Workaround</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Monitoring'); }} disabled={!selectedCauseId} className="px-6 py-2 bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all disabled:opacity-20">+ Add Monitoring</button>
+               <button onClick={() => { setIsAdding(true); setActionType('Prevention'); setShowProjectCreate(true); }} disabled={!selectedCauseId} className="px-6 py-2 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-20">+ Add Prevention</button>
             </div>
           )}
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
           {isAdding && actionType !== 'Prevention' && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-lg p-8 space-y-6 relative">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/[0.03] border border-white/10 rounded-lg p-8 space-y-6 relative shadow-2xl">
                <div className="flex items-center justify-between">
-                  <h4 className={`text-xl font-bold uppercase  tracking-tighter ${actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
+                  <div>
+                     <h4 className={`text-xl font-bold uppercase tracking-tighter ${actionType === 'Monitoring' ? 'text-sky-400' : 'text-amber-500'}`}>Deploy {actionType} Action</h4>
+                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-0.5 italic">Linked to: {selectedCause?.cause_text}</p>
+                  </div>
                   <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
                </div>
 
@@ -1472,8 +1485,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
                   <div className="space-y-4">
                      {actionType === 'Workaround' && (
                         <div className="space-y-2">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase">Procedural steps (Raw input - Manual Numbering)</label>
-                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value})} placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed" />
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">procedural steps (Auto-numbering active)</label>
+                           <textarea value={newAction.steps} onChange={e => setNewAction({...newAction, steps: e.target.value})} placeholder="1. Identify faulty node...\n2. Initiate failover protocol..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[150px] outline-none focus:border-amber-500 leading-relaxed uppercase" />
                         </div>
                      )}
                      {actionType === 'Monitoring' && (
@@ -1488,7 +1501,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 value={monitoringSearch} 
                                 onChange={e => setMonitoringSearch(e.target.value)} 
                                 placeholder="Search monitors..." 
-                                className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500"
+                                className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-xs font-bold text-white outline-none focus:border-sky-500 uppercase"
                               />
                            </div>
                            <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
@@ -1506,7 +1519,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                 </button>
                               ))}
                               {filteredMonitoring?.length === 0 && (
-                                <div className="py-10 text-center text-slate-700 text-[10px] font-bold border-2 border-dashed border-white/5 rounded-lg">
+                                <div className="py-10 text-center text-slate-700 text-[10px] font-bold border-2 border-dashed border-white/5 rounded-lg uppercase">
                                    No existing monitors found for affected assets
                                 </div>
                               )}
@@ -1522,43 +1535,40 @@ function RoadmapTab({ mode, onUpdate }: any) {
                   <div className="space-y-6">
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Owner Team</label>
-                           <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value})} placeholder="e.g. Platform SRE" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20" />
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner Team</label>
+                           <input value={newAction.team} onChange={e => setNewAction({...newAction, team: e.target.value.toUpperCase()})} placeholder="e.g. PLATFORM SRE" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20 uppercase" />
                         </div>
                         <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-500  uppercase tracking-widest">Initial Status</label>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">status</label>
                            <select value={newAction.status} onChange={e => setNewAction({...newAction, status: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-[11px] text-xs font-bold text-white outline-none focus:border-white/20 uppercase appearance-none">
-                              <option value="Not Started">Not Started</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="On Hold">On Hold</option>
-                              <option value="Blocked">Blocked</option>
-                              <option value="Completed">Completed</option>
+                              <option value="Not Started">NOT STARTED</option>
+                              <option value="In Progress">IN PROGRESS</option>
+                              <option value="Completed">COMPLETED</option>
                            </select>
                         </div>
                      </div>
 
                      {actionType === 'Workaround' && (
-                        <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-5">
+                        <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-5 shadow-inner">
                            <div className="flex items-center justify-between">
                               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">BKM Alignment</label>
                               <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
-                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'input' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Paste Link</button>
-                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'link' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Direct Link</button>
+                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'input' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Paste Link</button>
+                                 <button onClick={() => setNewAction({...newAction, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${newAction.bkm_mode === 'link' ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20' : 'text-slate-600 hover:text-slate-400'}`}>Direct Link</button>
                               </div>
                            </div>
                            {newAction.bkm_mode === 'input' ? (
-                              <input value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value})} placeholder="PASTE EXTERNAL KNOWLEDGE LINK..." className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-blue-400 outline-none focus:border-amber-500" />
+                              <input value={newAction.bkm_content} onChange={e => setNewAction({...newAction, bkm_content: e.target.value})} placeholder="PASTE EXTERNAL KNOWLEDGE LINK..." className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-blue-400 outline-none focus:border-rose-500 uppercase" />
                            ) : (
                               <select value={newAction.bkm_id} onChange={e => setNewAction({...newAction, bkm_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none uppercase appearance-none">
                                  <option value="">SELECT BKM ARTIFACT...</option>
                                  {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
                               </select>
                            )}
-                           <p className="text-[9px] text-slate-600 font-bold uppercase text-center italic tracking-widest">Ensures cross-referencing between FAR and BKM modules</p>
                         </div>
                      )}
 
-                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-5 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 ${actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20 hover:bg-sky-500' : 'bg-amber-600 shadow-amber-600/20 hover:bg-amber-500'}`}>Commit Strategic Action</button>
+                     <button onClick={() => mutation.mutate(newAction)} className={`w-full py-5 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95 ${actionType === 'Monitoring' ? 'bg-sky-600 shadow-sky-600/20 hover:bg-sky-500' : 'bg-rose-600 shadow-rose-600/20 hover:bg-rose-500'}`}>Commit Strategic Action</button>
                   </div>
                </div>
             </motion.div>
@@ -1570,13 +1580,13 @@ function RoadmapTab({ mode, onUpdate }: any) {
                    <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ">
                       <th className="px-8 py-4">Shield Type</th>
                       <th className="px-8 py-4">Deployment Protocol / Plan</th>
-                      <th className="px-8 py-4 text-center">Research</th>
+                      <th className="px-8 py-4 text-center">Cause Context</th>
                       <th className="px-8 py-4 text-center">Status</th>
                       <th className="px-8 py-4 text-right">Ops</th>
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-bold uppercase  text-[11px]">
-                   {mode.mitigations?.map((m: any) => (
+                   {mode.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).map((m: any) => (
                      <tr key={m.id} className="hover:bg-white/[0.02] transition-colors group">
                         <td className="px-8 py-5">
                            <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${m.mitigation_type === 'Monitoring' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>{m.mitigation_type}</span>
@@ -1585,27 +1595,21 @@ function RoadmapTab({ mode, onUpdate }: any) {
                            <div className="space-y-1">
                               {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
-                                   <span className="text-slate-600 text-[9px] font-black italic">{i + 1}</span>
-                                   <span className="normal-case font-medium text-slate-300">{line}</span>
+                                   <span className="text-slate-600 text-[9px] font-black italic">{i + 1}.</span>
+                                   <span className="normal-case font-medium text-slate-300 uppercase">{line}</span>
                                 </div>
                               ))}
                               {m.monitoring_item && (
                                  <div className="flex items-center gap-3 p-3 bg-sky-500/5 border border-sky-500/20 rounded-lg mt-2 group/item hover:bg-sky-500/10 transition-all">
                                     <Monitor size={14} className="text-sky-400" />
-                                    <span className="text-sky-400 tracking-tight normal-case font-black">Linked Monitor: {m.monitoring_item.title}</span>
+                                    <span className="text-sky-400 tracking-tight normal-case font-black uppercase">Linked Monitor: {m.monitoring_item.title}</span>
                                  </div>
                               )}
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
                            <div className="flex flex-col items-center gap-1">
-                              {(mode.linked_rcas || []).map((r: any) => (
-                                 <div key={r.id} className="flex items-center gap-1.5 text-[8px] text-purple-400">
-                                    <Activity size={8} />
-                                    <span className="truncate max-w-[120px]">{r.title}</span>
-                                 </div>
-                              ))}
-                              {(!mode.linked_rcas || mode.linked_rcas.length === 0) && <span className="text-slate-700 text-[8px]">NONE</span>}
+                              <span className="text-[9px] font-black text-rose-400/70 truncate max-w-[150px]">{mode.causes?.find((c:any)=>c.id === m.cause_id)?.cause_text || 'GLOBAL_VECTOR'}</span>
                            </div>
                         </td>
                         <td className="px-8 py-5 text-center">
@@ -1618,8 +1622,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
                         </td>
                      </tr>
                    ))}
-                   {mode.mitigations?.length === 0 && (
-                      <tr><td colSpan={5} className="py-20 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No mitigation shields active</td></tr>
+                   {mode.mitigations?.filter((m: any) => m.cause_id === selectedCauseId).length === 0 && (
+                      <tr><td colSpan={5} className="py-20 text-center opacity-20 font-bold uppercase tracking-[0.3em]">No mitigation shields active for this cause</td></tr>
                    )}
                 </tbody>
              </table>

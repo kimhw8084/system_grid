@@ -212,6 +212,8 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
         mitigation_type=data.get('mitigation_type'),
         mitigation_steps=data.get('mitigation_steps'),
         responsible_team=data.get('responsible_team'),
+        status=data.get('status', 'Not Started'),
+        cause_id=data.get('cause_id'),
         monitoring_item_id=data.get('monitoring_item_id')
     )
     db.add(mit)
@@ -236,8 +238,10 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
 async def create_prevention(data: dict, db: AsyncSession = Depends(get_db)):
     prev = models.FarPrevention(
         failure_mode_id=data.get('failure_mode_id'),
+        cause_id=data.get('cause_id'),
         prevention_action=data.get('prevention_action'),
         responsible_team=data.get('responsible_team'),
+        status=data.get('status', 'Open'),
         target_date=data.get('target_date')
     )
     db.add(prev)

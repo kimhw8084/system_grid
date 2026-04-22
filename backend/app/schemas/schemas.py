@@ -289,10 +289,13 @@ class FarMitigationResponse(BaseSchema):
     mitigation_type: str
     mitigation_steps: Optional[str] = None
     responsible_team: Optional[str] = None
+    status: Optional[str] = "Not Started"
+    cause_id: Optional[int] = None
     monitoring_item_id: Optional[int] = None
 
 class FarPreventionResponse(BaseSchema):
     failure_mode_id: int
+    cause_id: Optional[int] = None
     prevention_action: str
     status: str = "Open"
     target_date: Optional[datetime] = None
