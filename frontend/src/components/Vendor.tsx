@@ -446,6 +446,36 @@ export default function Vendor() {
         ]}
       />
 
+      <AnimatePresence>
+        {activeModal && (
+          <VendorForm 
+            item={activeModal} 
+            onClose={() => setActiveModal(null)} 
+            onSave={(d: any) => mutation.mutate(d)}
+            isSaving={mutation.isPending}
+          />
+        )}
+        {activeDetails && (
+          <VendorDetails 
+            vendor={activeDetails} 
+            devices={devices}
+            onClose={() => setActiveDetails(null)} 
+          />
+        )}
+        {confirmModal.isOpen && (
+          <ConfirmationModal 
+            isOpen={confirmModal.isOpen}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onConfirm={() => {
+              confirmModal.onConfirm();
+              setConfirmModal({ ...confirmModal, isOpen: false });
+            }}
+            onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          />
+        )}
+      </AnimatePresence>
+
       <style>{`
         .ag-theme-alpine-dark {
           --ag-background-color: #1a1b26;

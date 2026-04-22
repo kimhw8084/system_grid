@@ -1259,10 +1259,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
             <button 
-              onClick={() => {
-                if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
-                onClose()
-              }} 
+              onClick={onClose} 
               className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
             >
               <X size={24}/>
@@ -2071,10 +2068,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
               {isEditing ? <Check size={14}/> : <Edit2 size={14}/>} {isEditing ? 'Confirm Changes' : 'Enter Edit Mode'}
             </button>
             <button 
-              onClick={() => {
-                if (isEditing && !confirm('Unsaved changes will be lost. Exit?')) return
-                onClose()
-              }} 
+              onClick={onClose} 
               className="w-12 h-12 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"
             >
               <X size={24}/>
@@ -2227,15 +2221,23 @@ function IntelligenceStream({ logs, compact = false }: any) {
   )
 }
 
-export function InvestigationTab({ formData, setFormData, isEditing, failureModes, setFocusedField, focusedField }: any) {
+export function InvestigationTab({ formData, setFormData, failureModes, setFocusedField, focusedField }: any) {
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[] })
   const [selectedFailureId, setSelectedFailureId] = useState<number | null>(null)
-  const [activeManagerType, setActiveManagerType] = useState<'CAUSE' | 'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('CAUSE')
+  const [activeSubTab, setActiveSubTab] = useState<'PROCEDURE' | 'ACTIONS'>('PROCEDURE')
+  const [activeActionType, setActiveActionType] = useState<'CAUSE' | 'WORKAROUND' | 'MONITORING' | 'PREVENTION'>('CAUSE')
 
   const linkedFailures = useMemo(() => {
     const ids = formData.linked_failure_mode_ids || []
     return (failureModes || []).filter((fm: any) => ids.includes(fm.id))
   }, [formData.linked_failure_mode_ids, failureModes])
+
+  // Auto-select first failure if none selected
+  useEffect(() => {
+    if (!selectedFailureId && linkedFailures.length > 0) {
+      setSelectedFailureId(linkedFailures[0].id)
+    }
+  }, [linkedFailures, selectedFailureId])
 
   useEffect(() => {
     const handlePasteEvent = (e: any) => {
@@ -2250,6 +2252,7 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
     const step = { 
       ...newStep, 
       id: Date.now(), 
+      failure_id: selectedFailureId, 
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -2293,13 +2296,16 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
     { value: 'COMPLETED', label: 'COMPLETED', color: 'text-emerald-400' }
   ]
 
+  const selectedFailure = linkedFailures.find(f => f.id === selectedFailureId)
+  const failureSteps = (formData.identification_steps_json || []).filter((s: any) => s.failure_id === selectedFailureId)
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6 gap-8">
-       {/* 1. Innovative Status Board */}
-       <div className="shrink-0 bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+       {/* 1. Failure Resolution Matrix (Header) */}
+       <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-hidden shadow-2xl">
           <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
              <div className="flex items-center gap-3">
-                <Activity size={18} className="text-blue-400" />
+                <Activity size={18} className="text-purple-400" />
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">Failure Resolution Matrix</h3>
              </div>
              <div className="flex items-center gap-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
@@ -2307,33 +2313,40 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
              </div>
           </div>
           
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-48 overflow-y-auto custom-scrollbar">
              <table className="w-full text-left border-collapse">
-                <thead>
-                   <tr className="border-b border-white/10 bg-black/20">
-                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Linked Failure Mode</th>
-                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Root Cause</th>
-                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Workaround</th>
-                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Monitoring</th>
-                      <th className="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Prevention</th>
+                <thead className="sticky top-0 z-10">
+                   <tr className="border-b border-white/10 bg-black/40 backdrop-blur-md">
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500">Linked Failure Mode</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Root Cause</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Workaround</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Monitoring</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Prevention</th>
                    </tr>
                 </thead>
                 <tbody>
                    {linkedFailures.map((fm: any) => (
-                      <tr key={fm.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
-                         <td className="py-4 px-6">
-                            <div className="flex flex-col">
-                               <span className="text-xs font-black text-purple-400 uppercase tracking-tight">{fm.title}</span>
-                               <span className="text-[9px] font-bold text-slate-500 uppercase">{fm.system_name || fm.system}</span>
+                      <tr 
+                        key={fm.id} 
+                        onClick={() => setSelectedFailureId(fm.id)}
+                        className={`border-b border-white/5 hover:bg-white/[0.05] transition-all cursor-pointer group ${selectedFailureId === fm.id ? 'bg-purple-500/10' : ''}`}
+                      >
+                         <td className="py-3 px-6">
+                            <div className="flex items-center gap-3">
+                               {selectedFailureId === fm.id && <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]" />}
+                               <div className="flex flex-col">
+                                  <span className={`text-[11px] font-black uppercase tracking-tight ${selectedFailureId === fm.id ? 'text-purple-400' : 'text-slate-300'}`}>{fm.title}</span>
+                                  <span className="text-[8px] font-bold text-slate-600 uppercase">{fm.system_name || fm.system}</span>
+                               </div>
                             </div>
                          </td>
                          {['cause', 'workaround', 'monitoring', 'prevention'].map(type => (
-                            <td key={type} className="py-4 px-6 text-center">
+                            <td key={type} className="py-3 px-6 text-center">
                                <select 
-                                  className={`bg-transparent text-[10px] font-black uppercase outline-none cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition-all appearance-none text-center ${statusOptions.find(o => o.value === (fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'))?.color}`}
+                                  className={`bg-transparent text-[9px] font-black uppercase outline-none cursor-pointer hover:bg-white/5 px-2 py-0.5 rounded transition-all appearance-none text-center ${statusOptions.find(o => o.value === (fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'))?.color}`}
                                   value={fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'}
                                   onChange={(e) => updateFailureStatus(fm.id, type, e.target.value)}
-                                  disabled={!isEditing}
+                                  onClick={(e) => e.stopPropagation()}
                                >
                                   {statusOptions.map(opt => (
                                      <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-300">{opt.label}</option>
@@ -2358,171 +2371,154 @@ export function InvestigationTab({ formData, setFormData, isEditing, failureMode
           </div>
        </div>
 
-       {/* 2. Procedure & Manager Section */}
-       <div className="flex-1 flex gap-8 overflow-hidden">
-          {/* Left: Procedural identification (The builder) */}
-          <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-             <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
-                   <ListTodo size={14}/> Causal Forensic Procedure
-                </h3>
-             </div>
-             
-             {isEditing && (
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 shadow-xl">
-                   <div 
-                      onClick={() => setFocusedField('investigation')}
-                      className={`relative group focus-trigger ${focusedField === 'investigation' ? 'ring-2 ring-blue-500/50' : ''}`}
+       {/* 2. Focused Investigation Area */}
+       <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+          {selectedFailure ? (
+             <>
+                <div className="flex items-center gap-6 border-b border-white/5 pb-2">
+                   <button 
+                      onClick={() => setActiveSubTab('PROCEDURE')}
+                      className={`text-[11px] font-black uppercase tracking-[0.2em] pb-2 transition-all border-b-2 ${activeSubTab === 'PROCEDURE' ? 'text-blue-400 border-blue-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                    >
-                      <textarea 
-                         value={newStep.text}
-                         onChange={e => setNewStep({...newStep, text: e.target.value})}
-                         className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700"
-                         placeholder="RECORD DISCOVERY STEP... PASTE FIGURES DIRECTLY HERE."
-                      />
-                      {focusedField === 'investigation' && (
-                         <div className="absolute top-3 right-4 flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                            <span className="text-[9px] font-black text-blue-400 uppercase">Live Buffer Active</span>
-                         </div>
-                      )}
+                      RCA Procedure
+                   </button>
+                   <button 
+                      onClick={() => setActiveSubTab('ACTIONS')}
+                      className={`text-[11px] font-black uppercase tracking-[0.2em] pb-2 transition-all border-b-2 ${activeSubTab === 'ACTIONS' ? 'text-emerald-400 border-emerald-500' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                   >
+                      Actions
+                   </button>
+                   <div className="ml-auto flex items-center gap-2">
+                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Active Vector:</span>
+                      <span className="text-[10px] font-black text-purple-400 uppercase italic">{selectedFailure.title}</span>
                    </div>
-                   {newStep.images.length > 0 && (
-                      <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                         {newStep.images.map((img, i) => (
-                            <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg border border-white/10 overflow-hidden shadow-lg group">
-                               <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                               <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                   {activeSubTab === 'PROCEDURE' && (
+                      <div className="h-full flex gap-8 overflow-hidden">
+                         <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-4 shadow-xl">
+                               <div 
+                                  onClick={() => setFocusedField('investigation')}
+                                  className={`relative group focus-trigger ${focusedField === 'investigation' ? 'ring-2 ring-blue-500/50' : ''}`}
+                               >
+                                  <textarea 
+                                     value={newStep.text}
+                                     onChange={e => setNewStep({...newStep, text: e.target.value})}
+                                     className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[120px] uppercase placeholder:text-slate-700"
+                                     placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
+                                  />
+                                  {focusedField === 'investigation' && (
+                                     <div className="absolute top-3 right-4 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Paste Active</span>
+                                     </div>
+                                  )}
+                               </div>
+                               {newStep.images.length > 0 && (
+                                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                     {newStep.images.map((img, i) => (
+                                        <div key={i} className="relative w-24 h-24 shrink-0 rounded-lg border border-white/10 overflow-hidden shadow-lg group">
+                                           <img src={img} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                           <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                                        </div>
+                                     ))}
+                                  </div>
+                               )}
+                               <button onClick={addStep} className="w-full h-12 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2">
+                                  <Plus size={16} /> Commit Procedural Milestone
+                               </button>
                             </div>
-                         ))}
+
+                            <div className="space-y-4">
+                               {failureSteps.map((step: any, idx: number) => (
+                                  <div key={step.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-6 group relative transition-all hover:bg-white/[0.08]">
+                                     <div className="flex gap-6">
+                                       <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-sm shrink-0 border border-blue-500/30 shadow-inner italic">{idx + 1}</div>
+                                       <div className="flex-1 space-y-4">
+                                           <p className="text-xs font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                           {step.images?.length > 0 && (
+                                             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                                                 {step.images.map((img: string, i: number) => (
+                                                   <ImageThumbnail key={i} src={img} />
+                                                 ))}
+                                             </div>
+                                           )}
+                                           <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                                             <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                                                <Clock size={10} />
+                                                <span>Pulse: {new Date(step.created_at).toLocaleString()}</span>
+                                             </div>
+                                             <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="text-rose-500 hover:text-rose-400 transition-colors p-2 hover:bg-rose-500/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
+                                           </div>
+                                       </div>
+                                     </div>
+                                  </div>
+                               ))}
+                               {failureSteps.length === 0 && (
+                                  <div className="py-20 text-center border border-dashed border-white/5 rounded-lg flex flex-col items-center gap-4 opacity-30">
+                                     <ListTodo size={40} className="text-slate-600" />
+                                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em]">Procedure Awaiting First Milestone</p>
+                                  </div>
+                                )}
+                            </div>
+                         </div>
                       </div>
                    )}
-                   <button onClick={addStep} className="w-full h-12 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2">
-                      <Plus size={16} /> Commit Identification Milestone
-                   </button>
-                </div>
-             )}
 
-             <div className="space-y-4">
-                <Reorder.Group 
-                  axis="y" 
-                  values={formData.identification_steps_json || []} 
-                  onReorder={(next) => setFormData({ ...formData, identification_steps_json: next })}
-                  className="space-y-4"
-                >
-                  {(formData.identification_steps_json || []).map((step: any, idx: number) => (
-                    <Reorder.Item 
-                      key={step.id || idx} 
-                      value={step}
-                      dragListener={isEditing}
-                      className={`bg-white/5 border border-white/10 rounded-2xl p-6 group relative transition-all hover:bg-white/[0.08] ${isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                    >
-                        <div className="flex gap-6">
-                          <div className="flex flex-col items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black text-sm shrink-0 border border-blue-500/30 shadow-inner italic">{idx + 1}</div>
-                            {isEditing && (
-                              <div className="text-slate-700 group-hover:text-blue-400 transition-colors">
-                                <MoreVertical size={16} />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 space-y-4">
-                              <p className="text-xs font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
-                              {step.images?.length > 0 && (
-                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                                    {step.images.map((img: string, i: number) => (
-                                      <ImageThumbnail key={i} src={img} />
-                                    ))}
-                                </div>
-                              )}
-                              <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                                <div className="flex items-center gap-4">
-                                   <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                                      <Clock size={10} />
-                                      <span>Pulse: {new Date(step.created_at).toLocaleString()}</span>
-                                   </div>
-                                </div>
-                                {isEditing && (
-                                    <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((_:any, i:number) => i !== idx)})} className="text-rose-500 hover:text-rose-400 transition-colors p-2 hover:bg-rose-500/10 rounded-lg"><Trash2 size={16}/></button>
-                                )}
-                              </div>
-                          </div>
-                        </div>
-                    </Reorder.Item>
-                  ))}
-                </Reorder.Group>
-                {(formData.identification_steps_json || []).length === 0 && (
-                   <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center gap-6 opacity-30">
-                      <ListTodo size={48} className="text-slate-600" />
-                      <p className="text-[11px] font-black text-slate-600 uppercase tracking-[0.4em]">Procedure Awaiting First Milestone</p>
-                   </div>
-                )}
-             </div>
-          </div>
+                   {activeSubTab === 'ACTIONS' && (
+                      <div className="h-full flex gap-8 overflow-hidden">
+                         <div className="w-64 shrink-0 flex flex-col gap-2">
+                            {[
+                               { id: 'CAUSE', label: 'Cause Analysis', icon: Search, color: 'text-blue-400' },
+                               { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw, color: 'text-amber-400' },
+                               { id: 'MONITORING', label: 'Monitoring', icon: Activity, color: 'text-sky-400' },
+                               { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck, color: 'text-emerald-400' }
+                            ].map(type => (
+                               <button
+                                  key={type.id}
+                                  onClick={() => setActiveActionType(type.id as any)}
+                                  className={`p-4 rounded-lg border flex items-center gap-4 transition-all ${activeActionType === type.id ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/[0.08]'}`}
+                               >
+                                  <type.icon size={18} className={activeActionType === type.id ? 'text-white' : type.color} />
+                                  <span className="text-[10px] font-black uppercase tracking-widest">{type.label}</span>
+                               </button>
+                            ))}
+                         </div>
 
-          {/* Right: FAR Synchronization Manager */}
-          <div className="w-96 shrink-0 flex flex-col gap-6">
-             <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
-                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                   <Workflow size={18} className="text-purple-400" />
-                   <h3 className="text-xs font-black uppercase tracking-widest text-white">FAR Sync Manager</h3>
-                </div>
-
-                <div className="space-y-4">
-                   <StyledSelect 
-                      label="Target Failure Vector"
-                      value={selectedFailureId || ''}
-                      onChange={(e: any) => setSelectedFailureId(Number(e.target.value))}
-                      options={linkedFailures.map((fm: any) => ({ value: fm.id, label: fm.title }))}
-                      placeholder="Select Failure..."
-                   />
-
-                   <div className="grid grid-cols-2 gap-2">
-                      {[
-                         { id: 'CAUSE', label: 'Cause Analysis', icon: Search },
-                         { id: 'WORKAROUND', label: 'Workaround', icon: RefreshCcw },
-                         { id: 'MONITORING', label: 'Monitoring', icon: Activity },
-                         { id: 'PREVENTION', label: 'Prevention', icon: ShieldCheck }
-                      ].map(type => (
-                         <button
-                            key={type.id}
-                            onClick={() => setActiveManagerType(type.id as any)}
-                            className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${activeManagerType === type.id ? 'bg-purple-600 border-purple-500 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/[0.08]'}`}
-                         >
-                            <type.icon size={16} />
-                            <span className="text-[8px] font-black uppercase tracking-widest">{type.label}</span>
-                         </button>
-                      ))}
-                   </div>
-
-                   <div className="pt-4 border-t border-white/5 space-y-4">
-                      {selectedFailureId ? (
-                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="flex items-center justify-between">
-                               <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{activeManagerType} Field Sync</span>
-                               <span className="text-[8px] font-bold text-slate-500 uppercase">Live Link</span>
+                         <div className="flex-1 bg-black/40 border border-white/10 rounded-lg p-8 space-y-6 flex flex-col shadow-2xl overflow-y-auto custom-scrollbar">
+                            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                               <div className="flex items-center gap-3">
+                                  {activeActionType === 'CAUSE' && <Search size={18} className="text-blue-400" />}
+                                  {activeActionType === 'WORKAROUND' && <RefreshCcw size={18} className="text-amber-400" />}
+                                  {activeActionType === 'MONITORING' && <Activity size={18} className="text-sky-400" />}
+                                  {activeActionType === 'PREVENTION' && <ShieldCheck size={18} className="text-emerald-400" />}
+                                  <h3 className="text-sm font-black uppercase tracking-widest text-white">{activeActionType} STRATEGY</h3>
+                               </div>
+                               <div className="px-3 py-1 rounded bg-white/5 border border-white/10 text-[9px] font-black text-slate-500 uppercase tracking-widest">Auto-Sync Active</div>
                             </div>
-                            <textarea 
-                               disabled={!isEditing}
-                               value={linkedFailures.find(f => f.id === selectedFailureId)?.metadata_json?.[`sync_${activeManagerType.toLowerCase()}`] || ''}
-                               onChange={(e) => updateSyncText(selectedFailureId, activeManagerType, e.target.value.toUpperCase())}
-                               className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none min-h-[150px] resize-none uppercase"
-                               placeholder={`Syncing ${activeManagerType} with FAR matrix...`}
-                            />
-                            <button className="w-full h-11 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2">
-                               <ExternalLink size={14} /> View in FAR Module
-                            </button>
+
+                            <div className="flex-1 flex flex-col gap-4">
+                               <label className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">Detailed Implementation Record</label>
+                               <textarea 
+                                  value={selectedFailure.metadata_json?.[`sync_${activeActionType.toLowerCase()}`] || ''}
+                                  onChange={(e) => updateSyncText(selectedFailure.id, activeActionType, e.target.value)}
+                                  className="flex-1 bg-slate-950 border border-white/10 rounded-xl p-6 text-xs font-bold text-slate-200 outline-none uppercase leading-relaxed shadow-inner min-h-[300px]"
+                                  placeholder={`DESCRIBE THE ${activeActionType} FOR THIS VECTOR...`}
+                               />
+                            </div>
                          </div>
-                      ) : (
-                         <div className="py-12 text-center opacity-20">
-                            <Layers size={32} className="mx-auto text-slate-500 mb-3" />
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-relaxed">Select a failure vector to<br/>synchronize resolution data</p>
-                         </div>
-                      )}
-                   </div>
+                      </div>
+                   )}
                 </div>
+             </>
+          ) : (
+             <div className="flex-1 flex flex-col items-center justify-center gap-6 opacity-20">
+                <Target size={80} className="text-slate-600" />
+                <p className="text-sm font-black text-slate-600 uppercase tracking-[0.5em]">Select Failure Vector to Investigate</p>
              </div>
-          </div>
+          )}
        </div>
     </div>
   )

@@ -411,7 +411,7 @@ export default function FAR() {
     },
     {
       headerName: "Vectors",
-      width: 140,
+      width: 160,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -422,27 +422,22 @@ export default function FAR() {
         const prevs = (p.data.prevention_actions || []).length;
         const res = c.flatMap((i:any) => i.resolutions || []).length;
         
+        const Badge = ({label, value, color}: any) => (
+          <div className="flex flex-col items-center min-w-[24px]">
+             <span className="text-[7px] text-slate-500 font-bold uppercase leading-none mb-0.5">{label}</span>
+             <span className={`text-[10px] font-bold leading-none ${color}`}>{value}</span>
+          </div>
+        )
+
         return (
-          <div className="flex items-center justify-center gap-1.5 h-full">
-             <div title="Causes / Resolutions" className="flex flex-col items-center">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">C/R</span>
-                <span className="text-[9px] font-bold text-blue-400 leading-none">{c.length}/{res}</span>
-             </div>
-             <div className="w-px h-4 bg-white/5" />
-             <div title="Workarounds" className="flex flex-col items-center">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">W</span>
-                <span className="text-[9px] font-bold text-amber-400 leading-none">{wrks}</span>
-             </div>
-             <div className="w-px h-4 bg-white/5" />
-             <div title="Monitoring" className="flex flex-col items-center">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">M</span>
-                <span className="text-[9px] font-bold text-sky-400 leading-none">{mons}</span>
-             </div>
-             <div className="w-px h-4 bg-white/5" />
-             <div title="Prevention" className="flex flex-col items-center">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">P</span>
-                <span className="text-[9px] font-bold text-emerald-400 leading-none">{prevs}</span>
-             </div>
+          <div className="flex items-center justify-center gap-2 h-full">
+             <Badge label="C/R" value={`${c.length}/${res}`} color="text-blue-400" />
+             <div className="w-px h-3 bg-white/10" />
+             <Badge label="W" value={wrks} color="text-amber-400" />
+             <div className="w-px h-3 bg-white/10" />
+             <Badge label="M" value={mons} color="text-sky-400" />
+             <div className="w-px h-3 bg-white/10" />
+             <Badge label="P" value={prevs} color="text-emerald-400" />
           </div>
         )
       }
@@ -1272,10 +1267,97 @@ function CausalTab({ mode, onUpdate }: any) {
            </div>
          )}
        </AnimatePresence>
-    </motion.div>
-  )
-}
+       </motion.div>
+       )
+       }
 
+       function RpnDefinitionModal({ onClose }: { onClose: () => void }) {
+       return (
+       <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
+       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-[40px] border border-amber-500/30 shadow-2xl relative">
+       <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={32}/></button>
+
+       <div className="flex items-center gap-6 mb-12 border-b border-white/5 pb-8">
+         <div className="w-20 h-20 rounded-[30px] bg-amber-600 flex items-center justify-center text-white shadow-xl shadow-amber-600/20">
+            <Target size={40}/>
+         </div>
+         <div>
+            <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Risk Priority Number</h2>
+            <p className="text-xs font-bold text-amber-500 uppercase tracking-[0.3em]">Criticality Scoring Matrix (S × O × D)</p>
+         </div>
+       </div>
+
+       <div className="grid grid-cols-3 gap-8">
+         <div className="space-y-4">
+            <div className="flex items-center gap-3 text-rose-500">
+               <Shield size={20}/>
+               <h3 className="text-sm font-black uppercase tracking-widest">Severity (S)</h3>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed">Impact of the failure on the system or safety. (1 = No impact, 10 = Systemic destruction / Safety risk).</p>
+         </div>
+         <div className="space-y-4">
+            <div className="flex items-center gap-3 text-amber-500">
+               <Activity size={20}/>
+               <h3 className="text-sm font-black uppercase tracking-widest">Occurrence (O)</h3>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed">Likelihood of the failure mode happening. (1 = Remote, 10 = Constant/Inevitable).</p>
+         </div>
+         <div className="space-y-4">
+            <div className="flex items-center gap-3 text-sky-500">
+               <Search size={20}/>
+               <h3 className="text-sm font-black uppercase tracking-widest">Detection (D)</h3>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed">Ability to detect the failure before it impacts. (1 = Certain detection, 10 = Undetectable).</p>
+         </div>
+       </div>
+
+       <div className="mt-12 p-8 bg-black/40 rounded-3xl border border-white/5">
+         <div className="flex items-center justify-between mb-6">
+            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Threshold Logic</span>
+            <div className="flex gap-4">
+               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> <span className="text-[10px] font-bold text-emerald-500 uppercase">Nominal (&lt;80)</span></div>
+               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" /> <span className="text-[10px] font-bold text-amber-500 uppercase">Moderate (80-150)</span></div>
+               <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> <span className="text-[10px] font-bold text-rose-500 uppercase">Critical (&gt;150)</span></div>
+            </div>
+         </div>
+         <div className="text-6xl font-black text-center text-white tracking-tighter italic">RPN = S <span className="text-slate-700">×</span> O <span className="text-slate-700">×</span> D</div>
+       </div>
+       </motion.div>
+       </div>
+       )
+       }
+
+       function MaturityDefinitionModal({ onClose }: { onClose: () => void }) {
+       return (
+       <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
+       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-[40px] border border-blue-500/30 shadow-2xl relative">
+       <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={32}/></button>
+
+       <div className="flex items-center gap-6 mb-12 border-b border-white/5 pb-8">
+         <div className="w-20 h-20 rounded-[30px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-600/20">
+            <Zap size={40}/>
+         </div>
+         <div>
+            <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Maturity Spectrum</h2>
+            <p className="text-xs font-bold text-blue-400 uppercase tracking-[0.3em]">Risk Mitigation Lifecycle (Lv0 - Lv8)</p>
+         </div>
+       </div>
+
+       <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+         {maturityLevels.map((ml) => (
+            <div key={ml.lv} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
+               <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black italic border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
+               <div>
+                  <h4 className="text-[11px] font-black uppercase text-white tracking-widest">{ml.label}</h4>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 leading-tight">{ml.desc}</p>
+               </div>
+            </div>
+         ))}
+       </div>
+       </motion.div>
+       </div>
+       )
+       }
 function RoadmapTab({ mode, onUpdate }: any) {
   const [isAdding, setIsAdding] = useState(false)
   const [actionType, setActionType] = useState('Workaround')
