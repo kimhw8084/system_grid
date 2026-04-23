@@ -471,7 +471,7 @@ export default function Vendor() {
               confirmModal.onConfirm();
               setConfirmModal({ ...confirmModal, isOpen: false });
             }}
-            onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+            onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
           />
         )}
       </AnimatePresence>

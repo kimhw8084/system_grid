@@ -866,7 +866,7 @@ export default function AssetTemp() {
   }, [fontSize, rowDensity])
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
-  const [viewMode, setViewMode] = useState<'grid' | 'report'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)

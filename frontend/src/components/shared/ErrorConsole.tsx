@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu } from 'lucide-react'
+import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History } from 'lucide-react'
 import { useErrors, SysError } from '../../stores/errorStore'
 import { toast } from 'react-hot-toast'
 
 export function ErrorConsole() {
-  const { errors, isOpen, setOpen, clearErrors } = useErrors()
+  const { errors, isOpen, setOpen, clearErrors, acknowledgeError, acknowledgeAll } = useErrors()
   const [selectedErrorId, setSelectedErrorId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState<'ALL' | 'FRONTEND' | 'BACKEND'>('ALL')
+  const [showAcknowledged, setShowAcknowledged] = useState(true)
 
   const filteredErrors = useMemo(() => {
     return errors.filter(e => {
@@ -16,9 +17,10 @@ export function ErrorConsole() {
                             e.url?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             e.stack?.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesType = filterType === 'ALL' || e.type === filterType
-      return matchesSearch && matchesType
+      const matchesAck = showAcknowledged || !e.acknowledged
+      return matchesSearch && matchesType && matchesAck
     })
-  }, [errors, searchTerm, filterType])
+  }, [errors, searchTerm, filterType, showAcknowledged])
 
   const selectedError = useMemo(() => errors.find(e => e.id === selectedErrorId), [errors, selectedErrorId])
 
@@ -52,17 +54,23 @@ export function ErrorConsole() {
             <div className="h-8 w-px bg-white/10" />
             <div className="flex items-center gap-4">
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-600 uppercase">Active Faults</span>
+                  <span className="text-[8px] font-bold text-slate-600 uppercase">Total Faults</span>
                   <span className="text-[12px] font-black text-rose-500">{errors.length}</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-600 uppercase">Engine Status</span>
-                  <span className="text-[12px] font-black text-emerald-500">LISTENING</span>
+                  <span className="text-[8px] font-bold text-slate-600 uppercase">Pending</span>
+                  <span className="text-[12px] font-black text-amber-500">{errors.filter(e => !e.acknowledged).length}</span>
                </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
+             <button 
+               onClick={() => acknowledgeAll()}
+               className="px-4 py-2 bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
+             >
+                <CheckCircle2 size={14} /> Acknowledge All
+             </button>
              <div className="flex bg-black/40 rounded-lg p-1 border border-white/5 gap-1">
                 {['ALL', 'FRONTEND', 'BACKEND'].map(type => (
                    <button 
@@ -78,7 +86,7 @@ export function ErrorConsole() {
                onClick={clearErrors}
                className="px-4 py-2 bg-rose-600/10 text-rose-500 border border-rose-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
              >
-                <Trash2 size={14} /> Clear Cache
+                <Trash2 size={14} /> Purge Console
              </button>
              <button 
                onClick={() => setOpen(false)}
@@ -90,14 +98,22 @@ export function ErrorConsole() {
         </div>
 
         {/* Search Bar */}
-        <div className="px-8 py-3 bg-white/2 border-b border-white/5 flex items-center gap-4">
-           <Search size={16} className="text-slate-600" />
-           <input 
-             value={searchTerm}
-             onChange={e => setSearchTerm(e.target.value)}
-             placeholder="SCAN TRACEBACKS / MESSAGES / ENDPOINTS..."
-             className="flex-1 bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 uppercase tracking-widest"
-           />
+        <div className="px-8 py-3 bg-white/2 border-b border-white/5 flex items-center justify-between">
+           <div className="flex items-center gap-4 flex-1">
+              <Search size={16} className="text-slate-600" />
+              <input 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="SCAN TRACEBACKS / MESSAGES / ENDPOINTS..."
+                className="flex-1 bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 uppercase tracking-widest"
+              />
+           </div>
+           <button 
+             onClick={() => setShowAcknowledged(!showAcknowledged)}
+             className={`px-4 py-1.5 rounded text-[9px] font-black uppercase tracking-widest border transition-all ${showAcknowledged ? 'bg-slate-800 text-slate-400 border-white/5' : 'bg-blue-600/10 text-blue-400 border-blue-500/20'}`}
+           >
+              {showAcknowledged ? 'HIDE ACKNOWLEDGED' : 'SHOW ALL'}
+           </button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -108,7 +124,7 @@ export function ErrorConsole() {
                 <div 
                   key={error.id}
                   onClick={() => setSelectedErrorId(error.id)}
-                  className={`px-6 py-4 border-b border-white/5 cursor-pointer transition-all hover:bg-white/[0.03] group relative ${selectedErrorId === error.id ? 'bg-rose-500/5 border-l-4 border-l-rose-500' : ''}`}
+                  className={`px-6 py-4 border-b border-white/5 cursor-pointer transition-all hover:bg-white/[0.03] group relative ${selectedErrorId === error.id ? 'bg-rose-500/5 border-l-4 border-l-rose-500' : ''} ${error.acknowledged ? 'opacity-50 grayscale' : ''}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -118,15 +134,24 @@ export function ErrorConsole() {
                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.severity === 'CRITICAL' ? 'bg-rose-600 text-white' : 'bg-rose-500/20 text-rose-400'}`}>
                           {error.severity}
                        </span>
+                       {error.acknowledged && (
+                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">ACKNOWLEDGED</span>
+                       )}
                     </div>
-                    <span className="text-[8px] font-bold text-slate-600">{new Date(error.timestamp).toLocaleTimeString()}</span>
+                    <div className="flex flex-col items-end">
+                       <span className="text-[8px] font-bold text-slate-600">{new Date(error.timestamp).toLocaleDateString()}</span>
+                       <span className="text-[8px] font-bold text-slate-600">{new Date(error.timestamp).toLocaleTimeString()}</span>
+                    </div>
                   </div>
                   <h3 className={`text-[11px] font-black uppercase tracking-tight mb-1 truncate ${selectedErrorId === error.id ? 'text-rose-400' : 'text-slate-200'}`}>
                     {error.message}
                   </h3>
-                  <p className="text-[9px] font-bold text-slate-500 uppercase truncate">
-                    {error.url || 'Internal Context'}
-                  </p>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="text-[8px] font-bold text-blue-500 shrink-0">{error.view || '/'}</span>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase truncate">
+                      {error.url || 'Internal Context'}
+                    </p>
+                  </div>
                   {selectedErrorId === error.id && (
                     <motion.div layoutId="active-indicator" className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500">
                        <ChevronRight size={18} />
@@ -147,7 +172,7 @@ export function ErrorConsole() {
             {selectedError ? (
               <div className="space-y-8 max-w-5xl">
                 <div className="flex items-start justify-between">
-                   <div className="space-y-2">
+                   <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-3">
                          <h2 className="text-3xl font-black text-rose-500 uppercase italic tracking-tighter leading-none">{selectedError.message}</h2>
                       </div>
@@ -160,14 +185,28 @@ export function ErrorConsole() {
                             <ShieldAlert size={14} className="text-slate-600" />
                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID: {selectedError.id}</span>
                          </div>
+                         <div className="flex items-center gap-2 text-blue-400">
+                            <History size={14} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">VIEW: {selectedError.view || 'ROOT'}</span>
+                         </div>
                       </div>
                    </div>
-                   <button 
-                     onClick={() => copyToClipboard(selectedError.stack || selectedError.message)}
-                     className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl"
-                   >
-                      <Copy size={16} /> Copy Traceback
-                   </button>
+                   <div className="flex gap-3 shrink-0">
+                      {!selectedError.acknowledged && (
+                        <button 
+                          onClick={() => acknowledgeError(selectedError.id)}
+                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                           Acknowledge Fault
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => copyToClipboard(`MESSAGE: ${selectedError.message}\nVIEW: ${selectedError.view}\nTIMESTAMP: ${selectedError.timestamp}\nSTACK: ${selectedError.stack}\nDATA: ${JSON.stringify(selectedError.data, null, 2)}`)}
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl"
+                      >
+                         <Copy size={16} /> Copy Full Traceback
+                      </button>
+                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-8">
@@ -206,9 +245,9 @@ export function ErrorConsole() {
                             <span className="text-[10px] text-slate-500 uppercase font-bold">Platform</span>
                             <span className="text-[10px] text-white font-black">{navigator.platform}</span>
                          </div>
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">User Agent</span>
-                            <span className="text-[8px] text-slate-400 font-bold truncate max-w-[200px]">{navigator.userAgent}</span>
+                         <div className="flex justify-between items-center">
+                            <span className="text-[10px] text-slate-500 uppercase font-bold shrink-0">User Agent</span>
+                            <span className="text-[8px] text-slate-400 font-bold truncate ml-4 max-w-[200px]">{navigator.userAgent}</span>
                          </div>
                       </div>
                    </div>
@@ -262,7 +301,7 @@ export function ErrorConsole() {
               <span>LOG RETENTION: 100 RECORDS</span>
            </div>
            <div className="flex items-center gap-2">
-              <span className="text-rose-500">SYSGRID ENGINE</span>
+              <span className="text-rose-500">SYSGRID BUGANIZER</span>
               <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
            </div>
         </div>

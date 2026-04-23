@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate 
 import { motion, AnimatePresence } from "framer-motion"
 import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
-import { apiFetch } from "./api/apiClient"
+import { apiFetch, subscribeToLatency } from "./api/apiClient"
 import { errorManager, useErrors } from "./stores/errorStore"
 import { ErrorConsole } from "./components/shared/ErrorConsole"
 
@@ -134,6 +134,11 @@ function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
+  const [latency, setLatency] = useState(0);
+
+  useEffect(() => {
+    return subscribeToLatency(setLatency);
+  }, []);
 
   const THEMES = [
     { id: 'nordic-frost-v1', label: 'Nordic Frost (Default)', color: 'bg-[#1a1b26]' },
@@ -296,31 +301,37 @@ function MainLayout() {
         <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-10">
           <div className="flex items-center space-x-4">
             <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
-            <div className="h-4 w-px bg-white/10" />
-            <div className="flex items-center space-x-2">
-               {THEMES.map(t => (
-                 <button 
-                   key={t.id} 
-                   onClick={() => changeTheme(t.id)}
-                   title={t.label}
-                   className={`w-4 h-4 rounded-full border transition-all ${t.color} ${currentTheme === t.id ? 'border-blue-500 scale-125 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'border-white/10 hover:scale-110'}`}
-                 />
-               ))}
+          </div>
+
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-8">
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Active Faults</span>
+              <button 
+                onClick={() => setErrorConsoleOpen(true)}
+                className={`text-[12px] font-black transition-all hover:scale-110 ${errors.filter(e => !e.acknowledged).length > 0 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}
+              >
+                {errors.filter(e => !e.acknowledged).length}
+              </button>
+            </div>
+            <div className="h-8 w-px bg-white/5" />
+            <div className="flex flex-col items-center">
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">API Status</span>
+              <div className="flex items-center space-x-2">
+                <span className={`text-[12px] font-black uppercase tracking-widest ${isOnline ? 'text-blue-400' : 'text-rose-500'}`}>
+                  {isOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
+                {isOnline && <span className="text-[10px] font-bold text-slate-600 tabular-nums">{latency}ms</span>}
+              </div>
             </div>
           </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">
-              SYSGRID ENGINE <span className={`${isOnline ? 'text-blue-400 animate-pulse' : 'text-rose-500'} transition-colors duration-500`}>
-                {isOnline ? 'ONLINE' : 'OFFLINE'}
-              </span>
-            </div>
-            <div className="h-6 w-px bg-white/10" />
+
+          <div className="flex items-center space-x-4">
             <button 
               onClick={() => setErrorConsoleOpen(true)}
-              className={`p-2 rounded-xl transition-all relative ${errors.length > 0 ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 hover:bg-white/5'}`}
+              className={`p-2 rounded-xl transition-all relative ${errors.filter(e => !e.acknowledged).length > 0 ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 hover:bg-white/5'}`}
             >
                <Bug size={20} />
-               {errors.length > 0 && (
+               {errors.filter(e => !e.acknowledged).length > 0 && (
                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-600 rounded-full border-2 border-[var(--bg-header)] animate-pulse" />
                )}
             </button>
@@ -351,7 +362,7 @@ function MainLayout() {
           </Routes>
         </div>
         <footer className="h-8 border-t border-[var(--glass-border)] px-8 flex items-center justify-between text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-primary)]/20">
-           <span>SYSGRID INFRASTRUCTURE COMMAND</span>
+           <span />
            <span className="text-blue-500">VERSION {APP_VERSION}</span>
         </footer>
       </main>

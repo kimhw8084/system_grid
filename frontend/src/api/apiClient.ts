@@ -2,7 +2,25 @@ import { errorManager } from '../stores/errorStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+let lastLatency = 0;
+const latencyListeners: ((latency: number) => void)[] = [];
+
+export function subscribeToLatency(listener: (latency: number) => void) {
+  latencyListeners.push(listener);
+  listener(lastLatency);
+  return () => {
+    const idx = latencyListeners.indexOf(listener);
+    if (idx !== -1) latencyListeners.splice(idx, 1);
+  };
+}
+
+function notifyLatency(latency: number) {
+  lastLatency = latency;
+  latencyListeners.forEach(l => l(latency));
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
+  const start = performance.now();
   // If the endpoint is already a full URL, use it as is
   // Otherwise, prepend the base URL
   const url = (endpoint.startsWith('http') || !API_BASE_URL) 
@@ -19,6 +37,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       ...options,
       headers,
     });
+
+    const end = performance.now();
+    notifyLatency(Math.round(end - start));
 
     if (!response.ok) {
       let errorData: any = {};

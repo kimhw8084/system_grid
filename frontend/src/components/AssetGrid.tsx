@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ForceGraph2D } from 'react-force-graph-2d'
+import ForceGraph2D from 'react-force-graph-2d'
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Server, Zap, Clipboard, Share2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -668,7 +668,7 @@ export default function AssetGrid() {
   const [showStyleLab, setShowStyleLab] = useState(true)
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
-  const [viewMode, setViewMode] = useState<'grid' | 'report'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -982,7 +982,7 @@ export default function AssetGrid() {
                 </button>
            </div>
 
-           {viewMode !== 'map' && activeTab !== 'deleted' && (
+           {viewMode !== 'map' && (
              <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
                   <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
                       Existing
