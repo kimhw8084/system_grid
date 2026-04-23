@@ -3,8 +3,118 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
+import os
+from pydantic import BaseModel
+import pandas as pd
+import io
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
+
+class EnvUpdate(BaseModel):
+    api_endpoint: str | None = None
+    db_path: str | None = None
+    storage_root: str | None = None
+    image_path: str | None = None
+    backup_path: str | None = None
+    scripts_path: str | None = None
+    user_pool_path: str | None = None
+    log_level: str | None = None
+
+class PoolSync(BaseModel):
+    script: str
+
+@router.get("/env")
+async def get_env_vars():
+    # In a real app, this would read from actual os.environ or a .env file
+    # For simulation and actual persistence as requested:
+    env_data = {
+        "api_endpoint": os.getenv("API_ENDPOINT", "http://localhost:8000"),
+        "db_path": os.getenv("DATABASE_URL", "./sysgrid.db"),
+        "storage_root": os.getenv("STORAGE_ROOT", "./storage"),
+        "image_path": os.getenv("IMAGE_PATH", "./storage/images"),
+        "backup_path": os.getenv("BACKUP_PATH", "./backups"),
+        "scripts_path": os.getenv("SCRIPTS_PATH", "./scripts"),
+        "user_pool_path": os.getenv("USER_POOL_PATH", "./storage/user_pool.json"),
+        "log_level": os.getenv("LOG_LEVEL", "INFO")
+    }
+    return env_data
+
+@router.post("/env")
+async def update_env_vars(data: EnvUpdate):
+    # Map frontend keys to .env keys
+    mapping = {
+        "api_endpoint": "API_ENDPOINT",
+        "db_path": "DATABASE_URL",
+        "storage_root": "STORAGE_ROOT",
+        "image_path": "IMAGE_PATH",
+        "backup_path": "BACKUP_PATH",
+        "scripts_path": "SCRIPTS_PATH",
+        "user_pool_path": "USER_POOL_PATH",
+        "log_level": "LOG_LEVEL"
+    }
+    
+    env_path = ".env"
+    current_env = {}
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line:
+                    k, v = line.strip().split("=", 1)
+                    current_env[k] = v
+
+    update_dict = data.dict(exclude_unset=True)
+    for feat, env_key in mapping.items():
+        if feat in update_dict:
+            current_env[env_key] = update_dict[feat]
+            os.environ[env_key] = str(update_dict[feat]) # Update current process too
+
+    with open(env_path, "w") as f:
+        for k, v in current_env.items():
+            f.write(f"{k}={v}\n")
+            
+    return {"status": "success", "message": "Environment synchronized to .env"}
+
+@router.post("/user-pool/refresh")
+async def refresh_user_pool(data: PoolSync):
+    try:
+        # Restricted namespace for execution
+        local_namespace = {"pd": pd, "np": pd.np if hasattr(pd, "np") else None}
+        if not local_namespace["np"]:
+            import numpy as np
+            local_namespace["np"] = np
+            
+        # Execute the user provided script
+        exec(data.script, {}, local_namespace)
+        
+        if "result_df" not in local_namespace:
+            raise HTTPException(400, "Script must define 'result_df' variable")
+            
+        df = local_namespace["result_df"]
+        if not isinstance(df, pd.DataFrame):
+            raise HTTPException(400, "'result_df' must be a Pandas DataFrame")
+            
+        # Validate columns
+        required = ["id", "username", "email", "department", "registration_status"]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise HTTPException(400, f"DataFrame missing required columns: {missing}")
+            
+        # Save pool to a persistent location (configured in env)
+        pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
+        os.makedirs(os.path.dirname(pool_file), exist_ok=True)
+        
+        df.to_json(pool_file, orient="records")
+        
+        return {"status": "success", "count": len(df), "path": pool_file}
+    except Exception as e:
+        raise HTTPException(400, f"Python Execution Error: {str(e)}")
+
+@router.get("/user-pool")
+async def get_user_pool():
+    pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
+    if not os.path.exists(pool_file):
+        return []
+    return pd.read_json(pool_file).to_dict(orient="records")
 
 def filter_valid_columns(model, data):
     valid_keys = {c.name for c in model.__table__.columns}

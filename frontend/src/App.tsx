@@ -305,38 +305,35 @@ function MainLayout() {
 
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-8">
             <div className="flex flex-col items-center">
-              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Active Faults</span>
-              <button 
-                onClick={() => setErrorConsoleOpen(true)}
-                className={`text-[12px] font-black transition-all hover:scale-110 ${errors.filter(e => !e.acknowledged).length > 0 ? 'text-rose-500 animate-pulse' : 'text-slate-400'}`}
-              >
-                {errors.filter(e => !e.acknowledged).length}
-              </button>
-            </div>
-            <div className="h-8 w-px bg-white/5" />
-            <div className="flex flex-col items-center">
-              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">API Status</span>
+              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">System Status</span>
               <div className="flex items-center space-x-2">
-                <span className={`text-[12px] font-black uppercase tracking-widest ${isOnline ? 'text-blue-400' : 'text-rose-500'}`}>
-                  {isOnline ? 'ONLINE' : 'OFFLINE'}
+                <span className={`text-[12px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
+                  {isOnline ? 'Operational' : 'Degraded'}
                 </span>
                 {isOnline && <span className="text-[10px] font-bold text-slate-600 tabular-nums">{latency}ms</span>}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border ${isOnline ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/5 border-rose-500/20 text-rose-400'}`}>
+               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+               <span className="text-[10px] font-black uppercase tracking-widest">{isOnline ? 'API Online' : 'API Offline'}</span>
+            </div>
+
             <button 
               onClick={() => setErrorConsoleOpen(true)}
-              className={`p-2 rounded-xl transition-all relative ${errors.filter(e => !e.acknowledged).length > 0 ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 hover:bg-white/5'}`}
+              className={`p-2 rounded-lg transition-all relative border ${errors.filter(e => !e.acknowledged).length > 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
             >
-               <Bug size={20} />
+               <Bug size={18} />
                {errors.filter(e => !e.acknowledged).length > 0 && (
-                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-600 rounded-full border-2 border-[var(--bg-header)] animate-pulse" />
+                 <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded-full border-2 border-[var(--bg-header)] min-w-[18px] text-center">
+                   {errors.filter(e => !e.acknowledged).length}
+                 </span>
                )}
             </button>
-            <Link to="/settings" className={`p-2 rounded-xl transition-all ${location.pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
-               <Settings size={20} />
+            <Link to="/settings" className={`p-2 rounded-lg transition-all border ${location.pathname === '/settings' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+               <Settings size={18} />
             </Link>
           </div>
         </header>
