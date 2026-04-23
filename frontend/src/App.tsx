@@ -2,9 +2,11 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2 } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch } from "./api/apiClient"
+import { errorManager, useErrors } from "./stores/errorStore"
+import { ErrorConsole } from "./components/shared/ErrorConsole"
 
 import Dashboard from "./components/Dashboard"
 import AssetGrid from "./components/AssetGrid"
@@ -131,7 +133,6 @@ function MainLayout() {
   const navigate = useNavigate(); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
-  const [globalError, setGlobalError] = useState<any>(null);
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
 
   const THEMES = [
@@ -166,30 +167,40 @@ function MainLayout() {
 
   const isOnline = !!healthData && !isHealthError;
 
+  const { errors, setOpen: setErrorConsoleOpen } = useErrors();
+
   useEffect(() => {
-    const handleError = (event: PromiseRejectionEvent) => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
       const error = event.reason;
       if (error && (error.traceback || error.status || error.data)) {
-        setGlobalError(error);
-        toast.error((t) => (
-          <div className="flex items-center justify-between space-x-4 min-w-[220px]">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-tight text-white">{error.message || 'System Fault'}</span>
-              <span className="text-[8px] font-bold text-rose-400/70 uppercase">Execution Exception</span>
-            </div>
-            <button 
-              onClick={() => { setGlobalError(error); toast.dismiss(t.id); }}
-              className="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border border-white/5"
-            >
-              Details
-            </button>
-          </div>
-        ), { duration: 8000, position: 'top-right' });
+        errorManager.addError({
+          message: error.message || 'Unhandled Promise Rejection',
+          stack: error.traceback || error.stack,
+          status: error.status,
+          data: error.data,
+          type: 'BACKEND',
+          severity: 'ERROR'
+        });
         event.preventDefault();
       }
     };
-    window.addEventListener('unhandledrejection', handleError);
-    return () => window.removeEventListener('unhandledrejection', handleError);
+
+    const handleWindowError = (event: ErrorEvent) => {
+      errorManager.addError({
+        message: event.message || 'Frontend Exception',
+        stack: event.error?.stack,
+        url: event.filename,
+        type: 'FRONTEND',
+        severity: 'CRITICAL'
+      });
+    };
+
+    window.addEventListener('unhandledrejection', handleRejection);
+    window.addEventListener('error', handleWindowError);
+    return () => {
+      window.removeEventListener('unhandledrejection', handleRejection);
+      window.removeEventListener('error', handleWindowError);
+    };
   }, []);
 
   useEffect(() => {
@@ -304,6 +315,15 @@ function MainLayout() {
               </span>
             </div>
             <div className="h-6 w-px bg-white/10" />
+            <button 
+              onClick={() => setErrorConsoleOpen(true)}
+              className={`p-2 rounded-xl transition-all relative ${errors.length > 0 ? 'text-rose-500 hover:bg-rose-500/10' : 'text-slate-400 hover:bg-white/5'}`}
+            >
+               <Bug size={20} />
+               {errors.length > 0 && (
+                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-600 rounded-full border-2 border-[var(--bg-header)] animate-pulse" />
+               )}
+            </button>
             <Link to="/settings" className={`p-2 rounded-xl transition-all ${location.pathname === '/settings' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
                <Settings size={20} />
             </Link>
@@ -337,7 +357,7 @@ function MainLayout() {
       </main>
       <AnimatePresence>
         {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
-        {globalError && <ErrorDetailModal isOpen={!!globalError} onClose={() => setGlobalError(null)} error={globalError} />}
+        <ErrorConsole />
       </AnimatePresence>
     </div>
   )

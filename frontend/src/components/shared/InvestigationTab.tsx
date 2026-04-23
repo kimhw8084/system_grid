@@ -407,7 +407,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
       const step = (formData.identification_steps_json || []).find((s: any) => s.id === editingStepId && s.cause_id === cause.id);
       if (step) {
         setNewStep({ text: step.text, images: step.images || [], status: step.status || 'PENDING' });
-        setIsAddingStepCollapsed(false);
+        // Removed: setIsAddingStepCollapsed(false); 
       }
     }
   }, [editingStepId, cause.id, formData.identification_steps_json])
@@ -452,7 +452,34 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
              </div>
           </div>
           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                   {(() => {
+                      const workarounds = (cause.mitigations || []).filter((m: any) => m.mitigation_type === 'Workaround')
+                      const monitoringItems = (cause.mitigations || []).filter((m: any) => m.mitigation_type === 'Monitoring')
+                      const preventions = cause.prevention_actions || []
+                      const compW = workarounds.filter((m: any) => m.status === 'Completed').length
+                      const compM = monitoringItems.filter((m: any) => m.status === 'Completed').length
+                      const compP = preventions.filter((p: any) => p.status === 'Completed').length
+                      return (
+                         <>
+                            <div className="flex flex-col items-center">
+                               <span className="text-[7px] font-bold text-slate-500 uppercase">W</span>
+                               <span className="text-[9px] font-black text-amber-500">{compW}/{workarounds.length}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                               <span className="text-[7px] font-bold text-slate-500 uppercase">M</span>
+                               <span className="text-[9px] font-black text-sky-400">{compM}/{monitoringItems.length}</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                               <span className="text-[7px] font-bold text-slate-500 uppercase">P</span>
+                               <span className="text-[9px] font-black text-emerald-400">{compP}/{preventions.length}</span>
+                            </div>
+                         </>
+                      )
+                   })()}
+                </div>
+                <div className="w-px h-6 bg-white/10 mx-1" />
                 <div className="flex flex-col items-center">
                    <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-1">Identification</span>
                    <ModernStatusPicker 
@@ -460,10 +487,6 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                       onChange={setIdentificationStatus}
                       options={idStatusOptions}
                    />
-                </div>
-                <div className="w-px h-6 bg-white/10 mx-1" />
-                <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[8px] font-black text-emerald-400 uppercase tracking-widest">
-                   {cause.mitigations?.length || 0} ACTIONS
                 </div>
              </div>
              {isEditing && (

@@ -1,3 +1,5 @@
+import { errorManager } from '../stores/errorStore';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
@@ -12,30 +14,57 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    let errorData: any = {};
-    let fullTraceback = null;
-    try {
-      errorData = await response.json();
-      // If FastAPI returns an error, it often includes details in 'detail'
-      // If we've implemented custom traceback capture on backend, it might be in 'traceback'
-      fullTraceback = errorData.traceback || null;
-    } catch (e) {
-      errorData = { detail: `API Error ${response.status}: ${response.statusText}` };
+    if (!response.ok) {
+      let errorData: any = {};
+      let fullTraceback = null;
+      try {
+        errorData = await response.json();
+        fullTraceback = errorData.traceback || null;
+      } catch (e) {
+        errorData = { detail: `API Error ${response.status}: ${response.statusText}` };
+      }
+      
+      const errorMessage = errorData.detail || errorData.message || `API error: ${response.status}`;
+      
+      // Log to Buganizer Console
+      errorManager.addError({
+        message: errorMessage,
+        stack: fullTraceback || new Error().stack,
+        url: url,
+        method: options.method || 'GET',
+        status: response.status,
+        data: errorData,
+        type: 'BACKEND',
+        severity: response.status >= 500 ? 'CRITICAL' : 'ERROR'
+      });
+
+      const error = new Error(errorMessage) as any;
+      error.status = response.status;
+      error.traceback = fullTraceback;
+      error.data = errorData;
+      throw error;
     }
-    
-    const errorMessage = errorData.detail || errorData.message || `API error: ${response.status}`;
-    const error = new Error(errorMessage) as any;
-    error.status = response.status;
-    error.traceback = fullTraceback;
-    error.data = errorData;
-    throw error;
-  }
 
-  return response;
+    return response;
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw err;
+    if (!err.status) {
+      // Network error or fetch failed
+      errorManager.addError({
+        message: err.message || 'Network Connectivity Failure',
+        stack: err.stack,
+        url: url,
+        method: options.method || 'GET',
+        type: 'BACKEND',
+        severity: 'CRITICAL'
+      });
+    }
+    throw err;
+  }
 }
