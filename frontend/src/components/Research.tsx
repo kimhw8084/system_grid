@@ -1675,22 +1675,13 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                          </div>
                       </div>
                    ))}
-                   <div className="aspect-square bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-slate-600 cursor-pointer hover:bg-white/10 transition-all relative">
-                      <Plus size={20} />
-                      <input type="file" multiple accept="image/*" onChange={(e: any) => {
-                         const files = e.target.files;
-                         if (!files) return;
-                         for (let i = 0; i < files.length; i++) {
-                            const reader = new FileReader();
-                            reader.onload = (event: any) => {
-                               const base64 = event.target.result;
-                               const nextEvidence = [...(formData.evidence_json || []), { type: 'image', content: base64, timestamp: new Date().toISOString() }];
-                               setFormData((prev: any) => ({ ...prev, evidence_json: nextEvidence }));
-                            };
-                            reader.readAsDataURL(files[i]);
-                         }
-                      }} className="absolute inset-0 opacity-0 cursor-pointer" />
-                   </div>
+                   {(formData.evidence_json || []).length === 0 && (
+                      <div className="col-span-3 aspect-video bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-slate-600 transition-all relative">
+                         <div className="text-[8px] font-black uppercase tracking-widest text-center">
+                            SELECT THIS SECTION<br/>THEN CTRL+V TO PASTE EVIDENCE
+                         </div>
+                      </div>
+                   )}
                 </div>
                 {focusedField === 'evidence' && <p className="text-[8px] font-bold uppercase text-blue-400 text-center animate-pulse mt-2">Ready to paste evidence...</p>}
              </SectionCard>
@@ -1776,7 +1767,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                      ))}
                                      {(newTimeline.images || []).length === 0 && (
                                         <div className="w-full flex items-center justify-center text-[8px] font-black text-slate-700 uppercase tracking-widest">
-                                           CLICK HERE THEN CTRL+V TO PASTE FIGURES
+                                           SELECT THIS CONTAINER THEN CTRL+V TO PASTE FIGURES
                                         </div>
                                      )}
                                   </div>
@@ -1792,7 +1783,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                        {/* Vertical Line */}
                        <div className="absolute left-[87px] top-6 bottom-10 w-px bg-gradient-to-b from-purple-500/50 via-white/10 to-transparent" />
 
-                       {(formData.timeline || []).sort((a: any, b: any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((item: any, idx: number) => (
+                       {(formData.timeline || []).sort((a: any, b: any) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()).map((item: any, idx: number) => (
                           <div key={item.id || idx} className="relative flex gap-8 group">
                              {/* Timeline Node */}
                              <div className="flex flex-col items-center shrink-0 w-20 relative">
@@ -1808,30 +1799,46 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                              </div>
 
                              <div className="flex-1 bg-white/5 border border-white/10 rounded-lg p-5 flex flex-col gap-4 group hover:bg-white/[0.08] transition-all shadow-xl">
-                                <div className="flex items-start justify-between">
-                                   <div className="space-y-2">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                         <p className="text-[12px] font-black text-slate-200 uppercase leading-relaxed tracking-tight">{item.description}</p>
-                                         {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase italic">@ {item.owner}</span>}
+                                {editingTimelineId === item.id ? (
+                                   <div className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                         <input type="datetime-local" value={editTimelineData.event_time} onChange={e => setEditTimelineData({...editTimelineData, event_time: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-[10px] font-bold text-white outline-none" />
+                                         <StyledSelect options={[{value:'DETECTION',label:'DETECTION'},{value:'MITIGATION',label:'MITIGATION'},{value:'OBSERVATION',label:'OBSERVATION'},{value:'RESOLUTION',label:'RESOLUTION'}]} value={editTimelineData.event_type} onChange={(e:any) => setEditTimelineData({...editTimelineData, event_type: e.target.value})} />
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                         <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                                            item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
-                                            item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
-                                            'text-blue-400 border-blue-500/30 bg-blue-500/10'
-                                         }`}>{item.event_type}</span>
-                                         {item.owner_team && <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">[{item.owner_team}]</span>}
+                                      <textarea value={editTimelineData.description} onChange={e => setEditTimelineData({...editTimelineData, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded p-2 text-[11px] font-bold text-white outline-none min-h-[60px] uppercase" />
+                                      <div className="flex gap-2">
+                                         <button onClick={saveTimelineUpdate} className="flex-1 py-2 bg-purple-600 text-white rounded text-[9px] font-bold uppercase">Save</button>
+                                         <button onClick={() => setEditingTimelineId(null)} className="flex-1 py-2 bg-white/5 text-slate-400 rounded text-[9px] font-bold uppercase">Cancel</button>
                                       </div>
                                    </div>
-                                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                      <button onClick={() => startEditingTimeline(item)} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><Edit2 size={14}/></button>
-                                      <button onClick={() => handleDeleteTimeline(item.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><Trash2 size={14}/></button>
-                                   </div>
-                                </div>
-                                {item.images?.length > 0 && (
-                                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                      {item.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
-                                   </div>
+                                ) : (
+                                   <>
+                                      <div className="flex items-start justify-between">
+                                         <div className="space-y-2">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                               <p className="text-[12px] font-black text-slate-200 uppercase leading-relaxed tracking-tight">{item.description}</p>
+                                               {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase italic">@ {item.owner}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                               <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                                  item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
+                                                  item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
+                                                  'text-blue-400 border-blue-500/30 bg-blue-500/10'
+                                               }`}>{item.event_type}</span>
+                                               {item.owner_team && <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">[{item.owner_team}]</span>}
+                                            </div>
+                                         </div>
+                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button onClick={() => startEditingTimeline(item)} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><Edit2 size={14}/></button>
+                                            <button onClick={() => handleDeleteTimeline(item.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><Trash2 size={14}/></button>
+                                         </div>
+                                      </div>
+                                      {item.images?.length > 0 && (
+                                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                            {item.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
+                                         </div>
+                                      )}
+                                   </>
                                 )}
                              </div>
                           </div>

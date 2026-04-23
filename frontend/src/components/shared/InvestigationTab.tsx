@@ -147,10 +147,28 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
     setExpandedCauseIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
 
+  const getCounts = (fm: any) => {
+    const allMitigations = (fm.causes || []).flatMap((c: any) => c.mitigations || [])
+    const allPreventions = (fm.causes || []).flatMap((c: any) => c.prevention_actions || [])
+    
+    const workarounds = allMitigations.filter((m: any) => m.mitigation_type === 'Workaround')
+    const monitoringItems = allMitigations.filter((m: any) => m.mitigation_type === 'Monitoring')
+    
+    const compW = workarounds.filter((m: any) => m.status === 'Completed').length
+    const compM = monitoringItems.filter((m: any) => m.status === 'Completed').length
+    const compP = allPreventions.filter((p: any) => p.status === 'Completed').length
+    
+    return {
+      w: `${compW}/${workarounds.length}`,
+      m: `${compM}/${monitoringItems.length}`,
+      p: `${compP}/${allPreventions.length}`
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6 gap-6">
        {/* 1. Failure Resolution Matrix (Header) */}
-       <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-visible shadow-2xl">
+       <div className="shrink-0 bg-white/5 border border-white/10 rounded-lg overflow-visible shadow-2xl relative z-30">
           <div className="px-6 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
              <div className="flex items-center gap-3">
                 <Activity size={18} className="text-purple-400" />
@@ -167,13 +185,15 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                    <tr className="border-b border-white/10 bg-black/40">
                       <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500">Linked Failure Mode</th>
                       <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Root Cause</th>
-                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Workaround</th>
-                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Monitoring</th>
-                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center">Prevention</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center whitespace-nowrap">Workaround [C/T]</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center whitespace-nowrap">Monitoring [C/T]</th>
+                      <th className="py-3 px-6 text-[9px] font-black uppercase tracking-widest text-slate-500 text-center whitespace-nowrap">Prevention [C/T]</th>
                    </tr>
                 </thead>
                 <tbody className="overflow-visible">
-                   {linkedFailures.map((fm: any) => (
+                   {linkedFailures.map((fm: any) => {
+                      const counts = getCounts(fm)
+                      return (
                       <tr 
                         key={fm.id} 
                         onClick={() => setSelectedFailureId(fm.id)}
@@ -188,18 +208,45 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                                </div>
                             </div>
                          </td>
-                         {['cause', 'workaround', 'monitoring', 'prevention'].map(type => (
-                            <td key={type} className="py-3 px-6 text-center overflow-visible">
+                         <td className="py-3 px-6 text-center overflow-visible">
                                <ModernStatusPicker 
-                                  value={localStatuses[`${fm.id}_${type}`] || fm.metadata_json?.[`status_${type}`] || 'NOT_STARTED'}
-                                  onChange={(val: string) => updateFailureStatus(fm.id, type, val)}
+                                  value={localStatuses[`${fm.id}_cause`] || fm.metadata_json?.status_cause || 'NOT_STARTED'}
+                                  onChange={(val: string) => updateFailureStatus(fm.id, 'cause', val)}
                                   options={statusOptions}
-                                  disabled={false}
                                />
-                            </td>
-                         ))}
+                         </td>
+                         <td className="py-3 px-6 text-center overflow-visible">
+                            <div className="flex flex-col items-center gap-1">
+                               <span className="text-[9px] font-bold text-amber-500/80">{counts.w}</span>
+                               <ModernStatusPicker 
+                                  value={localStatuses[`${fm.id}_workaround`] || fm.metadata_json?.status_workaround || 'NOT_STARTED'}
+                                  onChange={(val: string) => updateFailureStatus(fm.id, 'workaround', val)}
+                                  options={statusOptions}
+                               />
+                            </div>
+                         </td>
+                         <td className="py-3 px-6 text-center overflow-visible">
+                            <div className="flex flex-col items-center gap-1">
+                               <span className="text-[9px] font-bold text-sky-400/80">{counts.m}</span>
+                               <ModernStatusPicker 
+                                  value={localStatuses[`${fm.id}_monitoring`] || fm.metadata_json?.status_monitoring || 'NOT_STARTED'}
+                                  onChange={(val: string) => updateFailureStatus(fm.id, 'monitoring', val)}
+                                  options={statusOptions}
+                               />
+                            </div>
+                         </td>
+                         <td className="py-3 px-6 text-center overflow-visible">
+                            <div className="flex flex-col items-center gap-1">
+                               <span className="text-[9px] font-bold text-emerald-400/80">{counts.p}</span>
+                               <ModernStatusPicker 
+                                  value={localStatuses[`${fm.id}_prevention`] || fm.metadata_json?.status_prevention || 'NOT_STARTED'}
+                                  onChange={(val: string) => updateFailureStatus(fm.id, 'prevention', val)}
+                                  options={statusOptions}
+                               />
+                            </div>
+                         </td>
                       </tr>
-                   ))}
+                   )})}
                 </tbody>
              </table>
           </div>
@@ -209,10 +256,33 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
           {selectedFailure ? (
              <div className="flex-1 flex flex-col gap-4 overflow-y-auto custom-scrollbar pr-2">
-                <div className="flex items-center justify-between shrink-0">
-                   <div className="flex items-center gap-3">
-                      <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Active Vector:</span>
-                      <span className="text-[11px] font-black text-purple-400 uppercase italic tracking-tighter">{selectedFailure.title}</span>
+                <div className="flex items-center justify-between shrink-0 bg-white/5 p-4 rounded-lg border border-white/10">
+                   <div className="flex items-center gap-6">
+                      <div className="flex flex-col">
+                         <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active Vector</span>
+                         <span className="text-[12px] font-black text-purple-400 uppercase italic tracking-tighter">{selectedFailure.title}</span>
+                      </div>
+                      <div className="flex items-center gap-4 pl-6 border-l border-white/10">
+                         {(() => {
+                            const counts = getCounts(selectedFailure)
+                            return (
+                               <>
+                                  <div className="flex flex-col items-center">
+                                     <span className="text-[7px] font-bold text-slate-500 uppercase">Workaround</span>
+                                     <span className="text-[10px] font-black text-amber-500">{counts.w}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center">
+                                     <span className="text-[7px] font-bold text-slate-500 uppercase">Monitoring</span>
+                                     <span className="text-[10px] font-black text-sky-400">{counts.m}</span>
+                                  </div>
+                                  <div className="flex flex-col items-center">
+                                     <span className="text-[7px] font-bold text-slate-500 uppercase">Prevention</span>
+                                     <span className="text-[10px] font-black text-emerald-400">{counts.p}</span>
+                                  </div>
+                               </>
+                            )
+                         })()}
+                      </div>
                    </div>
                    <button 
                      onClick={() => setActiveCauseModal({ isOpen: true, modeId: selectedFailureId })}
@@ -508,36 +578,56 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                             {(formData.identification_steps_json || []).filter((s: any) => s.failure_id === selectedFailureId && s.cause_id === cause.id).map((step: any, idx: number) => (
                                <div key={step.id || idx} className="flex gap-6 group">
                                   <div className="flex flex-col items-center shrink-0">
-                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] border italic shadow-lg ${
-                                        step.status === 'DONE' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                                        step.status === 'FAILED' ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' :
-                                        'bg-blue-600/10 text-blue-400 border-blue-500/20'
-                                     }`}>{idx + 1}</div>
+                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] border italic shadow-lg bg-blue-600/10 text-blue-400 border-blue-500/20">{idx + 1}</div>
                                      <div className="w-px flex-1 bg-white/5 my-2" />
                                   </div>
                                   <div className="flex-1 space-y-3 pt-1 pb-6">
-                                     <div className="flex items-start justify-between">
-                                        <div className="space-y-1">
-                                           <p className="text-[12px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
-                                           <div className="flex items-center gap-3">
-                                              <span className={`text-[8px] font-black uppercase tracking-widest ${
-                                                 step.status === 'DONE' ? 'text-emerald-400' :
-                                                 step.status === 'FAILED' ? 'text-rose-400' : 'text-blue-400'
-                                              }`}>{step.status || 'PENDING'}</span>
-                                              <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">{new Date(step.created_at).toLocaleString()}</span>
+                                     {editingStepId === step.id ? (
+                                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
+                                           <textarea 
+                                              value={newStep.text}
+                                              onChange={e => setNewStep({...newStep, text: e.target.value.toUpperCase()})}
+                                              className="w-full bg-slate-950 border border-white/10 rounded p-3 text-[11px] font-bold text-white outline-none min-h-[80px] uppercase"
+                                           />
+                                           <div 
+                                              onClick={() => setFocusedField(`investigation_${cause.id}`)}
+                                              className={`flex gap-2 overflow-x-auto pb-1 scrollbar-hide focus-trigger p-2 border-2 rounded-lg transition-all min-h-[60px] ${focusedField === `investigation_${cause.id}` ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/5 bg-slate-950'}`}
+                                           >
+                                              {newStep.images.map((img: string, i: number) => (
+                                                 <div key={i} className="relative w-12 h-12 shrink-0 rounded border border-white/10 overflow-hidden group">
+                                                    <img src={img} className="w-full h-full object-cover" />
+                                                    <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-0.5 right-0.5 bg-rose-600 text-white p-0.5 rounded opacity-0 group-hover:opacity-100"><X size={8}/></button>
+                                                 </div>
+                                              ))}
+                                              {newStep.images.length === 0 && <span className="text-[7px] font-black text-slate-700 uppercase m-auto">PASTE FIGURES (CTRL+V)</span>}
+                                           </div>
+                                           <div className="flex gap-2">
+                                              <button onClick={handleCommitStep} className="flex-1 py-2 bg-blue-600 text-white rounded text-[9px] font-black uppercase">Save</button>
+                                              <button onClick={() => { setEditingStepId(null); setNewStep({text:'', images:[], status:'DONE'}); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded text-[9px] font-black uppercase">Cancel</button>
                                            </div>
                                         </div>
-                                        {isEditing && (
-                                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                              <button onClick={() => editStep(step)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg"><Edit2 size={12}/></button>
-                                              <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><Trash2 size={12}/></button>
+                                     ) : (
+                                        <>
+                                           <div className="flex items-start justify-between">
+                                              <div className="space-y-1">
+                                                 <p className="text-[12px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                                 <div className="flex items-center gap-3">
+                                                    <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">{new Date(step.created_at).toLocaleString()}</span>
+                                                 </div>
+                                              </div>
+                                              {isEditing && (
+                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button onClick={() => editStep(step)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg"><Edit2 size={12}/></button>
+                                                    <button onClick={() => setFormData({...formData, identification_steps_json: formData.identification_steps_json.filter((s: any) => s.id !== step.id)})} className="p-1.5 text-rose-500 hover:bg-rose-500/10 rounded-lg"><Trash2 size={12}/></button>
+                                                 </div>
+                                              )}
                                            </div>
-                                        )}
-                                     </div>
-                                     {step.images?.length > 0 && (
-                                       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                           {step.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
-                                       </div>
+                                           {step.images?.length > 0 && (
+                                             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                                 {step.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
+                                             </div>
+                                           )}
+                                        </>
                                      )}
                                   </div>
                                </div>
