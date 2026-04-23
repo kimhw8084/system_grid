@@ -1684,6 +1684,16 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                      <StyledSelect options={[{value:'DETECTION',label:'DETECTION'},{value:'MITIGATION',label:'MITIGATION'},{value:'OBSERVATION',label:'OBSERVATION'},{value:'RESOLUTION',label:'RESOLUTION'}]} value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value})} />
                                   </div>
                                </div>
+                               <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase">Owner / Reporter</label>
+                                     <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} placeholder="E.G. J. DOE..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                  </div>
+                                  <div className="space-y-1">
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase">Responsible Team</label>
+                                     <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} placeholder="E.G. SRE..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                  </div>
+                               </div>
                                <textarea value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" placeholder="EVENT DESCRIPTION..." />
                                <button onClick={handleAddTimeline} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Commit Milestone</button>
                             </motion.div>
@@ -1701,12 +1711,18 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                 </div>
                                 <div className="w-px h-10 bg-white/5" />
                                 <div className="space-y-1">
-                                   <p className="text-xs font-black text-slate-200 uppercase leading-relaxed">{item.description}</p>
-                                   <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                                      item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
-                                      item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
-                                      'text-blue-400 border-blue-500/30 bg-blue-500/10'
-                                   }`}>{item.event_type}</span>
+                                   <div className="flex items-center gap-2">
+                                      <p className="text-xs font-black text-slate-200 uppercase leading-relaxed">{item.description}</p>
+                                      {item.owner && <span className="text-[8px] font-bold text-blue-400/60 uppercase whitespace-nowrap">@ {item.owner}</span>}
+                                   </div>
+                                   <div className="flex items-center gap-2">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                         item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
+                                         item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
+                                         'text-blue-400 border-blue-500/30 bg-blue-500/10'
+                                      }`}>{item.event_type}</span>
+                                      {item.owner_team && <span className="text-[8px] font-bold text-slate-600 uppercase">[{item.owner_team}]</span>}
+                                   </div>
                                 </div>
                              </div>
                              <button onClick={() => handleDeleteTimeline(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
@@ -2502,6 +2518,26 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
   const [isAddingStepCollapsed, setIsAddingStepCollapsed] = useState(true)
   const [newStep, setNewStep] = useState({ text: '', images: [] as string[], status: 'PENDING' })
 
+  const identificationStatus = useMemo(() => {
+    return formData.metadata_json?.cause_identification_statuses?.[cause.id] || 'NOT_STARTED'
+  }, [formData.metadata_json, cause.id])
+
+  const setIdentificationStatus = (status: string) => {
+    const currentStatuses = formData.metadata_json?.cause_identification_statuses || {}
+    const newMetadata = { 
+      ...formData.metadata_json, 
+      cause_identification_statuses: { ...currentStatuses, [cause.id]: status } 
+    }
+    setFormData({ ...formData, metadata_json: newMetadata })
+    toast.success('Identification Status Updated')
+  }
+
+  const idStatusOptions = [
+    { value: 'NOT_STARTED', label: 'NOT STARTED', color: 'text-slate-500' },
+    { value: 'IN_PROGRESS', label: 'IN PROGRESS', color: 'text-blue-400' },
+    { value: 'COMPLETED', label: 'COMPLETED', color: 'text-emerald-400' }
+  ]
+
   useEffect(() => {
     const handlePasteEvent = (e: any) => {
       if (e.detail.causeId === cause.id) {
@@ -2529,7 +2565,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
   }
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all shadow-xl">
+    <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all shadow-xl">
        <div 
          onClick={onToggle}
          className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.02]"
@@ -2548,10 +2584,16 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
              </div>
           </div>
           <div className="flex items-center gap-4">
-             <div className="flex items-center gap-1">
-                {(formData.identification_steps_json || []).filter((s: any) => s.cause_id === cause.id && s.status === 'DONE').length > 0 && (
-                   <div className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-widest">ID:DONE</div>
-                )}
+             <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center">
+                   <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-1">Identification</span>
+                   <ModernStatusPicker 
+                      value={identificationStatus}
+                      onChange={setIdentificationStatus}
+                      options={idStatusOptions}
+                   />
+                </div>
+                <div className="w-px h-6 bg-white/10 mx-1" />
                 <div className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[8px] font-black text-emerald-400 uppercase tracking-widest">
                    {cause.mitigations?.length || 0} ACTIONS
                 </div>
@@ -2578,7 +2620,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
 
        <AnimatePresence>
           {isExpanded && (
-             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden bg-black/40 border-t border-white/5">
+             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-visible bg-black/40 border-t border-white/5">
                 <div className="p-1 flex gap-1 bg-white/2 border-b border-white/5">
                    {['PROCEDURE', 'ACTIONS'].map(view => (
                       <button 
@@ -2594,7 +2636,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                 <div className="p-6">
                    {activeSubView === 'PROCEDURE' ? (
                       <div className="space-y-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2 pb-6">
-                         <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all shadow-xl">
+                         <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden transition-all shadow-xl">
                             <button 
                                onClick={() => setIsAddingStepCollapsed(!isAddingStepCollapsed)}
                                className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-white/5 transition-all border-b border-white/5"
@@ -2625,12 +2667,12 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                         </div>
                                         <div 
                                           onClick={() => setFocusedField(`investigation_${cause.id}`)}
-                                          className={`relative group focus-trigger transition-all ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50 rounded-xl' : ''}`}
+                                          className={`relative group focus-trigger transition-all ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50 rounded-lg' : ''}`}
                                         >
                                            <textarea 
                                               value={newStep.text}
                                               onChange={e => setNewStep({...newStep, text: e.target.value})}
-                                              className="w-full bg-slate-950 border border-white/10 rounded-xl p-4 text-xs font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
+                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
                                               placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
                                            />
                                            {focusedField === `investigation_${cause.id}` && (
@@ -2830,7 +2872,7 @@ function ActionSection({ cause, type, isEditing, queryClient, mode }: any) {
        </div>
 
        {isAdding && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-6 shadow-xl">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-6 shadow-2xl">
              <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black uppercase tracking-widest text-white">New {type} Action</h4>
                 <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:text-white"><X size={16}/></button>
@@ -2839,49 +2881,62 @@ function ActionSection({ cause, type, isEditing, queryClient, mode }: any) {
              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                    {type === 'MONITORING' ? (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
+                         <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-black text-slate-500 tracking-widest">Link Active Telemetry Node</label>
+                            <span className="text-[8px] font-bold text-sky-400 uppercase italic tracking-tighter">Matches affected assets</span>
+                         </div>
                          <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                             <input 
                               value={monitoringSearch} 
                               onChange={e => setMonitoringSearch(e.target.value)} 
-                              placeholder="SEARCH MONITORS..." 
-                              className="w-full bg-slate-950 border border-white/10 rounded px-9 py-2 text-[10px] font-bold text-white uppercase outline-none focus:border-sky-500"
+                              placeholder="SCAN TELEMETRY REGISTRY..." 
+                              className="w-full bg-slate-950 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[11px] font-bold text-white uppercase outline-none focus:border-sky-500"
                             />
                          </div>
-                         <div className="max-h-40 overflow-y-auto custom-scrollbar pr-1 space-y-1">
+                         <div className="max-h-48 overflow-y-auto custom-scrollbar pr-2 space-y-2 bg-black/40 rounded-lg p-2">
                             {filteredMonitoring?.map((m: any) => (
                                <button 
                                  key={m.id} 
                                  onClick={() => setFormData({...formData, monitoring_id: m.id})}
-                                 className={`w-full text-left p-3 rounded border transition-all flex items-center justify-between ${formData.monitoring_id === m.id ? 'bg-sky-600/10 border-sky-500 text-white' : 'bg-black/40 border-white/5 text-slate-500 hover:border-white/10'}`}
+                                 className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group ${formData.monitoring_id === m.id ? 'bg-sky-600/20 border-sky-500 shadow-lg' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
                                >
-                                  <span className="text-[9px] font-bold truncate">{m.title}</span>
-                                  {formData.monitoring_id === m.id && <Check size={12} className="text-sky-400" />}
+                                  <div className="min-w-0">
+                                     <p className="text-[11px] font-black text-white uppercase tracking-tight truncate">{m.title}</p>
+                                     <p className="text-[9px] text-slate-500 font-bold uppercase mt-1 truncate">{m.device_name} // {m.platform}</p>
+                                  </div>
+                                  {formData.monitoring_id === m.id && <Check size={14} className="text-sky-400 shrink-0" />}
                                </button>
                             ))}
+                            {filteredMonitoring?.length === 0 && (
+                               <div className="py-10 text-center text-slate-700 text-[9px] font-bold uppercase tracking-widest border border-dashed border-white/5 rounded-lg">
+                                  No telemetry nodes found for this context
+                               </div>
+                            )}
                          </div>
                       </div>
                    ) : (
                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-slate-500 tracking-widest px-1">procedural steps</label>
+                      <label className="text-[10px] font-black text-slate-500 tracking-widest px-1">procedural steps</label>
                       <textarea 
                         value={formData.steps} 
                         onChange={e => setFormData({...formData, steps: e.target.value})} 
-                        className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-white uppercase outline-none min-h-[100px] resize-none" 
-                        placeholder="DEFINE ACTION STEPS..." 
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white uppercase outline-none min-h-[140px] resize-none leading-relaxed" 
+                        placeholder="DEFINE CRITICAL ACTION STEPS..." 
                       />
                    </div>
-                   )}                </div>
+                   )}
+                </div>
                 <div className="space-y-6">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Team</label>
-                         <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value.toUpperCase()})} placeholder="TEAM..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500" />
+                         <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value.toUpperCase()})} placeholder="E.G. SRE..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white uppercase outline-none focus:border-blue-500" />
                       </div>
                       <div className="space-y-1">
                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
-                         <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-[7px] text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">
+                         <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-[11px] text-[11px] font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">
                             <option value="Not Started">NOT STARTED</option>
                             <option value="In Progress">IN PROGRESS</option>
                             <option value="Completed">COMPLETED</option>
@@ -2893,15 +2948,15 @@ function ActionSection({ cause, type, isEditing, queryClient, mode }: any) {
                       <div className="bg-black/20 p-4 rounded-lg border border-white/5 space-y-3">
                          <div className="flex items-center justify-between">
                             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">BKM ALIGNMENT</label>
-                            <div className="flex bg-black/40 p-0.5 rounded border border-white/5">
-                               <button onClick={() => setFormData({...formData, bkm_mode: 'input'})} className={`px-2 py-1 rounded text-[8px] font-black uppercase transition-all ${formData.bkm_mode === 'input' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>LINK</button>
-                               <button onClick={() => setFormData({...formData, bkm_mode: 'link'})} className={`px-2 py-1 rounded text-[8px] font-black uppercase transition-all ${formData.bkm_mode === 'link' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>BKM</button>
+                            <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                               <button onClick={() => setFormData({...formData, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${formData.bkm_mode === 'input' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}>LINK</button>
+                               <button onClick={() => setFormData({...formData, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${formData.bkm_mode === 'link' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}>BKM</button>
                             </div>
                          </div>
                          {formData.bkm_mode === 'input' ? (
-                            <input value={formData.bkm_content} onChange={e => setFormData({...formData, bkm_content: e.target.value})} placeholder="PASTE LINK..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[9px] font-bold text-blue-400 outline-none uppercase" />
+                            <input value={formData.bkm_content} onChange={e => setFormData({...formData, bkm_content: e.target.value})} placeholder="PASTE LINK..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-bold text-blue-400 outline-none uppercase" />
                          ) : (
-                            <select value={formData.bkm_id} onChange={e => setFormData({...formData, bkm_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[9px] font-bold text-white outline-none uppercase appearance-none">
+                            <select value={formData.bkm_id} onChange={e => setFormData({...formData, bkm_id: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-bold text-white outline-none uppercase appearance-none">
                                <option value="">SELECT BKM...</option>
                                {bkms?.map((b: any) => <option key={b.id} value={b.id}>{b.title}</option>)}
                             </select>
@@ -2909,9 +2964,11 @@ function ActionSection({ cause, type, isEditing, queryClient, mode }: any) {
                       </div>
                    )}
 
-                   <div className="flex gap-3">
-                      <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-[9px] font-black uppercase text-slate-500 hover:text-white">Cancel</button>
-                      <button onClick={() => mutation.mutate(formData)} className="flex-[2] py-3 bg-blue-600 text-white rounded text-[9px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Strategy</button>
+                   <div className="flex gap-4">
+                      <button onClick={() => setIsAdding(false)} className="flex-1 py-4 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                      <button onClick={() => mutation.mutate(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                         <Save size={16} /> Commit Strategy
+                      </button>
                    </div>
                 </div>
              </div>
