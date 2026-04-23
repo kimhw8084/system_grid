@@ -15,6 +15,8 @@ router = APIRouter(prefix="/far", tags=["FAR"])
 async def get_failure_modes(system: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
         selectinload(models.FarFailureMode.mitigations),
         selectinload(models.FarFailureMode.affected_assets),
         selectinload(models.FarFailureMode.prevention_actions),
@@ -65,6 +67,8 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
     # Reload with all relationships to avoid MissingGreenlet during serialization
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
         selectinload(models.FarFailureMode.mitigations),
         selectinload(models.FarFailureMode.affected_assets),
         selectinload(models.FarFailureMode.prevention_actions),
@@ -108,6 +112,8 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     # Reload with full relations
     stmt = select(models.FarFailureMode).options(
         selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+        selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
         selectinload(models.FarFailureMode.mitigations),
         selectinload(models.FarFailureMode.affected_assets),
         selectinload(models.FarFailureMode.prevention_actions),
@@ -147,8 +153,10 @@ async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_d
 @router.get("/causes", response_model=List[schemas.FarFailureCauseResponse])
 async def get_failure_causes(db: AsyncSession = Depends(get_db)):
     stmt = select(models.FarFailureCause).options(
-        joinedload(models.FarFailureCause.failure_modes),
-        joinedload(models.FarFailureCause.resolutions).joinedload(models.FarResolution.knowledge_bkm)
+        selectinload(models.FarFailureCause.failure_modes),
+        selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureCause.mitigations),
+        selectinload(models.FarFailureCause.prevention_actions)
     )
     result = await db.execute(stmt)
     return result.unique().scalars().all()
@@ -173,7 +181,9 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     
     stmt = select(models.FarFailureCause).options(
         selectinload(models.FarFailureCause.failure_modes),
-        selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm)
+        selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.FarFailureCause.mitigations).selectinload(models.FarMitigation.monitoring_item),
+        selectinload(models.FarFailureCause.prevention_actions)
     ).filter(models.FarFailureCause.id == cause.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
@@ -228,7 +238,9 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
             
     await db.commit()
     
-    stmt = select(models.FarMitigation).filter(models.FarMitigation.id == mit.id)
+    stmt = select(models.FarMitigation).options(
+        selectinload(models.FarMitigation.monitoring_item)
+    ).filter(models.FarMitigation.id == mit.id)
     result = await db.execute(stmt)
     return result.scalar_one()
 

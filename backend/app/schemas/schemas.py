@@ -279,12 +279,6 @@ class FarResolutionResponse(BaseSchema):
     responsible_team: Optional[str] = None
     knowledge_bkm: Optional[Any] = None
 
-class FarFailureCauseResponse(BaseSchema):
-    cause_text: str
-    occurrence_level: int = 1
-    responsible_team: Optional[str] = None
-    resolutions: List[FarResolutionResponse] = []
-
 class FarMitigationResponse(BaseSchema):
     mitigation_type: str
     mitigation_steps: Optional[str] = None
@@ -300,6 +294,14 @@ class FarPreventionResponse(BaseSchema):
     status: str = "Open"
     target_date: Optional[datetime] = None
     responsible_team: Optional[str] = None
+
+class FarFailureCauseResponse(BaseSchema):
+    cause_text: str
+    occurrence_level: int = 1
+    responsible_team: Optional[str] = None
+    resolutions: List[FarResolutionResponse] = []
+    mitigations: List[FarMitigationResponse] = []
+    prevention_actions: List[FarPreventionResponse] = []
 
 class RcaRecordTinyResponse(BaseSchema):
     title: str

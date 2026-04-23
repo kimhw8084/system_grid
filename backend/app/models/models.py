@@ -570,6 +570,8 @@ class FarFailureCause(Base, BaseMixin):
     
     failure_modes = relationship("FarFailureMode", secondary=far_mode_causes, back_populates="causes")
     resolutions = relationship("FarResolution", secondary=far_cause_resolutions)
+    mitigations = relationship("FarMitigation", backref="cause", cascade="all, delete-orphan")
+    prevention_actions = relationship("FarPrevention", backref="cause", cascade="all, delete-orphan")
 
 class FarResolution(Base, BaseMixin):
     __tablename__ = "far_resolutions"

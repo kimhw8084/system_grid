@@ -24,6 +24,8 @@ def get_rca_options():
         selectinload(models.RcaRecord.monitoring_config),
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.affected_assets),
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+        selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.mitigations),
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.prevention_actions),
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas)
