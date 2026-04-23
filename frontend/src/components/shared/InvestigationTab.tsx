@@ -300,7 +300,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
 function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelete, formData, setFormData, addStep, editStep, editingStepId, setEditingStepId, focusedField, setFocusedField, selectedFailureId, selectedFailure, queryClient, onEdit, onAddMitigation, onAddPrevention, bkms, monitoring }: any) {
   const [activeSubView, setActiveSubView] = useState<'PROCEDURE' | 'ACTIONS'>('PROCEDURE')
   const [isAddingStepCollapsed, setIsAddingStepCollapsed] = useState(true)
-  const [newStep, setNewStep] = useState({ text: '', images: [] as string[], status: 'PENDING' })
+  const [newStep, setNewStep] = useState({ text: '', images: [] as string[], status: 'DONE' })
 
   const identificationStatus = useMemo(() => {
     return formData.metadata_json?.cause_identification_statuses?.[cause.id] || 'NOT_STARTED'
@@ -344,7 +344,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
 
   const handleCommitStep = () => {
     addStep(cause.id, newStep);
-    setNewStep({ text: '', images: [], status: 'PENDING' });
+    setNewStep({ text: '', images: [], status: 'DONE' });
     setIsAddingStepCollapsed(true);
   }
 
@@ -450,49 +450,26 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden p-5 space-y-4">
                                      <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
-                                           <label className="text-[10px] font-black text-slate-500 tracking-widest">discovery step description</label>
-                                           <div className="flex gap-2">
-                                              {['PENDING', 'DONE', 'FAILED'].map(s => (
-                                                 <button 
-                                                    key={s}
-                                                    onClick={() => setNewStep({...newStep, status: s})}
-                                                    className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border transition-all ${newStep.status === s ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-black/40 border-white/10 text-slate-500'}`}
-                                                 >
-                                                    {s}
-                                                 </button>
-                                              ))}
-                                           </div>
+                                           <label className="text-[10px] font-black text-slate-500 tracking-widest uppercase">discovery step description</label>
                                         </div>
-                                        <div 
-                                          onClick={() => setFocusedField(`investigation_${cause.id}`)}
-                                          className={`relative group focus-trigger transition-all ${focusedField === `investigation_${cause.id}` ? 'ring-2 ring-blue-500/50 rounded-lg' : ''}`}
-                                        >
+                                        <div className="relative group transition-all">
                                            <textarea 
                                               value={newStep.text}
                                               onChange={e => setNewStep({...newStep, text: e.target.value})}
-                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed"
-                                              placeholder="RECORD DISCOVERY STEP... CLICK HERE THEN CTRL+V TO PASTE FIGURES."
+                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed focus:border-blue-500/50"
+                                              placeholder="RECORD DISCOVERY STEP..."
                                            />
-                                           {focusedField === `investigation_${cause.id}` && (
-                                              <div className="absolute top-3 right-4 flex items-center gap-2">
-                                                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-                                                 <span className="text-[9px] font-black text-blue-400 uppercase">Paste Active</span>
-                                              </div>
-                                           )}
                                         </div>
                                      </div>
                                      
                                      <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Figures / Evidence</label>
-                                           <div className="relative">
-                                              <button className="text-[9px] font-bold text-blue-400 uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1">
-                                                 <Plus size={10} /> Attach Figures
-                                              </button>
-                                              <input type="file" multiple accept="image/*" onChange={handleMilestoneFileSelect} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                           </div>
                                         </div>
-                                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                        <div 
+                                          onClick={() => setFocusedField(`investigation_${cause.id}`)}
+                                          className={`flex gap-2 overflow-x-auto pb-1 scrollbar-hide focus-trigger p-2 border-2 rounded-lg transition-all min-h-[80px] ${focusedField === `investigation_${cause.id}` ? 'border-blue-500/50 bg-blue-500/5 shadow-[0_0_20px_rgba(59,130,246,0.1)]' : 'border-white/5 bg-slate-950'}`}
+                                        >
                                            {newStep.images.map((img: string, i: number) => (
                                               <div key={i} className="relative w-16 h-16 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
                                                  <img src={img} className="w-full h-full object-cover" />
@@ -500,8 +477,8 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                               </div>
                                            ))}
                                            {newStep.images.length === 0 && (
-                                              <div className="w-full py-4 text-center border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase">
-                                                 No figures attached (Paste with Ctrl+V)
+                                              <div className="w-full flex items-center justify-center text-[8px] font-black text-slate-700 uppercase tracking-widest">
+                                                 CLICK HERE THEN CTRL+V TO PASTE FIGURES
                                               </div>
                                            )}
                                         </div>
@@ -509,7 +486,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
 
                                      <div className="flex gap-4">
                                         <button 
-                                          onClick={() => { setIsAddingStepCollapsed(true); setEditingStepId(null); setNewStep({ text: '', images: [], status: 'PENDING' }); }} 
+                                          onClick={() => { setIsAddingStepCollapsed(true); setEditingStepId(null); setNewStep({ text: '', images: [], status: 'DONE' }); }} 
                                           className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors"
                                         >
                                           Cancel

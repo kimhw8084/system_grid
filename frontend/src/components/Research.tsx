@@ -1097,7 +1097,16 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
 
   const [editingTimelineId, setEditingTimelineId] = useState<number | null>(null)
   const [editTimelineData, setEditTimelineData] = useState<any>(null)
-  const [newTimeline, setNewTimeline] = useState({ event_type: 'OBSERVATION', description: '', event_time: new Date().toISOString(), owner: '', owner_team: '', images: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  const [newTimeline, setNewTimeline] = useState({ 
+    event_type: 'OBSERVATION', 
+    description: '', 
+    event_time: new Date().toISOString().slice(0, 16), 
+    owner: '', 
+    owner_team: '', 
+    images: [], 
+    created_at: new Date().toISOString(), 
+    updated_at: new Date().toISOString() 
+  })
   
   // Click-away logic for focus fields
   useEffect(() => {
@@ -1130,7 +1139,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
               window.dispatchEvent(new CustomEvent('investigation-paste', { detail: { base64, causeId } }))
               toast.success('Investigation Figure Captured')
             } else {
-              toast.error('Select a field to paste images (Evidence, Timeline, or Investigation)')
+              toast.error('Select the Figures/Evidence field to paste images')
             }
           }
           reader.readAsDataURL(file)
@@ -1171,7 +1180,16 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
     }]
     const updated = { ...formData, timeline }
     setFormData(updated)
-    setNewTimeline({ event_type: 'OBSERVATION', description: '', event_time: now, owner: '', owner_team: '', images: [], created_at: now, updated_at: now })
+    setNewTimeline({ 
+      event_type: 'OBSERVATION', 
+      description: '', 
+      event_time: new Date().toISOString().slice(0, 16), 
+      owner: '', 
+      owner_team: '', 
+      images: [], 
+      created_at: now, 
+      updated_at: now 
+    })
     toast.success('Event Synchronized')
   }
 
@@ -1735,25 +1753,21 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <div className="space-y-1">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase">description</label>
                                   <textarea 
-                                    onClick={() => setFocusedField('timeline')}
                                     value={newTimeline.description} 
                                     onChange={e => setNewTimeline({...newTimeline, description: e.target.value.toUpperCase()})} 
-                                    className={`w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase focus-trigger ${focusedField === 'timeline' ? 'ring-1 ring-purple-500' : ''}`} 
-                                    placeholder="EVENT DESCRIPTION... CLICK HERE THEN CTRL+V TO PASTE FIGURES." 
+                                    className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" 
+                                    placeholder="EVENT DESCRIPTION..." 
                                   />
                                </div>
 
                                <div className="space-y-2">
                                   <div className="flex items-center justify-between px-1">
-                                     <label className="text-[9px] font-bold text-slate-500 uppercase">Figures / Evidence</label>
-                                     <div className="relative">
-                                        <button className="text-[9px] font-bold text-purple-400 uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1">
-                                           <Plus size={10} /> Attach Figures
-                                        </button>
-                                        <input type="file" multiple accept="image/*" onChange={handleTimelineFileSelect} className="absolute inset-0 opacity-0 cursor-pointer" />
-                                     </div>
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Figures / Evidence</label>
                                   </div>
-                                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                  <div 
+                                     onClick={(e) => { e.stopPropagation(); setFocusedField('timeline'); }}
+                                     className={`flex gap-2 overflow-x-auto pb-1 scrollbar-hide focus-trigger p-2 border-2 rounded-lg transition-all min-h-[80px] ${focusedField === 'timeline' ? 'border-purple-500/50 bg-purple-500/5 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-white/5 bg-slate-950'}`}
+                                  >
                                      {(newTimeline.images || []).map((img: string, i: number) => (
                                         <div key={i} className="relative w-16 h-16 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
                                            <img src={img} className="w-full h-full object-cover" />
@@ -1761,8 +1775,8 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                         </div>
                                      ))}
                                      {(newTimeline.images || []).length === 0 && (
-                                        <div className="w-full py-4 text-center border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase">
-                                           No figures attached (Paste with Ctrl+V)
+                                        <div className="w-full flex items-center justify-center text-[8px] font-black text-slate-700 uppercase tracking-widest">
+                                           CLICK HERE THEN CTRL+V TO PASTE FIGURES
                                         </div>
                                      )}
                                   </div>
@@ -1774,20 +1788,31 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       </AnimatePresence>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 pb-10">
+                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 pr-2 pb-10 relative">
+                       {/* Vertical Line */}
+                       <div className="absolute left-[87px] top-6 bottom-10 w-px bg-gradient-to-b from-purple-500/50 via-white/10 to-transparent" />
+
                        {(formData.timeline || []).sort((a: any, b: any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((item: any, idx: number) => (
-                          <div key={item.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex flex-col gap-4 group hover:bg-white/[0.08] transition-all">
-                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-6">
-                                   <div className="w-32 text-center">
-                                      <p className="text-[10px] font-black text-white">{new Date(item.event_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{new Date(item.event_time).toLocaleDateString()}</p>
-                                   </div>
-                                   <div className="w-px h-10 bg-white/5" />
-                                   <div className="space-y-1">
-                                      <div className="flex items-center gap-2">
-                                         <p className="text-[12px] font-black text-slate-200 uppercase leading-relaxed">{item.description}</p>
-                                         {item.owner && <span className="text-[8px] font-bold text-blue-400/60 uppercase whitespace-nowrap">@ {item.owner}</span>}
+                          <div key={item.id || idx} className="relative flex gap-8 group">
+                             {/* Timeline Node */}
+                             <div className="flex flex-col items-center shrink-0 w-20 relative">
+                                <div className="text-[10px] font-black text-white">{new Date(item.event_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                <div className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{new Date(item.event_time).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                                
+                                {/* The Dot */}
+                                <div className={`absolute left-[80px] top-1.5 w-4 h-4 rounded-full border-2 border-[#020617] z-10 shadow-lg ${
+                                    item.event_type === 'RESOLUTION' ? 'bg-emerald-500 shadow-emerald-500/20' :
+                                    item.event_type === 'MITIGATION' ? 'bg-amber-500 shadow-amber-500/20' :
+                                    'bg-purple-500 shadow-purple-500/20'
+                                }`} />
+                             </div>
+
+                             <div className="flex-1 bg-white/5 border border-white/10 rounded-lg p-5 flex flex-col gap-4 group hover:bg-white/[0.08] transition-all shadow-xl">
+                                <div className="flex items-start justify-between">
+                                   <div className="space-y-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                         <p className="text-[12px] font-black text-slate-200 uppercase leading-relaxed tracking-tight">{item.description}</p>
+                                         {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase italic">@ {item.owner}</span>}
                                       </div>
                                       <div className="flex items-center gap-2">
                                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
@@ -1795,17 +1820,20 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                             item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
                                             'text-blue-400 border-blue-500/30 bg-blue-500/10'
                                          }`}>{item.event_type}</span>
-                                         {item.owner_team && <span className="text-[8px] font-bold text-slate-600 uppercase">[{item.owner_team}]</span>}
+                                         {item.owner_team && <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">[{item.owner_team}]</span>}
                                       </div>
                                    </div>
+                                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                      <button onClick={() => startEditingTimeline(item)} className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"><Edit2 size={14}/></button>
+                                      <button onClick={() => handleDeleteTimeline(item.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"><Trash2 size={14}/></button>
+                                   </div>
                                 </div>
-                                <button onClick={() => handleDeleteTimeline(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                                {item.images?.length > 0 && (
+                                   <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                      {item.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
+                                   </div>
+                                )}
                              </div>
-                             {item.images?.length > 0 && (
-                                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide ml-32">
-                                   {item.images.map((img: string, i: number) => <ImageThumbnail key={i} src={img} />)}
-                                </div>
-                             )}
                           </div>
                        ))}
                     </div>
