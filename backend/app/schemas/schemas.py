@@ -320,6 +320,7 @@ class FarFailureModeResponse(BaseSchema):
     rpn: int = 1
     status: str = "Analyzing"
     has_incident_history: bool = False
+    metadata_json: Optional[dict] = {}
     
     affected_assets: List[DeviceTinyResponse] = []
     causes: List[FarFailureCauseResponse] = []
