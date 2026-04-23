@@ -1441,6 +1441,32 @@ function RoadmapTab({ mode, onUpdate }: any) {
     }
   })
 
+  const projectMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/projects/', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          metadata_json: {
+            linked_failure_mode_id: mode.id,
+            linked_cause_id: selectedCauseId
+          }
+        })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Prevention Project Initiated');
+      setShowProjectCreate(false);
+      setIsAdding(false);
+      onUpdate();
+    },
+    onError: (err: any) => {
+      toast.error(`Project Creation Failed: ${err.message}`);
+    }
+  })
+
   const selectedCause = useMemo(() => mode.causes?.find((c:any) => c.id === selectedCauseId), [mode.causes, selectedCauseId])
 
   return (

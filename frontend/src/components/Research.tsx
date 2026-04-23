@@ -1677,39 +1677,39 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Occurrence At</label>
-                                     <input type="datetime-local" value={newTimeline.occurrence_at} onChange={e => setNewTimeline({...newTimeline, occurrence_at: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
+                                     <input type="datetime-local" value={newTimeline.event_time} onChange={e => setNewTimeline({...newTimeline, event_time: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
                                   </div>
                                   <div className="space-y-1">
-                                     <label className="text-[9px] font-bold text-slate-500 uppercase">Impact Level</label>
-                                     <StyledSelect options={[{value:'LOW',label:'LOW'},{value:'MEDIUM',label:'MEDIUM'},{value:'HIGH',label:'HIGH'},{value:'CRITICAL',label:'CRITICAL'}]} value={newTimeline.impact_level} onChange={(e:any) => setNewTimeline({...newTimeline, impact_level: e.target.value})} />
+                                     <label className="text-[9px] font-bold text-slate-500 uppercase">Event Type</label>
+                                     <StyledSelect options={[{value:'DETECTION',label:'DETECTION'},{value:'MITIGATION',label:'MITIGATION'},{value:'OBSERVATION',label:'OBSERVATION'},{value:'RESOLUTION',label:'RESOLUTION'}]} value={newTimeline.event_type} onChange={(e:any) => setNewTimeline({...newTimeline, event_type: e.target.value})} />
                                   </div>
                                </div>
-                               <textarea value={newTimeline.event_description} onChange={e => setNewTimeline({...newTimeline, event_description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" placeholder="EVENT DESCRIPTION..." />
-                               <button onClick={addTimeline} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Commit Milestone</button>
+                               <textarea value={newTimeline.description} onChange={e => setNewTimeline({...newTimeline, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" placeholder="EVENT DESCRIPTION..." />
+                               <button onClick={handleAddTimeline} className="h-12 w-full bg-purple-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Commit Milestone</button>
                             </motion.div>
                          )}
                       </AnimatePresence>
                     </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 pb-10">
-                       {(formData.timeline_json || []).sort((a: any, b: any) => new Date(b.occurrence_at).getTime() - new Date(a.occurrence_at).getTime()).map((item: any, idx: number) => (
+                       {(formData.timeline || []).sort((a: any, b: any) => new Date(b.event_time).getTime() - new Date(a.event_time).getTime()).map((item: any, idx: number) => (
                           <div key={item.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
                              <div className="flex items-center gap-6">
                                 <div className="w-32 text-center">
-                                   <p className="text-[10px] font-black text-white">{new Date(item.occurrence_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                   <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{new Date(item.occurrence_at).toLocaleDateString()}</p>
+                                   <p className="text-[10px] font-black text-white">{new Date(item.event_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                   <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{new Date(item.event_time).toLocaleDateString()}</p>
                                 </div>
                                 <div className="w-px h-10 bg-white/5" />
                                 <div className="space-y-1">
-                                   <p className="text-xs font-black text-slate-200 uppercase leading-relaxed">{item.event_description}</p>
+                                   <p className="text-xs font-black text-slate-200 uppercase leading-relaxed">{item.description}</p>
                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                                      item.impact_level === 'CRITICAL' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' :
-                                      item.impact_level === 'HIGH' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
+                                      item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
+                                      item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
                                       'text-blue-400 border-blue-500/30 bg-blue-500/10'
-                                   }`}>{item.impact_level} IMPACT</span>
+                                   }`}>{item.event_type}</span>
                                 </div>
                              </div>
-                             <button onClick={() => setFormData({...formData, timeline_json: formData.timeline_json.filter((_:any, i:number) => i !== idx)})} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                             <button onClick={() => handleDeleteTimeline(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-rose-500 hover:bg-rose-500 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
                           </div>
                        ))}
                     </div>
@@ -2421,7 +2421,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                       <div className="grid grid-cols-2 gap-6">
                          <div className="space-y-4">
                             <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Description</label>
+                               <label className="text-[10px] font-black text-slate-500 tracking-widest px-1">description</label>
                                <textarea 
                                  autoFocus
                                  value={newCause.cause_text} 
@@ -2430,7 +2430,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                                />
                             </div>
                             <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Responsible Team</label>
+                               <label className="text-[10px] font-black text-slate-500 tracking-widest px-1">responsible team</label>
                                <input value={newCause.responsible_team} onChange={e => setNewCause({...newCause, responsible_team: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-blue-500 uppercase" />
                             </div>
                          </div>
@@ -2466,8 +2466,6 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                         onDelete={() => setCauseCauseToDelete(cause)}
                         formData={formData}
                         setFormData={setFormData}
-                        newStep={newStep}
-                        setNewStep={setNewStep}
                         addStep={addStep}
                         editStep={editStep}
                         editingStepId={editingStepId}
@@ -2612,7 +2610,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden p-5 space-y-4">
                                      <div className="space-y-2">
                                         <div className="flex items-center justify-between px-1">
-                                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">discovery step description</label>
+                                           <label className="text-[10px] font-black text-slate-500 tracking-widest">discovery step description</label>
                                            <div className="flex gap-2">
                                               {['PENDING', 'DONE', 'FAILED'].map(s => (
                                                  <button 
@@ -2865,17 +2863,16 @@ function ActionSection({ cause, type, isEditing, queryClient, mode }: any) {
                          </div>
                       </div>
                    ) : (
-                      <div className="space-y-2">
-                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">procedural steps</label>
-                         <textarea 
-                           value={formData.steps} 
-                           onChange={e => setFormData({...formData, steps: e.target.value})} 
-                           className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-white uppercase outline-none min-h-[100px] resize-none" 
-                           placeholder="DEFINE ACTION STEPS..." 
-                         />
-                      </div>
-                   )}
-                </div>
+                   <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-slate-500 tracking-widest px-1">procedural steps</label>
+                      <textarea 
+                        value={formData.steps} 
+                        onChange={e => setFormData({...formData, steps: e.target.value})} 
+                        className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-white uppercase outline-none min-h-[100px] resize-none" 
+                        placeholder="DEFINE ACTION STEPS..." 
+                      />
+                   </div>
+                   )}                </div>
                 <div className="space-y-6">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
