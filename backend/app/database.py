@@ -23,6 +23,14 @@ engine = create_async_engine(
     **engine_args
 )
 
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    expire_on_commit=False,
+    class_=AsyncSession
+)
+
 def refresh_engine():
     global engine, AsyncSessionLocal, SQLALCHEMY_DATABASE_URL
     new_url = settings.DATABASE_URL
