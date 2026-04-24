@@ -26,7 +26,12 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     # 1. Rack Overview
     sites_count = (await db.execute(select(func.count(models.Site.id)))).scalar() or 0
     racks_count = (await db.execute(select(func.count(models.Rack.id)).filter(models.Rack.is_deleted == False))).scalar() or 0
-    racked_assets = (await db.execute(select(func.count(models.Device.id)).filter(models.Device.rack_id != None, models.Device.is_deleted == False))).scalar() or 0
+    
+    # Count unique devices that have a record in device_locations
+    racked_assets_query = select(func.count(func.distinct(models.DeviceLocation.device_id))).join(
+        models.Device, models.Device.id == models.DeviceLocation.device_id
+    ).filter(models.Device.is_deleted == False)
+    racked_assets = (await db.execute(racked_assets_query)).scalar() or 0
     
     # 2. Asset Overview
     devices = (await db.execute(select(models.Device).filter(models.Device.is_deleted == False))).scalars().all()

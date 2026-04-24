@@ -6,7 +6,7 @@ import {
   Cpu, Box, Terminal, ListTree, HardDrive,
   AlertCircle, CheckCircle2, Clock, Info, ExternalLink,
   Workflow, History, TrendingUp, Search, AlertTriangle, BookOpen,
-  Briefcase, ChevronRight, Share2, Layers, MapPin, ZapOff
+  Briefcase, ChevronRight, Share2, Layers, MapPin, ZapOff, Grid3X3
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'

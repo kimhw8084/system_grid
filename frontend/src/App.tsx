@@ -36,29 +36,33 @@ const PATCH_HISTORY = metadata.patchHistory
 const queryClient = new QueryClient()
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
-  constructor(props: any) { super(props); this.state = { hasError: false, error: null, showDetails: false }; }
+  constructor(props: any) { super(props); this.state = { hasError: true, error: null, showDetails: true }; }
   static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
   componentDidCatch(error: any, info: ErrorInfo) { console.error("CRASH:", error, info); }
   render() {
     if (this.state.hasError) {
       return (
         <div className="h-full w-full bg-[var(--bg-primary)] flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mb-8 border border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
-            <AlertOctagon size={40} className="text-rose-500 animate-pulse" />
+          <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
+            <AlertOctagon size={32} className="text-rose-500" />
           </div>
           
-          <h1 className="text-4xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none">Kernel Panic <span className="text-rose-500">Detected</span></h1>
+          <h1 className="text-4xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none">Error</h1>
           <p className="text-slate-500 text-[10px] mt-4 uppercase font-black tracking-[0.2em] max-w-md leading-relaxed">
             The UI layer has encountered a fatal exception. Systems are running in degraded mode.
           </p>
           
-          <div className="grid grid-cols-2 gap-4 mt-10 w-full max-w-lg">
+          <div className="grid grid-cols-2 gap-4 mt-8 w-full max-w-lg">
              <button 
-                onClick={() => this.setState({ showDetails: !this.state.showDetails })} 
-                className={`px-6 py-4 rounded-2xl border transition-all flex flex-col items-center gap-2 ${this.state.showDetails ? 'bg-rose-500 text-white border-rose-400' : 'bg-white/5 border-white/10 text-slate-400 hover:border-white/20'}`}
+                onClick={() => {
+                  // This is a placeholder for "Open Bug Console" - in this app, it means opening the error console
+                  const event = new CustomEvent('open-error-console');
+                  window.dispatchEvent(event);
+                }} 
+                className="px-6 py-4 rounded-2xl border bg-white/5 border-white/10 text-slate-400 hover:border-white/20 transition-all flex flex-col items-center gap-2"
              >
-                <Terminal size={20} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{this.state.showDetails ? "Hide Kernel Dump" : "Inspect Dump"}</span>
+                <Bug size={20} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Open Bug Console</span>
              </button>
 
              <button 
@@ -66,33 +70,24 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
                 className="px-6 py-4 bg-blue-600 text-white rounded-2xl border border-blue-500 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex flex-col items-center gap-2"
              >
                 <RefreshCcw size={20} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Re-Initialize Matrix</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Refresh App</span>
              </button>
           </div>
 
-          <AnimatePresence>
-            {this.state.showDetails && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0, y: 20 }} 
-                animate={{ height: "auto", opacity: 1, y: 0 }} 
-                exit={{ height: 0, opacity: 0, y: 20 }}
-                className="mt-8 w-full max-w-4xl overflow-hidden"
-              >
-                <div className="p-8 bg-black/40 border border-rose-500/20 rounded-3xl text-left shadow-2xl backdrop-blur-md">
-                   <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-4">
-                      <div className="flex items-center gap-2 text-rose-500">
-                         <Bug size={14} />
-                         <span className="text-[10px] font-black uppercase tracking-widest">Stack Trace Breakdown</span>
-                      </div>
-                      <span className="text-[8px] font-mono text-slate-600 uppercase">Segfault at UI_RENDER_LOOP</span>
-                   </div>
-                   <code className="text-[11px] text-rose-400/80 font-mono block whitespace-pre-wrap leading-relaxed max-h-[30vh] overflow-y-auto custom-scrollbar pr-4">
-                      {String(this.state.error.stack || this.state.error)}
-                   </code>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div className="mt-8 w-full max-w-4xl overflow-hidden">
+            <div className="p-8 bg-black/40 border border-rose-500/20 rounded-3xl text-left shadow-2xl backdrop-blur-md">
+               <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2 text-rose-500">
+                     <Terminal size={14} />
+                     <span className="text-[10px] font-black uppercase tracking-widest">Traceback</span>
+                  </div>
+                  <span className="text-[8px] font-mono text-slate-600 uppercase">Segfault at UI_RENDER_LOOP</span>
+               </div>
+               <code className="text-[11px] text-rose-400/80 font-mono block whitespace-pre-wrap leading-relaxed max-h-[30vh] overflow-y-auto custom-scrollbar pr-4">
+                  {String(this.state.error?.stack || this.state.error)}
+               </code>
+            </div>
+          </div>
 
           <p className="mt-12 text-[8px] font-black text-slate-600 uppercase tracking-widest">
             If this persists, contact your Sector-01 Systems Administrator.
@@ -248,7 +243,7 @@ function MainLayout() {
     if (userSettings?.theme) {
       setCurrentTheme(userSettings.theme);
       document.documentElement.setAttribute('data-theme', userSettings.theme);
-      const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(userSettings.theme);
+      const isLight = userSettings.theme === 'pure-clarity';
       if (isLight) document.documentElement.classList.remove('dark');
       else document.documentElement.classList.add('dark');
     }
@@ -259,12 +254,8 @@ function MainLayout() {
   }, []);
 
   const THEMES = [
-    { id: 'nordic-frost-v1', label: 'Nordic Frost (Default)', color: 'bg-[#1a1b26]' },
-    { id: 'industrial-slate', label: 'Industrial Slate', color: 'bg-[#1e293b]' },
-    { id: 'ocean-deep', label: 'Ocean Deep', color: 'bg-[#0f172a]' },
-    { id: 'solarized-light', label: 'Solarized Light', color: 'bg-[#fdf6e3]' },
-    { id: 'cyber-emerald', label: 'Cyber Emerald', color: 'bg-[#050505]' },
-    { id: 'pure-clarity', label: 'Pure Clarity', color: 'bg-[#ffffff]' }
+    { id: 'nordic-frost-v1', label: 'Dark Mode', color: 'bg-[#1a1b26]' },
+    { id: 'pure-clarity', label: 'Light Mode', color: 'bg-[#ffffff]' }
   ]
 
   const changeTheme = (themeId: string) => {
@@ -272,7 +263,7 @@ function MainLayout() {
     document.documentElement.setAttribute('data-theme', themeId);
     
     // Explicitly handle light/dark class for Tailwind and global styles
-    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(themeId);
+    const isLight = themeId === 'pure-clarity';
     if (isLight) {
       document.documentElement.classList.remove('dark');
     } else {
@@ -377,7 +368,7 @@ function MainLayout() {
 
   useEffect(() => { 
     document.documentElement.setAttribute('data-theme', currentTheme);
-    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(currentTheme);
+    const isLight = currentTheme === 'pure-clarity';
     if (isLight) document.documentElement.classList.remove('dark');
     else document.documentElement.classList.add('dark');
     apiFetch("/api/v1/settings/initialize").catch(() => {}) 
