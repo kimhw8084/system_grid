@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch, subscribeToLatency } from "./api/apiClient"
 import { errorManager, useErrors } from "./stores/errorStore"
@@ -270,11 +270,23 @@ function MainLayout() {
   const changeTheme = (themeId: string) => {
     setCurrentTheme(themeId);
     document.documentElement.setAttribute('data-theme', themeId);
-    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1'].includes(themeId);
-    if (isLight) document.documentElement.classList.remove('dark');
-    else document.documentElement.classList.add('dark');
+    
+    // Explicitly handle light/dark class for Tailwind and global styles
+    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(themeId);
+    if (isLight) {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+    
     localStorage.setItem('sysgrid-theme', themeId);
     toast.success(`Matrix UI: ${THEMES.find(t => t.id === themeId)?.label}`);
+    
+    // Attempt to sync with backend if possible
+    apiFetch("/api/v1/settings/user/settings", {
+      method: "PATCH",
+      body: JSON.stringify({ theme: themeId })
+    }).catch(() => {});
   }
 
   const { data: healthData, isError: isHealthError } = useQuery({
@@ -365,11 +377,11 @@ function MainLayout() {
 
   useEffect(() => { 
     document.documentElement.setAttribute('data-theme', currentTheme);
-    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1'].includes(currentTheme);
+    const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(currentTheme);
     if (isLight) document.documentElement.classList.remove('dark');
     else document.documentElement.classList.add('dark');
     apiFetch("/api/v1/settings/initialize").catch(() => {}) 
-  }, [])
+  }, [currentTheme])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans transition-colors duration-500">

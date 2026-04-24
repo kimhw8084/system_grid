@@ -6,7 +6,7 @@ import {
   Cpu, Box, Terminal, ListTree, HardDrive,
   AlertCircle, CheckCircle2, Clock, Info, ExternalLink,
   Workflow, History, TrendingUp, Search, AlertTriangle, BookOpen,
-  Briefcase, ChevronRight, Share2, Layers, MapPin
+  Briefcase, ChevronRight, Share2, Layers, MapPin, ZapOff
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -63,7 +63,7 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
   </motion.div>
 )
 
-const RecentListCard = ({ title, items, icon: Icon, color, path, delay = 0 }: any) => (
+const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 }: any) => (
   <motion.div
     initial={{ opacity: 0, x: -10 }}
     animate={{ opacity: 1, x: 0 }}
@@ -105,21 +105,25 @@ const RecentListCard = ({ title, items, icon: Icon, color, path, delay = 0 }: an
   </motion.div>
 )
 
-const ProjectSection = ({ title, projects, color, delay }: any) => (
+const ProjectSection = ({ title, projects = [], color, delay }: any) => (
   <div className="space-y-3">
     <div className="flex items-center gap-2">
        <div className={`w-1 h-3 rounded-full bg-gradient-to-b ${color}`} />
        <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{title}</h4>
     </div>
     <div className="space-y-2">
-      {projects.map((p: any) => (
+      {projects && projects.length > 0 ? projects.map((p: any) => (
         <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
             <span className="text-[8px] font-bold text-slate-600 uppercase italic shrink-0">{new Date(p.updated_at).toLocaleDateString()}</span>
           </div>
         </Link>
-      ))}
+      )) : (
+        <div className="p-3 rounded-xl bg-white/[0.01] border border-dashed border-white/5 text-center">
+           <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">No Projects</span>
+        </div>
+      )}
     </div>
   </div>
 )
