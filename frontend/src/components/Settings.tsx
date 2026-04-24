@@ -9,27 +9,66 @@ import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
 
-const SettingField = ({ label, description, children, icon: Icon }: any) => (
-  <div className="flex flex-col space-y-3 p-4 bg-white/[0.02] rounded-xl border border-[var(--glass-border)] hover:border-blue-500/30 transition-all group relative overflow-hidden">
-    <div className="flex items-start gap-4">
-      {Icon && <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:scale-110 transition-transform"><Icon size={16} /></div>}
-      <div className="flex flex-col">
-        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] leading-none">{label}</label>
-        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-1 leading-relaxed">{description}</p>
+const SettingField = ({ label, description, children, icon: Icon, help }: any) => {
+  const [showHelp, setShowHelp] = useState(false);
+  
+  return (
+    <div className="flex flex-col space-y-3 p-4 bg-[var(--panel-item-bg)] rounded-xl border border-[var(--glass-border)] hover:border-blue-500/30 transition-all group relative overflow-hidden">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-4">
+          {Icon && <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:scale-110 transition-transform"><Icon size={16} /></div>}
+          <div className="flex flex-col">
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] leading-none">{label}</label>
+            <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter mt-1 leading-relaxed">{description}</p>
+          </div>
+        </div>
+        {help && (
+          <button 
+            onClick={() => setShowHelp(!showHelp)}
+            className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 transition-colors"
+          >
+            <Info size={14} />
+          </button>
+        )}
+      </div>
+      
+      <AnimatePresence>
+        {showHelp && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} 
+            animate={{ height: "auto", opacity: 1 }} 
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg space-y-2">
+               <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
+                  <span className="text-[8px] font-black uppercase text-blue-400">Field Inspector</span>
+                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${help.impact === 'High' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                    Impact: {help.impact}
+                  </span>
+               </div>
+               <p className="text-[9px] font-bold text-[var(--text-secondary)] leading-relaxed italic">{help.details}</p>
+               <div className="flex items-center gap-2 text-[8px] font-black uppercase text-[var(--text-muted)]">
+                  <span className="text-blue-500">Target:</span> {help.file}
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative">
+        {children}
       </div>
     </div>
-    <div className="relative">
-      {children}
-    </div>
-  </div>
-)
+  )
+}
 
 const ThemeCard = ({ id, name, type, colors, isActive, onClick }: any) => (
   <motion.div 
     whileHover={{ y: -2, scale: 1.01 }}
     whileTap={{ scale: 0.99 }}
     onClick={onClick}
-    className={`relative cursor-pointer p-6 rounded-2xl border transition-all duration-300 overflow-hidden ${isActive ? 'bg-blue-600/10 border-blue-500 shadow-xl' : 'bg-white/5 border-white/10 hover:border-white/20'}`}
+    className={`relative cursor-pointer p-6 rounded-2xl border transition-all duration-300 overflow-hidden ${isActive ? 'bg-blue-600/10 border-blue-500 shadow-xl' : 'bg-[var(--panel-item-bg)] border-[var(--glass-border)] hover:border-white/20'}`}
   >
     {isActive && (
       <div className="absolute top-0 right-0 p-3">
@@ -40,7 +79,7 @@ const ThemeCard = ({ id, name, type, colors, isActive, onClick }: any) => (
     )}
     
     <div className="flex items-center gap-4 mb-6">
-      <div className={`p-3 rounded-xl ${isActive ? 'bg-blue-600/20 text-blue-400' : 'bg-white/5 text-slate-500'}`}>
+      <div className={`p-3 rounded-xl ${isActive ? 'bg-blue-600/20 text-blue-400' : 'bg-[var(--bg-primary)] text-slate-500'}`}>
         {id === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
       </div>
       <div className="flex flex-col">
@@ -68,9 +107,22 @@ const ThemeCard = ({ id, name, type, colors, isActive, onClick }: any) => (
 
 export default function SettingsPage() {
   const [topTab, setTopTab] = useState<'theme' | 'environments' | 'permissions'>('theme')
+  const [showPoolLogic, setShowPoolLogic] = useState(false)
   const queryClient = useQueryClient()
   
   const currentTheme = document.documentElement.getAttribute('data-theme') || 'nordic-frost-v1'
+
+  const userSettingsMutation = useMutation({
+    mutationFn: async (settings: any) => {
+      await apiFetch("/api/v1/settings/user/settings", {
+        method: "POST",
+        body: JSON.stringify(settings)
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-settings'] })
+    }
+  })
 
   const changeTheme = (themeId: string) => {
     localStorage.setItem('sysgrid-theme', themeId)
@@ -78,6 +130,8 @@ export default function SettingsPage() {
     const isLight = themeId === 'light'
     if (isLight) document.documentElement.classList.remove('dark')
     else document.documentElement.classList.add('dark')
+    
+    userSettingsMutation.mutate({ theme: themeId })
     toast.success(`Theme switched to ${themeId === 'dark' ? 'Dark Mode' : 'Light Mode'}`)
   }
 
@@ -158,7 +212,17 @@ result_df = get_user_pool()`)
     }
   })
 
-  const [showEnvHelp, setShowEnvHelp] = useState(false)
+  const envHelp = {
+    api_endpoint: { details: "Core service URL. Changing this will redirect all UI traffic to a different engine instance.", file: ".env (API_ENDPOINT)", impact: "High" },
+    db_path: { details: "Primary storage location. Changing this redirects the system to a different SQLite or DB connection string.", file: ".env (DATABASE_URL)", impact: "Critical" },
+    storage_root: { details: "Base directory for file persistence. Ensure the path exists and is writable by the engine.", file: ".env (STORAGE_ROOT)", impact: "Medium" },
+    image_path: { details: "Sub-path for milestone captures. Must be within or relative to the storage root.", file: ".env (IMAGE_PATH)", impact: "Low" },
+    backup_path: { details: "Destination for automated system state snapshots.", file: ".env (BACKUP_PATH)", impact: "Low" },
+    scripts_path: { details: "Root for automation scripts. System will look here for custom maintenance logic.", file: ".env (SCRIPTS_PATH)", impact: "Medium" },
+    user_pool_path: { details: "Output location for the Python sync script. This JSON file is used for RBAC.", file: ".env (USER_POOL_PATH)", impact: "Medium" },
+    log_level: { details: "Verbosity of backend tracing. Higher levels provide more detail but increase disk I/O.", file: ".env (LOG_LEVEL)", impact: "Low" },
+    venv_path: { details: "Virtual environment directory. Used for external script execution. Defaults to current runtime.", file: ".env (VENV_PATH)", impact: "Medium" }
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6 max-w-6xl mx-auto px-4 overflow-hidden">
@@ -217,48 +281,45 @@ result_df = get_user_pool()`)
                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Core Infrastructure</h2>
                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Global Environment & .env Management</p>
                   </div>
-                  <button 
-                    onClick={() => setShowEnvHelp(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[10px] font-black uppercase hover:bg-blue-600/20 transition-all"
-                  >
-                    <Info size={14} />
-                    <span>File Map Help</span>
-                  </button>
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                     <SettingField icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services.">
-                        <input value={localEnv.api_endpoint || ''} onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all" />
+                     <SettingField icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." help={envHelp.api_endpoint}>
+                        <input value={localEnv.api_endpoint || ''} onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all" />
                      </SettingField>
                   </div>
 
-                  <SettingField icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store.">
-                     <input value={localEnv.db_path || ''} onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store." help={envHelp.db_path}>
+                     <input value={localEnv.db_path || ''} onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes.">
-                     <input value={localEnv.storage_root || ''} onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes." help={envHelp.storage_root}>
+                     <input value={localEnv.storage_root || ''} onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones.">
-                     <input value={localEnv.image_path || ''} onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones." help={envHelp.image_path}>
+                     <input value={localEnv.image_path || ''} onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination.">
-                     <input value={localEnv.backup_path || ''} onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination." help={envHelp.backup_path}>
+                     <input value={localEnv.backup_path || ''} onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts.">
-                     <input value={localEnv.scripts_path || ''} onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts." help={envHelp.scripts_path}>
+                     <input value={localEnv.scripts_path || ''} onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities.">
-                     <input value={localEnv.user_pool_path || ''} onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-xs font-mono text-slate-300 outline-none focus:border-blue-500 transition-all" />
+                  <SettingField icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities." help={envHelp.user_pool_path}>
+                     <input value={localEnv.user_pool_path || ''} onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
                   </SettingField>
 
-                  <SettingField icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing.">
-                     <select value={localEnv.log_level || 'INFO'} onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} className="w-full bg-black/20 border border-white/5 rounded-lg px-4 py-3 text-[10px] font-black text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase">
+                  <SettingField icon={Box} label="Python Venv Path" description="Specify custom virtual environment for external execution." help={envHelp.venv_path}>
+                     <input value={localEnv.venv_path || ''} onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} placeholder="Default system runtime" className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                  </SettingField>
+
+                  <SettingField icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." help={envHelp.log_level}>
+                     <select value={localEnv.log_level || 'INFO'} onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase">
                         <option value="DEBUG">DEBUG (Max Verbosity)</option>
                         <option value="VERBOSE">VERBOSE (Detailed)</option>
                         <option value="INFO">INFO (Standard)</option>
@@ -283,32 +344,54 @@ result_df = get_user_pool()`)
 
                <div className="grid grid-cols-1 gap-6">
                   <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-xl space-y-4">
-                     <div className="flex items-center justify-between">
+                     <button 
+                        onClick={() => setShowPoolLogic(!showPoolLogic)}
+                        className="flex items-center justify-between w-full group"
+                     >
                         <div className="flex items-center space-x-3">
                            <div className="p-2 bg-blue-600 text-white rounded-lg"><Terminal size={18} /></div>
-                           <div>
-                              <h3 className="text-xs font-black uppercase text-white tracking-widest">User Pool Logic (Python)</h3>
+                           <div className="text-left">
+                              <h3 className="text-xs font-black uppercase text-[var(--text-primary)] tracking-widest">User Pool Logic (Python)</h3>
                               <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Define how system retrieves and validates operator identities</p>
                            </div>
                         </div>
-                        <button 
-                          onClick={() => poolMutation.mutate(userPoolScript)}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
-                        >
-                           <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} />
-                           Run Sync Script
-                        </button>
-                     </div>
-                     <textarea 
-                        value={userPoolScript}
-                        onChange={e => setUserPoolScript(e.target.value)}
-                        className="w-full h-64 bg-black/40 border border-white/10 rounded-lg p-4 font-mono text-[11px] text-emerald-400 outline-none focus:border-indigo-500/50 transition-all custom-scrollbar"
-                        placeholder="# Enter Python logic to fetch user pool..."
-                     />
-                     <div className="flex items-center space-x-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                        <Info size={10} />
-                        <span>Script must return a Pandas DataFrame with [id, username, email, department, registration_status]</span>
-                     </div>
+                        <div className="flex items-center gap-4">
+                           {showPoolLogic && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); poolMutation.mutate(userPoolScript); }}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
+                              >
+                                 <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} />
+                                 Run Sync Script
+                              </button>
+                           )}
+                           <div className={`text-slate-500 transition-transform ${showPoolLogic ? 'rotate-180' : ''}`}>
+                              <ChevronRight size={20} />
+                           </div>
+                        </div>
+                     </button>
+                     
+                     <AnimatePresence>
+                        {showPoolLogic && (
+                           <motion.div 
+                              initial={{ height: 0, opacity: 0 }} 
+                              animate={{ height: "auto", opacity: 1 }} 
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden space-y-4"
+                           >
+                              <textarea 
+                                 value={userPoolScript}
+                                 onChange={e => setUserPoolScript(e.target.value)}
+                                 className="w-full h-64 bg-black/40 border border-white/10 rounded-lg p-4 font-mono text-[11px] text-emerald-400 outline-none focus:border-indigo-500/50 transition-all custom-scrollbar"
+                                 placeholder="# Enter Python logic to fetch user pool..."
+                              />
+                              <div className="flex items-center space-x-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                                 <Info size={10} />
+                                 <span>Script must return a Pandas DataFrame with [id, username, email, department, registration_status]</span>
+                              </div>
+                           </motion.div>
+                        )}
+                     </AnimatePresence>
                   </div>
 
                   <div className="grid grid-cols-3 gap-6">
@@ -316,13 +399,13 @@ result_df = get_user_pool()`)
                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Synchronized Operator Pool</h3>
                        <div className="space-y-3">
                           {userPool && userPool.length > 0 ? userPool.map((user: any, i: number) => (
-                            <div key={i} className="bg-white/[0.03] p-4 rounded-xl border border-white/5 flex items-center justify-between group hover:border-blue-500/20 transition-all">
+                            <div key={i} className="bg-[var(--panel-item-bg)] p-4 rounded-xl border border-[var(--glass-border)] flex items-center justify-between group hover:border-blue-500/20 transition-all">
                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-400 transition-all">
+                                  <div className="w-10 h-10 bg-[var(--bg-primary)] rounded-lg flex items-center justify-center text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-400 transition-all">
                                      <Fingerprint size={20} />
                                   </div>
                                   <div>
-                                     <p className="text-[11px] font-black text-white uppercase tracking-tight">{user.username}</p>
+                                     <p className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-tight">{user.username}</p>
                                      <p className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{user.email} // {user.department}</p>
                                   </div>
                                </div>
@@ -342,7 +425,7 @@ result_df = get_user_pool()`)
 
                     <div className="space-y-4">
                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Access Roles</h3>
-                       <div className="bg-white/[0.03] p-6 rounded-xl border border-white/5 space-y-4">
+                       <div className="bg-[var(--panel-item-bg)] p-6 rounded-xl border border-[var(--glass-border)] space-y-4">
                           {[
                             { role: 'Superuser', count: 1, color: 'bg-rose-500' },
                             { role: 'Maintainer', count: 4, color: 'bg-blue-500' },
@@ -351,12 +434,12 @@ result_df = get_user_pool()`)
                             <div key={i} className="flex items-center justify-between">
                                <div className="flex items-center gap-3">
                                   <div className={`w-1.5 h-1.5 rounded-full ${r.color} shadow-[0_0_8px_currentColor]`} />
-                                  <span className="text-[9px] font-black text-white uppercase tracking-widest">{r.role}</span>
+                                  <span className="text-[9px] font-black text-[var(--text-primary)] uppercase tracking-widest">{r.role}</span>
                                </div>
                                <span className="text-[9px] font-black text-slate-500 uppercase">{r.count}</span>
                             </div>
                           ))}
-                          <div className="pt-4 border-t border-white/5">
+                          <div className="pt-4 border-t border-[var(--glass-border)]">
                              <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex items-start gap-3">
                                 <ShieldCheck className="text-blue-400 shrink-0" size={16} />
                                 <p className="text-[8px] font-bold text-slate-400 uppercase leading-relaxed tracking-tighter">
@@ -372,36 +455,7 @@ result_df = get_user_pool()`)
           )}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {showEnvHelp && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-8 rounded-xl border border-blue-500/30 space-y-6">
-               <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <h3 className="text-xl font-black uppercase text-blue-400 flex items-center gap-3 italic">
-                    <FolderTree size={24} /> Infrastructure File Map
-                  </h3>
-                  <button onClick={() => setShowEnvHelp(false)} className="text-slate-500 hover:text-white transition-colors"><X size={20}/></button>
-               </div>
-               <div className="space-y-4 text-[11px] font-bold uppercase tracking-tight text-slate-400 leading-relaxed">
-                  <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-white mb-2">1. System .env Persistence</p>
-                    <p>Settings are written to <span className="text-blue-400 font-mono">backend/.env</span> and <span className="text-blue-400 font-mono">frontend/.env</span>. Backend restart may be required for some changes.</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-white mb-2">2. Database Schema Management</p>
-                    <p>The DB Path refers to the <span className="text-blue-400 font-mono">sysgrid.db</span> location. Migrations are managed via Alembic in <span className="text-blue-400 font-mono">backend/alembic/</span>.</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-lg border border-white/5">
-                    <p className="text-white mb-2">3. Storage & Artifacts</p>
-                    <p>Image captures are stored in the <span className="text-blue-400 font-mono">storage/images</span> directory, while system backups are routed to <span className="text-blue-400 font-mono">backups/</span>.</p>
-                  </div>
-               </div>
-               <button onClick={() => setShowEnvHelp(false)} className="w-full py-3 bg-blue-600 text-white rounded-lg font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Close Inspector</button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
+

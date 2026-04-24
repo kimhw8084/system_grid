@@ -136,6 +136,32 @@ function MainLayout() {
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
   const [latency, setLatency] = useState(0);
 
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/user/profile");
+      return res.json();
+    }
+  });
+
+  const { data: userSettings } = useQuery({
+    queryKey: ['user-settings'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/user/settings");
+      return res.json();
+    }
+  });
+
+  useEffect(() => {
+    if (userSettings?.theme) {
+      setCurrentTheme(userSettings.theme);
+      document.documentElement.setAttribute('data-theme', userSettings.theme);
+      const isLight = ['solarized-light', 'pure-clarity', 'clean-snow-v1', 'light'].includes(userSettings.theme);
+      if (isLight) document.documentElement.classList.remove('dark');
+      else document.documentElement.classList.add('dark');
+    }
+  }, [userSettings]);
+
   useEffect(() => {
     return subscribeToLatency(setLatency);
   }, []);
@@ -293,6 +319,22 @@ function MainLayout() {
           <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
           <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
         </nav>
+        
+        {/* User Profile Section */}
+        <div className={`p-4 border-t border-[var(--glass-border)] transition-all ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
+           <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : ''}`}>
+              <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                 <Globe size={16} />
+              </div>
+              {isSidebarOpen && (
+                <div className="flex flex-col min-w-0">
+                   <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">{userProfile?.username || 'Operator'}</span>
+                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">{userProfile?.department || 'Sector-01'}</span>
+                </div>
+              )}
+           </div>
+        </div>
+
         <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
            {isSidebarOpen ? <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_VERSION}</p> : <div className="w-2 h-2 rounded-full bg-blue-500 mx-auto"/>}
         </div>

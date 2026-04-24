@@ -1,12 +1,14 @@
+import os
+import io
+import json
+import pandas as pd
+import numpy as np
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
-import os
-from pydantic import BaseModel
-import pandas as pd
-import io
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -19,14 +21,24 @@ class EnvUpdate(BaseModel):
     scripts_path: str | None = None
     user_pool_path: str | None = None
     log_level: str | None = None
+    venv_path: str | None = None
 
 class PoolSync(BaseModel):
     script: str
 
+@router.get("/user/profile")
+async def get_user_profile():
+    # Identify user by OS environment
+    username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
+    return {
+        "username": username,
+        "role": "Lead Systems Engineer", # Simulated role
+        "avatar": None,
+        "department": "Infrastructure Ops"
+    }
+
 @router.get("/env")
 async def get_env_vars():
-    # In a real app, this would read from actual os.environ or a .env file
-    # For simulation and actual persistence as requested:
     env_data = {
         "api_endpoint": os.getenv("API_ENDPOINT", "http://localhost:8000"),
         "db_path": os.getenv("DATABASE_URL", "./sysgrid.db"),
@@ -35,13 +47,15 @@ async def get_env_vars():
         "backup_path": os.getenv("BACKUP_PATH", "./backups"),
         "scripts_path": os.getenv("SCRIPTS_PATH", "./scripts"),
         "user_pool_path": os.getenv("USER_POOL_PATH", "./storage/user_pool.json"),
-        "log_level": os.getenv("LOG_LEVEL", "INFO")
+        "log_level": os.getenv("LOG_LEVEL", "INFO"),
+        "venv_path": os.getenv("VENV_PATH", sys.prefix if hasattr(sys, 'prefix') else "./venv")
     }
     return env_data
 
+import sys
+
 @router.post("/env")
 async def update_env_vars(data: EnvUpdate):
-    # Map frontend keys to .env keys
     mapping = {
         "api_endpoint": "API_ENDPOINT",
         "db_path": "DATABASE_URL",
@@ -50,7 +64,8 @@ async def update_env_vars(data: EnvUpdate):
         "backup_path": "BACKUP_PATH",
         "scripts_path": "SCRIPTS_PATH",
         "user_pool_path": "USER_POOL_PATH",
-        "log_level": "LOG_LEVEL"
+        "log_level": "LOG_LEVEL",
+        "venv_path": "VENV_PATH"
     }
     
     env_path = ".env"
@@ -58,30 +73,35 @@ async def update_env_vars(data: EnvUpdate):
     if os.path.exists(env_path):
         with open(env_path, "r") as f:
             for line in f:
-                if "=" in line:
-                    k, v = line.strip().split("=", 1)
+                line = line.strip()
+                if line and "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
                     current_env[k] = v
 
     update_dict = data.dict(exclude_unset=True)
     for feat, env_key in mapping.items():
         if feat in update_dict:
-            current_env[env_key] = update_dict[feat]
-            os.environ[env_key] = str(update_dict[feat]) # Update current process too
+            val = str(update_dict[feat])
+            current_env[env_key] = val
+            os.environ[env_key] = val 
 
     with open(env_path, "w") as f:
+        f.write("# SYSGRID AUTO-GENERATED ENVIRONMENT CONFIG\n")
         for k, v in current_env.items():
             f.write(f"{k}={v}\n")
             
-    return {"status": "success", "message": "Environment synchronized to .env"}
+    return {"status": "success", "message": "Environment synchronized and persisted to .env"}
 
 @router.post("/user-pool/refresh")
 async def refresh_user_pool(data: PoolSync):
     try:
-        # Restricted namespace for execution
-        local_namespace = {"pd": pd, "np": pd.np if hasattr(pd, "np") else None}
-        if not local_namespace["np"]:
-            import numpy as np
-            local_namespace["np"] = np
+        # Ensure pandas and numpy are available in the execution namespace
+        local_namespace = {
+            "pd": pd, 
+            "np": np,
+            "os": os,
+            "json": json
+        }
             
         # Execute the user provided script
         exec(data.script, {}, local_namespace)
@@ -99,7 +119,6 @@ async def refresh_user_pool(data: PoolSync):
         if missing:
             raise HTTPException(400, f"DataFrame missing required columns: {missing}")
             
-        # Save pool to a persistent location (configured in env)
         pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
         os.makedirs(os.path.dirname(pool_file), exist_ok=True)
         
@@ -108,6 +127,39 @@ async def refresh_user_pool(data: PoolSync):
         return {"status": "success", "count": len(df), "path": pool_file}
     except Exception as e:
         raise HTTPException(400, f"Python Execution Error: {str(e)}")
+
+
+@router.get("/user/settings")
+async def get_user_settings():
+    username = os.environ.get("USER") or os.environ.get("USERNAME") or "default"
+    settings_dir = "./storage/user_settings"
+    os.makedirs(settings_dir, exist_ok=True)
+    settings_file = os.path.join(settings_dir, f"{username}.json")
+    
+    if os.path.exists(settings_file):
+        with open(settings_file, "r") as f:
+            return json.load(f)
+    
+    # Defaults
+    return {"theme": "dark", "sidebar_open": True}
+
+@router.post("/user/settings")
+async def update_user_settings(data: dict):
+    username = os.environ.get("USER") or os.environ.get("USERNAME") or "default"
+    settings_dir = "./storage/user_settings"
+    os.makedirs(settings_dir, exist_ok=True)
+    settings_file = os.path.join(settings_dir, f"{username}.json")
+    
+    current = {}
+    if os.path.exists(settings_file):
+        with open(settings_file, "r") as f:
+            current = json.load(f)
+            
+    current.update(data)
+    with open(settings_file, "w") as f:
+        json.dump(current, f)
+        
+    return {"status": "success"}
 
 @router.get("/user-pool")
 async def get_user_pool():
