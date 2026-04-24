@@ -4,7 +4,7 @@ import {
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
   Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
-  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal
+  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
@@ -140,6 +140,8 @@ export default function SettingsPage() {
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
   const [showPoolHistory, setShowPoolHistory] = useState(false)
+  const [viewVersionData, setViewVersionData] = useState<any>(null)
+  const [viewVersionScript, setViewVersionScript] = useState<string | null>(null)
   const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
   const queryClient = useQueryClient()
   
@@ -798,12 +800,96 @@ result_df = get_user_pool()`)
                                     <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[9px] text-slate-400 font-black uppercase">{v.created_by?.[0]}</div>
                                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{v.created_by}</span>
                                 </div>
-                                <button className="text-blue-500 hover:text-blue-400 text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
-                                    View Full Data <ChevronRight size={10} />
-                                </button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setViewVersionScript(v.diff_summary?.script)}
+                                        className="p-2 bg-slate-800/50 hover:bg-slate-700 text-amber-500 rounded-lg transition-all"
+                                        title="View Script History"
+                                    >
+                                        <FileCode size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => setViewVersionData(v.snapshot_data)}
+                                        className="text-blue-500 hover:text-blue-400 text-[8px] font-black uppercase tracking-widest flex items-center gap-1"
+                                    >
+                                        View Full Data <ChevronRight size={10} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
+                </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Snapshot Data Modal */}
+      <AnimatePresence>
+        {viewVersionData && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionData(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">Snapshot Raw Data</h3>
+                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">Direct view of pulled user pool entities</p>
+                    </div>
+                    <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
+                </div>
+                <div className="flex-1 overflow-auto custom-scrollbar p-6">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-black/40">
+                                {viewVersionData[0] && Object.keys(viewVersionData[0]).map(key => (
+                                    <th key={key} className="p-4 text-[9px] font-black uppercase text-blue-400 tracking-widest border-b border-white/5">{key}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {viewVersionData.map((row: any, i: number) => (
+                                <tr key={i} className="hover:bg-white/5 border-b border-white/5">
+                                    {Object.values(row).map((val: any, j: number) => (
+                                        <td key={j} className="p-4 text-[10px] font-mono text-slate-300">
+                                            {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Script History Modal */}
+      <AnimatePresence>
+        {viewVersionScript && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionScript(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <FileCode className="text-amber-500" size={24} />
+                        <div>
+                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">Historical Sync Logic</h3>
+                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">The script used for this specific version</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); toast.success("Script restored to editor"); }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
+                        >
+                            Restore to Editor
+                        </button>
+                        <button onClick={() => setViewVersionScript(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
+                    </div>
+                </div>
+                <div className="flex-1 p-6 bg-black/40">
+                    <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap overflow-auto h-full custom-scrollbar">{viewVersionScript}</pre>
                 </div>
             </motion.div>
           </>

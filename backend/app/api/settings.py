@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import sys
 import datetime
+import sqlalchemy as sa
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,9 +75,12 @@ async def get_env_vars():
     }
     
     # Calculate Absolute Paths
+    # Fix: Correctly handle sqlite prefix when calculating absolute path for display
+    db_raw_path = env_data["db_path"].replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+    
     abs_paths = {
         "env_file": os.path.abspath(".env"),
-        "db_path": os.path.abspath(env_data["db_path"].replace("sqlite:///", "")) if "sqlite" in env_data["db_path"] else os.path.abspath(env_data["db_path"]),
+        "db_path": os.path.abspath(db_raw_path),
         "storage_root": os.path.abspath(env_data["storage_root"]),
         "image_path": os.path.abspath(env_data["image_path"]),
         "backup_path": os.path.abspath(env_data["backup_path"]),
@@ -142,6 +146,12 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
     for feat, env_key in mapping.items():
         if feat in update_dict:
             new_val = update_dict[feat]
+            
+            # Special Handling for DB Path to ensure valid SQLAlchemy URL
+            if feat == "db_path":
+                if not new_val.startswith("sqlite"):
+                    new_val = f"sqlite+aiosqlite:///{new_val}"
+            
             # Convert to string for .env storage
             if isinstance(new_val, (dict, list)):
                 new_val_str = json.dumps(new_val)
@@ -150,13 +160,17 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
             else:
                 new_val_str = str(new_val)
                 
-            old_val = current_env.get(env_key, os.environ.get(env_key, ""))
+            # FIX: Get REAL old value from current config (os.environ or current_env)
+            # This ensures history shows actual previous value, not empty
+            old_val = current_env.get(env_key)
+            if old_val is None:
+                old_val = os.getenv(env_key, "")
             
             if new_val_str != old_val:
                 # Log the change
                 history_entry = models.EnvHistory(
                     field=feat,
-                    old_value=old_val,
+                    old_value=old_val if old_val else "INITIAL_CONFIG",
                     new_value=new_val_str,
                     user=username
                 )
@@ -186,6 +200,15 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         f.write(f"# LAST_UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
         for k, v in sorted(current_env.items()):
             f.write(f"{k}={v}\n")
+            
+    # FIXED: Write to frontend/.env for dynamic frontend configuration
+    frontend_env_path = "../frontend/.env"
+    if os.path.exists(os.path.dirname(frontend_env_path)):
+        with open(frontend_env_path, "w") as f:
+            f.write("# SYSGRID AUTO-GENERATED FRONTEND CONFIG\n")
+            f.write(f"VITE_API_BASE_URL={current_env.get('UI_BACKEND_URL', current_env.get('API_ENDPOINT', 'http://localhost:8000'))}\n")
+            f.write(f"VITE_UI_TIMEOUT={current_env.get('UI_TIMEOUT', '30000')}\n")
+            f.write(f"VITE_UI_DEBUG_LOGGING={current_env.get('UI_DEBUG_LOGGING', 'false')}\n")
             
     return {"status": "success", "message": "Environment synchronized and Hot-Reloaded successfully"}
 
@@ -220,28 +243,8 @@ async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
         new_users = df.to_dict(orient="records")
         
         # Sync to Operator table
-        for u in new_users:
-            stmt = select(models.Operator).filter(models.Operator.external_id == str(u['id']))
-            res = await db.execute(stmt)
-            op = res.scalar_one_or_none()
-            
-            if op:
-                op.username = u['username']
-                op.email = u['email']
-                op.department = u['department']
-                op.registration_status = u['registration_status']
-                op.full_name = u.get('full_name', u['username'])
-            else:
-                new_op = models.Operator(
-                    external_id=str(u['id']),
-                    username=u['username'],
-                    email=u['email'],
-                    department=u['department'],
-                    registration_status=u['registration_status'],
-                    full_name=u.get('full_name', u['username'])
-                )
-                db.add(new_op)
-
+        added, removed, changed = [], [], []
+        
         # Load current active users for diff
         pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
         current_users = []
@@ -251,36 +254,63 @@ async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
             except:
                 pass
 
-        # Calculate Diff
-        curr_ids = {u['id']: u for u in current_users}
-        new_ids = {u['id']: u for u in new_users}
+        curr_ids = {str(u['id']): u for u in current_users}
+        new_ids = {str(u['id']): u for u in new_users}
         
-        added = [u for u in new_users if u['id'] not in curr_ids]
-        removed = [u for u in current_users if u['id'] not in new_ids]
-        changed = []
         for uid, u in new_ids.items():
-            if uid in curr_ids and u != curr_ids[uid]:
-                changed.append({"id": uid, "before": curr_ids[uid], "after": u})
+            stmt = select(models.Operator).filter(models.Operator.external_id == uid)
+            res = await db.execute(stmt)
+            op = res.scalar_one_or_none()
+            
+            if op:
+                has_changes = False
+                if op.username != u['username']: has_changes = True
+                if op.email != u['email']: has_changes = True
+                
+                op.username = u['username']
+                op.email = u['email']
+                op.department = u['department']
+                op.registration_status = u['registration_status']
+                op.full_name = u.get('full_name', u['username'])
+                if has_changes: changed.append(u['username'])
+            else:
+                new_op = models.Operator(
+                    external_id=uid,
+                    username=u['username'],
+                    email=u['email'],
+                    department=u['department'],
+                    registration_status=u['registration_status'],
+                    full_name=u.get('full_name', u['username'])
+                )
+                db.add(new_op)
+                added.append(u['username'])
 
-        # Save Version to DB
-        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        removed_list = [u['username'] for uid, u in curr_ids.items() if uid not in new_ids]
+
+        # Create Version Snapshot
+        version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
         version = models.UserPoolVersion(
-            version_label=f"v{timestamp_str}",
+            version_label=version_label,
             snapshot_data=new_users,
-            diff_summary={"added": len(added), "removed": len(removed), "changed": len(changed)},
+            diff_summary={
+                "added": len(added), 
+                "removed": len(removed_list), 
+                "changed": len(changed), 
+                "script": data.script
+            },
             created_by=username,
             is_active=True
         )
         
         # Deactivate old versions
         await db.execute(update(models.UserPoolVersion).values(is_active=False))
-        
         db.add(version)
-        await db.commit()
-        
+
         # Persist to disk for current usage
         os.makedirs(os.path.dirname(pool_file), exist_ok=True)
         df.to_json(pool_file, orient="records")
+        
+        await db.commit()
         
         return {
             "status": "success", 
@@ -289,10 +319,55 @@ async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
             "diff": version.diff_summary
         }
     except Exception as e:
+        await db.rollback()
         raise HTTPException(400, f"Python Execution Error: {str(e)}")
+
+@router.get("/user-pool/versions")
+async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.UserPoolVersion).order_by(desc(models.UserPoolVersion.created_at)).limit(50))
+    return result.scalars().all()
+
+@router.post("/user-pool/restore/{version_id}")
+async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.UserPoolVersion).filter(models.UserPoolVersion.id == version_id))
+    version = result.scalar_one_or_none()
+    if not version: raise HTTPException(404, "Version not found")
+    
+    # Restore Operators from snapshot_data
+    for u in version.snapshot_data:
+        stmt = select(models.Operator).filter(models.Operator.external_id == str(u['id']))
+        res = await db.execute(stmt)
+        op = res.scalar_one_or_none()
+        if op:
+            op.username = u['username']
+            op.email = u['email']
+            op.department = u['department']
+            op.registration_status = u['registration_status']
+            op.full_name = u.get('full_name', u['username'])
+        else:
+            new_op = models.Operator(
+                external_id=str(u['id']),
+                username=u['username'],
+                email=u['email'],
+                department=u['department'],
+                registration_status=u['registration_status'],
+                full_name=u.get('full_name', u['username'])
+            )
+            db.add(new_op)
+    
+    # Save back to JSON
+    pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
+    os.makedirs(os.path.dirname(pool_file), exist_ok=True)
+    pd.DataFrame(version.snapshot_data).to_json(pool_file, orient="records")
+
+    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+    version.is_active = True
+    await db.commit()
+    return {"status": "success"}
 
 @router.get("/operators")
 async def get_operators(db: AsyncSession = Depends(get_db)):
+    # FIXED: Use sa.orm.joinedload since sa is now imported
     result = await db.execute(select(models.Operator).options(sa.orm.joinedload(models.Operator.role)))
     return result.scalars().all()
 
@@ -335,33 +410,6 @@ async def update_role(role_id: int, data: dict, db: AsyncSession = Depends(get_d
     
     await db.commit()
     return role
-
-@router.get("/user-pool/versions")
-async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(models.UserPoolVersion).order_by(desc(models.UserPoolVersion.created_at)).limit(50)
-    )
-    return result.scalars().all()
-
-@router.post("/user-pool/restore/{version_id}")
-async def restore_user_pool_version(version_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.UserPoolVersion).filter(models.UserPoolVersion.id == version_id))
-    version = result.scalar_one_or_none()
-    if not version:
-        raise HTTPException(404, "Version not found")
-        
-    # Deactivate current
-    await db.execute(update(models.UserPoolVersion).values(is_active=False))
-    version.is_active = True
-    
-    # Save back to JSON
-    pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
-    os.makedirs(os.path.dirname(pool_file), exist_ok=True)
-    with open(pool_file, "w") as f:
-        json.dump(version.snapshot_data, f)
-        
-    await db.commit()
-    return {"status": "success", "message": f"Restored to version {version.version_label}"}
 
 @router.get("/user-pool")
 async def get_user_pool():
@@ -500,5 +548,4 @@ async def update_global_settings(data: dict, db: AsyncSession = Depends(get_db))
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
-    # Basic initialization logic (already implemented in previous versions)
     return {"status": "already_initialized"}
