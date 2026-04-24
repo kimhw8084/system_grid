@@ -1,6 +1,6 @@
 import { errorManager } from '../stores/errorStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || import.meta.env.VITE_API_BASE_URL || '';
 
 let lastLatency = 0;
 const latencyListeners: ((latency: number) => void)[] = [];

@@ -786,3 +786,23 @@ class UserPoolVersion(Base, BaseMixin):
     created_by = Column(String)
     is_active = Column(Boolean, default=False)
 
+class Role(Base, BaseMixin):
+    __tablename__ = "roles"
+    name = Column(String, unique=True, index=True)
+    permissions = Column(JSON, default=dict) # { "dashboard": "read", "rca": "edit", ... }
+    operators = relationship("Operator", back_populates="role")
+
+class Operator(Base, BaseMixin):
+    __tablename__ = "operators"
+    external_id = Column(String, unique=True, index=True)
+    username = Column(String, index=True)
+    full_name = Column(String)
+    email = Column(String)
+    department = Column(String)
+    team = Column(String)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    custom_permissions = Column(JSON, default=dict) # Override role permissions
+    registration_status = Column(String, default="Pending")
+    
+    role = relationship("Role", back_populates="operators")
+

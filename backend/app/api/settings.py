@@ -72,7 +72,20 @@ async def get_env_vars():
         "auth_secret": os.getenv("AUTH_SECRET", "change-me-immediately"),
         "session_expiry": int(os.getenv("SESSION_EXPIRY", "1440"))
     }
-    return env_data
+    
+    # Calculate Absolute Paths
+    abs_paths = {
+        "env_file": os.path.abspath(".env"),
+        "db_path": os.path.abspath(env_data["db_path"].replace("sqlite:///", "")) if "sqlite" in env_data["db_path"] else os.path.abspath(env_data["db_path"]),
+        "storage_root": os.path.abspath(env_data["storage_root"]),
+        "image_path": os.path.abspath(env_data["image_path"]),
+        "backup_path": os.path.abspath(env_data["backup_path"]),
+        "scripts_path": os.path.abspath(env_data["scripts_path"]),
+        "user_pool_path": os.path.abspath(env_data["user_pool_path"]),
+        "venv_path": os.path.abspath(env_data["venv_path"])
+    }
+    
+    return {**env_data, "_abs_paths": abs_paths}
 
 @router.get("/env/history")
 async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
@@ -206,6 +219,29 @@ async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
             
         new_users = df.to_dict(orient="records")
         
+        # Sync to Operator table
+        for u in new_users:
+            stmt = select(models.Operator).filter(models.Operator.external_id == str(u['id']))
+            res = await db.execute(stmt)
+            op = res.scalar_one_or_none()
+            
+            if op:
+                op.username = u['username']
+                op.email = u['email']
+                op.department = u['department']
+                op.registration_status = u['registration_status']
+                op.full_name = u.get('full_name', u['username'])
+            else:
+                new_op = models.Operator(
+                    external_id=str(u['id']),
+                    username=u['username'],
+                    email=u['email'],
+                    department=u['department'],
+                    registration_status=u['registration_status'],
+                    full_name=u.get('full_name', u['username'])
+                )
+                db.add(new_op)
+
         # Load current active users for diff
         pool_file = os.getenv("USER_POOL_PATH", "./storage/user_pool.json")
         current_users = []
@@ -254,6 +290,51 @@ async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
         }
     except Exception as e:
         raise HTTPException(400, f"Python Execution Error: {str(e)}")
+
+@router.get("/operators")
+async def get_operators(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Operator).options(sa.orm.joinedload(models.Operator.role)))
+    return result.scalars().all()
+
+@router.put("/operators/{op_id}")
+async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.Operator).filter(models.Operator.id == op_id)
+    res = await db.execute(stmt)
+    op = res.scalar_one_or_none()
+    if not op: raise HTTPException(404, "Operator not found")
+    
+    for k, v in data.items():
+        if hasattr(op, k):
+            setattr(op, k, v)
+    
+    await db.commit()
+    return op
+
+@router.get("/roles")
+async def get_roles(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Role))
+    return result.scalars().all()
+
+@router.post("/roles")
+async def create_role(data: dict, db: AsyncSession = Depends(get_db)):
+    role = models.Role(name=data["name"], permissions=data.get("permissions", {}))
+    db.add(role)
+    await db.commit()
+    await db.refresh(role)
+    return role
+
+@router.put("/roles/{role_id}")
+async def update_role(role_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.Role).filter(models.Role.id == role_id)
+    res = await db.execute(stmt)
+    role = res.scalar_one_or_none()
+    if not role: raise HTTPException(404, "Role not found")
+    
+    if "name" in data: role.name = data["name"]
+    if "permissions" in data: role.permissions = data["permissions"]
+    
+    await db.commit()
+    return role
 
 @router.get("/user-pool/versions")
 async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
