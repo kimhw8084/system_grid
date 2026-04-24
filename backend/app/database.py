@@ -23,23 +23,41 @@ engine = create_async_engine(
     **engine_args
 )
 
-# Force SQLite into WAL mode for concurrent read/write
-@event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+def refresh_engine():
+    global engine, AsyncSessionLocal, SQLALCHEMY_DATABASE_URL
+    new_url = settings.DATABASE_URL
+    if new_url != SQLALCHEMY_DATABASE_URL:
+        SQLALCHEMY_DATABASE_URL = new_url
+        new_engine_args = {
+            "pool_pre_ping": True,
+        }
+        if new_url.startswith("sqlite"):
+            new_engine_args["connect_args"] = {
+                "check_same_thread": False,
+                "timeout": 30
+            }
+        
+        engine = create_async_engine(new_url, **new_engine_args)
+        
+        # Re-attach event listeners
+        @event.listens_for(engine.sync_engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA cache_size=-64000")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    autoflush=False,
-    autocommit=False,
-    expire_on_commit=False,
-    class_=AsyncSession
-)
+        AsyncSessionLocal = async_sessionmaker(
+            bind=engine,
+            autoflush=False,
+            autocommit=False,
+            expire_on_commit=False,
+            class_=AsyncSession
+        )
+        return True
+    return False
 
 # Define naming convention to fix SQLite batch migration issues
 # (Unnamed constraints cause "Constraint must have a name" in Alembic)

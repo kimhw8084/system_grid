@@ -54,8 +54,26 @@ async def get_env_vars():
 
 import sys
 
+from ..core.config import settings as app_settings
+
+@router.get("/env/history")
+async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(models.EnvHistory)
+        .filter(models.EnvHistory.field == field)
+        .order_by(models.EnvHistory.timestamp.desc())
+        .limit(20)
+    )
+    history = result.scalars().all()
+    return [{
+        "timestamp": h.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "old_value": h.old_value,
+        "new_value": h.new_value,
+        "user": h.user
+    } for h in history]
+
 @router.post("/env")
-async def update_env_vars(data: EnvUpdate):
+async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
     mapping = {
         "api_endpoint": "API_ENDPOINT",
         "db_path": "DATABASE_URL",
@@ -68,6 +86,7 @@ async def update_env_vars(data: EnvUpdate):
         "venv_path": "VENV_PATH"
     }
     
+    username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
     env_path = ".env"
     current_env = {}
     if os.path.exists(env_path):
@@ -75,22 +94,46 @@ async def update_env_vars(data: EnvUpdate):
             for line in f:
                 line = line.strip()
                 if line and "=" in line and not line.startswith("#"):
-                    k, v = line.split("=", 1)
-                    current_env[k] = v
+                    parts = line.split("=", 1)
+                    if len(parts) == 2:
+                        current_env[parts[0]] = parts[1]
 
     update_dict = data.dict(exclude_unset=True)
     for feat, env_key in mapping.items():
         if feat in update_dict:
-            val = str(update_dict[feat])
-            current_env[env_key] = val
-            os.environ[env_key] = val 
+            new_val = str(update_dict[feat])
+            old_val = current_env.get(env_key, os.environ.get(env_key, ""))
+            
+            if new_val != old_val:
+                # Log the change
+                history_entry = models.EnvHistory(
+                    field=feat,
+                    old_value=old_val,
+                    new_value=new_val,
+                    user=username
+                )
+                db.add(history_entry)
+                
+                # Update current process and .env data
+                current_env[env_key] = new_val
+                os.environ[env_key] = new_val
+                
+                # Hot Reload: Some libraries might need direct attribute update on the settings object
+                if hasattr(app_settings, env_key):
+                    setattr(app_settings, env_key, new_val)
+
+    from ..database import refresh_engine
+    engine_refreshed = refresh_engine()
+    
+    await db.commit()
 
     with open(env_path, "w") as f:
         f.write("# SYSGRID AUTO-GENERATED ENVIRONMENT CONFIG\n")
+        f.write(f"# LAST_UPDATED_BY: {username}\n")
         for k, v in current_env.items():
             f.write(f"{k}={v}\n")
             
-    return {"status": "success", "message": "Environment synchronized and persisted to .env"}
+    return {"status": "success", "message": "Environment synchronized and Hot-Reloaded successfully"}
 
 @router.post("/user-pool/refresh")
 async def refresh_user_pool(data: PoolSync):

@@ -3,13 +3,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
   Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server,
-  Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X
+  Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
+  Settings as SettingsIcon, Layers, Zap, AlertTriangle
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
 
-const SettingField = ({ label, description, children, icon: Icon, help }: any) => {
+const SettingField = ({ label, description, children, icon: Icon, help, onHistory }: any) => {
   const [showHelp, setShowHelp] = useState(false);
   
   return (
@@ -22,14 +23,25 @@ const SettingField = ({ label, description, children, icon: Icon, help }: any) =
             <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter mt-1 leading-relaxed">{description}</p>
           </div>
         </div>
-        {help && (
-          <button 
-            onClick={() => setShowHelp(!showHelp)}
-            className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 transition-colors"
-          >
-            <Info size={14} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onHistory && (
+            <button 
+              onClick={onHistory}
+              className="p-1.5 text-[var(--text-muted)] hover:text-amber-400 transition-colors"
+              title="View Change History"
+            >
+              <History size={14} />
+            </button>
+          )}
+          {help && (
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 transition-colors"
+            >
+              <Info size={14} />
+            </button>
+          )}
+        </div>
       </div>
       
       <AnimatePresence>
@@ -108,9 +120,18 @@ const ThemeCard = ({ id, name, type, colors, isActive, onClick }: any) => (
 export default function SettingsPage() {
   const [topTab, setTopTab] = useState<'theme' | 'environments' | 'permissions'>('theme')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
+  const [historyField, setHistoryField] = useState<string | null>(null)
   const queryClient = useQueryClient()
   
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'nordic-frost-v1'
+  const { data: userSettings } = useQuery({
+    queryKey: ['user-settings'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/user/settings");
+      return res.json();
+    }
+  });
+
+  const currentTheme = userSettings?.theme || localStorage.getItem('sysgrid-theme') || 'dark';
 
   const userSettingsMutation = useMutation({
     mutationFn: async (settings: any) => {
@@ -183,6 +204,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['env-settings'] })
+      queryClient.invalidateQueries({ queryKey: ['env-history'] })
       toast.success("Environment configuration synchronized and applied")
     },
     onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
@@ -212,6 +234,16 @@ result_df = get_user_pool()`)
     }
   })
 
+  const { data: envHistory } = useQuery({
+    queryKey: ['env-history', historyField],
+    queryFn: async () => {
+      if (!historyField) return null;
+      const res = await apiFetch(`/api/v1/settings/env/history?field=${historyField}`)
+      return res.json()
+    },
+    enabled: !!historyField
+  })
+
   const envHelp = {
     api_endpoint: { details: "Core service URL. Changing this will redirect all UI traffic to a different engine instance.", file: ".env (API_ENDPOINT)", impact: "High" },
     db_path: { details: "Primary storage location. Changing this redirects the system to a different SQLite or DB connection string.", file: ".env (DATABASE_URL)", impact: "Critical" },
@@ -225,7 +257,7 @@ result_df = get_user_pool()`)
   }
 
   return (
-    <div className="h-full flex flex-col space-y-6 max-w-6xl mx-auto px-4 overflow-hidden">
+    <div className="h-full flex flex-col space-y-6 max-w-6xl mx-auto px-4 overflow-hidden relative">
       <div className="flex items-center justify-between bg-[var(--bg-header)] p-1.5 rounded-xl border border-[var(--glass-border)] shadow-xl backdrop-blur-xl shrink-0">
         <div className="flex space-x-1">
            <button onClick={() => setTopTab('theme')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'theme' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
@@ -244,8 +276,8 @@ result_df = get_user_pool()`)
             onClick={() => envMutation.mutate(localEnv)}
             className="flex items-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-black uppercase tracking-widest text-[10px] transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
           >
-            <Save size={14} />
-            <span>Apply Global Config</span>
+            <Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />
+            <span>Hot Reload Global Config</span>
           </button>
         )}
       </div>
@@ -266,7 +298,7 @@ result_df = get_user_pool()`)
                     <ThemeCard 
                       key={theme.id}
                       {...theme}
-                      isActive={(theme.id === 'dark' && !document.documentElement.classList.contains('light')) || (theme.id === 'light' && document.documentElement.classList.contains('light'))}
+                      isActive={currentTheme === theme.id}
                       onClick={() => changeTheme(theme.id)}
                     />
                   ))}
@@ -275,7 +307,7 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'environments' && (
-            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
                   <div>
                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Core Infrastructure</h2>
@@ -283,49 +315,73 @@ result_df = get_user_pool()`)
                   </div>
                </div>
 
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                     <SettingField icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." help={envHelp.api_endpoint}>
+               {/* Networking & APIs */}
+               <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                    <Globe size={12} /> Connectivity Gateway
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                     <SettingField icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." help={envHelp.api_endpoint} onHistory={() => setHistoryField('api_endpoint')}>
                         <input value={localEnv.api_endpoint || ''} onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all" />
                      </SettingField>
                   </div>
+               </div>
 
-                  <SettingField icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store." help={envHelp.db_path}>
-                     <input value={localEnv.db_path || ''} onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+               {/* Storage & persistence */}
+               <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                    <Database size={12} /> Persistence & Storage
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <SettingField icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store." help={envHelp.db_path} onHistory={() => setHistoryField('db_path')}>
+                        <input value={localEnv.db_path || ''} onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                      </SettingField>
+                    </div>
 
-                  <SettingField icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes." help={envHelp.storage_root}>
-                     <input value={localEnv.storage_root || ''} onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+                    <SettingField icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes." help={envHelp.storage_root} onHistory={() => setHistoryField('storage_root')}>
+                       <input value={localEnv.storage_root || ''} onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
 
-                  <SettingField icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones." help={envHelp.image_path}>
-                     <input value={localEnv.image_path || ''} onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+                    <SettingField icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones." help={envHelp.image_path} onHistory={() => setHistoryField('image_path')}>
+                       <input value={localEnv.image_path || ''} onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
 
-                  <SettingField icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination." help={envHelp.backup_path}>
-                     <input value={localEnv.backup_path || ''} onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+                    <SettingField icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination." help={envHelp.backup_path} onHistory={() => setHistoryField('backup_path')}>
+                       <input value={localEnv.backup_path || ''} onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
 
-                  <SettingField icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts." help={envHelp.scripts_path}>
-                     <input value={localEnv.scripts_path || ''} onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+                    <SettingField icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts." help={envHelp.scripts_path} onHistory={() => setHistoryField('scripts_path')}>
+                       <input value={localEnv.scripts_path || ''} onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
+                  </div>
+               </div>
 
-                  <SettingField icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities." help={envHelp.user_pool_path}>
-                     <input value={localEnv.user_pool_path || ''} onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+               {/* Automation & Security */}
+               <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                    <Lock size={12} /> Execution & Security
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <SettingField icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities." help={envHelp.user_pool_path} onHistory={() => setHistoryField('user_pool_path')}>
+                       <input value={localEnv.user_pool_path || ''} onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
 
-                  <SettingField icon={Box} label="Python Venv Path" description="Specify custom virtual environment for external execution." help={envHelp.venv_path}>
-                     <input value={localEnv.venv_path || ''} onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} placeholder="Default system runtime" className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
-                  </SettingField>
+                    <SettingField icon={Box} label="Python Venv Path" description="Specify custom virtual environment for external execution." help={envHelp.venv_path} onHistory={() => setHistoryField('venv_path')}>
+                       <input value={localEnv.venv_path || ''} onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} placeholder="Default system runtime" className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    </SettingField>
 
-                  <SettingField icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." help={envHelp.log_level}>
-                     <select value={localEnv.log_level || 'INFO'} onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase">
-                        <option value="DEBUG">DEBUG (Max Verbosity)</option>
-                        <option value="VERBOSE">VERBOSE (Detailed)</option>
-                        <option value="INFO">INFO (Standard)</option>
-                        <option value="WARNING">WARNING (Critical Only)</option>
-                     </select>
-                  </SettingField>
+                    <div className="col-span-2">
+                      <SettingField icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." help={envHelp.log_level} onHistory={() => setHistoryField('log_level')}>
+                        <select value={localEnv.log_level || 'INFO'} onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase">
+                            <option value="DEBUG">DEBUG (Max Verbosity)</option>
+                            <option value="VERBOSE">VERBOSE (Detailed)</option>
+                            <option value="INFO">INFO (Standard)</option>
+                            <option value="WARNING">WARNING (Critical Only)</option>
+                        </select>
+                      </SettingField>
+                    </div>
+                  </div>
                </div>
             </motion.div>
           )}
@@ -455,7 +511,63 @@ result_df = get_user_pool()`)
           )}
         </AnimatePresence>
       </div>
+
+      {/* History Slide-over */}
+      <AnimatePresence>
+        {historyField && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setHistoryField(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div 
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              className="fixed top-0 right-0 bottom-0 w-[400px] bg-[var(--bg-primary)] border-l border-[var(--glass-border)] shadow-2xl z-[101] flex flex-col p-8"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><History size={20} /></div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-[var(--text-primary)] tracking-widest leading-none">Change Logs</h3>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{historyField}</p>
+                  </div>
+                </div>
+                <button onClick={() => setHistoryField(null)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                {envHistory && envHistory.length > 0 ? envHistory.map((entry: any, i: number) => (
+                  <div key={i} className="p-4 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-xl relative group">
+                    <div className="flex justify-between items-start mb-2">
+                       <span className="text-[8px] font-black uppercase text-blue-400 tracking-widest">{entry.timestamp}</span>
+                       <button 
+                        onClick={() => { setLocalEnv({...localEnv, [historyField]: entry.old_value}); setHistoryField(null); toast.success("Reverted to selected state"); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] font-black uppercase text-amber-500 hover:underline"
+                       >
+                         Revert
+                       </button>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="p-2 bg-rose-500/5 rounded border border-rose-500/10 text-[9px] font-mono text-rose-400 line-through truncate">{entry.old_value}</div>
+                       <div className="p-2 bg-emerald-500/5 rounded border border-emerald-500/10 text-[9px] font-mono text-emerald-400 truncate">{entry.new_value}</div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                       <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center text-[8px] text-blue-400 font-bold uppercase">{entry.user?.[0] || 'O'}</div>
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{entry.user || 'SYSTEM_OP'}</span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4 opacity-30">
+                     <History size={48} />
+                     <p className="text-[10px] font-black uppercase tracking-widest">No history recorded for this field</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
-

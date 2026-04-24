@@ -770,3 +770,11 @@ class RcaMitigation(Base, BaseMixin):
     
     rca = relationship("RcaRecord", back_populates="mitigations")
 
+class EnvHistory(Base, BaseMixin):
+    __tablename__ = "env_history"
+    field = Column(String, index=True)
+    old_value = Column(Text)
+    new_value = Column(Text)
+    user = Column(String)
+    timestamp = Column(DateTime, server_default=func.now())
+
