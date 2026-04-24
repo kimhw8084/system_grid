@@ -778,3 +778,11 @@ class EnvHistory(Base, BaseMixin):
     user = Column(String)
     timestamp = Column(DateTime, server_default=func.now())
 
+class UserPoolVersion(Base, BaseMixin):
+    __tablename__ = "user_pool_versions"
+    version_label = Column(String, index=True) # e.g. "v20260424_143005"
+    snapshot_data = Column(JSON) # Full list of users at this point
+    diff_summary = Column(JSON) # {added: [], removed: [], changed: []}
+    created_by = Column(String)
+    is_active = Column(Boolean, default=False)
+
