@@ -4,30 +4,51 @@ import {
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
   Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
-  Settings as SettingsIcon, Layers, Zap, AlertTriangle
+  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
 
-const SettingField = ({ label, description, children, icon: Icon, help, onHistory }: any) => {
+const SettingField = ({ label, description, children, icon: Icon, help, onHistory, isEditable, onEdit, isPending }: any) => {
   const [showHelp, setShowHelp] = useState(false);
   
   return (
-    <div className="flex flex-col space-y-3 p-4 bg-[var(--panel-item-bg)] rounded-xl border border-[var(--glass-border)] hover:border-blue-500/30 transition-all group relative overflow-hidden">
+    <div className="flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-xl border border-[var(--glass-border)] hover:border-blue-500/30 transition-all group relative overflow-hidden">
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          {Icon && <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:scale-110 transition-transform"><Icon size={16} /></div>}
+          {Icon && <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-400 group-hover:scale-110 transition-transform"><Icon size={16} /></div>}
           <div className="flex flex-col">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] leading-none">{label}</label>
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] leading-none">{label}</label>
+              {isPending && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md text-[7px] font-black text-amber-500 uppercase animate-pulse">
+                  <RefreshCcw size={8} /> Pending Hot Reload
+                </span>
+              )}
+              {!isPending && isEditable !== undefined && (
+                <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[7px] font-black text-emerald-500 uppercase">
+                  Loaded
+                </span>
+              )}
+            </div>
             <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter mt-1 leading-relaxed">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {onEdit && (
+            <button 
+              onClick={onEdit}
+              className={`p-1.5 transition-colors rounded-lg ${isEditable ? 'bg-blue-600 text-white' : 'text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10'}`}
+              title={isEditable ? "Lock Field" : "Edit Field"}
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
           {onHistory && (
             <button 
               onClick={onHistory}
-              className="p-1.5 text-[var(--text-muted)] hover:text-amber-400 transition-colors"
+              className="p-1.5 text-[var(--text-muted)] hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
               title="View Change History"
             >
               <History size={14} />
@@ -36,7 +57,7 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
           {help && (
             <button 
               onClick={() => setShowHelp(!showHelp)}
-              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 transition-colors"
+              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
             >
               <Info size={14} />
             </button>
@@ -52,10 +73,10 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg space-y-2">
+            <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
                <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
                   <span className="text-[8px] font-black uppercase text-blue-400">Field Inspector</span>
-                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${help.impact === 'High' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-lg ${help.impact === 'High' || help.impact === 'Critical' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
                     Impact: {help.impact}
                   </span>
                </div>
@@ -121,8 +142,13 @@ export default function SettingsPage() {
   const [topTab, setTopTab] = useState<'theme' | 'environments' | 'permissions'>('theme')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
+  const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
   const queryClient = useQueryClient()
   
+  const toggleEdit = (field: string) => {
+    setEditableFields(prev => ({ ...prev, [field]: !prev[field] }))
+  }
+
   const { data: userSettings } = useQuery({
     queryKey: ['user-settings'],
     queryFn: async () => {
@@ -170,6 +196,10 @@ export default function SettingsPage() {
   })
 
   const [localEnv, setLocalEnv] = useState<any>({})
+
+  const isPending = (field: string) => {
+    return localEnv[field] !== envSettings?.[field]
+  }
   const [userPoolScript, setUserPoolScript] = useState(`import pandas as pd
 import numpy as np
 
@@ -321,8 +351,18 @@ result_df = get_user_pool()`)
                     <Globe size={12} /> Connectivity Gateway
                   </h3>
                   <div className="grid grid-cols-1 gap-4">
-                     <SettingField icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." help={envHelp.api_endpoint} onHistory={() => setHistoryField('api_endpoint')}>
-                        <input value={localEnv.api_endpoint || ''} onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all" />
+                     <SettingField 
+                        icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." 
+                        help={envHelp.api_endpoint} onHistory={() => setHistoryField('api_endpoint')}
+                        onEdit={() => toggleEdit('api_endpoint')} isEditable={editableFields['api_endpoint']}
+                        isPending={isPending('api_endpoint')}
+                     >
+                        <input 
+                          disabled={!editableFields['api_endpoint']}
+                          value={localEnv.api_endpoint || ''} 
+                          onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} 
+                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                        />
                      </SettingField>
                   </div>
                </div>
@@ -334,25 +374,75 @@ result_df = get_user_pool()`)
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
-                      <SettingField icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store." help={envHelp.db_path} onHistory={() => setHistoryField('db_path')}>
-                        <input value={localEnv.db_path || ''} onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                      <SettingField 
+                        icon={Database} label="Main Database Path" description="File path for the SQLite/PostgreSQL system store." 
+                        help={envHelp.db_path} onHistory={() => setHistoryField('db_path')}
+                        onEdit={() => toggleEdit('db_path')} isEditable={editableFields['db_path']}
+                        isPending={isPending('db_path')}
+                      >
+                        <input 
+                          disabled={!editableFields['db_path']}
+                          value={localEnv.db_path || ''} 
+                          onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} 
+                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                        />
                       </SettingField>
                     </div>
 
-                    <SettingField icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes." help={envHelp.storage_root} onHistory={() => setHistoryField('storage_root')}>
-                       <input value={localEnv.storage_root || ''} onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data volumes." 
+                      help={envHelp.storage_root} onHistory={() => setHistoryField('storage_root')}
+                      onEdit={() => toggleEdit('storage_root')} isEditable={editableFields['storage_root']}
+                      isPending={isPending('storage_root')}
+                    >
+                       <input 
+                         disabled={!editableFields['storage_root']}
+                         value={localEnv.storage_root || ''} 
+                         onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
 
-                    <SettingField icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones." help={envHelp.image_path} onHistory={() => setHistoryField('image_path')}>
-                       <input value={localEnv.image_path || ''} onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={HardDrive} label="Image Capture Path" description="Storage location for forensic and discovery milestones." 
+                      help={envHelp.image_path} onHistory={() => setHistoryField('image_path')}
+                      onEdit={() => toggleEdit('image_path')} isEditable={editableFields['image_path']}
+                      isPending={isPending('image_path')}
+                    >
+                       <input 
+                         disabled={!editableFields['image_path']}
+                         value={localEnv.image_path || ''} 
+                         onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
 
-                    <SettingField icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination." help={envHelp.backup_path} onHistory={() => setHistoryField('backup_path')}>
-                       <input value={localEnv.backup_path || ''} onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={RefreshCcw} label="Backup & Snapshot Dir" description="Automated system state backup destination." 
+                      help={envHelp.backup_path} onHistory={() => setHistoryField('backup_path')}
+                      onEdit={() => toggleEdit('backup_path')} isEditable={editableFields['backup_path']}
+                      isPending={isPending('backup_path')}
+                    >
+                       <input 
+                         disabled={!editableFields['backup_path']}
+                         value={localEnv.backup_path || ''} 
+                         onChange={e => setLocalEnv({...localEnv, backup_path: e.target.value})} 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
 
-                    <SettingField icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts." help={envHelp.scripts_path} onHistory={() => setHistoryField('scripts_path')}>
-                       <input value={localEnv.scripts_path || ''} onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={Terminal} label="System Scripts Root" description="Executable path for maintenance and evolution scripts." 
+                      help={envHelp.scripts_path} onHistory={() => setHistoryField('scripts_path')}
+                      onEdit={() => toggleEdit('scripts_path')} isEditable={editableFields['scripts_path']}
+                      isPending={isPending('scripts_path')}
+                    >
+                       <input 
+                         disabled={!editableFields['scripts_path']}
+                         value={localEnv.scripts_path || ''} 
+                         onChange={e => setLocalEnv({...localEnv, scripts_path: e.target.value})} 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
                   </div>
                </div>
@@ -363,17 +453,48 @@ result_df = get_user_pool()`)
                     <Lock size={12} /> Execution & Security
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <SettingField icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities." help={envHelp.user_pool_path} onHistory={() => setHistoryField('user_pool_path')}>
-                       <input value={localEnv.user_pool_path || ''} onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={Users} label="User Pool JSON Path" description="Persistent store for synchronized operator identities." 
+                      help={envHelp.user_pool_path} onHistory={() => setHistoryField('user_pool_path')}
+                      onEdit={() => toggleEdit('user_pool_path')} isEditable={editableFields['user_pool_path']}
+                      isPending={isPending('user_pool_path')}
+                    >
+                       <input 
+                         disabled={!editableFields['user_pool_path']}
+                         value={localEnv.user_pool_path || ''} 
+                         onChange={e => setLocalEnv({...localEnv, user_pool_path: e.target.value})} 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
 
-                    <SettingField icon={Box} label="Python Venv Path" description="Specify custom virtual environment for external execution." help={envHelp.venv_path} onHistory={() => setHistoryField('venv_path')}>
-                       <input value={localEnv.venv_path || ''} onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} placeholder="Default system runtime" className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all" />
+                    <SettingField 
+                      icon={Box} label="Python Venv Path" description="Specify custom virtual environment for external execution." 
+                      help={envHelp.venv_path} onHistory={() => setHistoryField('venv_path')}
+                      onEdit={() => toggleEdit('venv_path')} isEditable={editableFields['venv_path']}
+                      isPending={isPending('venv_path')}
+                    >
+                       <input 
+                         disabled={!editableFields['venv_path']}
+                         value={localEnv.venv_path || ''} 
+                         onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} 
+                         placeholder="Default system runtime" 
+                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed" 
+                       />
                     </SettingField>
 
                     <div className="col-span-2">
-                      <SettingField icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." help={envHelp.log_level} onHistory={() => setHistoryField('log_level')}>
-                        <select value={localEnv.log_level || 'INFO'} onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase">
+                      <SettingField 
+                        icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." 
+                        help={envHelp.log_level} onHistory={() => setHistoryField('log_level')}
+                        onEdit={() => toggleEdit('log_level')} isEditable={editableFields['log_level']}
+                        isPending={isPending('log_level')}
+                      >
+                        <select 
+                          disabled={!editableFields['log_level']}
+                          value={localEnv.log_level || 'INFO'} 
+                          onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} 
+                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                             <option value="DEBUG">DEBUG (Max Verbosity)</option>
                             <option value="VERBOSE">VERBOSE (Detailed)</option>
                             <option value="INFO">INFO (Standard)</option>
@@ -393,19 +514,19 @@ result_df = get_user_pool()`)
                      <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Security Matrix</h2>
                      <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">User Pool & Access Control Evolution</p>
                   </div>
-                  <button className="px-6 py-2.5 bg-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-blue-500/20">
+                  <button className="px-6 py-2.5 bg-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-blue-500/20">
                      <UserPlus size={14} /> Create Operator
                   </button>
                </div>
 
                <div className="grid grid-cols-1 gap-6">
-                  <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-xl space-y-4">
+                  <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-2xl space-y-4">
                      <button 
                         onClick={() => setShowPoolLogic(!showPoolLogic)}
                         className="flex items-center justify-between w-full group"
                      >
                         <div className="flex items-center space-x-3">
-                           <div className="p-2 bg-blue-600 text-white rounded-lg"><Terminal size={18} /></div>
+                           <div className="p-2.5 bg-blue-600 text-white rounded-xl"><Terminal size={18} /></div>
                            <div className="text-left">
                               <h3 className="text-xs font-black uppercase text-[var(--text-primary)] tracking-widest">User Pool Logic (Python)</h3>
                               <p className="text-[9px] text-slate-500 uppercase font-bold tracking-tighter">Define how system retrieves and validates operator identities</p>
@@ -415,7 +536,7 @@ result_df = get_user_pool()`)
                            {showPoolLogic && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); poolMutation.mutate(userPoolScript); }}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
                               >
                                  <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} />
                                  Run Sync Script
@@ -438,7 +559,7 @@ result_df = get_user_pool()`)
                               <textarea 
                                  value={userPoolScript}
                                  onChange={e => setUserPoolScript(e.target.value)}
-                                 className="w-full h-64 bg-black/40 border border-white/10 rounded-lg p-4 font-mono text-[11px] text-emerald-400 outline-none focus:border-indigo-500/50 transition-all custom-scrollbar"
+                                 className="w-full h-64 bg-black/40 border border-white/10 rounded-xl p-4 font-mono text-[11px] text-emerald-400 outline-none focus:border-indigo-500/50 transition-all custom-scrollbar"
                                  placeholder="# Enter Python logic to fetch user pool..."
                               />
                               <div className="flex items-center space-x-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
@@ -457,7 +578,7 @@ result_df = get_user_pool()`)
                           {userPool && userPool.length > 0 ? userPool.map((user: any, i: number) => (
                             <div key={i} className="bg-[var(--panel-item-bg)] p-4 rounded-xl border border-[var(--glass-border)] flex items-center justify-between group hover:border-blue-500/20 transition-all">
                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-[var(--bg-primary)] rounded-lg flex items-center justify-center text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-400 transition-all">
+                                  <div className="w-10 h-10 bg-[var(--bg-primary)] rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-400 transition-all">
                                      <Fingerprint size={20} />
                                   </div>
                                   <div>
@@ -471,7 +592,7 @@ result_df = get_user_pool()`)
                                </div>
                             </div>
                           )) : (
-                            <div className="p-10 border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center text-slate-500 space-y-2">
+                            <div className="p-10 border border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center text-slate-500 space-y-2">
                                <Users size={32} className="opacity-20" />
                                <p className="text-[10px] font-black uppercase tracking-widest">No operators synchronized</p>
                             </div>
@@ -481,7 +602,7 @@ result_df = get_user_pool()`)
 
                     <div className="space-y-4">
                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">Access Roles</h3>
-                       <div className="bg-[var(--panel-item-bg)] p-6 rounded-xl border border-[var(--glass-border)] space-y-4">
+                       <div className="bg-[var(--panel-item-bg)] p-6 rounded-2xl border border-[var(--glass-border)] space-y-4">
                           {[
                             { role: 'Superuser', count: 1, color: 'bg-rose-500' },
                             { role: 'Maintainer', count: 4, color: 'bg-blue-500' },
@@ -496,7 +617,7 @@ result_df = get_user_pool()`)
                             </div>
                           ))}
                           <div className="pt-4 border-t border-[var(--glass-border)]">
-                             <div className="p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 flex items-start gap-3">
+                             <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 flex items-start gap-3">
                                 <ShieldCheck className="text-blue-400 shrink-0" size={16} />
                                 <p className="text-[8px] font-bold text-slate-400 uppercase leading-relaxed tracking-tighter">
                                    Role-based access control (RBAC) is enforced globally via the Python user pool integration.

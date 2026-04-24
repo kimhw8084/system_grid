@@ -119,8 +119,12 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
                 os.environ[env_key] = new_val
                 
                 # Hot Reload: Some libraries might need direct attribute update on the settings object
-                if hasattr(app_settings, env_key):
-                    setattr(app_settings, env_key, new_val)
+                # Only set if it's a real field, not a property (like DATABASE_URL)
+                if hasattr(app_settings, env_key) and not isinstance(getattr(type(app_settings), env_key, None), property):
+                    try:
+                        setattr(app_settings, env_key, new_val)
+                    except Exception:
+                        pass # Ignore if not settable
 
     from ..database import refresh_engine
     engine_refreshed = refresh_engine()
@@ -139,20 +143,22 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
 async def refresh_user_pool(data: PoolSync):
     try:
         # Ensure pandas and numpy are available in the execution namespace
-        local_namespace = {
+        exec_globals = {
             "pd": pd, 
             "np": np,
             "os": os,
-            "json": json
+            "json": json,
+            "__builtins__": __builtins__
         }
             
         # Execute the user provided script
-        exec(data.script, {}, local_namespace)
+        # Using exec_globals for both globals and locals ensures 'pd' is available
+        exec(data.script, exec_globals)
         
-        if "result_df" not in local_namespace:
+        if "result_df" not in exec_globals:
             raise HTTPException(400, "Script must define 'result_df' variable")
             
-        df = local_namespace["result_df"]
+        df = exec_globals["result_df"]
         if not isinstance(df, pd.DataFrame):
             raise HTTPException(400, "'result_df' must be a Pandas DataFrame")
             
@@ -210,6 +216,29 @@ async def get_user_pool():
     if not os.path.exists(pool_file):
         return []
     return pd.read_json(pool_file).to_dict(orient="records")
+
+@router.get("/user/env-vars")
+async def get_linux_env_vars():
+    # Return a set of interesting/important Linux environment variables
+    important_keys = [
+        "USER", "HOME", "PATH", "SHELL", "PWD", "LANG", "TERM", 
+        "LOGNAME", "HOSTNAME", "PYTHONPATH", "LD_LIBRARY_PATH", 
+        "EDITOR", "TZ", "DISPLAY", "XDG_RUNTIME_DIR", "SSH_AUTH_SOCK",
+        "VSCODE_GIT_IPC_HANDLE", "TERM_PROGRAM", "TERM_PROGRAM_VERSION"
+    ]
+    
+    # Also include some system info
+    import platform
+    system_info = {
+        "OS_SYSTEM": platform.system(),
+        "OS_RELEASE": platform.release(),
+        "OS_VERSION": platform.version(),
+        "OS_MACHINE": platform.machine(),
+        "PYTHON_VERSION": sys.version.split()[0]
+    }
+    
+    env_vars = {k: os.environ.get(k, "Not Set") for k in important_keys}
+    return {**env_vars, **system_info}
 
 def filter_valid_columns(model, data):
     valid_keys = {c.name for c in model.__table__.columns}

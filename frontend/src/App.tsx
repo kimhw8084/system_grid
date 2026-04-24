@@ -165,11 +165,66 @@ const PatchNotesModal = ({ onClose }: any) => {
   )
 }
 
+const LinuxEnvModal = ({ onClose }: any) => {
+  const { data: envVars, isLoading } = useQuery({
+    queryKey: ['linux-env-vars'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/user/env-vars");
+      return res.json();
+    }
+  });
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[700px] max-h-[80vh] flex flex-col p-10 rounded-3xl border border-blue-500/30 overflow-hidden shadow-2xl">
+         <div className="flex items-center justify-between border-b border-white/5 pb-6">
+            <div className="flex items-center space-x-4">
+               <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20"><Terminal size={24} /></div>
+               <div>
+                  <h2 className="text-2xl font-black uppercase text-white italic tracking-tighter leading-none">Local Environment <span className="text-blue-500">Forensics</span></h2>
+                  <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-2">Active Operating System Parameters</p>
+               </div>
+            </div>
+            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-xl"><X size={24}/></button>
+         </div>
+
+         <div className="flex-1 overflow-y-auto custom-scrollbar mt-6 space-y-4 pr-2">
+            {isLoading ? (
+               <div className="flex flex-col items-center justify-center py-20 text-blue-400 space-y-4">
+                  <RefreshCcw size={32} className="animate-spin" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Hydrating Environment Matrix...</p>
+               </div>
+            ) : envVars ? (
+               <div className="grid grid-cols-1 gap-2">
+                  {Object.entries(envVars).map(([key, value]: [string, any]) => (
+                     <div key={key} className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-xl hover:border-blue-500/20 transition-all group">
+                        <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider group-hover:text-blue-400 transition-colors">{key}</span>
+                        <span className="text-[10px] font-mono text-slate-300 font-bold truncate max-w-[400px] bg-black/40 px-3 py-1 rounded-lg border border-white/5" title={String(value)}>{String(value)}</span>
+                     </div>
+                  ))}
+               </div>
+            ) : null}
+         </div>
+         
+         <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
+            <Info size={18} className="text-amber-500 shrink-0" />
+            <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-relaxed tracking-tight">
+               These variables are extracted directly from the underlying Linux OS execution context. They impact how the SysGrid Engine interacts with system binaries and file-system hooks.
+            </p>
+         </div>
+
+         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Close Diagnostic View</button>
+      </motion.div>
+    </div>
+  )
+}
+
 function MainLayout() {
   const location = useLocation(); 
   const navigate = useNavigate(); 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [showLinuxEnv, setShowLinuxEnv] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
   const [latency, setLatency] = useState(0);
 
@@ -359,8 +414,11 @@ function MainLayout() {
         
         {/* User Profile Section */}
         <div className={`p-4 border-t border-[var(--glass-border)] transition-all ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
-           <div className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : ''}`}>
-              <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+           <button 
+              onClick={() => setShowLinuxEnv(true)}
+              className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
+           >
+              <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 group-hover:scale-110 transition-transform">
                  <Globe size={16} />
               </div>
               {isSidebarOpen && (
@@ -369,7 +427,7 @@ function MainLayout() {
                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">{userProfile?.department || 'Sector-01'}</span>
                 </div>
               )}
-           </div>
+           </button>
         </div>
 
         <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
@@ -446,6 +504,7 @@ function MainLayout() {
       </main>
       <AnimatePresence>
         {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
+        {showLinuxEnv && <LinuxEnvModal onClose={() => setShowLinuxEnv(false)} />}
         <ErrorConsole />
       </AnimatePresence>
     </div>
