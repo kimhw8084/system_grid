@@ -135,7 +135,7 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
 }
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'theme' | 'environments' | 'permissions'>('theme')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions'>('environments')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
@@ -325,9 +325,6 @@ result_df = get_user_pool()`)
     <div className="h-full flex flex-col space-y-6 max-w-7xl mx-auto px-4 overflow-hidden relative">
       <div className="flex items-center justify-between bg-[var(--bg-header)] p-1.5 rounded-xl border border-[var(--glass-border)] shadow-xl backdrop-blur-xl shrink-0">
         <div className="flex space-x-1">
-           <button onClick={() => setTopTab('theme')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'theme' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Palette size={14} /> App Theme
-           </button>
            <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Cpu size={14} /> Environments
            </button>
@@ -352,38 +349,6 @@ result_df = get_user_pool()`)
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
         <AnimatePresence mode="wait">
-          {topTab === 'theme' && (
-            <motion.div key="theme" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
-               <div className="flex items-end justify-between border-b border-[var(--glass-border)] pb-6">
-                  <div>
-                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Matrix Aesthetics</h2>
-                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Personalize your tactical interface</p>
-                  </div>
-               </div>
-               <div className="grid grid-cols-2 gap-6">
-                  {[
-                    { id: 'dark', name: 'Dark Mode', type: 'High Contrast Tactical', icon: Moon },
-                    { id: 'light', name: 'Light Mode', type: 'Clean snow Clarity', icon: Sun },
-                  ].map(theme => (
-                    <div 
-                      key={theme.id}
-                      onClick={() => changeTheme(theme.id)}
-                      className={`relative cursor-pointer p-8 rounded-2xl border transition-all duration-300 ${currentTheme === theme.id ? 'bg-blue-600/10 border-blue-500 shadow-xl' : 'bg-[var(--panel-item-bg)] border-[var(--glass-border)] hover:border-white/20'}`}
-                    >
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className={`p-3 rounded-xl ${currentTheme === theme.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-500'}`}><theme.icon size={20} /></div>
-                            <div>
-                                <h3 className="text-lg font-black uppercase italic text-[var(--text-primary)] leading-none">{theme.name}</h3>
-                                <p className="text-[10px] font-black text-slate-500 uppercase mt-1">{theme.type}</p>
-                            </div>
-                            {currentTheme === theme.id && <Check className="ml-auto text-blue-500" size={24} />}
-                        </div>
-                    </div>
-                  ))}
-               </div>
-            </motion.div>
-          )}
-
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                <div className="border-b border-[var(--glass-border)] pb-6">

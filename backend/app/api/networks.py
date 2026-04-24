@@ -78,7 +78,8 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
             "link_type": c.link_type,
             "purpose": c.purpose,
             "direction": c.direction,
-            "cable_type": c.cable_type
+            "cable_type": c.cable_type,
+            "status": c.status
         })
     return final_result
 
@@ -121,7 +122,8 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
         speed_gbps=data.get('speed_gbps'),
         unit=data.get('unit', 'Gbps'),
         direction=data.get('direction'),
-        cable_type=data.get('cable_type')
+        cable_type=data.get('cable_type'),
+        status=data.get('status', 'Active')
     )
     db.add(conn)
     log = models.AuditLog(user_id="admin", action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
@@ -151,6 +153,7 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     if 'speed_gbps' in data: conn.speed_gbps = data['speed_gbps']
     if 'direction' in data: conn.direction = data['direction']
     if 'cable_type' in data: conn.cable_type = data['cable_type']
+    if 'status' in data: conn.status = data['status']
 
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"

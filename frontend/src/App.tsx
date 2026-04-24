@@ -413,7 +413,7 @@ function MainLayout() {
         </nav>
         
         {/* User Profile Section */}
-        <div className={`p-4 border-t border-[var(--glass-border)] transition-all ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
+        <div className={`p-4 border-t border-[var(--glass-border)] space-y-2 transition-all ${!isSidebarOpen ? 'flex flex-col items-center' : ''}`}>
            <button 
               onClick={() => setShowLinuxEnv(true)}
               className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
@@ -428,6 +428,39 @@ function MainLayout() {
                 </div>
               )}
            </button>
+
+           <div className="relative group/theme-container">
+             <button 
+                className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
+             >
+                <div className="w-8 h-8 rounded-lg bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 transition-transform">
+                   <Zap size={16} />
+                </div>
+                {isSidebarOpen && (
+                  <div className="flex flex-col min-w-0">
+                     <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">Interface Mode</span>
+                     <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">Switch Matrix UI</span>
+                  </div>
+                )}
+             </button>
+
+             {/* Theme Hover Menu */}
+             <div className={`absolute bottom-0 left-full ml-2 opacity-0 group-hover/theme-container:opacity-100 pointer-events-none group-hover/theme-container:pointer-events-auto transition-all duration-300 z-50`}>
+                <div className="bg-[var(--bg-header)] border border-[var(--glass-border)] rounded-2xl p-2 shadow-2xl backdrop-blur-2xl w-48 space-y-1">
+                   {THEMES.map(theme => (
+                      <button 
+                        key={theme.id}
+                        onClick={() => changeTheme(theme.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${currentTheme === theme.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'}`}
+                      >
+                         <div className={`w-3 h-3 rounded-full ${theme.color} border border-white/10`} />
+                         <span className="text-[9px] font-black uppercase tracking-widest">{theme.label}</span>
+                         {currentTheme === theme.id && <Check size={12} className="ml-auto" />}
+                      </button>
+                   ))}
+                </div>
+             </div>
+           </div>
         </div>
 
         <div className="p-4 border-t border-[var(--glass-border)] text-center opacity-30">
@@ -440,22 +473,15 @@ function MainLayout() {
             <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
           </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-8">
-            <div className="flex flex-col items-center">
+          <div className="flex items-center space-x-3">
+            <div className="flex flex-col items-end mr-4">
               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">System Status</span>
               <div className="flex items-center space-x-2">
-                <span className={`text-[12px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
+                <span className={`text-[11px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
                   {isOnline ? 'Operational' : 'Degraded'}
                 </span>
-                {isOnline && <span className="text-[10px] font-bold text-slate-600 tabular-nums">{latency}ms</span>}
+                {isOnline && <span className="text-[9px] font-bold text-slate-600 tabular-nums">{latency}ms</span>}
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border ${isOnline ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/5 border-rose-500/20 text-rose-400'}`}>
-               <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-               <span className="text-[10px] font-black uppercase tracking-widest">{isOnline ? 'API Online' : 'API Offline'}</span>
             </div>
 
             <button 

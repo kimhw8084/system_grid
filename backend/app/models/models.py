@@ -215,6 +215,7 @@ class PortConnection(Base, BaseMixin):
     unit = Column(String)
     direction = Column(String)
     cable_type = Column(String)
+    status = Column(String, default="Active") # Active, Maintenance, Down, Planned
 
 class Subnet(Base, BaseMixin):
     __tablename__ = "subnets"

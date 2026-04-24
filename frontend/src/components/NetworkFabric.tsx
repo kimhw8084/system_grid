@@ -123,6 +123,27 @@ export default function NetworkFabric() {
       filter: 'agNumberColumnFilter',
     },
     { 
+      headerName: "Status", 
+      field: "status", 
+      width: 100,
+      minWidth: 100,
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+            p.value === 'Active' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+            p.value === 'Maintenance' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
+            p.value === 'Down' ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' :
+            'bg-slate-500/10 border-slate-500/30 text-slate-400'
+          }`}>
+            {p.value || 'Active'}
+          </span>
+        </div>
+      ),
+      filter: true,
+      cellClass: 'text-center',
+      headerClass: 'text-center'
+    },
+    { 
       headerName: "Src Node", 
       field: "server_a", 
       flex: 1,
@@ -531,10 +552,23 @@ export default function NetworkFabric() {
                   </div>
 
                   <div className="space-y-6">
-                    <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-[0.3em]">Narrative</h3>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Interconnect Purpose</label>
-                       <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-[30px] px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500 h-32 resize-none" placeholder="Technical rationale for physical link establishment..." />
+                    <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-[0.3em]">Lifecycle & Intent</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <StyledSelect
+                        label="Interconnect Status *"
+                        value={connData.status || 'Active'}
+                        onChange={e => setConnData({...connData, status: e.target.value})}
+                        options={[
+                          { value: 'Active', label: 'Active' },
+                          { value: 'Maintenance', label: 'Maintenance' },
+                          { value: 'Down', label: 'Down' },
+                          { value: 'Planned', label: 'Planned' }
+                        ]}
+                      />
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Narrative</label>
+                         <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 h-[42px] resize-none" placeholder="Purpose..." />
+                      </div>
                     </div>
                   </div>
                 </div>
