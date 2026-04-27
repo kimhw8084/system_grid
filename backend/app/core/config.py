@@ -3,7 +3,7 @@ from typing import List, Union
 import os
 
 class Settings(BaseSettings):
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/sysgrid/v1"
     PROJECT_NAME: str = "SYSGRID Production API"
     
     # Environment

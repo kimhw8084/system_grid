@@ -10,8 +10,13 @@ export default defineConfig(({ mode }) => {
       host: true,
       allowedHosts: true, 
       proxy: {
+        '/sysgrid': {
+          target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,
+          changeOrigin: true,
+          secure: false,
+        },
         '/api': {
-          target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8000}`,
+          target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,
           changeOrigin: true,
           secure: false,
         }

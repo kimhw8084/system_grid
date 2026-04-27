@@ -1,13 +1,11 @@
 
 > system-grid-frontend@1.2.4 dev
-> vite --host --host 0.0.0.0 --port 5173
+> vite --host --host
 
 
-  VITE v5.4.21  ready in 121 ms
+  VITE v5.4.21  ready in 126 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.0.186:5173/
   ➜  Network: http://100.92.24.56:5173/
   ➜  press h + enter to show help
-10:00:47 AM [vite] .env changed, restarting server...
-10:00:47 AM [vite] server restarted.
