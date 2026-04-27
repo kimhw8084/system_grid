@@ -5,3 +5,5 @@ INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
 INFO:     127.0.0.1:51439 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51446 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51453 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51703 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51730 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
