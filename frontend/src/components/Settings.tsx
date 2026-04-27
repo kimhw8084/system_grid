@@ -66,13 +66,13 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
       
       <div className="flex flex-col gap-1.5 px-0.5">
           {paramName && (
-              <div className="flex items-center gap-1.5 text-[7px] font-black uppercase text-blue-500/80 tracking-tighter">
-                  <Terminal size={8} /> PARAM: {paramName}
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-500/80 tracking-tighter">
+                  <Terminal size={10} /> PARAM: {paramName}
               </div>
           )}
           {absPath && (
-              <div className="flex items-center gap-1.5 text-[7px] font-black uppercase text-slate-500 tracking-tighter">
-                  <FolderTree size={8} /> FILE: {absPath}
+              <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500 tracking-tighter">
+                  <FolderTree size={10} /> FILE: {absPath}
               </div>
           )}
       </div>
@@ -82,9 +82,11 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
                <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
-                  <span className="text-[8px] font-black uppercase text-blue-400">Field Inspector</span>
-                  <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-lg ${help.impact === 'High' || help.impact === 'Critical' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-                    Impact: {help.impact}
+                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-400">
+                    <Info size={10} /> INFO
+                  </div>
+                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${help.impact === 'HIGH' || help.impact === 'CRITICAL' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+                    IMPACT: {help.impact}
                   </span>
                </div>
                <p className="text-[9px] font-bold text-[var(--text-secondary)] leading-relaxed italic">{help.details}</p>
@@ -305,36 +307,39 @@ result_df = get_user_pool()`)
   })
 
   const envHelp: any = {
-    api_endpoint: { details: "Core service URL.", impact: "High" },
-    db_path: { details: "Primary storage location.", impact: "Critical" },
-    storage_root: { details: "Base directory for file persistence.", impact: "Medium" },
-    image_path: { details: "Sub-path for milestone captures.", impact: "Low" },
-    log_level: { details: "Verbosity of backend tracing.", impact: "Low" },
-    ui_timeout: { details: "Frontend API request timeout in milliseconds.", impact: "Low" },
-    ui_debug_logging: { details: "Enable detailed logging in the browser console.", impact: "Low" },
-    hot_reload_enabled: { details: "Toggle whether environment changes trigger immediate engine reload.", impact: "Medium" },
-    // New Backend Help
-    max_upload_size: { details: "Maximum allowed file size for imports (MB).", impact: "Medium" },
-    worker_count: { details: "Number of concurrent processing threads for the backend.", impact: "High" },
-    cache_ttl: { details: "Duration to keep volatile data in memory (seconds).", impact: "Medium" },
-    smtp_host: { details: "Mail server for system-wide alerts and notifications.", impact: "Low" },
-    smtp_port: { details: "Port used for SMTP communications.", impact: "Low" },
-    alert_email: { details: "Primary destination for critical system alerts.", impact: "Low" },
-    enable_audit_logs: { details: "Toggle persistent recording of all operator actions.", impact: "Medium" },
-    db_backup_schedule: { details: "Crontab-style expression for automated database backups.", impact: "High" },
-    token_algorithm: { details: "Security algorithm for JWT signing.", impact: "Critical" },
-    request_timeout: { details: "Internal backend-to-backend request deadline.", impact: "Medium" },
-    // New Frontend Help
-    app_title: { details: "Display name in browser tab and splash screen.", impact: "Low" },
-    polling_interval: { details: "Frequency of background dashboard synchronization (ms).", impact: "Medium" },
-    enable_analytics: { details: "Toggle anonymized UI usage telemetry.", impact: "Low" },
-    max_grid_rows: { details: "Pagination limit for high-density data grids.", impact: "Medium" },
-    theme_default: { details: "Default visual profile for new operator sessions.", impact: "Low" },
-    maintenance_mode: { details: "Activate read-only mode for all operators.", impact: "High" },
-    support_url: { details: "Link to the operational support portal.", impact: "Low" },
-    auto_logout_idle: { details: "Seconds of inactivity before session termination.", impact: "Medium" },
-    toast_duration: { details: "Visibility duration for UI notifications (ms).", impact: "Low" },
-    enable_websockets: { details: "Toggle real-time engine-to-ui updates.", impact: "High" }
+    api_endpoint: { details: "Core service URL for backend connectivity.", impact: "HIGH" },
+    db_path: { details: "Primary storage location for the system database.", impact: "CRITICAL" },
+    storage_root: { details: "Base directory for all persistent system data.", impact: "MEDIUM" },
+    image_path: { details: "Sub-path for milestone captures and forensics.", impact: "LOW" },
+    log_level: { details: "Verbosity of backend engine tracing.", impact: "LOW" },
+    ui_timeout: { details: "Frontend API request timeout in milliseconds.", impact: "LOW" },
+    ui_debug_logging: { details: "Enable detailed logging in the browser console.", impact: "LOW" },
+    hot_reload_enabled: { details: "Toggle whether environment changes trigger immediate engine restart.", impact: "MEDIUM" },
+    // Backend Management
+    max_upload_size: { details: "Maximum allowed file size for imports (MB).", impact: "MEDIUM" },
+    worker_count: { details: "Number of concurrent processing threads for the engine.", impact: "HIGH" },
+    cache_ttl: { details: "Duration to keep volatile data in memory (seconds).", impact: "MEDIUM" },
+    smtp_host: { details: "Mail server for system-wide alerts.", impact: "LOW" },
+    smtp_port: { details: "Port used for SMTP communications.", impact: "LOW" },
+    alert_email: { details: "Primary destination for critical alerts.", impact: "LOW" },
+    enable_audit_logs: { details: "Toggle persistent recording of all operator actions.", impact: "MEDIUM" },
+    db_backup_schedule: { details: "Crontab-style expression for automated backups.", impact: "HIGH" },
+    token_algorithm: { details: "Security algorithm for JWT signing.", impact: "CRITICAL" },
+    request_timeout: { details: "Internal backend-to-backend request deadline.", impact: "MEDIUM" },
+    ui_backend_url: { details: "URL browser uses to talk to backend. If empty, defaults to origin proxy.", impact: "HIGH" },
+    backend_port: { details: "The primary port for the backend engine services.", impact: "HIGH" },
+    // Frontend Management
+    app_title: { details: "Display name in browser tab and splash screen.", impact: "LOW" },
+    polling_interval: { details: "Frequency of background dashboard synchronization (ms).", impact: "MEDIUM" },
+    enable_analytics: { details: "Toggle anonymized UI usage telemetry.", impact: "LOW" },
+    max_grid_rows: { details: "Pagination limit for high-density data grids.", impact: "MEDIUM" },
+    theme_default: { details: "Default visual profile for new operator sessions.", impact: "LOW" },
+    maintenance_mode: { details: "Activate read-only mode for all operators.", impact: "HIGH" },
+    support_url: { details: "Link to the operational support portal.", impact: "LOW" },
+    auto_logout_idle: { details: "Seconds of inactivity before session termination.", impact: "MEDIUM" },
+    toast_duration: { details: "Visibility duration for UI notifications (ms).", impact: "LOW" },
+    enable_websockets: { details: "Toggle real-time engine-to-ui updates.", impact: "HIGH" },
+    frontend_backend_port: { details: "The port used by the UI proxy to reach the engine.", impact: "HIGH" }
   }
 
   const viewGroups = [
@@ -606,12 +611,15 @@ result_df = get_user_pool()`)
                     <SettingField icon={Layout} label="Application Title" description="Browser tab and splash name." help={envHelp.app_title} onEdit={(a: any) => toggleEdit('app_title', a)} isEditable={editableFields['app_title']} isModified={isDirty('app_title')} absPath={localEnv._metadata?.app_title?.file} paramName={localEnv._metadata?.app_title?.param}>
                         <input disabled={!editableFields['app_title']} value={localEnv.app_title || 'SYSGRID Tactical'} onChange={e => setLocalEnv({...localEnv, app_title: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] outline-none" />
                     </SettingField>
+                    <SettingField icon={Link} label="Support URL" description="Operational support portal link." help={envHelp.support_url} onEdit={(a: any) => toggleEdit('support_url', a)} isEditable={editableFields['support_url']} isModified={isDirty('support_url')} absPath={localEnv._metadata?.support_url?.file} paramName={localEnv._metadata?.support_url?.param}>
+                        <input disabled={!editableFields['support_url']} value={localEnv.support_url || ''} onChange={e => setLocalEnv({...localEnv, support_url: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-blue-400 outline-none" />
+                    </SettingField>
                     <div className="grid grid-cols-2 gap-4">
                         <SettingField icon={RefreshCcw} label="Poll Interval" description="Sync frequency (ms)." help={envHelp.polling_interval} onEdit={(a: any) => toggleEdit('polling_interval', a)} isEditable={editableFields['polling_interval']} isModified={isDirty('polling_interval')} absPath={localEnv._metadata?.polling_interval?.file} paramName={localEnv._metadata?.polling_interval?.param}>
                             <input type="number" disabled={!editableFields['polling_interval']} value={localEnv.polling_interval || 5000} onChange={e => setLocalEnv({...localEnv, polling_interval: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
-                        <SettingField icon={Eye} label="Analytics" description="Toggle telemetry." help={envHelp.enable_analytics} onEdit={(a: any) => toggleEdit('enable_analytics', a)} isEditable={editableFields['enable_analytics']} isModified={isDirty('enable_analytics')} absPath={localEnv._metadata?.enable_analytics?.file} paramName={localEnv._metadata?.enable_analytics?.param}>
-                            <ToggleSwitch checked={!!localEnv.enable_analytics} disabled={!editableFields['enable_analytics']} onChange={(e: any) => setLocalEnv({...localEnv, enable_analytics: e.target.checked})} />
+                        <SettingField icon={Cpu} label="Vite Proxy Port" description="Target engine port." help={envHelp.frontend_backend_port} onEdit={(a: any) => toggleEdit('frontend_backend_port', a)} isEditable={editableFields['frontend_backend_port']} isModified={isDirty('frontend_backend_port')} absPath={localEnv._metadata?.frontend_backend_port?.file} paramName={localEnv._metadata?.frontend_backend_port?.param}>
+                            <input type="number" disabled={!editableFields['frontend_backend_port']} value={localEnv.frontend_backend_port || 8000} onChange={e => setLocalEnv({...localEnv, frontend_backend_port: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
                     </div>
                     <div className="grid grid-cols-2 gap-4">

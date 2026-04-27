@@ -28,6 +28,7 @@ class EnvUpdate(BaseModel):
     log_level: str | None = None
     venv_path: str | None = None
     backend_port: int | None = None
+    frontend_backend_port: int | None = None
     
     # Innovative Global Envs
     ui_timeout: int | None = None
@@ -109,6 +110,7 @@ async def get_env_vars():
         "log_level": {"key": "LOG_LEVEL", "file": backend_path, "default": "INFO"},
         "venv_path": {"key": "VENV_PATH", "file": backend_path, "default": "./venv"},
         "backend_port": {"key": "PORT", "file": backend_path, "default": "8000"},
+        "frontend_backend_port": {"key": "VITE_BACKEND_PORT", "file": frontend_path, "default": "8000"},
         
         # Innovative Params (Cross-linked)
         "ui_timeout": {"key": "VITE_UI_TIMEOUT", "file": frontend_path, "alt_key": "UI_TIMEOUT", "alt_file": backend_path, "default": "30000"},
@@ -266,6 +268,7 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         "backend_port": "VITE_BACKEND_PORT",
         "ui_timeout": "VITE_UI_TIMEOUT",
         "ui_debug_logging": "VITE_UI_DEBUG_LOGGING",
+        "frontend_backend_port": "VITE_BACKEND_PORT",
         "app_title": "VITE_APP_TITLE",
         "polling_interval": "VITE_POLLING_INTERVAL",
         "enable_analytics": "VITE_ENABLE_ANALYTICS",
