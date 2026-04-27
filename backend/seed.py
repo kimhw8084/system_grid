@@ -25,7 +25,7 @@ from app.models.models import (
     DeviceSoftware, NetworkInterface, Subnet, PortConnection,
     DeviceRelationship, LogicalService, ServiceSecret, SecretVault,
     MaintenanceWindow, MonitoringItem, MonitoringOwner, IncidentLog, DataFlow,
-    AuditLog, SettingOption, FirewallRule, ExternalEntity, ExternalLink,
+    AuditLog, SettingOption, GlobalSetting, FirewallRule, ExternalEntity, ExternalLink,
     Vendor, VendorPersonnel, VendorContract, KnowledgeEntry,
     Investigation, InvestigationProgress,
     FarFailureMode, FarFailureCause, FarResolution, FarMitigation, FarPrevention,
@@ -91,6 +91,23 @@ def seed():
         ]
         for val, keys in service_types:
             db.add(SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+        
+        # 1b. Global Settings (The App Brain)
+        print("Seeding Modular Configuration (App Brain)...")
+        global_defaults = [
+            ('VITE_APP_TITLE', 'SYSGRID Tactical', 'General', True),
+            ('VITE_POLLING_INTERVAL', '5000', 'Infrastructure', True),
+            ('VITE_ENABLE_WEBSOCKETS', 'true', 'Infrastructure', True),
+            ('VITE_THEME_DEFAULT', 'nordic-frost-v1', 'UI', True),
+            ('VITE_UI_TIMEOUT', '30000', 'Infrastructure', True),
+            ('VITE_MAX_GRID_ROWS', '100', 'UI', True),
+            ('PORT', '8080', 'Infrastructure', True),
+            ('API_ENDPOINT', '/api/v1', 'Infrastructure', True),
+            ('ENVIRONMENT', 'production', 'General', False)
+        ]
+        for key, val, cat, public in global_defaults:
+            db.add(GlobalSetting(key=key, value=val, category=cat, is_public=public))
+            
         db.flush()
 
         # 2. Infrastructure (Strictly 10 Racks with varying types)

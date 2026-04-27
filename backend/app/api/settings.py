@@ -43,13 +43,28 @@ def filter_valid_columns(model, data):
 async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
     """Public endpoint for frontend to discover API URL and critical settings. No authentication required."""
     try:
+        # 1. Fetch from Database
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
-        settings = res.scalars().all()
+        db_settings = {s.key: s.value for s in res.scalars().all()}
         
-        return {s.key: s.value for s in settings}
+        # 2. Extract from Environment/Config (as fallback)
+        env_settings = {
+            "API_ENDPOINT": settings.API_V1_STR,
+            "PORT": str(settings.PORT),
+            "VITE_API_BASE_URL": "", # Frontend usually handles this via proxy
+        }
+        
+        # Merge, DB takes priority
+        final_config = {**env_settings, **db_settings}
+        
+        return final_config
     except Exception as e:
         print(f"BOOTSTRAP ERROR: {e}")
-        return {"error": str(e)}
+        # Return at least basic settings so UI can try to render
+        return {
+            "PORT": str(settings.PORT),
+            "API_ENDPOINT": settings.API_V1_STR
+        }
 
 @router.get("/options")
 async def get_options(db: AsyncSession = Depends(get_db)):
@@ -214,48 +229,52 @@ async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.get("/global")
 async def get_global_settings(db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
-    opts = res.scalars().all()
+    """Fetch all settings from the unified GlobalSetting table."""
+    res = await db.execute(select(models.GlobalSetting))
+    settings_list = res.scalars().all()
     
-    settings = {
-        "app_name": "SYSGRID ENGINE",
-        "org_name": "Global Infrastructure Corp",
-        "site_id": "HQ-01",
-        "retention_days": "30",
-        "maintenance_mode": "false",
-        "default_timezone": "UTC",
-        "dashboard_refresh_interval": "60",
-        "security_level": "Standard",
-        "audit_log_level": "Full",
-        "ui_primary_color": "#3b82f6",
-        "ui_accent_color": "#10b981",
-        "support_email": "admin@infra.local"
-    }
-    
-    for o in opts:
-        settings[o.label] = o.value
-            
+    # Return as a simple key-value map for the UI
+    return {s.key: s.value for s in settings_list}
 
-    @router.post("/global")
-    async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-        for key, value in data.items():
-            res = await db.execute(select(models.SettingOption).filter(
-                models.SettingOption.category == "AppGlobal",
-                models.SettingOption.label == key
+@router.post("/global")
+async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    """Update unified settings and log to Audit Trail."""
+    user_id = get_current_user_id()
+    for key, value in data.items():
+        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
+        setting = res.scalar_one_or_none()
+        old_value = setting.value if setting else "None"
+        
+        if setting:
+            setting.value = str(value)
+        else:
+            # Auto-detect if it should be public (Frontend usually needs VITE_ prefixed vars)
+            is_public = key.startswith("VITE_") or key in ["PORT", "API_ENDPOINT"]
+            db.add(models.GlobalSetting(
+                key=key, 
+                value=str(value), 
+                is_public=is_public,
+                category="Infrastructure"
             ))
-            opt = res.scalar_one_or_none()
-            if opt:
-                opt.value = str(value)
-            else:
-                db.add(models.SettingOption(category="AppGlobal", label=key, value=str(value)))
+        
+        # Add to Audit Log
+        db.add(models.AuditLog(
+            user_id=user_id,
+            action="UPDATE_SETTING",
+            target_type="GLOBAL_SETTING",
+            target_id=key,
+            old_value=old_value,
+            new_value=str(value),
+            details=f"Configuration parameter '{key}' updated via Admin Dashboard."
+        ))
 
-        await db.commit()
-
-        # Broadcast configuration update to all active websockets
-        if hasattr(request.app.state, 'ws_manager'):
-            await request.app.state.ws_manager.broadcast("CONFIG_UPDATED")
-
-        return {"status": "success"}
+    await db.commit()
+    
+    # Notify all connected clients via WebSocket
+    if hasattr(request.app.state, 'ws_manager'):
+        await request.app.state.ws_manager.broadcast("CONFIG_UPDATED")
+        
+    return {"status": "success"}
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):

@@ -21,20 +21,21 @@ const Bootstrap = () => {
       try {
         let response;
         try {
-          response = await apiFetch('/api/v1/settings/bootstrap');
+          // Always try relative path first for bootstrap to ensure it bypasses any poisoned baseUrl
+          response = await fetch('/api/v1/settings/bootstrap');
+          if (!response.ok) {
+             // Fallback to apiClient version if relative fails (e.g. specialized deployment)
+             response = await apiFetch('/api/v1/settings/bootstrap');
+          }
         } catch (initialErr) {
-          console.warn("BOOTSTRAP: Initial fetch failed, clearing poisoned local configs and retrying relative...", initialErr);
-          // Clear any potentially poisoned configs
+          console.warn("BOOTSTRAP: Initial fetch failed, clearing local configurations and retrying...", initialErr);
           Object.keys(localStorage).forEach(k => {
             if (k.startsWith('SYSGRID_CONFIG_') || k === 'SYSGRID_OVERRIDE_API_URL') {
               localStorage.removeItem(k);
             }
           });
-          // Retry using a pure relative path, bypassing apiClient baseUrl injection
           response = await fetch('/api/v1/settings/bootstrap');
-          if (!response.ok) {
-            throw new Error(`API Error ${response.status}: ${response.statusText}`);
-          }
+          if (!response.ok) throw new Error(`API Error ${response.status}`);
         }
         
         const config = await response.json();

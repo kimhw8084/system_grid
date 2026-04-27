@@ -8,6 +8,25 @@ from .api import devices, import_engine, networks, security, dashboard, racks, a
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
+        # 1. Verify Global Settings (App Brain)
+        res_global = await db.execute(select(models.GlobalSetting))
+        if not res_global.scalars().first():
+            print("AUTO-BOOT: Seeding missing Global Settings...")
+            global_defaults = [
+                ('VITE_APP_TITLE', 'SYSGRID Tactical', 'General', True),
+                ('VITE_POLLING_INTERVAL', '5000', 'Infrastructure', True),
+                ('VITE_ENABLE_WEBSOCKETS', 'true', 'Infrastructure', True),
+                ('VITE_THEME_DEFAULT', 'nordic-frost-v1', 'UI', True),
+                ('VITE_UI_TIMEOUT', '30000', 'Infrastructure', True),
+                ('VITE_MAX_GRID_ROWS', '100', 'UI', True),
+                ('PORT', '8080', 'Infrastructure', True),
+                ('API_ENDPOINT', '/api/v1', 'Infrastructure', True)
+            ]
+            for key, val, cat, public in global_defaults:
+                db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))
+            await db.commit()
+
+        # 2. Verify Setting Options (Metadata)
         res = await db.execute(select(models.SettingOption))
         if res.scalars().first():
             return  # Already seeded
