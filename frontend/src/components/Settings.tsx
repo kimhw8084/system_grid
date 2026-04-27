@@ -198,19 +198,18 @@ export default function SettingsPage() {
   const { data: envSettings, isLoading: isEnvLoading, isError: isEnvError } = useQuery({
     queryKey: ['env-settings'],
     queryFn: async () => {
-      const res = await apiFetch("/api/v1/settings/env")
+      const res = await apiFetch("/api/v1/settings/global")
       const data = await res.json()
-      // Persist successful fetch to local storage as fallback
-      localStorage.setItem('SYSGRID_LAST_KNOWN_ENV', JSON.stringify(data))
+      // Persist to local storage for bootstrap fallback
+      Object.entries(data).forEach(([k, v]) => {
+        localStorage.setItem(`SYSGRID_CONFIG_${k}`, String(v));
+      });
       return data
     },
     retry: 1
   })
 
-  const [localEnv, setLocalEnv] = useState<any>(() => {
-    const fallback = localStorage.getItem('SYSGRID_LAST_KNOWN_ENV')
-    return fallback ? JSON.parse(fallback) : {}
-  })
+  const [localEnv, setLocalEnv] = useState<any>({})
 
   const isDisconnected = isEnvError && !isEnvLoading;
 
@@ -228,10 +227,9 @@ export default function SettingsPage() {
   }
 
   const isDirty = (field?: string) => {
-      // If disconnected, compare against the cached fallback we loaded into localEnv initially
-      const base = envSettings || JSON.parse(localStorage.getItem('SYSGRID_LAST_KNOWN_ENV') || '{}');
-      if (field) return JSON.stringify(localEnv[field]) !== JSON.stringify(base[field]);
-      return Object.keys(localEnv).some(k => k !== '_abs_paths' && k !== '_metadata' && k !== '_raw_env' && JSON.stringify(localEnv[k]) !== JSON.stringify(base[k]));
+      if (!envSettings) return false;
+      if (field) return String(localEnv[field]) !== String(envSettings[field]);
+      return Object.keys(localEnv).some(k => String(localEnv[k]) !== String(envSettings[k]));
   }
 
   const [userPoolScript, setUserPoolScript] = useState(`import pandas as pd
@@ -259,7 +257,7 @@ result_df = get_user_pool()`)
 
   const envMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiFetch("/api/v1/settings/env", {
+      const res = await apiFetch("/api/v1/settings/global", {
         method: "POST",
         body: JSON.stringify(data)
       })
@@ -267,14 +265,14 @@ result_df = get_user_pool()`)
       return res.json()
     },
     onSuccess: (data, variables) => {
-      if (variables.ui_backend_url) {
-        setApiOverride(variables.ui_backend_url);
+      if (variables.VITE_API_BASE_URL) {
+        setApiOverride(variables.VITE_API_BASE_URL);
         toast.success("UI Gateway updated & persisted locally");
       }
       queryClient.invalidateQueries({ queryKey: ['env-settings'] })
       queryClient.invalidateQueries({ queryKey: ['env-history'] })
       setEditableFields({})
-      toast.success("Configuration synchronized")
+      toast.success("Global Configuration synchronized to Database")
     },
     onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
   })
@@ -332,39 +330,37 @@ result_df = get_user_pool()`)
   })
 
   const envHelp: any = {
-    api_endpoint: { details: "Core service URL for backend connectivity.", impact: "HIGH" },
-    db_path: { details: "Primary storage location for the system database.", impact: "CRITICAL" },
-    storage_root: { details: "Base directory for all persistent system data.", impact: "MEDIUM" },
-    image_path: { details: "Sub-path for milestone captures and forensics.", impact: "LOW" },
-    log_level: { details: "Verbosity of backend engine tracing.", impact: "LOW" },
-    ui_timeout: { details: "Frontend API request timeout in milliseconds.", impact: "LOW" },
-    ui_debug_logging: { details: "Enable detailed logging in the browser console.", impact: "LOW" },
-    hot_reload_enabled: { details: "Toggle whether environment changes trigger immediate engine restart.", impact: "MEDIUM" },
-    // Backend Management
-    max_upload_size: { details: "Maximum allowed file size for imports (MB).", impact: "MEDIUM" },
-    worker_count: { details: "Number of concurrent processing threads for the engine.", impact: "HIGH" },
-    cache_ttl: { details: "Duration to keep volatile data in memory (seconds).", impact: "MEDIUM" },
-    smtp_host: { details: "Mail server for system-wide alerts.", impact: "LOW" },
-    smtp_port: { details: "Port used for SMTP communications.", impact: "LOW" },
-    alert_email: { details: "Primary destination for critical alerts.", impact: "LOW" },
-    enable_audit_logs: { details: "Toggle persistent recording of all operator actions.", impact: "MEDIUM" },
-    db_backup_schedule: { details: "Crontab-style expression for automated backups.", impact: "HIGH" },
-    token_algorithm: { details: "Security algorithm for JWT signing.", impact: "CRITICAL" },
-    request_timeout: { details: "Internal backend-to-backend request deadline.", impact: "MEDIUM" },
-    ui_backend_url: { details: "URL browser uses to talk to backend. If empty, defaults to origin proxy.", impact: "HIGH" },
-    backend_port: { details: "The primary port for the backend engine services.", impact: "HIGH" },
-    // Frontend Management
-    app_title: { details: "Display name in browser tab and splash screen.", impact: "LOW" },
-    polling_interval: { details: "Frequency of background dashboard synchronization (ms).", impact: "MEDIUM" },
-    enable_analytics: { details: "Toggle anonymized UI usage telemetry.", impact: "LOW" },
-    max_grid_rows: { details: "Pagination limit for high-density data grids.", impact: "MEDIUM" },
-    theme_default: { details: "Default visual profile for new operator sessions.", impact: "LOW" },
-    maintenance_mode: { details: "Activate read-only mode for all operators.", impact: "HIGH" },
-    support_url: { details: "Link to the operational support portal.", impact: "LOW" },
-    auto_logout_idle: { details: "Seconds of inactivity before session termination.", impact: "MEDIUM" },
-    toast_duration: { details: "Visibility duration for UI notifications (ms).", impact: "LOW" },
-    enable_websockets: { details: "Toggle real-time engine-to-ui updates.", impact: "HIGH" },
-    frontend_backend_port: { details: "The port used by the UI proxy to reach the engine.", impact: "HIGH" }
+    API_ENDPOINT: { details: "Core service URL for backend connectivity.", impact: "HIGH" },
+    DATABASE_URL: { details: "Primary storage location for the system database.", impact: "CRITICAL" },
+    STORAGE_ROOT: { details: "Base directory for all persistent system data.", impact: "MEDIUM" },
+    IMAGE_PATH: { details: "Sub-path for milestone captures and forensics.", impact: "LOW" },
+    LOG_LEVEL: { details: "Verbosity of backend engine tracing.", impact: "LOW" },
+    VITE_UI_TIMEOUT: { details: "Frontend API request timeout in milliseconds.", impact: "LOW" },
+    VITE_UI_DEBUG_LOGGING: { details: "Enable detailed logging in the browser console.", impact: "LOW" },
+    HOT_RELOAD_ENABLED: { details: "Toggle whether environment changes trigger immediate engine restart.", impact: "MEDIUM" },
+    MAX_UPLOAD_SIZE: { details: "Maximum allowed file size for imports (MB).", impact: "MEDIUM" },
+    WORKER_COUNT: { details: "Number of concurrent processing threads for the engine.", impact: "HIGH" },
+    CACHE_TTL: { details: "Duration to keep volatile data in memory (seconds).", impact: "MEDIUM" },
+    SMTP_HOST: { details: "Mail server for system-wide alerts.", impact: "LOW" },
+    SMTP_PORT: { details: "Port used for SMTP communications.", impact: "LOW" },
+    ALERT_EMAIL: { details: "Primary destination for critical alerts.", impact: "LOW" },
+    ENABLE_AUDIT_LOGS: { details: "Toggle persistent recording of all operator actions.", impact: "MEDIUM" },
+    DB_BACKUP_SCHEDULE: { details: "Crontab-style expression for automated backups.", impact: "HIGH" },
+    TOKEN_ALGORITHM: { details: "Security algorithm for JWT signing.", impact: "CRITICAL" },
+    REQUEST_TIMEOUT: { details: "Internal backend-to-backend request deadline.", impact: "MEDIUM" },
+    VITE_API_BASE_URL: { details: "URL browser uses to talk to backend. If empty, defaults to origin proxy.", impact: "HIGH" },
+    PORT: { details: "The primary port for the backend engine services.", impact: "HIGH" },
+    VITE_APP_TITLE: { details: "Display name in browser tab and splash screen.", impact: "LOW" },
+    VITE_POLLING_INTERVAL: { details: "Frequency of background dashboard synchronization (ms).", impact: "MEDIUM" },
+    VITE_ENABLE_ANALYTICS: { details: "Toggle anonymized UI usage telemetry.", impact: "LOW" },
+    VITE_MAX_GRID_ROWS: { details: "Pagination limit for high-density data grids.", impact: "MEDIUM" },
+    VITE_THEME_DEFAULT: { details: "Default visual profile for new operator sessions.", impact: "LOW" },
+    VITE_MAINTENANCE_MODE: { details: "Activate read-only mode for all operators.", impact: "HIGH" },
+    VITE_SUPPORT_URL: { details: "Link to the operational support portal.", impact: "LOW" },
+    VITE_AUTO_LOGOUT_IDLE: { details: "Seconds of inactivity before session termination.", impact: "MEDIUM" },
+    VITE_TOAST_DURATION: { details: "Visibility duration for UI notifications (ms).", impact: "LOW" },
+    VITE_ENABLE_WEBSOCKETS: { details: "Toggle real-time engine-to-ui updates.", impact: "HIGH" },
+    VITE_BACKEND_PORT: { details: "The port used by the UI proxy to reach the engine.", impact: "HIGH" }
   }
 
   const viewGroups = [
@@ -474,55 +470,55 @@ result_df = get_user_pool()`)
                      <div className="col-span-2">
                         <SettingField 
                             icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." 
-                            help={envHelp.api_endpoint} onHistory={() => setHistoryField('api_endpoint')}
-                            onEdit={(a: any) => toggleEdit('api_endpoint', a)} isEditable={editableFields['api_endpoint']}
-                            isModified={isDirty('api_endpoint')} 
-                            absPath={localEnv._metadata?.api_endpoint?.file}
-                            paramName={localEnv._metadata?.api_endpoint?.param}
+                            help={envHelp.API_ENDPOINT} onHistory={() => setHistoryField('API_ENDPOINT')}
+                            onEdit={(a: any) => toggleEdit('API_ENDPOINT', a)} isEditable={editableFields['API_ENDPOINT']}
+                            isModified={isDirty('API_ENDPOINT')} 
+                            absPath={localEnv._metadata?.API_ENDPOINT?.file}
+                            paramName={localEnv._metadata?.API_ENDPOINT?.param}
                         >
                             <input 
-                                disabled={!editableFields['api_endpoint']} value={localEnv.api_endpoint || ''} 
-                                onChange={e => setLocalEnv({...localEnv, api_endpoint: e.target.value})} 
+                                disabled={!editableFields['API_ENDPOINT']} value={localEnv.API_ENDPOINT || ''} 
+                                onChange={e => setLocalEnv({...localEnv, API_ENDPOINT: e.target.value})} 
                                 className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                             />
                         </SettingField>
                      </div>
                      <SettingField 
                         icon={Clock} label="Frontend Timeout (ms)" description="Global API request timeout threshold." 
-                        help={envHelp.ui_timeout} onEdit={(a: any) => toggleEdit('ui_timeout', a)} onHistory={() => setHistoryField('ui_timeout')}
-                        isEditable={editableFields['ui_timeout']} isModified={isDirty('ui_timeout')} 
-                        absPath={localEnv._metadata?.ui_timeout?.file}
-                        paramName={localEnv._metadata?.ui_timeout?.param}
+                        help={envHelp.VITE_UI_TIMEOUT} onEdit={(a: any) => toggleEdit('VITE_UI_TIMEOUT', a)} onHistory={() => setHistoryField('VITE_UI_TIMEOUT')}
+                        isEditable={editableFields['VITE_UI_TIMEOUT']} isModified={isDirty('VITE_UI_TIMEOUT')} 
+                        absPath={localEnv._metadata?.VITE_UI_TIMEOUT?.file}
+                        paramName={localEnv._metadata?.VITE_UI_TIMEOUT?.param}
                      >
                         <input 
-                          type="number" disabled={!editableFields['ui_timeout']} value={localEnv.ui_timeout || 30000} 
-                          onChange={e => setLocalEnv({...localEnv, ui_timeout: parseInt(e.target.value)})} 
+                          type="number" disabled={!editableFields['VITE_UI_TIMEOUT']} value={localEnv.VITE_UI_TIMEOUT || 30000} 
+                          onChange={e => setLocalEnv({...localEnv, VITE_UI_TIMEOUT: parseInt(e.target.value)})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                      </SettingField>
                      <SettingField 
                         icon={Server} label="UI Backend Gateway URL" description="The connection point for the frontend to reach backend." 
-                        help={{ details: "URL browser uses to talk to backend.", impact: "High" }} onEdit={(a: any) => toggleEdit('ui_backend_url', a)} onHistory={() => setHistoryField('ui_backend_url')}
-                        isEditable={editableFields['ui_backend_url']} isModified={isDirty('ui_backend_url')} 
-                        absPath={localEnv._metadata?.ui_backend_url?.file}
-                        paramName={localEnv._metadata?.ui_backend_url?.param}
+                        help={{ details: "URL browser uses to talk to backend.", impact: "High" }} onEdit={(a: any) => toggleEdit('VITE_API_BASE_URL', a)} onHistory={() => setHistoryField('VITE_API_BASE_URL')}
+                        isEditable={editableFields['VITE_API_BASE_URL']} isModified={isDirty('VITE_API_BASE_URL')} 
+                        absPath={localEnv._metadata?.VITE_API_BASE_URL?.file}
+                        paramName={localEnv._metadata?.VITE_API_BASE_URL?.param}
                      >
                         <input 
-                          disabled={!editableFields['ui_backend_url']} value={localEnv.ui_backend_url || ''} 
-                          onChange={e => setLocalEnv({...localEnv, ui_backend_url: e.target.value})} 
+                          disabled={!editableFields['VITE_API_BASE_URL']} value={localEnv.VITE_API_BASE_URL || ''} 
+                          onChange={e => setLocalEnv({...localEnv, VITE_API_BASE_URL: e.target.value})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                      </SettingField>
                      <SettingField 
                         icon={Cpu} label="Backend Port" description="The port the backend server listens on." 
-                        help={{ details: "Primary TCP port for backend services.", impact: "High" }} onEdit={(a: any) => toggleEdit('backend_port', a)} onHistory={() => setHistoryField('backend_port')}
-                        isEditable={editableFields['backend_port']} isModified={isDirty('backend_port')} 
-                        absPath={localEnv._metadata?.backend_port?.file}
-                        paramName={localEnv._metadata?.backend_port?.param}
+                        help={{ details: "Primary TCP port for backend services.", impact: "High" }} onEdit={(a: any) => toggleEdit('PORT', a)} onHistory={() => setHistoryField('PORT')}
+                        isEditable={editableFields['PORT']} isModified={isDirty('PORT')} 
+                        absPath={localEnv._metadata?.PORT?.file}
+                        paramName={localEnv._metadata?.PORT?.param}
                      >
                         <input 
-                          type="number" disabled={!editableFields['backend_port']} value={localEnv.backend_port || 8000} 
-                          onChange={e => setLocalEnv({...localEnv, backend_port: parseInt(e.target.value)})} 
+                          type="number" disabled={!editableFields['PORT']} value={localEnv.PORT || 8000} 
+                          onChange={e => setLocalEnv({...localEnv, PORT: parseInt(e.target.value)})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                      </SettingField>
@@ -535,41 +531,41 @@ result_df = get_user_pool()`)
                     <div className="col-span-2">
                       <SettingField 
                         icon={Database} label="Main Database Path" description="File path for the system store." 
-                        help={envHelp.db_path} onHistory={() => setHistoryField('db_path')}
-                        onEdit={(a: any) => toggleEdit('db_path', a)} isEditable={editableFields['db_path']} isModified={isDirty('db_path')} 
-                        absPath={localEnv._metadata?.db_path?.file}
-                        paramName={localEnv._metadata?.db_path?.param}
+                        help={envHelp.DATABASE_URL} onHistory={() => setHistoryField('DATABASE_URL')}
+                        onEdit={(a: any) => toggleEdit('DATABASE_URL', a)} isEditable={editableFields['DATABASE_URL']} isModified={isDirty('DATABASE_URL')} 
+                        absPath={localEnv._metadata?.DATABASE_URL?.file}
+                        paramName={localEnv._metadata?.DATABASE_URL?.param}
                       >
                         <input 
-                          disabled={!editableFields['db_path']} value={localEnv.db_path || ''} 
-                          onChange={e => setLocalEnv({...localEnv, db_path: e.target.value})} 
+                          disabled={!editableFields['DATABASE_URL']} value={localEnv.DATABASE_URL || ''} 
+                          onChange={e => setLocalEnv({...localEnv, DATABASE_URL: e.target.value})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                       </SettingField>
                     </div>
                     <SettingField 
                       icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data." 
-                      help={envHelp.storage_root} onEdit={(a: any) => toggleEdit('storage_root', a)} onHistory={() => setHistoryField('storage_root')}
-                      isEditable={editableFields['storage_root']} isModified={isDirty('storage_root')} 
-                      absPath={localEnv._metadata?.storage_root?.file}
-                      paramName={localEnv._metadata?.storage_root?.param}
+                      help={envHelp.STORAGE_ROOT} onEdit={(a: any) => toggleEdit('STORAGE_ROOT', a)} onHistory={() => setHistoryField('STORAGE_ROOT')}
+                      isEditable={editableFields['STORAGE_ROOT']} isModified={isDirty('STORAGE_ROOT')} 
+                      absPath={localEnv._metadata?.STORAGE_ROOT?.file}
+                      paramName={localEnv._metadata?.STORAGE_ROOT?.param}
                     >
                        <input 
-                         disabled={!editableFields['storage_root']} value={localEnv.storage_root || ''} 
-                         onChange={e => setLocalEnv({...localEnv, storage_root: e.target.value})} 
+                         disabled={!editableFields['STORAGE_ROOT']} value={localEnv.STORAGE_ROOT || ''} 
+                         onChange={e => setLocalEnv({...localEnv, STORAGE_ROOT: e.target.value})} 
                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                        />
                     </SettingField>
                     <SettingField 
                       icon={HardDrive} label="Image Capture Path" description="Storage location for milestones." 
-                      help={envHelp.image_path} onEdit={(a: any) => toggleEdit('image_path', a)} onHistory={() => setHistoryField('image_path')}
-                      isEditable={editableFields['image_path']} isModified={isDirty('image_path')} 
-                      absPath={localEnv._metadata?.image_path?.file}
-                      paramName={localEnv._metadata?.image_path?.param}
+                      help={envHelp.IMAGE_PATH} onEdit={(a: any) => toggleEdit('IMAGE_PATH', a)} onHistory={() => setHistoryField('IMAGE_PATH')}
+                      isEditable={editableFields['IMAGE_PATH']} isModified={isDirty('IMAGE_PATH')} 
+                      absPath={localEnv._metadata?.IMAGE_PATH?.file}
+                      paramName={localEnv._metadata?.IMAGE_PATH?.param}
                     >
                        <input 
-                         disabled={!editableFields['image_path']} value={localEnv.image_path || ''} 
-                         onChange={e => setLocalEnv({...localEnv, image_path: e.target.value})} 
+                         disabled={!editableFields['IMAGE_PATH']} value={localEnv.IMAGE_PATH || ''} 
+                         onChange={e => setLocalEnv({...localEnv, IMAGE_PATH: e.target.value})} 
                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                        />
                     </SettingField>
@@ -581,45 +577,45 @@ result_df = get_user_pool()`)
                   <div className="grid grid-cols-2 gap-4">
                     <SettingField 
                       icon={Zap} label="Hot Reload Engine" description="Toggle instant restart on .env changes." 
-                      help={envHelp.hot_reload_enabled} onEdit={(a: any) => toggleEdit('hot_reload_enabled', a)} onHistory={() => setHistoryField('hot_reload_enabled')}
-                      isEditable={editableFields['hot_reload_enabled']} isModified={isDirty('hot_reload_enabled')} 
-                      absPath={localEnv._metadata?.hot_reload_enabled?.file}
-                      paramName={localEnv._metadata?.hot_reload_enabled?.param}
+                      help={envHelp.HOT_RELOAD_ENABLED} onEdit={(a: any) => toggleEdit('HOT_RELOAD_ENABLED', a)} onHistory={() => setHistoryField('HOT_RELOAD_ENABLED')}
+                      isEditable={editableFields['HOT_RELOAD_ENABLED']} isModified={isDirty('HOT_RELOAD_ENABLED')} 
+                      absPath={localEnv._metadata?.HOT_RELOAD_ENABLED?.file}
+                      paramName={localEnv._metadata?.HOT_RELOAD_ENABLED?.param}
                     >
                         <div className="flex items-center gap-4 py-1">
                             <ToggleSwitch 
-                                checked={!!localEnv.hot_reload_enabled} disabled={!editableFields['hot_reload_enabled']}
-                                onChange={(e: any) => setLocalEnv({...localEnv, hot_reload_enabled: e.target.checked})}
+                                checked={!!localEnv.HOT_RELOAD_ENABLED} disabled={!editableFields['HOT_RELOAD_ENABLED']}
+                                onChange={(e: any) => setLocalEnv({...localEnv, HOT_RELOAD_ENABLED: e.target.checked})}
                                 activeColor="bg-emerald-600"
                             />
-                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.hot_reload_enabled ? 'Active' : 'Disabled'}</span>
+                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.HOT_RELOAD_ENABLED ? 'Active' : 'Disabled'}</span>
                         </div>
                     </SettingField>
                     <SettingField 
                       icon={Activity} label="UI Debug Logging" description="Toggle verbose console diagnostics." 
-                      help={envHelp.ui_debug_logging} onEdit={(a: any) => toggleEdit('ui_debug_logging', a)} onHistory={() => setHistoryField('ui_debug_logging')}
-                      isEditable={editableFields['ui_debug_logging']} isModified={isDirty('ui_debug_logging')} 
-                      absPath={localEnv._metadata?.ui_debug_logging?.file}
-                      paramName={localEnv._metadata?.ui_debug_logging?.param}
+                      help={envHelp.VITE_UI_DEBUG_LOGGING} onEdit={(a: any) => toggleEdit('VITE_UI_DEBUG_LOGGING', a)} onHistory={() => setHistoryField('VITE_UI_DEBUG_LOGGING')}
+                      isEditable={editableFields['VITE_UI_DEBUG_LOGGING']} isModified={isDirty('VITE_UI_DEBUG_LOGGING')} 
+                      absPath={localEnv._metadata?.VITE_UI_DEBUG_LOGGING?.file}
+                      paramName={localEnv._metadata?.VITE_UI_DEBUG_LOGGING?.param}
                     >
                         <div className="flex items-center gap-4 py-1">
                             <ToggleSwitch 
-                                checked={!!localEnv.ui_debug_logging} disabled={!editableFields['ui_debug_logging']}
-                                onChange={(e: any) => setLocalEnv({...localEnv, ui_debug_logging: e.target.checked})}
+                                checked={!!localEnv.VITE_UI_DEBUG_LOGGING} disabled={!editableFields['VITE_UI_DEBUG_LOGGING']}
+                                onChange={(e: any) => setLocalEnv({...localEnv, VITE_UI_DEBUG_LOGGING: e.target.checked})}
                             />
-                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.ui_debug_logging ? 'Enabled' : 'Disabled'}</span>
+                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.VITE_UI_DEBUG_LOGGING ? 'Enabled' : 'Disabled'}</span>
                         </div>
                     </SettingField>
                     <SettingField 
                       icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." 
-                      help={envHelp.log_level} onEdit={(a: any) => toggleEdit('log_level', a)} onHistory={() => setHistoryField('log_level')}
-                      isEditable={editableFields['log_level']} isModified={isDirty('log_level')} 
-                      absPath={localEnv._metadata?.log_level?.file}
-                      paramName={localEnv._metadata?.log_level?.param}
+                      help={envHelp.LOG_LEVEL} onEdit={(a: any) => toggleEdit('LOG_LEVEL', a)} onHistory={() => setHistoryField('LOG_LEVEL')}
+                      isEditable={editableFields['LOG_LEVEL']} isModified={isDirty('LOG_LEVEL')} 
+                      absPath={localEnv._metadata?.LOG_LEVEL?.file}
+                      paramName={localEnv._metadata?.LOG_LEVEL?.param}
                     >
                         <select 
-                          disabled={!editableFields['log_level']} value={localEnv.log_level || 'INFO'} 
-                          onChange={e => setLocalEnv({...localEnv, log_level: e.target.value})} 
+                          disabled={!editableFields['LOG_LEVEL']} value={localEnv.LOG_LEVEL || 'INFO'} 
+                          onChange={e => setLocalEnv({...localEnv, LOG_LEVEL: e.target.value})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase disabled:opacity-50"
                         >
                             <option value="DEBUG">DEBUG (Max Verbosity)</option>
@@ -630,14 +626,14 @@ result_df = get_user_pool()`)
                     </SettingField>
                     <SettingField 
                       icon={Cpu} label="System VENV Path" description="Python virtual environment for engine execution." 
-                      help={{ details: "The path to the python virtual environment used by the backend.", impact: "Medium" }} onEdit={(a: any) => toggleEdit('venv_path', a)} onHistory={() => setHistoryField('venv_path')}
-                      isEditable={editableFields['venv_path']} isModified={isDirty('venv_path')} 
-                      absPath={localEnv._metadata?.venv_path?.file}
-                      paramName={localEnv._metadata?.venv_path?.param}
+                      help={{ details: "The path to the python virtual environment used by the backend.", impact: "Medium" }} onEdit={(a: any) => toggleEdit('VENV_PATH', a)} onHistory={() => setHistoryField('VENV_PATH')}
+                      isEditable={editableFields['VENV_PATH']} isModified={isDirty('VENV_PATH')} 
+                      absPath={localEnv._metadata?.VENV_PATH?.file}
+                      paramName={localEnv._metadata?.VENV_PATH?.param}
                     >
                         <input 
-                          disabled={!editableFields['venv_path']} value={localEnv.venv_path || ''} 
-                          onChange={e => setLocalEnv({...localEnv, venv_path: e.target.value})} 
+                          disabled={!editableFields['VENV_PATH']} value={localEnv.VENV_PATH || ''} 
+                          onChange={e => setLocalEnv({...localEnv, VENV_PATH: e.target.value})} 
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                     </SettingField>
@@ -657,62 +653,62 @@ result_df = get_user_pool()`)
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black uppercase text-amber-500 tracking-[0.4em] mb-4 border-l-2 border-amber-500 pl-4">Backend Operations</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Shield} label="Audit Logs" description="Toggle action tracing." help={envHelp.enable_audit_logs} onEdit={(a: any) => toggleEdit('enable_audit_logs', a)} isEditable={editableFields['enable_audit_logs']} isModified={isDirty('enable_audit_logs')} absPath={localEnv._metadata?.enable_audit_logs?.file} paramName={localEnv._metadata?.enable_audit_logs?.param}>
-                            <ToggleSwitch checked={!!localEnv.enable_audit_logs} disabled={!editableFields['enable_audit_logs']} onChange={(e: any) => setLocalEnv({...localEnv, enable_audit_logs: e.target.checked})} />
+                        <SettingField icon={Shield} label="Audit Logs" description="Toggle action tracing." help={envHelp.ENABLE_AUDIT_LOGS} onEdit={(a: any) => toggleEdit('ENABLE_AUDIT_LOGS', a)} isEditable={editableFields['ENABLE_AUDIT_LOGS']} isModified={isDirty('ENABLE_AUDIT_LOGS')} absPath={localEnv._metadata?.ENABLE_AUDIT_LOGS?.file} paramName={localEnv._metadata?.ENABLE_AUDIT_LOGS?.param}>
+                            <ToggleSwitch checked={!!localEnv.ENABLE_AUDIT_LOGS} disabled={!editableFields['ENABLE_AUDIT_LOGS']} onChange={(e: any) => setLocalEnv({...localEnv, ENABLE_AUDIT_LOGS: e.target.checked})} />
                         </SettingField>
-                        <SettingField icon={Cpu} label="Workers" description="Processing threads." help={envHelp.worker_count} onEdit={(a: any) => toggleEdit('worker_count', a)} isEditable={editableFields['worker_count']} isModified={isDirty('worker_count')} absPath={localEnv._metadata?.worker_count?.file} paramName={localEnv._metadata?.worker_count?.param}>
-                            <input type="number" disabled={!editableFields['worker_count']} value={localEnv.worker_count || 4} onChange={e => setLocalEnv({...localEnv, worker_count: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Cpu} label="Workers" description="Processing threads." help={envHelp.WORKER_COUNT} onEdit={(a: any) => toggleEdit('WORKER_COUNT', a)} isEditable={editableFields['WORKER_COUNT']} isModified={isDirty('WORKER_COUNT')} absPath={localEnv._metadata?.WORKER_COUNT?.file} paramName={localEnv._metadata?.WORKER_COUNT?.param}>
+                            <input type="number" disabled={!editableFields['WORKER_COUNT']} value={localEnv.WORKER_COUNT || 4} onChange={e => setLocalEnv({...localEnv, WORKER_COUNT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
                     </div>
-                    <SettingField icon={HardDrive} label="Max Upload Size" description="Import limit in Megabytes." help={envHelp.max_upload_size} onEdit={(a: any) => toggleEdit('max_upload_size', a)} isEditable={editableFields['max_upload_size']} isModified={isDirty('max_upload_size')} absPath={localEnv._metadata?.max_upload_size?.file} paramName={localEnv._metadata?.max_upload_size?.param}>
+                    <SettingField icon={HardDrive} label="Max Upload Size" description="Import limit in Megabytes." help={envHelp.MAX_UPLOAD_SIZE} onEdit={(a: any) => toggleEdit('MAX_UPLOAD_SIZE', a)} isEditable={editableFields['MAX_UPLOAD_SIZE']} isModified={isDirty('MAX_UPLOAD_SIZE')} absPath={localEnv._metadata?.MAX_UPLOAD_SIZE?.file} paramName={localEnv._metadata?.MAX_UPLOAD_SIZE?.param}>
                         <div className="flex items-center gap-3">
-                            <input type="number" disabled={!editableFields['max_upload_size']} value={localEnv.max_upload_size || 50} onChange={e => setLocalEnv({...localEnv, max_upload_size: parseInt(e.target.value)})} className="flex-1 bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                            <input type="number" disabled={!editableFields['MAX_UPLOAD_SIZE']} value={localEnv.MAX_UPLOAD_SIZE || 50} onChange={e => setLocalEnv({...localEnv, MAX_UPLOAD_SIZE: parseInt(e.target.value)})} className="flex-1 bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                             <span className="text-[10px] font-black text-slate-500">MB</span>
                         </div>
                     </SettingField>
-                    <SettingField icon={Lock} label="Token Algorithm" description="JWT signing method." help={envHelp.token_algorithm} onEdit={(a: any) => toggleEdit('token_algorithm', a)} isEditable={editableFields['token_algorithm']} isModified={isDirty('token_algorithm')} absPath={localEnv._metadata?.token_algorithm?.file} paramName={localEnv._metadata?.token_algorithm?.param}>
-                        <input disabled={!editableFields['token_algorithm']} value={localEnv.token_algorithm || 'HS256'} onChange={e => setLocalEnv({...localEnv, token_algorithm: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                    <SettingField icon={Lock} label="Token Algorithm" description="JWT signing method." help={envHelp.TOKEN_ALGORITHM} onEdit={(a: any) => toggleEdit('TOKEN_ALGORITHM', a)} isEditable={editableFields['TOKEN_ALGORITHM']} isModified={isDirty('TOKEN_ALGORITHM')} absPath={localEnv._metadata?.TOKEN_ALGORITHM?.file} paramName={localEnv._metadata?.TOKEN_ALGORITHM?.param}>
+                        <input disabled={!editableFields['TOKEN_ALGORITHM']} value={localEnv.TOKEN_ALGORITHM || 'HS256'} onChange={e => setLocalEnv({...localEnv, TOKEN_ALGORITHM: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                     </SettingField>
                     <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Server} label="SMTP Host" help={envHelp.smtp_host} onEdit={(a: any) => toggleEdit('smtp_host', a)} isEditable={editableFields['smtp_host']} isModified={isDirty('smtp_host')} absPath={localEnv._metadata?.smtp_host?.file} paramName={localEnv._metadata?.smtp_host?.param}>
-                            <input disabled={!editableFields['smtp_host']} value={localEnv.smtp_host || 'localhost'} onChange={e => setLocalEnv({...localEnv, smtp_host: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Server} label="SMTP Host" help={envHelp.SMTP_HOST} onEdit={(a: any) => toggleEdit('SMTP_HOST', a)} isEditable={editableFields['SMTP_HOST']} isModified={isDirty('SMTP_HOST')} absPath={localEnv._metadata?.SMTP_HOST?.file} paramName={localEnv._metadata?.SMTP_HOST?.param}>
+                            <input disabled={!editableFields['SMTP_HOST']} value={localEnv.SMTP_HOST || 'localhost'} onChange={e => setLocalEnv({...localEnv, SMTP_HOST: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
-                        <SettingField icon={Activity} label="SMTP Port" help={envHelp.smtp_port} onEdit={(a: any) => toggleEdit('smtp_port', a)} isEditable={editableFields['smtp_port']} isModified={isDirty('smtp_port')} absPath={localEnv._metadata?.smtp_port?.file} paramName={localEnv._metadata?.smtp_port?.param}>
-                            <input type="number" disabled={!editableFields['smtp_port']} value={localEnv.smtp_port || 1025} onChange={e => setLocalEnv({...localEnv, smtp_port: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Activity} label="SMTP Port" help={envHelp.SMTP_PORT} onEdit={(a: any) => toggleEdit('SMTP_PORT', a)} isEditable={editableFields['SMTP_PORT']} isModified={isDirty('SMTP_PORT')} absPath={localEnv._metadata?.SMTP_PORT?.file} paramName={localEnv._metadata?.SMTP_PORT?.param}>
+                            <input type="number" disabled={!editableFields['SMTP_PORT']} value={localEnv.SMTP_PORT || 1025} onChange={e => setLocalEnv({...localEnv, SMTP_PORT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
                     </div>
                   </div>
 
                   <div className="space-y-6">
                     <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.4em] mb-4 border-l-2 border-indigo-500 pl-4">Frontend Orchestration</h3>
-                    <SettingField icon={Layout} label="Application Title" description="Browser tab and splash name." help={envHelp.app_title} onEdit={(a: any) => toggleEdit('app_title', a)} isEditable={editableFields['app_title']} isModified={isDirty('app_title')} absPath={localEnv._metadata?.app_title?.file} paramName={localEnv._metadata?.app_title?.param}>
-                        <input disabled={!editableFields['app_title']} value={localEnv.app_title || 'SYSGRID Tactical'} onChange={e => setLocalEnv({...localEnv, app_title: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] outline-none" />
+                    <SettingField icon={Layout} label="Application Title" description="Browser tab and splash name." help={envHelp.VITE_APP_TITLE} onEdit={(a: any) => toggleEdit('VITE_APP_TITLE', a)} isEditable={editableFields['VITE_APP_TITLE']} isModified={isDirty('VITE_APP_TITLE')} absPath={localEnv._metadata?.VITE_APP_TITLE?.file} paramName={localEnv._metadata?.VITE_APP_TITLE?.param}>
+                        <input disabled={!editableFields['VITE_APP_TITLE']} value={localEnv.VITE_APP_TITLE || 'SYSGRID Tactical'} onChange={e => setLocalEnv({...localEnv, VITE_APP_TITLE: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] outline-none" />
                     </SettingField>
-                    <SettingField icon={Link} label="Support URL" description="Operational support portal link." help={envHelp.support_url} onEdit={(a: any) => toggleEdit('support_url', a)} isEditable={editableFields['support_url']} isModified={isDirty('support_url')} absPath={localEnv._metadata?.support_url?.file} paramName={localEnv._metadata?.support_url?.param}>
-                        <input disabled={!editableFields['support_url']} value={localEnv.support_url || ''} onChange={e => setLocalEnv({...localEnv, support_url: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-blue-400 outline-none" />
+                    <SettingField icon={Link} label="Support URL" description="Operational support portal link." help={envHelp.VITE_SUPPORT_URL} onEdit={(a: any) => toggleEdit('VITE_SUPPORT_URL', a)} isEditable={editableFields['VITE_SUPPORT_URL']} isModified={isDirty('VITE_SUPPORT_URL')} absPath={localEnv._metadata?.VITE_SUPPORT_URL?.file} paramName={localEnv._metadata?.VITE_SUPPORT_URL?.param}>
+                        <input disabled={!editableFields['VITE_SUPPORT_URL']} value={localEnv.VITE_SUPPORT_URL || ''} onChange={e => setLocalEnv({...localEnv, VITE_SUPPORT_URL: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-blue-400 outline-none" />
                     </SettingField>
                     <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={RefreshCcw} label="Poll Interval" description="Sync frequency (ms)." help={envHelp.polling_interval} onEdit={(a: any) => toggleEdit('polling_interval', a)} isEditable={editableFields['polling_interval']} isModified={isDirty('polling_interval')} absPath={localEnv._metadata?.polling_interval?.file} paramName={localEnv._metadata?.polling_interval?.param}>
-                            <input type="number" disabled={!editableFields['polling_interval']} value={localEnv.polling_interval || 5000} onChange={e => setLocalEnv({...localEnv, polling_interval: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={RefreshCcw} label="Poll Interval" description="Sync frequency (ms)." help={envHelp.VITE_POLLING_INTERVAL} onEdit={(a: any) => toggleEdit('VITE_POLLING_INTERVAL', a)} isEditable={editableFields['VITE_POLLING_INTERVAL']} isModified={isDirty('VITE_POLLING_INTERVAL')} absPath={localEnv._metadata?.VITE_POLLING_INTERVAL?.file} paramName={localEnv._metadata?.VITE_POLLING_INTERVAL?.param}>
+                            <input type="number" disabled={!editableFields['VITE_POLLING_INTERVAL']} value={localEnv.VITE_POLLING_INTERVAL || 5000} onChange={e => setLocalEnv({...localEnv, VITE_POLLING_INTERVAL: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
-                        <SettingField icon={Cpu} label="Vite Proxy Port" description="Target engine port." help={envHelp.frontend_backend_port} onEdit={(a: any) => toggleEdit('frontend_backend_port', a)} isEditable={editableFields['frontend_backend_port']} isModified={isDirty('frontend_backend_port')} absPath={localEnv._metadata?.frontend_backend_port?.file} paramName={localEnv._metadata?.frontend_backend_port?.param}>
-                            <input type="number" disabled={!editableFields['frontend_backend_port']} value={localEnv.frontend_backend_port || 8000} onChange={e => setLocalEnv({...localEnv, frontend_backend_port: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Cpu} label="Vite Proxy Port" description="Target engine port." help={envHelp.VITE_BACKEND_PORT} onEdit={(a: any) => toggleEdit('VITE_BACKEND_PORT', a)} isEditable={editableFields['VITE_BACKEND_PORT']} isModified={isDirty('VITE_BACKEND_PORT')} absPath={localEnv._metadata?.VITE_BACKEND_PORT?.file} paramName={localEnv._metadata?.VITE_BACKEND_PORT?.param}>
+                            <input type="number" disabled={!editableFields['VITE_BACKEND_PORT']} value={localEnv.VITE_BACKEND_PORT || 8000} onChange={e => setLocalEnv({...localEnv, VITE_BACKEND_PORT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Zap} label="Websockets" description="Real-time updates." help={envHelp.enable_websockets} onEdit={(a: any) => toggleEdit('enable_websockets', a)} isEditable={editableFields['enable_websockets']} isModified={isDirty('enable_websockets')} absPath={localEnv._metadata?.enable_websockets?.file} paramName={localEnv._metadata?.enable_websockets?.param}>
-                            <ToggleSwitch checked={!!localEnv.enable_websockets} disabled={!editableFields['enable_websockets']} onChange={(e: any) => setLocalEnv({...localEnv, enable_websockets: e.target.checked})} />
+                        <SettingField icon={Zap} label="Websockets" description="Real-time updates." help={envHelp.VITE_ENABLE_WEBSOCKETS} onEdit={(a: any) => toggleEdit('VITE_ENABLE_WEBSOCKETS', a)} isEditable={editableFields['VITE_ENABLE_WEBSOCKETS']} isModified={isDirty('VITE_ENABLE_WEBSOCKETS')} absPath={localEnv._metadata?.VITE_ENABLE_WEBSOCKETS?.file} paramName={localEnv._metadata?.VITE_ENABLE_WEBSOCKETS?.param}>
+                            <ToggleSwitch checked={!!localEnv.VITE_ENABLE_WEBSOCKETS} disabled={!editableFields['VITE_ENABLE_WEBSOCKETS']} onChange={(e: any) => setLocalEnv({...localEnv, VITE_ENABLE_WEBSOCKETS: e.target.checked})} />
                         </SettingField>
-                        <SettingField icon={ShieldAlert} label="Maintenance" description="Read-only mode." help={envHelp.maintenance_mode} onEdit={(a: any) => toggleEdit('maintenance_mode', a)} isEditable={editableFields['maintenance_mode']} isModified={isDirty('maintenance_mode')} absPath={localEnv._metadata?.maintenance_mode?.file} paramName={localEnv._metadata?.maintenance_mode?.param}>
-                            <ToggleSwitch checked={!!localEnv.maintenance_mode} disabled={!editableFields['maintenance_mode']} onChange={(e: any) => setLocalEnv({...localEnv, maintenance_mode: e.target.checked})} activeColor="bg-rose-600" />
+                        <SettingField icon={ShieldAlert} label="Maintenance" description="Read-only mode." help={envHelp.VITE_MAINTENANCE_MODE} onEdit={(a: any) => toggleEdit('VITE_MAINTENANCE_MODE', a)} isEditable={editableFields['VITE_MAINTENANCE_MODE']} isModified={isDirty('VITE_MAINTENANCE_MODE')} absPath={localEnv._metadata?.VITE_MAINTENANCE_MODE?.file} paramName={localEnv._metadata?.VITE_MAINTENANCE_MODE?.param}>
+                            <ToggleSwitch checked={!!localEnv.VITE_MAINTENANCE_MODE} disabled={!editableFields['VITE_MAINTENANCE_MODE']} onChange={(e: any) => setLocalEnv({...localEnv, VITE_MAINTENANCE_MODE: e.target.checked})} activeColor="bg-rose-600" />
                         </SettingField>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Clock} label="Idle Timeout" description="Seconds to logout." help={envHelp.auto_logout_idle} onEdit={(a: any) => toggleEdit('auto_logout_idle', a)} isEditable={editableFields['auto_logout_idle']} isModified={isDirty('auto_logout_idle')} absPath={localEnv._metadata?.auto_logout_idle?.file} paramName={localEnv._metadata?.auto_logout_idle?.param}>
-                            <input type="number" disabled={!editableFields['auto_logout_idle']} value={localEnv.auto_logout_idle || 3600} onChange={e => setLocalEnv({...localEnv, auto_logout_idle: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Clock} label="Idle Timeout" description="Seconds to logout." help={envHelp.VITE_AUTO_LOGOUT_IDLE} onEdit={(a: any) => toggleEdit('VITE_AUTO_LOGOUT_IDLE', a)} isEditable={editableFields['VITE_AUTO_LOGOUT_IDLE']} isModified={isDirty('VITE_AUTO_LOGOUT_IDLE')} absPath={localEnv._metadata?.VITE_AUTO_LOGOUT_IDLE?.file} paramName={localEnv._metadata?.VITE_AUTO_LOGOUT_IDLE?.param}>
+                            <input type="number" disabled={!editableFields['VITE_AUTO_LOGOUT_IDLE']} value={localEnv.VITE_AUTO_LOGOUT_IDLE || 3600} onChange={e => setLocalEnv({...localEnv, VITE_AUTO_LOGOUT_IDLE: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
-                        <SettingField icon={Bell} label="Toast Duration" description="Notice timing (ms)." help={envHelp.toast_duration} onEdit={(a: any) => toggleEdit('toast_duration', a)} isEditable={editableFields['toast_duration']} isModified={isDirty('toast_duration')} absPath={localEnv._metadata?.toast_duration?.file} paramName={localEnv._metadata?.toast_duration?.param}>
-                            <input type="number" disabled={!editableFields['toast_duration']} value={localEnv.toast_duration || 3000} onChange={e => setLocalEnv({...localEnv, toast_duration: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        <SettingField icon={Bell} label="Toast Duration" description="Notice timing (ms)." help={envHelp.VITE_TOAST_DURATION} onEdit={(a: any) => toggleEdit('VITE_TOAST_DURATION', a)} isEditable={editableFields['VITE_TOAST_DURATION']} isModified={isDirty('VITE_TOAST_DURATION')} absPath={localEnv._metadata?.VITE_TOAST_DURATION?.file} paramName={localEnv._metadata?.VITE_TOAST_DURATION?.param}>
+                            <input type="number" disabled={!editableFields['VITE_TOAST_DURATION']} value={localEnv.VITE_TOAST_DURATION || 3000} onChange={e => setLocalEnv({...localEnv, VITE_TOAST_DURATION: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
                         </SettingField>
                     </div>
                   </div>

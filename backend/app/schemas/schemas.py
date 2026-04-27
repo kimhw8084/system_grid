@@ -395,3 +395,21 @@ class ProjectBase(BaseModel):
 class ProjectCreate(ProjectBase): pass
 class ProjectResponse(ProjectBase, BaseSchema):
     is_deleted: bool = False
+
+class GlobalSettingBase(BaseModel):
+    key: str
+    value: str
+    category: Optional[str] = "General"
+    description: Optional[str] = None
+    is_public: Optional[bool] = False
+
+class GlobalSettingCreate(GlobalSettingBase): pass
+class GlobalSettingResponse(GlobalSettingBase, BaseSchema): pass
+
+class UserPreferenceBase(BaseModel):
+    key: str
+    value: str
+
+class UserPreferenceCreate(UserPreferenceBase): pass
+class UserPreferenceResponse(UserPreferenceBase, BaseSchema):
+    user_id: str

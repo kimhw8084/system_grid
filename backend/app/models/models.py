@@ -807,3 +807,17 @@ class Operator(Base, BaseMixin):
     
     role = relationship("Role", back_populates="operators")
 
+class GlobalSetting(Base, BaseMixin):
+    __tablename__ = "global_settings"
+    key = Column(String, unique=True, index=True)
+    value = Column(Text)
+    category = Column(String, index=True, default="General") # UI, Network, Auth, etc.
+    description = Column(Text)
+    is_public = Column(Boolean, default=False) # If True, visible to unauthenticated users via /bootstrap
+
+class UserPreference(Base, BaseMixin):
+    __tablename__ = "user_preferences"
+    user_id = Column(String, index=True)
+    key = Column(String, index=True)
+    value = Column(Text)
+

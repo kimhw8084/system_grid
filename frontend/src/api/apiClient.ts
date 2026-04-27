@@ -1,8 +1,24 @@
 import { errorManager } from '../stores/errorStore';
 
-const getBaseUrl = () => localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || import.meta.env.VITE_API_BASE_URL || '';
+const getBaseUrl = () => 
+  localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || 
+  localStorage.getItem('SYSGRID_CONFIG_VITE_API_BASE_URL') ||
+  import.meta.env.VITE_API_BASE_URL || 
+  '';
 
 let API_BASE_URL = getBaseUrl();
+
+export function getConfig(key: string, defaultValue: string = ''): string {
+  // Ensure the key has VITE_ prefix if not provided
+  const viteKey = key.startsWith('VITE_') ? key : `VITE_${key}`;
+  
+  // Check bootstrap config from localStorage
+  const bootstrapVal = localStorage.getItem(`SYSGRID_CONFIG_${viteKey}`);
+  if (bootstrapVal !== null) return bootstrapVal;
+
+  // Fallback to build-time env
+  return (import.meta.env as any)[viteKey] || defaultValue;
+}
 
 export function setApiOverride(url: string | null) {
   if (url) {
