@@ -19,7 +19,24 @@ const Bootstrap = () => {
 
     const fetchConfig = async () => {
       try {
-        const response = await apiFetch('/api/v1/settings/bootstrap');
+        let response;
+        try {
+          response = await apiFetch('/api/v1/settings/bootstrap');
+        } catch (initialErr) {
+          console.warn("BOOTSTRAP: Initial fetch failed, clearing poisoned local configs and retrying relative...", initialErr);
+          // Clear any potentially poisoned configs
+          Object.keys(localStorage).forEach(k => {
+            if (k.startsWith('SYSGRID_CONFIG_') || k === 'SYSGRID_OVERRIDE_API_URL') {
+              localStorage.removeItem(k);
+            }
+          });
+          // Retry using a pure relative path, bypassing apiClient baseUrl injection
+          response = await fetch('/api/v1/settings/bootstrap');
+          if (!response.ok) {
+            throw new Error(`API Error ${response.status}: ${response.statusText}`);
+          }
+        }
+        
         const config = await response.json();
         let changed = false;
         Object.entries(config).forEach(([key, value]) => {
