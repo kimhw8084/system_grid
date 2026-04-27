@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
-import { apiFetch } from "../api/apiClient"
+import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 
 const SettingField = ({ label, description, children, icon: Icon, help, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
   const [showHelp, setShowHelp] = useState(false);
@@ -147,6 +147,8 @@ export default function SettingsPage() {
   const [viewVersionData, setViewVersionData] = useState<any>(null)
   const [viewVersionScript, setViewVersionScript] = useState<string | null>(null)
   const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
+  const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
+  const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
   const queryClient = useQueryClient()
   
   const toggleEdit = (field: string, action?: 'save') => {
@@ -193,20 +195,43 @@ export default function SettingsPage() {
     toast.success(`Theme switched to ${themeId === 'dark' ? 'Dark Mode' : 'Light Mode'}`)
   }
 
-  const { data: envSettings, isLoading: isEnvLoading } = useQuery({
+  const { data: envSettings, isLoading: isEnvLoading, isError: isEnvError } = useQuery({
     queryKey: ['env-settings'],
     queryFn: async () => {
       const res = await apiFetch("/api/v1/settings/env")
-      return res.json()
-    }
+      const data = await res.json()
+      // Persist successful fetch to local storage as fallback
+      localStorage.setItem('SYSGRID_LAST_KNOWN_ENV', JSON.stringify(data))
+      return data
+    },
+    retry: 1
   })
 
-  const [localEnv, setLocalEnv] = useState<any>({})
+  const [localEnv, setLocalEnv] = useState<any>(() => {
+    const fallback = localStorage.getItem('SYSGRID_LAST_KNOWN_ENV')
+    return fallback ? JSON.parse(fallback) : {}
+  })
+
+  const isDisconnected = isEnvError && !isEnvLoading;
+
+  const handleApplyOverride = () => {
+    setApiOverride(emergencyUrl);
+    queryClient.invalidateQueries();
+    toast.success("API Override applied. Attempting reconnection...");
+  }
+
+  const handleClearOverride = () => {
+    setApiOverride(null);
+    setEmergencyUrl(getApiBaseUrl());
+    queryClient.invalidateQueries();
+    toast.success("API Override cleared. Resetting to defaults.");
+  }
 
   const isDirty = (field?: string) => {
-      if (!envSettings) return false;
-      if (field) return JSON.stringify(localEnv[field]) !== JSON.stringify(envSettings[field]);
-      return Object.keys(localEnv).some(k => k !== '_abs_paths' && JSON.stringify(localEnv[k]) !== JSON.stringify(envSettings[k]));
+      // If disconnected, compare against the cached fallback we loaded into localEnv initially
+      const base = envSettings || JSON.parse(localStorage.getItem('SYSGRID_LAST_KNOWN_ENV') || '{}');
+      if (field) return JSON.stringify(localEnv[field]) !== JSON.stringify(base[field]);
+      return Object.keys(localEnv).some(k => k !== '_abs_paths' && k !== '_metadata' && k !== '_raw_env' && JSON.stringify(localEnv[k]) !== JSON.stringify(base[k]));
   }
 
   const [userPoolScript, setUserPoolScript] = useState(`import pandas as pd
@@ -243,7 +268,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: (data, variables) => {
       if (variables.ui_backend_url) {
-        localStorage.setItem('SYSGRID_OVERRIDE_API_URL', variables.ui_backend_url);
+        setApiOverride(variables.ui_backend_url);
         toast.success("UI Gateway updated & persisted locally");
       }
       queryClient.invalidateQueries({ queryKey: ['env-settings'] })
@@ -352,6 +377,58 @@ result_df = get_user_pool()`)
 
   return (
     <div className="h-full flex flex-col space-y-6 max-w-7xl mx-auto px-4 overflow-hidden relative">
+      <AnimatePresence>
+        {isDisconnected && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="shrink-0 bg-rose-600/10 border border-rose-500/30 rounded-2xl p-4 flex flex-col gap-3 backdrop-blur-md"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-rose-600 text-white rounded-xl animate-pulse"><ShieldAlert size={18} /></div>
+                <div>
+                  <h3 className="text-[11px] font-black uppercase text-rose-500 tracking-widest leading-none">Connectivity Failure</h3>
+                  <p className="text-[9px] font-bold text-rose-400/70 uppercase mt-1 tracking-tighter">Backend engine unreachable via {getApiBaseUrl() || 'Relative Proxy'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowEmergencyPanel(!showEmergencyPanel)}
+                className="px-4 py-2 bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20"
+              >
+                {showEmergencyPanel ? 'Hide Rescue Tools' : 'Emergency Override'}
+              </button>
+            </div>
+
+            {showEmergencyPanel && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 pt-2 border-t border-rose-500/20">
+                <div className="flex-1 relative">
+                  <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500/50" size={14} />
+                  <input 
+                    value={emergencyUrl} onChange={e => setEmergencyUrl(e.target.value)}
+                    placeholder="e.g. http://localhost:8000"
+                    className="w-full bg-black/40 border border-rose-500/30 rounded-xl pl-10 pr-4 py-2.5 text-[10px] font-mono text-rose-400 outline-none focus:border-rose-500"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleApplyOverride}
+                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all"
+                  >
+                    Apply Override
+                  </button>
+                  <button 
+                    onClick={handleClearOverride}
+                    className="px-6 py-2.5 bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-600 transition-all"
+                  >
+                    Reset Defaults
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between bg-[var(--bg-header)] p-1.5 rounded-xl border border-[var(--glass-border)] shadow-xl backdrop-blur-xl shrink-0">
         <div className="flex space-x-1">
            <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>

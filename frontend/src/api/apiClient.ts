@@ -1,6 +1,21 @@
 import { errorManager } from '../stores/errorStore';
 
-const API_BASE_URL = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || import.meta.env.VITE_API_BASE_URL || '';
+const getBaseUrl = () => localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || import.meta.env.VITE_API_BASE_URL || '';
+
+let API_BASE_URL = getBaseUrl();
+
+export function setApiOverride(url: string | null) {
+  if (url) {
+    localStorage.setItem('SYSGRID_OVERRIDE_API_URL', url);
+  } else {
+    localStorage.removeItem('SYSGRID_OVERRIDE_API_URL');
+  }
+  API_BASE_URL = getBaseUrl();
+}
+
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}
 
 let lastLatency = 0;
 const latencyListeners: ((latency: number) => void)[] = [];
