@@ -4,7 +4,7 @@ import {
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
   Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
-  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye
+  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
@@ -139,7 +139,7 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
 }
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'management' | 'permissions' | 'system'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'modules' | 'permissions' | 'system'>('environments')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
@@ -149,7 +149,51 @@ export default function SettingsPage() {
   const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
   const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
+  
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [isAddingOption, setIsAddingOption] = useState(false)
+  const [newOption, setNewOption] = useState({ label: '', value: '', description: '', category: '' })
+
   const queryClient = useQueryClient()
+  
+  const { data: options } = useQuery({
+    queryKey: ['setting-options'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/options")
+      return res.json()
+    }
+  })
+
+  const categories = Array.from(new Set(options?.map((o: any) => o.category) || [])) as string[];
+
+  const optionMutation = useMutation({
+    mutationFn: async (data: any) => {
+        const method = data.id ? 'PUT' : 'POST';
+        const url = data.id ? `/api/v1/settings/options/${data.id}` : "/api/v1/settings/options";
+        const res = await apiFetch(url, {
+            method,
+            body: JSON.stringify(data)
+        });
+        return res.json();
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['setting-options'] });
+        setIsAddingOption(false);
+        setNewOption({ label: '', value: '', description: '', category: '' });
+        toast.success("Module parameter updated");
+    }
+  });
+
+  const deleteOptionMutation = useMutation({
+    mutationFn: async (id: number) => {
+        await apiFetch(`/api/v1/settings/options/${id}`, { method: 'DELETE' });
+    },
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['setting-options'] });
+        toast.success("Parameter removed");
+    },
+    onError: (e: any) => toast.error(e.message)
+  });
   
   const toggleEdit = (field: string, action?: 'save') => {
     if (action === 'save') {
@@ -427,16 +471,16 @@ result_df = get_user_pool()`)
       <div className="flex items-center justify-between bg-[var(--bg-header)] p-1.5 rounded-xl border border-[var(--glass-border)] shadow-xl backdrop-blur-xl shrink-0">
         <div className="flex space-x-1">
            <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Cpu size={14} /> Environments
+              <Cpu size={14} /> Parameters
            </button>
-           <button onClick={() => setTopTab('management')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'management' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Sliders size={14} /> Management
+           <button onClick={() => setTopTab('modules')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'modules' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Layers size={14} /> Modules
            </button>
            <button onClick={() => setTopTab('permissions')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'permissions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Shield size={14} /> Permissions
+              <Shield size={14} /> Governance
            </button>
            <button onClick={() => setTopTab('system')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'system' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Terminal size={14} /> System
+              <Terminal size={14} /> Analysis
            </button>
         </div>
         
@@ -463,255 +507,184 @@ result_df = get_user_pool()`)
                   <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Global Environment & .env Management</p>
                </div>
 
-               <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2"><Globe size={12} /> Connectivity</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="col-span-2">
-                        <SettingField 
-                            icon={Link} label="Backend API Endpoint" description="The primary URL for the SysGrid Engine services." 
-                            help={envHelp.API_ENDPOINT} onHistory={() => setHistoryField('API_ENDPOINT')}
-                            onEdit={(a: any) => toggleEdit('API_ENDPOINT', a)} isEditable={editableFields['API_ENDPOINT']}
-                            isModified={isDirty('API_ENDPOINT')} 
-                            absPath={localEnv._metadata?.API_ENDPOINT?.file}
-                            paramName={localEnv._metadata?.API_ENDPOINT?.param}
-                        >
-                            <input 
-                                disabled={!editableFields['API_ENDPOINT']} value={localEnv.API_ENDPOINT || ''} 
-                                onChange={e => setLocalEnv({...localEnv, API_ENDPOINT: e.target.value})} 
-                                className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                            />
-                        </SettingField>
-                     </div>
-                     <SettingField 
-                        icon={Clock} label="Frontend Timeout (ms)" description="Global API request timeout threshold." 
-                        help={envHelp.VITE_UI_TIMEOUT} onEdit={(a: any) => toggleEdit('VITE_UI_TIMEOUT', a)} onHistory={() => setHistoryField('VITE_UI_TIMEOUT')}
-                        isEditable={editableFields['VITE_UI_TIMEOUT']} isModified={isDirty('VITE_UI_TIMEOUT')} 
-                        absPath={localEnv._metadata?.VITE_UI_TIMEOUT?.file}
-                        paramName={localEnv._metadata?.VITE_UI_TIMEOUT?.param}
-                     >
-                        <input 
-                          type="number" disabled={!editableFields['VITE_UI_TIMEOUT']} value={localEnv.VITE_UI_TIMEOUT || 30000} 
-                          onChange={e => setLocalEnv({...localEnv, VITE_UI_TIMEOUT: parseInt(e.target.value)})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                        />
-                     </SettingField>
-                     <SettingField 
-                        icon={Server} label="UI Backend Gateway URL" description="The connection point for the frontend to reach backend." 
-                        help={{ details: "URL browser uses to talk to backend.", impact: "High" }} onEdit={(a: any) => toggleEdit('VITE_API_BASE_URL', a)} onHistory={() => setHistoryField('VITE_API_BASE_URL')}
-                        isEditable={editableFields['VITE_API_BASE_URL']} isModified={isDirty('VITE_API_BASE_URL')} 
-                        absPath={localEnv._metadata?.VITE_API_BASE_URL?.file}
-                        paramName={localEnv._metadata?.VITE_API_BASE_URL?.param}
-                     >
-                        <input 
-                          disabled={!editableFields['VITE_API_BASE_URL']} value={localEnv.VITE_API_BASE_URL || ''} 
-                          onChange={e => setLocalEnv({...localEnv, VITE_API_BASE_URL: e.target.value})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                        />
-                     </SettingField>
-                     <SettingField 
-                        icon={Cpu} label="Backend Port" description="The port the backend server listens on." 
-                        help={{ details: "Primary TCP port for backend services.", impact: "High" }} onEdit={(a: any) => toggleEdit('PORT', a)} onHistory={() => setHistoryField('PORT')}
-                        isEditable={editableFields['PORT']} isModified={isDirty('PORT')} 
-                        absPath={localEnv._metadata?.PORT?.file}
-                        paramName={localEnv._metadata?.PORT?.param}
-                     >
-                        <input 
-                          type="number" disabled={!editableFields['PORT']} value={localEnv.PORT || 8000} 
-                          onChange={e => setLocalEnv({...localEnv, PORT: parseInt(e.target.value)})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                        />
-                     </SettingField>
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] flex items-center gap-2"><Database size={12} /> Storage</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <SettingField 
-                        icon={Database} label="Main Database Path" description="File path for the system store." 
-                        help={envHelp.DATABASE_URL} onHistory={() => setHistoryField('DATABASE_URL')}
-                        onEdit={(a: any) => toggleEdit('DATABASE_URL', a)} isEditable={editableFields['DATABASE_URL']} isModified={isDirty('DATABASE_URL')} 
-                        absPath={localEnv._metadata?.DATABASE_URL?.file}
-                        paramName={localEnv._metadata?.DATABASE_URL?.param}
-                      >
-                        <input 
-                          disabled={!editableFields['DATABASE_URL']} value={localEnv.DATABASE_URL || ''} 
-                          onChange={e => setLocalEnv({...localEnv, DATABASE_URL: e.target.value})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                        />
-                      </SettingField>
-                    </div>
-                    <SettingField 
-                      icon={FolderTree} label="Global Storage Root" description="Base directory for all persistent data." 
-                      help={envHelp.STORAGE_ROOT} onEdit={(a: any) => toggleEdit('STORAGE_ROOT', a)} onHistory={() => setHistoryField('STORAGE_ROOT')}
-                      isEditable={editableFields['STORAGE_ROOT']} isModified={isDirty('STORAGE_ROOT')} 
-                      absPath={localEnv._metadata?.STORAGE_ROOT?.file}
-                      paramName={localEnv._metadata?.STORAGE_ROOT?.param}
-                    >
-                       <input 
-                         disabled={!editableFields['STORAGE_ROOT']} value={localEnv.STORAGE_ROOT || ''} 
-                         onChange={e => setLocalEnv({...localEnv, STORAGE_ROOT: e.target.value})} 
-                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                       />
-                    </SettingField>
-                    <SettingField 
-                      icon={HardDrive} label="Image Capture Path" description="Storage location for milestones." 
-                      help={envHelp.IMAGE_PATH} onEdit={(a: any) => toggleEdit('IMAGE_PATH', a)} onHistory={() => setHistoryField('IMAGE_PATH')}
-                      isEditable={editableFields['IMAGE_PATH']} isModified={isDirty('IMAGE_PATH')} 
-                      absPath={localEnv._metadata?.IMAGE_PATH?.file}
-                      paramName={localEnv._metadata?.IMAGE_PATH?.param}
-                    >
-                       <input 
-                         disabled={!editableFields['IMAGE_PATH']} value={localEnv.IMAGE_PATH || ''} 
-                         onChange={e => setLocalEnv({...localEnv, IMAGE_PATH: e.target.value})} 
-                         className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                       />
-                    </SettingField>
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] flex items-center gap-2"><Zap size={12} /> Execution</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <SettingField 
-                      icon={Zap} label="Hot Reload Engine" description="Toggle instant restart on .env changes." 
-                      help={envHelp.HOT_RELOAD_ENABLED} onEdit={(a: any) => toggleEdit('HOT_RELOAD_ENABLED', a)} onHistory={() => setHistoryField('HOT_RELOAD_ENABLED')}
-                      isEditable={editableFields['HOT_RELOAD_ENABLED']} isModified={isDirty('HOT_RELOAD_ENABLED')} 
-                      absPath={localEnv._metadata?.HOT_RELOAD_ENABLED?.file}
-                      paramName={localEnv._metadata?.HOT_RELOAD_ENABLED?.param}
-                    >
-                        <div className="flex items-center gap-4 py-1">
-                            <ToggleSwitch 
-                                checked={!!localEnv.HOT_RELOAD_ENABLED} disabled={!editableFields['HOT_RELOAD_ENABLED']}
-                                onChange={(e: any) => setLocalEnv({...localEnv, HOT_RELOAD_ENABLED: e.target.checked})}
-                                activeColor="bg-emerald-600"
-                            />
-                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.HOT_RELOAD_ENABLED ? 'Active' : 'Disabled'}</span>
-                        </div>
-                    </SettingField>
-                    <SettingField 
-                      icon={Activity} label="UI Debug Logging" description="Toggle verbose console diagnostics." 
-                      help={envHelp.VITE_UI_DEBUG_LOGGING} onEdit={(a: any) => toggleEdit('VITE_UI_DEBUG_LOGGING', a)} onHistory={() => setHistoryField('VITE_UI_DEBUG_LOGGING')}
-                      isEditable={editableFields['VITE_UI_DEBUG_LOGGING']} isModified={isDirty('VITE_UI_DEBUG_LOGGING')} 
-                      absPath={localEnv._metadata?.VITE_UI_DEBUG_LOGGING?.file}
-                      paramName={localEnv._metadata?.VITE_UI_DEBUG_LOGGING?.param}
-                    >
-                        <div className="flex items-center gap-4 py-1">
-                            <ToggleSwitch 
-                                checked={!!localEnv.VITE_UI_DEBUG_LOGGING} disabled={!editableFields['VITE_UI_DEBUG_LOGGING']}
-                                onChange={(e: any) => setLocalEnv({...localEnv, VITE_UI_DEBUG_LOGGING: e.target.checked})}
-                            />
-                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{localEnv.VITE_UI_DEBUG_LOGGING ? 'Enabled' : 'Disabled'}</span>
-                        </div>
-                    </SettingField>
-                    <SettingField 
-                      icon={Activity} label="System Log Level" description="Verbosity for engine-side execution tracing." 
-                      help={envHelp.LOG_LEVEL} onEdit={(a: any) => toggleEdit('LOG_LEVEL', a)} onHistory={() => setHistoryField('LOG_LEVEL')}
-                      isEditable={editableFields['LOG_LEVEL']} isModified={isDirty('LOG_LEVEL')} 
-                      absPath={localEnv._metadata?.LOG_LEVEL?.file}
-                      paramName={localEnv._metadata?.LOG_LEVEL?.param}
-                    >
-                        <select 
-                          disabled={!editableFields['LOG_LEVEL']} value={localEnv.LOG_LEVEL || 'INFO'} 
-                          onChange={e => setLocalEnv({...localEnv, LOG_LEVEL: e.target.value})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-[10px] font-black text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer uppercase disabled:opacity-50"
-                        >
-                            <option value="DEBUG">DEBUG (Max Verbosity)</option>
-                            <option value="VERBOSE">VERBOSE (Detailed)</option>
-                            <option value="INFO">INFO (Standard)</option>
-                            <option value="WARNING">WARNING (Critical Only)</option>
-                        </select>
-                    </SettingField>
-                    <SettingField 
-                      icon={Cpu} label="System VENV Path" description="Python virtual environment for engine execution." 
-                      help={{ details: "The path to the python virtual environment used by the backend.", impact: "Medium" }} onEdit={(a: any) => toggleEdit('VENV_PATH', a)} onHistory={() => setHistoryField('VENV_PATH')}
-                      isEditable={editableFields['VENV_PATH']} isModified={isDirty('VENV_PATH')} 
-                      absPath={localEnv._metadata?.VENV_PATH?.file}
-                      paramName={localEnv._metadata?.VENV_PATH?.param}
-                    >
-                        <input 
-                          disabled={!editableFields['VENV_PATH']} value={localEnv.VENV_PATH || ''} 
-                          onChange={e => setLocalEnv({...localEnv, VENV_PATH: e.target.value})} 
-                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                        />
-                    </SettingField>
-                  </div>
+               <div className="space-y-12">
+                  {Array.from(new Set(Object.values(localEnv._metadata || {}).map((m: any) => m.category))).map((cat: any) => (
+                      <div key={cat} className="space-y-4">
+                          <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                             {cat === 'Infrastructure' ? <Cpu size={12} /> : cat === 'UI' ? <Layout size={12} /> : <Box size={12} />} 
+                             {cat}
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {Object.entries(localEnv).filter(([key]) => !key.startsWith('_') && localEnv._metadata?.[key]?.category === cat).map(([key, value]: any) => (
+                                  <SettingField 
+                                      key={key}
+                                      icon={envHelp[key]?.details?.includes('URL') ? Link : envHelp[key]?.details?.includes('Path') ? FolderTree : Activity} 
+                                      label={key.replace(/_/g, ' ')} 
+                                      description={envHelp[key]?.details || "System parameter"} 
+                                      help={envHelp[key]} onHistory={() => setHistoryField(key)}
+                                      onEdit={(a: any) => toggleEdit(key, a)} isEditable={editableFields[key]}
+                                      isModified={isDirty(key)} 
+                                      absPath={localEnv._metadata?.[key]?.file}
+                                      paramName={localEnv._metadata?.[key]?.param}
+                                  >
+                                      {typeof value === 'boolean' ? (
+                                          <div className="flex items-center gap-4 py-1">
+                                              <ToggleSwitch 
+                                                  checked={!!value} disabled={!editableFields[key]}
+                                                  onChange={(e: any) => setLocalEnv({...localEnv, [key]: e.target.checked})}
+                                                  activeColor="bg-emerald-600"
+                                              />
+                                              <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{value ? 'Active' : 'Disabled'}</span>
+                                          </div>
+                                      ) : (
+                                          <input 
+                                              disabled={!editableFields[key]} value={value || ''} 
+                                              onChange={e => setLocalEnv({...localEnv, [key]: e.target.value})} 
+                                              className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
+                                          />
+                                      )}
+                                  </SettingField>
+                              ))}
+                          </div>
+                      </div>
+                  ))}
                </div>
             </motion.div>
           )}
 
-          {topTab === 'management' && (
-            <motion.div key="management" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
-                <div className="border-b border-[var(--glass-border)] pb-6">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">App Management</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Extended Operational Parameters</p>
-               </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <h3 className="text-[10px] font-black uppercase text-amber-500 tracking-[0.4em] mb-4 border-l-2 border-amber-500 pl-4">Backend Operations</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Shield} label="Audit Logs" description="Toggle action tracing." help={envHelp.ENABLE_AUDIT_LOGS} onEdit={(a: any) => toggleEdit('ENABLE_AUDIT_LOGS', a)} isEditable={editableFields['ENABLE_AUDIT_LOGS']} isModified={isDirty('ENABLE_AUDIT_LOGS')} absPath={localEnv._metadata?.ENABLE_AUDIT_LOGS?.file} paramName={localEnv._metadata?.ENABLE_AUDIT_LOGS?.param}>
-                            <ToggleSwitch checked={!!localEnv.ENABLE_AUDIT_LOGS} disabled={!editableFields['ENABLE_AUDIT_LOGS']} onChange={(e: any) => setLocalEnv({...localEnv, ENABLE_AUDIT_LOGS: e.target.checked})} />
-                        </SettingField>
-                        <SettingField icon={Cpu} label="Workers" description="Processing threads." help={envHelp.WORKER_COUNT} onEdit={(a: any) => toggleEdit('WORKER_COUNT', a)} isEditable={editableFields['WORKER_COUNT']} isModified={isDirty('WORKER_COUNT')} absPath={localEnv._metadata?.WORKER_COUNT?.file} paramName={localEnv._metadata?.WORKER_COUNT?.param}>
-                            <input type="number" disabled={!editableFields['WORKER_COUNT']} value={localEnv.WORKER_COUNT || 4} onChange={e => setLocalEnv({...localEnv, WORKER_COUNT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                    </div>
-                    <SettingField icon={HardDrive} label="Max Upload Size" description="Import limit in Megabytes." help={envHelp.MAX_UPLOAD_SIZE} onEdit={(a: any) => toggleEdit('MAX_UPLOAD_SIZE', a)} isEditable={editableFields['MAX_UPLOAD_SIZE']} isModified={isDirty('MAX_UPLOAD_SIZE')} absPath={localEnv._metadata?.MAX_UPLOAD_SIZE?.file} paramName={localEnv._metadata?.MAX_UPLOAD_SIZE?.param}>
-                        <div className="flex items-center gap-3">
-                            <input type="number" disabled={!editableFields['MAX_UPLOAD_SIZE']} value={localEnv.MAX_UPLOAD_SIZE || 50} onChange={e => setLocalEnv({...localEnv, MAX_UPLOAD_SIZE: parseInt(e.target.value)})} className="flex-1 bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                            <span className="text-[10px] font-black text-slate-500">MB</span>
-                        </div>
-                    </SettingField>
-                    <SettingField icon={Lock} label="Token Algorithm" description="JWT signing method." help={envHelp.TOKEN_ALGORITHM} onEdit={(a: any) => toggleEdit('TOKEN_ALGORITHM', a)} isEditable={editableFields['TOKEN_ALGORITHM']} isModified={isDirty('TOKEN_ALGORITHM')} absPath={localEnv._metadata?.TOKEN_ALGORITHM?.file} paramName={localEnv._metadata?.TOKEN_ALGORITHM?.param}>
-                        <input disabled={!editableFields['TOKEN_ALGORITHM']} value={localEnv.TOKEN_ALGORITHM || 'HS256'} onChange={e => setLocalEnv({...localEnv, TOKEN_ALGORITHM: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                    </SettingField>
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Server} label="SMTP Host" help={envHelp.SMTP_HOST} onEdit={(a: any) => toggleEdit('SMTP_HOST', a)} isEditable={editableFields['SMTP_HOST']} isModified={isDirty('SMTP_HOST')} absPath={localEnv._metadata?.SMTP_HOST?.file} paramName={localEnv._metadata?.SMTP_HOST?.param}>
-                            <input disabled={!editableFields['SMTP_HOST']} value={localEnv.SMTP_HOST || 'localhost'} onChange={e => setLocalEnv({...localEnv, SMTP_HOST: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                        <SettingField icon={Activity} label="SMTP Port" help={envHelp.SMTP_PORT} onEdit={(a: any) => toggleEdit('SMTP_PORT', a)} isEditable={editableFields['SMTP_PORT']} isModified={isDirty('SMTP_PORT')} absPath={localEnv._metadata?.SMTP_PORT?.file} paramName={localEnv._metadata?.SMTP_PORT?.param}>
-                            <input type="number" disabled={!editableFields['SMTP_PORT']} value={localEnv.SMTP_PORT || 1025} onChange={e => setLocalEnv({...localEnv, SMTP_PORT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                    </div>
+          {topTab === 'modules' && (
+            <motion.div key="modules" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
+                  <div>
+                    <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Module Customization</h2>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">The Application "Brain": Define Statuses, Environments & Systems</p>
                   </div>
-
-                  <div className="space-y-6">
-                    <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.4em] mb-4 border-l-2 border-indigo-500 pl-4">Frontend Orchestration</h3>
-                    <SettingField icon={Layout} label="Application Title" description="Browser tab and splash name." help={envHelp.VITE_APP_TITLE} onEdit={(a: any) => toggleEdit('VITE_APP_TITLE', a)} isEditable={editableFields['VITE_APP_TITLE']} isModified={isDirty('VITE_APP_TITLE')} absPath={localEnv._metadata?.VITE_APP_TITLE?.file} paramName={localEnv._metadata?.VITE_APP_TITLE?.param}>
-                        <input disabled={!editableFields['VITE_APP_TITLE']} value={localEnv.VITE_APP_TITLE || 'SYSGRID Tactical'} onChange={e => setLocalEnv({...localEnv, VITE_APP_TITLE: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] outline-none" />
-                    </SettingField>
-                    <SettingField icon={Link} label="Support URL" description="Operational support portal link." help={envHelp.VITE_SUPPORT_URL} onEdit={(a: any) => toggleEdit('VITE_SUPPORT_URL', a)} isEditable={editableFields['VITE_SUPPORT_URL']} isModified={isDirty('VITE_SUPPORT_URL')} absPath={localEnv._metadata?.VITE_SUPPORT_URL?.file} paramName={localEnv._metadata?.VITE_SUPPORT_URL?.param}>
-                        <input disabled={!editableFields['VITE_SUPPORT_URL']} value={localEnv.VITE_SUPPORT_URL || ''} onChange={e => setLocalEnv({...localEnv, VITE_SUPPORT_URL: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-blue-400 outline-none" />
-                    </SettingField>
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={RefreshCcw} label="Poll Interval" description="Sync frequency (ms)." help={envHelp.VITE_POLLING_INTERVAL} onEdit={(a: any) => toggleEdit('VITE_POLLING_INTERVAL', a)} isEditable={editableFields['VITE_POLLING_INTERVAL']} isModified={isDirty('VITE_POLLING_INTERVAL')} absPath={localEnv._metadata?.VITE_POLLING_INTERVAL?.file} paramName={localEnv._metadata?.VITE_POLLING_INTERVAL?.param}>
-                            <input type="number" disabled={!editableFields['VITE_POLLING_INTERVAL']} value={localEnv.VITE_POLLING_INTERVAL || 5000} onChange={e => setLocalEnv({...localEnv, VITE_POLLING_INTERVAL: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                        <SettingField icon={Cpu} label="Vite Proxy Port" description="Target engine port." help={envHelp.VITE_BACKEND_PORT} onEdit={(a: any) => toggleEdit('VITE_BACKEND_PORT', a)} isEditable={editableFields['VITE_BACKEND_PORT']} isModified={isDirty('VITE_BACKEND_PORT')} absPath={localEnv._metadata?.VITE_BACKEND_PORT?.file} paramName={localEnv._metadata?.VITE_BACKEND_PORT?.param}>
-                            <input type="number" disabled={!editableFields['VITE_BACKEND_PORT']} value={localEnv.VITE_BACKEND_PORT || 8000} onChange={e => setLocalEnv({...localEnv, VITE_BACKEND_PORT: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Zap} label="Websockets" description="Real-time updates." help={envHelp.VITE_ENABLE_WEBSOCKETS} onEdit={(a: any) => toggleEdit('VITE_ENABLE_WEBSOCKETS', a)} isEditable={editableFields['VITE_ENABLE_WEBSOCKETS']} isModified={isDirty('VITE_ENABLE_WEBSOCKETS')} absPath={localEnv._metadata?.VITE_ENABLE_WEBSOCKETS?.file} paramName={localEnv._metadata?.VITE_ENABLE_WEBSOCKETS?.param}>
-                            <ToggleSwitch checked={!!localEnv.VITE_ENABLE_WEBSOCKETS} disabled={!editableFields['VITE_ENABLE_WEBSOCKETS']} onChange={(e: any) => setLocalEnv({...localEnv, VITE_ENABLE_WEBSOCKETS: e.target.checked})} />
-                        </SettingField>
-                        <SettingField icon={ShieldAlert} label="Maintenance" description="Read-only mode." help={envHelp.VITE_MAINTENANCE_MODE} onEdit={(a: any) => toggleEdit('VITE_MAINTENANCE_MODE', a)} isEditable={editableFields['VITE_MAINTENANCE_MODE']} isModified={isDirty('VITE_MAINTENANCE_MODE')} absPath={localEnv._metadata?.VITE_MAINTENANCE_MODE?.file} paramName={localEnv._metadata?.VITE_MAINTENANCE_MODE?.param}>
-                            <ToggleSwitch checked={!!localEnv.VITE_MAINTENANCE_MODE} disabled={!editableFields['VITE_MAINTENANCE_MODE']} onChange={(e: any) => setLocalEnv({...localEnv, VITE_MAINTENANCE_MODE: e.target.checked})} activeColor="bg-rose-600" />
-                        </SettingField>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingField icon={Clock} label="Idle Timeout" description="Seconds to logout." help={envHelp.VITE_AUTO_LOGOUT_IDLE} onEdit={(a: any) => toggleEdit('VITE_AUTO_LOGOUT_IDLE', a)} isEditable={editableFields['VITE_AUTO_LOGOUT_IDLE']} isModified={isDirty('VITE_AUTO_LOGOUT_IDLE')} absPath={localEnv._metadata?.VITE_AUTO_LOGOUT_IDLE?.file} paramName={localEnv._metadata?.VITE_AUTO_LOGOUT_IDLE?.param}>
-                            <input type="number" disabled={!editableFields['VITE_AUTO_LOGOUT_IDLE']} value={localEnv.VITE_AUTO_LOGOUT_IDLE || 3600} onChange={e => setLocalEnv({...localEnv, VITE_AUTO_LOGOUT_IDLE: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                        <SettingField icon={Bell} label="Toast Duration" description="Notice timing (ms)." help={envHelp.VITE_TOAST_DURATION} onEdit={(a: any) => toggleEdit('VITE_TOAST_DURATION', a)} isEditable={editableFields['VITE_TOAST_DURATION']} isModified={isDirty('VITE_TOAST_DURATION')} absPath={localEnv._metadata?.VITE_TOAST_DURATION?.file} paramName={localEnv._metadata?.VITE_TOAST_DURATION?.param}>
-                            <input type="number" disabled={!editableFields['VITE_TOAST_DURATION']} value={localEnv.VITE_TOAST_DURATION || 3000} onChange={e => setLocalEnv({...localEnv, VITE_TOAST_DURATION: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
-                        </SettingField>
-                    </div>
-                  </div>
+                  <button 
+                    onClick={() => { setIsAddingOption(true); setSelectedCategory(categories[0]); }}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                  >
+                    <Plus size={14} /> New Parameter
+                  </button>
                 </div>
+
+                <div className="flex gap-8 items-start">
+                    {/* Category Sidebar */}
+                    <div className="w-64 shrink-0 space-y-1">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-between group ${selectedCategory === cat ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-[var(--panel-item-bg)] border-[var(--glass-border)] text-slate-400 hover:border-blue-500/30 hover:text-blue-400'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Tag size={14} className={selectedCategory === cat ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'} />
+                                    {cat}
+                                </div>
+                                <ChevronRight size={12} className={selectedCategory === cat ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} />
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 space-y-4">
+                        {!selectedCategory ? (
+                            <div className="h-64 flex flex-col items-center justify-center bg-[var(--panel-item-bg)] border border-[var(--glass-border)] border-dashed rounded-3xl opacity-50">
+                                <Search size={32} className="text-slate-500 mb-4" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Select a category to customize</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <AnimatePresence mode="popLayout">
+                                    {options?.filter((o: any) => o.category === selectedCategory).map((opt: any) => (
+                                        <motion.div
+                                            layout
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            key={opt.id}
+                                            className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl p-5 group hover:border-blue-500/30 transition-all flex flex-col justify-between"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="text-[12px] font-black text-[var(--text-primary)] uppercase tracking-wider">{opt.label}</h4>
+                                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 italic">{opt.value}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button className="p-1.5 text-slate-500 hover:text-blue-400 rounded-lg hover:bg-blue-400/10"><Edit2 size={14} /></button>
+                                                    <button 
+                                                        onClick={() => deleteOptionMutation.mutate(opt.id)}
+                                                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-400/10"
+                                                    ><Trash2 size={14} /></button>
+                                                </div>
+                                            </div>
+                                            {opt.description && <p className="text-[9px] text-slate-400 mt-3 leading-relaxed border-t border-white/5 pt-3">{opt.description}</p>}
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Add Option Modal */}
+                <AnimatePresence>
+                    {isAddingOption && (
+                        <>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddingOption(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
+                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
+                                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+                                    <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">New Module Parameter</h3>
+                                    <button onClick={() => setIsAddingOption(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
+                                </div>
+                                <div className="p-8 space-y-6">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Category</label>
+                                        <select 
+                                            value={newOption.category || selectedCategory || ''}
+                                            onChange={e => setNewOption({...newOption, category: e.target.value})}
+                                            className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                                        >
+                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                            <option value="NEW">Create New Category...</option>
+                                        </select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Label</label>
+                                            <input 
+                                                value={newOption.label} onChange={e => setNewOption({...newOption, label: e.target.value})}
+                                                placeholder="e.g. Active"
+                                                className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black text-white outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Value (ID)</label>
+                                            <input 
+                                                value={newOption.value} onChange={e => setNewOption({...newOption, value: e.target.value})}
+                                                placeholder="e.g. active"
+                                                className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black text-white outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Description</label>
+                                        <textarea 
+                                            value={newOption.description} onChange={e => setNewOption({...newOption, description: e.target.value})}
+                                            placeholder="Purpose of this parameter..."
+                                            className="w-full h-24 bg-black/20 border border-white/5 rounded-xl p-4 text-[10px] font-bold text-white outline-none focus:border-blue-500 resize-none"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={() => optionMutation.mutate(newOption)}
+                                        className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Save size={18} /> Sync to Application Brain
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </motion.div>
           )}
 

@@ -81,7 +81,29 @@ async def _auto_seed():
         for val, keys in service_types:
             db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
 
+        # 3. Ensure we have a default operator and role
+        res = await db.execute(select(models.Role).filter(models.Role.name == "SuperAdmin"))
+        admin_role = res.scalar_one_or_none()
+        if not admin_role:
+            admin_role = models.Role(name="SuperAdmin", permissions={"dashboard": 3, "settings": 3, "audit": 3})
+            db.add(admin_role)
+            await db.commit()
+            await db.refresh(admin_role)
+        
+        res = await db.execute(select(models.Operator).filter(models.Operator.username == "admin_root"))
+        if not res.scalar_one_or_none():
+            db.add(models.Operator(
+                external_id="1000",
+                username="admin_root",
+                full_name="System Administrator",
+                email="admin@sysgrid.local",
+                department="Infrastructure",
+                role_id=admin_role.id,
+                registration_status="Verified"
+            ))
+            
         await db.commit()
+        print("Settings and Operators self-healed.")
 
 from .core.config import settings
 

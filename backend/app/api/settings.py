@@ -234,14 +234,18 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.GlobalSetting))
     settings_list = res.scalars().all()
     
-    # Return as a simple key-value map for the UI
-    return {s.key: s.value for s in settings_list}
+    # Return as a simple key-value map for the UI, plus metadata if needed
+    # But for now, let's include metadata in a hidden field
+    config = {s.key: s.value for s in settings_list}
+    config["_metadata"] = {s.key: {"category": s.category, "description": s.description} for s in settings_list}
+    return config
 
 @router.post("/global")
 async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     """Update unified settings and log to Audit Trail."""
     user_id = get_current_user_id()
     for key, value in data.items():
+        if key.startswith("_"): continue # Skip metadata
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
         setting = res.scalar_one_or_none()
         old_value = setting.value if setting else "None"
@@ -262,11 +266,18 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
         db.add(models.AuditLog(
             user_id=user_id,
             action="UPDATE_SETTING",
-            target_type="GLOBAL_SETTING",
+            target_table="GLOBAL_SETTING",
             target_id=key,
+            changes={"old": old_value, "new": str(value)},
+            description=f"Configuration parameter '{key}' updated via Admin Dashboard."
+        ))
+        
+        # Also add to EnvHistory for specialized history view
+        db.add(models.EnvHistory(
+            field=key,
             old_value=old_value,
             new_value=str(value),
-            details=f"Configuration parameter '{key}' updated via Admin Dashboard."
+            user=user_id
         ))
 
     await db.commit()
@@ -275,6 +286,104 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
     if hasattr(request.app.state, 'ws_manager'):
         await request.app.state.ws_manager.broadcast("CONFIG_UPDATED")
         
+    return {"status": "success"}
+
+@router.get("/env/history")
+async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.EnvHistory).filter(models.EnvHistory.field == field).order_by(models.EnvHistory.timestamp.desc()))
+    return res.scalars().all()
+
+@router.get("/operators")
+async def get_operators(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy.orm import selectinload
+    res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)))
+    return res.scalars().all()
+
+@router.get("/roles")
+async def get_roles(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.Role))
+    return res.scalars().all()
+
+@router.get("/user-pool/versions")
+async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.UserPoolVersion).order_by(models.UserPoolVersion.created_at.desc()))
+    return res.scalars().all()
+
+@router.post("/user-pool/refresh")
+async def refresh_user_pool(data: dict, db: AsyncSession = Depends(get_db)):
+    # Placeholder for Python script execution logic
+    # In a real scenario, this would execute the provided script
+    user_id = get_current_user_id()
+    
+    # Create a dummy version for now
+    import datetime
+    version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Simple logic: create 5 dummy users
+    dummy_users = [
+        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": "alpha@sysgrid.local", "department": "Infrastructure"},
+        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": "beta@sysgrid.local", "department": "R&D"},
+        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": "gamma@sysgrid.local", "department": "Security"},
+        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": "delta@sysgrid.local", "department": "Operations"},
+        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": "epsilon@sysgrid.local", "department": "External"}
+    ]
+    
+    new_version = models.UserPoolVersion(
+        version_label=version_label,
+        snapshot_data=dummy_users,
+        diff_summary={"added": 5, "removed": 0, "changed": 0},
+        created_by=user_id,
+        is_active=True
+    )
+    
+    # Deactivate others
+    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+    
+    db.add(new_version)
+    
+    # Sync to Operators table
+    for u in dummy_users:
+        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
+        op = res.scalar_one_or_none()
+        if not op:
+            db.add(models.Operator(
+                external_id=str(u["id"]),
+                username=u["username"],
+                full_name=u["full_name"],
+                email=u["email"],
+                department=u["department"],
+                registration_status="Verified"
+            ))
+        else:
+            op.username = u["username"]
+            op.full_name = u["full_name"]
+            op.email = u["email"]
+            op.department = u["department"]
+            op.registration_status = "Verified"
+            
+    await db.commit()
+    return {"status": "success", "version": version_label}
+
+@router.post("/user-pool/restore/{version_id}")
+async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.UserPoolVersion).filter(models.UserPoolVersion.id == version_id))
+    version = res.scalar_one_or_none()
+    if not version: raise HTTPException(404, "Version not found")
+    
+    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+    version.is_active = True
+    
+    # Sync version data back to operators (Simplified)
+    for u in version.snapshot_data:
+        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
+        op = res.scalar_one_or_none()
+        if op:
+             op.username = u["username"]
+             op.full_name = u["full_name"]
+             op.email = u["email"]
+             op.department = u["department"]
+             
+    await db.commit()
     return {"status": "success"}
 
 @router.get("/initialize")
