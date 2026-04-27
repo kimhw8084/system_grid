@@ -47,8 +47,6 @@ function notifyLatency(latency: number) {
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const start = performance.now();
   const baseUrl = getApiBaseUrl();
-  // If the endpoint is already a full URL, use it as is
-  // Otherwise, prepend the base URL
   const url = (endpoint.startsWith('http') || !baseUrl) 
     ? endpoint 
     : `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
@@ -58,11 +56,16 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
+  // Tactical Bypass: If this is a bootstrap or public call, force 'omit' credentials
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers,
+    credentials: (endpoint.includes('bootstrap') || endpoint.includes('public')) ? 'omit' : options.credentials,
+    cache: endpoint.includes('bootstrap') ? 'no-cache' : options.cache,
+  };
+
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(url, fetchOptions);
 
     const end = performance.now();
     notifyLatency(Math.round(end - start));
