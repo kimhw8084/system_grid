@@ -38,6 +38,30 @@ class EnvUpdate(BaseModel):
     auth_secret: str | None = None
     session_expiry: int | None = None # Minutes
 
+    # New Backend Management Envs
+    max_upload_size: int | None = None
+    worker_count: int | None = None
+    cache_ttl: int | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    alert_email: str | None = None
+    enable_audit_logs: bool | None = None
+    db_backup_schedule: str | None = None
+    token_algorithm: str | None = None
+    request_timeout: int | None = None
+
+    # New Frontend Management Envs
+    app_title: str | None = None
+    polling_interval: int | None = None
+    enable_analytics: bool | None = None
+    max_grid_rows: int | None = None
+    theme_default: str | None = None
+    maintenance_mode: bool | None = None
+    support_url: str | None = None
+    auto_logout_idle: int | None = None
+    toast_duration: int | None = None
+    enable_websockets: bool | None = None
+
 class PoolSync(BaseModel):
     script: str
 
@@ -71,7 +95,7 @@ async def get_env_vars():
     
     env_data = {
         "api_endpoint": backend_env.get("API_ENDPOINT", "http://localhost:8000"),
-        "db_path": backend_env.get("DATABASE_URL", "./sysgrid.db"),
+        "db_path": backend_env.get("DATABASE_URL", "./system_grid.db"),
         "storage_root": backend_env.get("STORAGE_ROOT", "./storage"),
         "image_path": backend_env.get("IMAGE_PATH", "./storage/images"),
         "backup_path": backend_env.get("BACKUP_PATH", "./backups"),
@@ -81,14 +105,38 @@ async def get_env_vars():
         "venv_path": backend_env.get("VENV_PATH", sys.prefix if hasattr(sys, 'prefix') else "./venv"),
         "backend_port": int(backend_env.get("PORT", "8000")),
         
-        # New Innovative Params
+        # Innovative Params
         "ui_timeout": int(frontend_env.get("VITE_UI_TIMEOUT", backend_env.get("UI_TIMEOUT", "30000"))),
         "ui_backend_url": frontend_env.get("VITE_API_BASE_URL", backend_env.get("UI_BACKEND_URL", "")),
         "ui_debug_logging": (frontend_env.get("VITE_UI_DEBUG_LOGGING") or backend_env.get("UI_DEBUG_LOGGING", "false")).lower() == "true",
         "hot_reload_enabled": backend_env.get("HOT_RELOAD_ENABLED", "true").lower() == "true",
         "feature_flags": json.loads(backend_env.get("FEATURE_FLAGS", "{}")),
         "auth_secret": backend_env.get("AUTH_SECRET", "change-me-immediately"),
-        "session_expiry": int(backend_env.get("SESSION_EXPIRY", "1440"))
+        "session_expiry": int(backend_env.get("SESSION_EXPIRY", "1440")),
+
+        # Backend New
+        "max_upload_size": int(backend_env.get("MAX_UPLOAD_SIZE", "50")),
+        "worker_count": int(backend_env.get("WORKER_COUNT", "4")),
+        "cache_ttl": int(backend_env.get("CACHE_TTL", "3600")),
+        "smtp_host": backend_env.get("SMTP_HOST", "localhost"),
+        "smtp_port": int(backend_env.get("SMTP_PORT", "1025")),
+        "alert_email": backend_env.get("ALERT_EMAIL", "admin@sysgrid.local"),
+        "enable_audit_logs": backend_env.get("ENABLE_AUDIT_LOGS", "true").lower() == "true",
+        "db_backup_schedule": backend_env.get("DB_BACKUP_SCHEDULE", "0 0 * * *"),
+        "token_algorithm": backend_env.get("TOKEN_ALGORITHM", "HS256"),
+        "request_timeout": int(backend_env.get("REQUEST_TIMEOUT", "60")),
+
+        # Frontend New
+        "app_title": frontend_env.get("VITE_APP_TITLE", "SYSGRID Tactical"),
+        "polling_interval": int(frontend_env.get("VITE_POLLING_INTERVAL", "5000")),
+        "enable_analytics": frontend_env.get("VITE_ENABLE_ANALYTICS", "false").lower() == "true",
+        "max_grid_rows": int(frontend_env.get("VITE_MAX_GRID_ROWS", "100")),
+        "theme_default": frontend_env.get("VITE_THEME_DEFAULT", "nordic-frost-v1"),
+        "maintenance_mode": frontend_env.get("VITE_MAINTENANCE_MODE", "false").lower() == "true",
+        "support_url": frontend_env.get("VITE_SUPPORT_URL", "https://support.sysgrid.local"),
+        "auto_logout_idle": int(frontend_env.get("VITE_AUTO_LOGOUT_IDLE", "3600")),
+        "toast_duration": int(frontend_env.get("VITE_TOAST_DURATION", "3000")),
+        "enable_websockets": frontend_env.get("VITE_ENABLE_WEBSOCKETS", "true").lower() == "true"
     }
     
     # Calculate Absolute Paths
@@ -143,7 +191,17 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         "hot_reload_enabled": "HOT_RELOAD_ENABLED",
         "feature_flags": "FEATURE_FLAGS",
         "auth_secret": "AUTH_SECRET",
-        "session_expiry": "SESSION_EXPIRY"
+        "session_expiry": "SESSION_EXPIRY",
+        "max_upload_size": "MAX_UPLOAD_SIZE",
+        "worker_count": "WORKER_COUNT",
+        "cache_ttl": "CACHE_TTL",
+        "smtp_host": "SMTP_HOST",
+        "smtp_port": "SMTP_PORT",
+        "alert_email": "ALERT_EMAIL",
+        "enable_audit_logs": "ENABLE_AUDIT_LOGS",
+        "db_backup_schedule": "DB_BACKUP_SCHEDULE",
+        "token_algorithm": "TOKEN_ALGORITHM",
+        "request_timeout": "REQUEST_TIMEOUT"
     }
 
     # Mapping for frontend .env
@@ -151,7 +209,17 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         "ui_backend_url": "VITE_API_BASE_URL",
         "backend_port": "VITE_BACKEND_PORT",
         "ui_timeout": "VITE_UI_TIMEOUT",
-        "ui_debug_logging": "VITE_UI_DEBUG_LOGGING"
+        "ui_debug_logging": "VITE_UI_DEBUG_LOGGING",
+        "app_title": "VITE_APP_TITLE",
+        "polling_interval": "VITE_POLLING_INTERVAL",
+        "enable_analytics": "VITE_ENABLE_ANALYTICS",
+        "max_grid_rows": "VITE_MAX_GRID_ROWS",
+        "theme_default": "VITE_THEME_DEFAULT",
+        "maintenance_mode": "VITE_MAINTENANCE_MODE",
+        "support_url": "VITE_SUPPORT_URL",
+        "auto_logout_idle": "VITE_AUTO_LOGOUT_IDLE",
+        "toast_duration": "VITE_TOAST_DURATION",
+        "enable_websockets": "VITE_ENABLE_WEBSOCKETS"
     }
     
     username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
@@ -208,20 +276,27 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
     
     await db.commit()
 
-    # Write Backend .env
-    with open(backend_env_path, "w") as f:
+    # Write Backend .env with atomic safety
+    temp_backend = backend_env_path + ".tmp"
+    with open(temp_backend, "w") as f:
         f.write("# SYSGRID AUTO-GENERATED BACKEND CONFIG\n")
         f.write(f"# UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
+        # Preserve original keys that might not be in our mapping but are in the file
         for k, v in sorted(current_backend.items()):
             f.write(f"{k}={v}\n")
+    os.replace(temp_backend, backend_env_path)
             
-    # Write Frontend .env
+    # Write Frontend .env with atomic safety
     if os.path.exists(os.path.dirname(frontend_env_path)):
-        with open(frontend_env_path, "w") as f:
+        temp_frontend = frontend_env_path + ".tmp"
+        with open(temp_frontend, "w") as f:
             f.write("# SYSGRID AUTO-GENERATED FRONTEND CONFIG\n")
             f.write(f"# UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
             for k, v in sorted(current_frontend.items()):
                 f.write(f"{k}={v}\n")
+        os.replace(temp_frontend, frontend_env_path)
+            
+    return {"status": "success", "message": "Environment synchronized successfully"}
             
     return {"status": "success", "message": "Environment synchronized successfully"}
 

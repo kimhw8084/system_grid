@@ -310,7 +310,29 @@ result_df = get_user_pool()`)
     log_level: { details: "Verbosity of backend tracing.", impact: "Low" },
     ui_timeout: { details: "Frontend API request timeout in milliseconds.", impact: "Low" },
     ui_debug_logging: { details: "Enable detailed logging in the browser console.", impact: "Low" },
-    hot_reload_enabled: { details: "Toggle whether environment changes trigger immediate engine reload.", impact: "Medium" }
+    hot_reload_enabled: { details: "Toggle whether environment changes trigger immediate engine reload.", impact: "Medium" },
+    // New Backend Help
+    max_upload_size: { details: "Maximum allowed file size for imports (MB).", impact: "Medium" },
+    worker_count: { details: "Number of concurrent processing threads for the backend.", impact: "High" },
+    cache_ttl: { details: "Duration to keep volatile data in memory (seconds).", impact: "Medium" },
+    smtp_host: { details: "Mail server for system-wide alerts and notifications.", impact: "Low" },
+    smtp_port: { details: "Port used for SMTP communications.", impact: "Low" },
+    alert_email: { details: "Primary destination for critical system alerts.", impact: "Low" },
+    enable_audit_logs: { details: "Toggle persistent recording of all operator actions.", impact: "Medium" },
+    db_backup_schedule: { details: "Crontab-style expression for automated database backups.", impact: "High" },
+    token_algorithm: { details: "Security algorithm for JWT signing.", impact: "Critical" },
+    request_timeout: { details: "Internal backend-to-backend request deadline.", impact: "Medium" },
+    // New Frontend Help
+    app_title: { details: "Display name in browser tab and splash screen.", impact: "Low" },
+    polling_interval: { details: "Frequency of background dashboard synchronization (ms).", impact: "Medium" },
+    enable_analytics: { details: "Toggle anonymized UI usage telemetry.", impact: "Low" },
+    max_grid_rows: { details: "Pagination limit for high-density data grids.", impact: "Medium" },
+    theme_default: { details: "Default visual profile for new operator sessions.", impact: "Low" },
+    maintenance_mode: { details: "Activate read-only mode for all operators.", impact: "High" },
+    support_url: { details: "Link to the operational support portal.", impact: "Low" },
+    auto_logout_idle: { details: "Seconds of inactivity before session termination.", impact: "Medium" },
+    toast_duration: { details: "Visibility duration for UI notifications (ms).", impact: "Low" },
+    enable_websockets: { details: "Toggle real-time engine-to-ui updates.", impact: "High" }
   }
 
   const viewGroups = [
@@ -327,6 +349,9 @@ result_df = get_user_pool()`)
         <div className="flex space-x-1">
            <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Cpu size={14} /> Environments
+           </button>
+           <button onClick={() => setTopTab('management')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'management' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Sliders size={14} /> Management
            </button>
            <button onClick={() => setTopTab('permissions')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'permissions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Shield size={14} /> Permissions
@@ -509,6 +534,77 @@ result_df = get_user_pool()`)
                     </SettingField>
                   </div>
                </div>
+            </motion.div>
+          )}
+
+          {topTab === 'management' && (
+            <motion.div key="management" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
+                <div className="border-b border-[var(--glass-border)] pb-6">
+                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">App Management</h2>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Extended Operational Parameters</p>
+               </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black uppercase text-amber-500 tracking-[0.4em] mb-4 border-l-2 border-amber-500 pl-4">Backend Operations</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingField icon={Shield} label="Audit Logs" description="Toggle action tracing." help={envHelp.enable_audit_logs} onEdit={(a: any) => toggleEdit('enable_audit_logs', a)} isEditable={editableFields['enable_audit_logs']} isModified={isDirty('enable_audit_logs')}>
+                            <ToggleSwitch checked={!!localEnv.enable_audit_logs} disabled={!editableFields['enable_audit_logs']} onChange={(e: any) => setLocalEnv({...localEnv, enable_audit_logs: e.target.checked})} />
+                        </SettingField>
+                        <SettingField icon={Cpu} label="Workers" description="Processing threads." help={envHelp.worker_count} onEdit={(a: any) => toggleEdit('worker_count', a)} isEditable={editableFields['worker_count']} isModified={isDirty('worker_count')}>
+                            <input type="number" disabled={!editableFields['worker_count']} value={localEnv.worker_count || 4} onChange={e => setLocalEnv({...localEnv, worker_count: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                    </div>
+                    <SettingField icon={HardDrive} label="Max Upload Size" description="Import limit in Megabytes." help={envHelp.max_upload_size} onEdit={(a: any) => toggleEdit('max_upload_size', a)} isEditable={editableFields['max_upload_size']} isModified={isDirty('max_upload_size')}>
+                        <div className="flex items-center gap-3">
+                            <input type="number" disabled={!editableFields['max_upload_size']} value={localEnv.max_upload_size || 50} onChange={e => setLocalEnv({...localEnv, max_upload_size: parseInt(e.target.value)})} className="flex-1 bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                            <span className="text-[10px] font-black text-slate-500">MB</span>
+                        </div>
+                    </SettingField>
+                    <SettingField icon={Lock} label="Token Algorithm" description="JWT signing method." help={envHelp.token_algorithm} onEdit={(a: any) => toggleEdit('token_algorithm', a)} isEditable={editableFields['token_algorithm']} isModified={isDirty('token_algorithm')}>
+                        <input disabled={!editableFields['token_algorithm']} value={localEnv.token_algorithm || 'HS256'} onChange={e => setLocalEnv({...localEnv, token_algorithm: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                    </SettingField>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingField icon={Server} label="SMTP Host" help={envHelp.smtp_host} onEdit={(a: any) => toggleEdit('smtp_host', a)} isEditable={editableFields['smtp_host']} isModified={isDirty('smtp_host')}>
+                            <input disabled={!editableFields['smtp_host']} value={localEnv.smtp_host || 'localhost'} onChange={e => setLocalEnv({...localEnv, smtp_host: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                        <SettingField icon={Activity} label="SMTP Port" help={envHelp.smtp_port} onEdit={(a: any) => toggleEdit('smtp_port', a)} isEditable={editableFields['smtp_port']} isModified={isDirty('smtp_port')}>
+                            <input type="number" disabled={!editableFields['smtp_port']} value={localEnv.smtp_port || 1025} onChange={e => setLocalEnv({...localEnv, smtp_port: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.4em] mb-4 border-l-2 border-indigo-500 pl-4">Frontend Orchestration</h3>
+                    <SettingField icon={Layout} label="Application Title" description="Browser tab and splash name." help={envHelp.app_title} onEdit={(a: any) => toggleEdit('app_title', a)} isEditable={editableFields['app_title']} isModified={isDirty('app_title')}>
+                        <input disabled={!editableFields['app_title']} value={localEnv.app_title || 'SYSGRID Tactical'} onChange={e => setLocalEnv({...localEnv, app_title: e.target.value})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-primary)] outline-none" />
+                    </SettingField>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingField icon={RefreshCcw} label="Poll Interval" description="Sync frequency (ms)." help={envHelp.polling_interval} onEdit={(a: any) => toggleEdit('polling_interval', a)} isEditable={editableFields['polling_interval']} isModified={isDirty('polling_interval')}>
+                            <input type="number" disabled={!editableFields['polling_interval']} value={localEnv.polling_interval || 5000} onChange={e => setLocalEnv({...localEnv, polling_interval: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                        <SettingField icon={Eye} label="Analytics" description="Toggle telemetry." help={envHelp.enable_analytics} onEdit={(a: any) => toggleEdit('enable_analytics', a)} isEditable={editableFields['enable_analytics']} isModified={isDirty('enable_analytics')}>
+                            <ToggleSwitch checked={!!localEnv.enable_analytics} disabled={!editableFields['enable_analytics']} onChange={(e: any) => setLocalEnv({...localEnv, enable_analytics: e.target.checked})} />
+                        </SettingField>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingField icon={Zap} label="Websockets" description="Real-time updates." help={envHelp.enable_websockets} onEdit={(a: any) => toggleEdit('enable_websockets', a)} isEditable={editableFields['enable_websockets']} isModified={isDirty('enable_websockets')}>
+                            <ToggleSwitch checked={!!localEnv.enable_websockets} disabled={!editableFields['enable_websockets']} onChange={(e: any) => setLocalEnv({...localEnv, enable_websockets: e.target.checked})} />
+                        </SettingField>
+                        <SettingField icon={ShieldAlert} label="Maintenance" description="Read-only mode." help={envHelp.maintenance_mode} onEdit={(a: any) => toggleEdit('maintenance_mode', a)} isEditable={editableFields['maintenance_mode']} isModified={isDirty('maintenance_mode')}>
+                            <ToggleSwitch checked={!!localEnv.maintenance_mode} disabled={!editableFields['maintenance_mode']} onChange={(e: any) => setLocalEnv({...localEnv, maintenance_mode: e.target.checked})} activeColor="bg-rose-600" />
+                        </SettingField>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingField icon={Clock} label="Idle Timeout" description="Seconds to logout." help={envHelp.auto_logout_idle} onEdit={(a: any) => toggleEdit('auto_logout_idle', a)} isEditable={editableFields['auto_logout_idle']} isModified={isDirty('auto_logout_idle')}>
+                            <input type="number" disabled={!editableFields['auto_logout_idle']} value={localEnv.auto_logout_idle || 3600} onChange={e => setLocalEnv({...localEnv, auto_logout_idle: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                        <SettingField icon={Bell} label="Toast Duration" description="Notice timing (ms)." help={envHelp.toast_duration} onEdit={(a: any) => toggleEdit('toast_duration', a)} isEditable={editableFields['toast_duration']} isModified={isDirty('toast_duration')}>
+                            <input type="number" disabled={!editableFields['toast_duration']} value={localEnv.toast_duration || 3000} onChange={e => setLocalEnv({...localEnv, toast_duration: parseInt(e.target.value)})} className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-2 text-xs font-mono text-[var(--text-primary)] outline-none" />
+                        </SettingField>
+                    </div>
+                  </div>
+                </div>
             </motion.div>
           )}
 
