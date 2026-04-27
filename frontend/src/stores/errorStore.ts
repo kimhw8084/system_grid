@@ -21,6 +21,12 @@ class ErrorManager {
   private openListeners: ((isOpen: boolean) => void)[] = []
   private isOpen = false
 
+  constructor() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('open-error-console', () => this.setOpen(true));
+    }
+  }
+
   addError(error: Omit<SysError, 'id' | 'timestamp' | 'acknowledged'>) {
     const newError: SysError = {
       ...error,

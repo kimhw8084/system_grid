@@ -36,7 +36,7 @@ const PATCH_HISTORY = metadata.patchHistory
 const queryClient = new QueryClient()
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
-  constructor(props: any) { super(props); this.state = { hasError: true, error: null, showDetails: true }; }
+  constructor(props: any) { super(props); this.state = { hasError: false, error: null, showDetails: true }; }
   static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
   componentDidCatch(error: any, info: ErrorInfo) { console.error("CRASH:", error, info); }
   render() {

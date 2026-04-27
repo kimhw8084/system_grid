@@ -90,10 +90,10 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
         "network_overview": network_overview,
         "monitoring_overview": monitoring_overview,
         "recent": {
-            "research": [{"id": r.id, "title": r.system_name, "updated_at": r.updated_at} for r in research],
-            "far": [{"id": f.id, "title": f.failure_mode, "created_at": f.created_at} for f in far],
+            "research": [{"id": r.id, "title": r.title, "updated_at": r.updated_at} for r in research],
+            "far": [{"id": f.id, "title": f.title, "created_at": f.created_at} for f in far],
             "knowledge": [{"id": k.id, "title": k.title, "created_at": k.created_at} for k in knowledge],
-            "architecture": [{"id": a.id, "title": a.name, "created_at": a.created_at} for a in architecture],
+            "architecture": [{"id": a.id, "title": a.title if hasattr(a, 'title') else getattr(a, 'name', 'Untitled'), "created_at": a.created_at} for a in architecture],
             "projects": {
                 "in_progress": [{"id": p.id, "title": p.name, "updated_at": p.updated_at} for p in projects_in_progress],
                 "completed": [{"id": p.id, "title": p.name, "updated_at": p.updated_at} for p in projects_completed]
