@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     
     # Environment
     ENVIRONMENT: str = "production"  # development, production, test
-    PORT: int = 8080
+    PORT: int = 8000
     
     # CORS Origins (comma-separated string converted to list)
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

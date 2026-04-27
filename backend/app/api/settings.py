@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
+from ..core.config import settings
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 

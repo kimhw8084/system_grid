@@ -19,7 +19,7 @@ async def _auto_seed():
                 ('VITE_THEME_DEFAULT', 'nordic-frost-v1', 'UI', True),
                 ('VITE_UI_TIMEOUT', '30000', 'Infrastructure', True),
                 ('VITE_MAX_GRID_ROWS', '100', 'UI', True),
-                ('PORT', '8080', 'Infrastructure', True),
+                ('PORT', '8000', 'Infrastructure', True),
                 ('API_ENDPOINT', '/api/v1', 'Infrastructure', True)
             ]
             for key, val, cat, public in global_defaults:
