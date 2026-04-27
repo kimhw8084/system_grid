@@ -399,12 +399,11 @@ result_df = get_user_pool()`)
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 pt-2 border-t border-rose-500/20">
                 <div className="flex-1 relative">
                   <Terminal className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500/50" size={14} />
-                  <input 
+                  <input
                     value={emergencyUrl} onChange={e => setEmergencyUrl(e.target.value)}
-                    placeholder="e.g. http://localhost:8000"
+                    placeholder="e.g. http://10.0.0.1:8000"
                     className="w-full bg-black/40 border border-rose-500/30 rounded-xl pl-10 pr-4 py-2.5 text-[10px] font-mono text-rose-400 outline-none focus:border-rose-500"
-                  />
-                </div>
+                  />                </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={handleApplyOverride}

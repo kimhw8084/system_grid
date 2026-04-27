@@ -3,20 +3,22 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  
+  const frontendPort = parseInt(env.VITE_PORT || '5173', 10);
+  const backendPort = parseInt(env.VITE_BACKEND_PORT || '8080', 10);
+  const backendHost = env.VITE_BACKEND_HOST || '127.0.0.1';
+  const apiTarget = env.VITE_API_BASE_URL || `http://${backendHost}:${backendPort}`;
+
   return {
     plugins: [react()],
     server: {
-      port: 5173,
+      port: frontendPort,
       host: true,
-      allowedHosts: true, 
-      hmr: env.VITE_HMR_HOST ? {
-        protocol: 'ws',
-        host: env.VITE_HMR_HOST,
-        clientPort: env.VITE_HMR_CLIENT_PORT ? parseInt(env.VITE_HMR_CLIENT_PORT) : 5173
-      } : true,
+      strictPort: true,
+      allowedHosts: true,
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         }
