@@ -18,6 +18,44 @@ async def get_user_settings(db: AsyncSession = Depends(get_db)):
     prefs = res.scalars().all()
     return {p.key: p.value for p in prefs}
 
+@router.get("/user/profile")
+async def get_user_profile(db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id()
+    # Attempt to find the operator by username
+    res = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    operator = res.scalar_one_or_none()
+    
+    if not operator:
+        # Return a synthetic profile if not found in DB
+        return {
+            "username": user_id,
+            "full_name": user_id.replace("_", " ").title(),
+            "role": "Unknown",
+            "department": "Infrastructure",
+            "is_external": True
+        }
+    
+    return {
+        "id": operator.id,
+        "username": operator.username,
+        "full_name": operator.full_name,
+        "email": operator.email,
+        "department": operator.department,
+        "team": operator.team,
+        "role": operator.role.name if operator.role else "No Role"
+    }
+
+@router.get("/user/env-vars")
+async def get_user_env_vars():
+    # Return user-specific environment context (mostly UI session flags)
+    user_id = get_current_user_id()
+    return {
+        "USER_ID": user_id,
+        "SESSION_TYPE": "PROXIED" if os.environ.get("HTTP_X_FORWARDED_FOR") else "DIRECT",
+        "DEBUG_MODE": os.environ.get("VITE_UI_DEBUG_LOGGING", "false").lower() == "true",
+        "WORKSPACE_ROOT": os.getcwd()
+    }
+
 @router.post("/user/settings")
 @router.patch("/user/settings")
 async def update_user_settings(data: dict, db: AsyncSession = Depends(get_db)):
@@ -235,9 +273,32 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
     settings_list = res.scalars().all()
     
     # Return as a simple key-value map for the UI, plus metadata if needed
-    # But for now, let's include metadata in a hidden field
     config = {s.key: s.value for s in settings_list}
-    config["_metadata"] = {s.key: {"category": s.category, "description": s.description} for s in settings_list}
+    config["_metadata"] = {s.key: {"category": s.category, "description": s.description, "file": s.file_path, "param": s.key} for s in settings_list}
+    
+    # Inject Raw Environment Data for Analysis tab
+    raw_env = {"backend": {}, "frontend": {}}
+    
+    # Helper to parse .env files
+    def parse_env(path):
+        if not os.path.exists(path): return {}
+        data = {}
+        with open(path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    data[k.strip()] = {"value": v.strip(), "file": path}
+        return data
+
+    # Backend .env
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    raw_env["backend"] = parse_env(os.path.join(base_dir, ".env"))
+    
+    # Frontend .env
+    frontend_dir = os.path.join(os.path.dirname(base_dir), "frontend")
+    raw_env["frontend"] = parse_env(os.path.join(frontend_dir, ".env"))
+    
+    config["_raw_env"] = raw_env
     return config
 
 @router.post("/global")
@@ -252,6 +313,20 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
         
         if setting:
             setting.value = str(value)
+            # Hot-reload in-memory config if attribute exists
+            if hasattr(settings, key):
+                try:
+                    # Attempt type conversion if needed
+                    current_val = getattr(settings, key)
+                    if isinstance(current_val, bool):
+                        new_val = str(value).lower() in ("true", "1", "yes")
+                    elif isinstance(current_val, int):
+                        new_val = int(value)
+                    else:
+                        new_val = str(value)
+                    setattr(settings, key, new_val)
+                except Exception as e:
+                    print(f"Failed to hot-reload {key}: {e}")
         else:
             # Auto-detect if it should be public (Frontend usually needs VITE_ prefixed vars)
             is_public = key.startswith("VITE_") or key in ["PORT", "API_ENDPOINT"]

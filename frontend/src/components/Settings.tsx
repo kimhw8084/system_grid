@@ -2,17 +2,15 @@ import React, { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
-  Save, RefreshCcw, Layout, Database, Palette, Bell, Info, Server,
+  Save, RefreshCcw, Layout, Database, Palette, Bell, Server,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
-  Settings as SettingsIcon, Layers, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
+  Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 
-const SettingField = ({ label, description, children, icon: Icon, help, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
-  const [showHelp, setShowHelp] = useState(false);
-  
+const SettingField = ({ label, description, children, icon: Icon, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
   return (
     <div className={`flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-xl border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
       <div className="flex items-start justify-between">
@@ -31,7 +29,7 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
                 </span>
               )}
             </div>
-            <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter mt-1 leading-relaxed">{description}</p>
+            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 leading-relaxed">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -53,14 +51,6 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
               <History size={14} />
             </button>
           )}
-          {help && (
-            <button 
-              onClick={() => setShowHelp(!showHelp)}
-              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-            >
-              <Info size={14} />
-            </button>
-          )}
         </div>
       </div>
       
@@ -76,24 +66,6 @@ const SettingField = ({ label, description, children, icon: Icon, help, onHistor
               </div>
           )}
       </div>
-
-      <AnimatePresence>
-        {showHelp && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="mb-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
-               <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
-                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-400">
-                    <Info size={10} /> INFO
-                  </div>
-                  <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg ${help.impact === 'HIGH' || help.impact === 'CRITICAL' ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-                    IMPACT: {help.impact}
-                  </span>
-               </div>
-               <p className="text-[9px] font-bold text-[var(--text-secondary)] leading-relaxed italic">{help.details}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="flex items-center gap-3">
         <div className="flex-1 relative">
@@ -139,7 +111,7 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
 }
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'modules' | 'permissions' | 'system'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system'>('environments')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
@@ -150,50 +122,7 @@ export default function SettingsPage() {
   const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [isAddingOption, setIsAddingOption] = useState(false)
-  const [newOption, setNewOption] = useState({ label: '', value: '', description: '', category: '' })
-
   const queryClient = useQueryClient()
-  
-  const { data: options } = useQuery({
-    queryKey: ['setting-options'],
-    queryFn: async () => {
-      const res = await apiFetch("/api/v1/settings/options")
-      return res.json()
-    }
-  })
-
-  const categories = Array.from(new Set(options?.map((o: any) => o.category) || [])) as string[];
-
-  const optionMutation = useMutation({
-    mutationFn: async (data: any) => {
-        const method = data.id ? 'PUT' : 'POST';
-        const url = data.id ? `/api/v1/settings/options/${data.id}` : "/api/v1/settings/options";
-        const res = await apiFetch(url, {
-            method,
-            body: JSON.stringify(data)
-        });
-        return res.json();
-    },
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['setting-options'] });
-        setIsAddingOption(false);
-        setNewOption({ label: '', value: '', description: '', category: '' });
-        toast.success("Module parameter updated");
-    }
-  });
-
-  const deleteOptionMutation = useMutation({
-    mutationFn: async (id: number) => {
-        await apiFetch(`/api/v1/settings/options/${id}`, { method: 'DELETE' });
-    },
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['setting-options'] });
-        toast.success("Parameter removed");
-    },
-    onError: (e: any) => toast.error(e.message)
-  });
   
   const toggleEdit = (field: string, action?: 'save') => {
     if (action === 'save') {
@@ -473,9 +402,6 @@ result_df = get_user_pool()`)
            <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Cpu size={14} /> Parameters
            </button>
-           <button onClick={() => setTopTab('modules')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'modules' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Layers size={14} /> Modules
-           </button>
            <button onClick={() => setTopTab('permissions')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'permissions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Shield size={14} /> Governance
            </button>
@@ -521,7 +447,7 @@ result_df = get_user_pool()`)
                                       icon={envHelp[key]?.details?.includes('URL') ? Link : envHelp[key]?.details?.includes('Path') ? FolderTree : Activity} 
                                       label={key.replace(/_/g, ' ')} 
                                       description={envHelp[key]?.details || "System parameter"} 
-                                      help={envHelp[key]} onHistory={() => setHistoryField(key)}
+                                      onHistory={() => setHistoryField(key)}
                                       onEdit={(a: any) => toggleEdit(key, a)} isEditable={editableFields[key]}
                                       isModified={isDirty(key)} 
                                       absPath={localEnv._metadata?.[key]?.file}
@@ -549,142 +475,6 @@ result_df = get_user_pool()`)
                       </div>
                   ))}
                </div>
-            </motion.div>
-          )}
-
-          {topTab === 'modules' && (
-            <motion.div key="modules" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
-                <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
-                  <div>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Module Customization</h2>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">The Application "Brain": Define Statuses, Environments & Systems</p>
-                  </div>
-                  <button 
-                    onClick={() => { setIsAddingOption(true); setSelectedCategory(categories[0]); }}
-                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
-                  >
-                    <Plus size={14} /> New Parameter
-                  </button>
-                </div>
-
-                <div className="flex gap-8 items-start">
-                    {/* Category Sidebar */}
-                    <div className="w-64 shrink-0 space-y-1">
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center justify-between group ${selectedCategory === cat ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-[var(--panel-item-bg)] border-[var(--glass-border)] text-slate-400 hover:border-blue-500/30 hover:text-blue-400'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Tag size={14} className={selectedCategory === cat ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'} />
-                                    {cat}
-                                </div>
-                                <ChevronRight size={12} className={selectedCategory === cat ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} />
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Main Content Area */}
-                    <div className="flex-1 space-y-4">
-                        {!selectedCategory ? (
-                            <div className="h-64 flex flex-col items-center justify-center bg-[var(--panel-item-bg)] border border-[var(--glass-border)] border-dashed rounded-3xl opacity-50">
-                                <Search size={32} className="text-slate-500 mb-4" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Select a category to customize</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <AnimatePresence mode="popLayout">
-                                    {options?.filter((o: any) => o.category === selectedCategory).map((opt: any) => (
-                                        <motion.div
-                                            layout
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0.95 }}
-                                            key={opt.id}
-                                            className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl p-5 group hover:border-blue-500/30 transition-all flex flex-col justify-between"
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="text-[12px] font-black text-[var(--text-primary)] uppercase tracking-wider">{opt.label}</h4>
-                                                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 italic">{opt.value}</p>
-                                                </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="p-1.5 text-slate-500 hover:text-blue-400 rounded-lg hover:bg-blue-400/10"><Edit2 size={14} /></button>
-                                                    <button 
-                                                        onClick={() => deleteOptionMutation.mutate(opt.id)}
-                                                        className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-400/10"
-                                                    ><Trash2 size={14} /></button>
-                                                </div>
-                                            </div>
-                                            {opt.description && <p className="text-[9px] text-slate-400 mt-3 leading-relaxed border-t border-white/5 pt-3">{opt.description}</p>}
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Add Option Modal */}
-                <AnimatePresence>
-                    {isAddingOption && (
-                        <>
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddingOption(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-                            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
-                                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
-                                    <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">New Module Parameter</h3>
-                                    <button onClick={() => setIsAddingOption(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Category</label>
-                                        <select 
-                                            value={newOption.category || selectedCategory || ''}
-                                            onChange={e => setNewOption({...newOption, category: e.target.value})}
-                                            className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                                        >
-                                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                            <option value="NEW">Create New Category...</option>
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Label</label>
-                                            <input 
-                                                value={newOption.label} onChange={e => setNewOption({...newOption, label: e.target.value})}
-                                                placeholder="e.g. Active"
-                                                className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black text-white outline-none focus:border-blue-500"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Value (ID)</label>
-                                            <input 
-                                                value={newOption.value} onChange={e => setNewOption({...newOption, value: e.target.value})}
-                                                placeholder="e.g. active"
-                                                className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black text-white outline-none focus:border-blue-500"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Description</label>
-                                        <textarea 
-                                            value={newOption.description} onChange={e => setNewOption({...newOption, description: e.target.value})}
-                                            placeholder="Purpose of this parameter..."
-                                            className="w-full h-24 bg-black/20 border border-white/5 rounded-xl p-4 text-[10px] font-bold text-white outline-none focus:border-blue-500 resize-none"
-                                        />
-                                    </div>
-                                    <button 
-                                        onClick={() => optionMutation.mutate(newOption)}
-                                        className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Save size={18} /> Sync to Application Brain
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
             </motion.div>
           )}
 
