@@ -9,10 +9,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: true,
       allowedHosts: true, 
-      hmr: {
-        protocol: 'ws', 
-        host: 'YOUR_CLOUDBASE_URL' 
-      },
+      hmr: env.VITE_HMR_HOST ? {
+        protocol: 'ws',
+        host: env.VITE_HMR_HOST,
+        clientPort: env.VITE_HMR_CLIENT_PORT ? parseInt(env.VITE_HMR_CLIENT_PORT) : 5173
+      } : true,
       proxy: {
         '/api': {
           target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,

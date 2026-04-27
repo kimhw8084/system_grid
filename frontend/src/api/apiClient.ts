@@ -20,6 +20,23 @@ export function setApiOverride(url: string | null) {
   }
 }
 
+let lastLatency = 0;
+const latencyListeners: Array<(latency: number) => void> = [];
+
+export function subscribeToLatency(listener: (latency: number) => void) {
+  latencyListeners.push(listener);
+  listener(lastLatency);
+  return () => {
+    const idx = latencyListeners.indexOf(listener);
+    if (idx !== -1) latencyListeners.splice(idx, 1);
+  };
+}
+
+function notifyLatency(latency: number) {
+  lastLatency = latency;
+  latencyListeners.forEach(listener => listener(latency));
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   const url = (endpoint.startsWith('http') || !baseUrl) 
@@ -31,10 +48,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
+  const startTime = Date.now();
   const response = await fetch(url, {
     ...options,
     headers,
   });
+  notifyLatency(Date.now() - startTime);
 
   if (!response.ok) {
     let errorData: any = {};
