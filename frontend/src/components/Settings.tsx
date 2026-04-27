@@ -395,6 +395,17 @@ result_df = get_user_pool()`)
                           className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                         />
                      </SettingField>
+                     <SettingField 
+                        icon={Cpu} label="Backend Port" description="The port the backend server listens on." 
+                        help={{ details: "Primary TCP port for backend services.", impact: "High" }} onEdit={(a: any) => toggleEdit('backend_port', a)} onHistory={() => setHistoryField('backend_port')}
+                        isEditable={editableFields['backend_port']} isModified={isDirty('backend_port')} absPath={localEnv._abs_paths?.env_file}
+                     >
+                        <input 
+                          type="number" disabled={!editableFields['backend_port']} value={localEnv.backend_port || 8000} 
+                          onChange={e => setLocalEnv({...localEnv, backend_port: parseInt(e.target.value)})} 
+                          className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-[var(--text-primary)] outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
+                        />
+                     </SettingField>
                   </div>
                </div>
 

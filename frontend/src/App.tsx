@@ -240,7 +240,7 @@ function MainLayout() {
   });
 
   useEffect(() => {
-    if (userSettings?.theme) {
+    if (userSettings?.theme && (userSettings.theme === 'nordic-frost-v1' || userSettings.theme === 'pure-clarity')) {
       setCurrentTheme(userSettings.theme);
       document.documentElement.setAttribute('data-theme', userSettings.theme);
       const isLight = userSettings.theme === 'pure-clarity';

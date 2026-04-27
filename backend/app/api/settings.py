@@ -27,6 +27,7 @@ class EnvUpdate(BaseModel):
     user_pool_path: str | None = None
     log_level: str | None = None
     venv_path: str | None = None
+    backend_port: int | None = None
     
     # Innovative Global Envs
     ui_timeout: int | None = None
@@ -50,32 +51,47 @@ async def get_user_profile():
         "department": "Infrastructure Ops"
     }
 
+def read_dotenv(path):
+    env = {}
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and "=" in line and not line.startswith("#"):
+                    parts = line.split("=", 1)
+                    if len(parts) == 2:
+                        env[parts[0]] = parts[1].strip('"').strip("'")
+    return env
+
 @router.get("/env")
 async def get_env_vars():
-    # Load from current environment and .env
+    # Load from actual .env files to ensure synchronization
+    backend_env = read_dotenv(".env")
+    frontend_env = read_dotenv("../frontend/.env")
+    
     env_data = {
-        "api_endpoint": os.getenv("API_ENDPOINT", "http://localhost:8000"),
-        "db_path": os.getenv("DATABASE_URL", "./sysgrid.db"),
-        "storage_root": os.getenv("STORAGE_ROOT", "./storage"),
-        "image_path": os.getenv("IMAGE_PATH", "./storage/images"),
-        "backup_path": os.getenv("BACKUP_PATH", "./backups"),
-        "scripts_path": os.getenv("SCRIPTS_PATH", "./scripts"),
-        "user_pool_path": os.getenv("USER_POOL_PATH", "./storage/user_pool.json"),
-        "log_level": os.getenv("LOG_LEVEL", "INFO"),
-        "venv_path": os.getenv("VENV_PATH", sys.prefix if hasattr(sys, 'prefix') else "./venv"),
+        "api_endpoint": backend_env.get("API_ENDPOINT", "http://localhost:8000"),
+        "db_path": backend_env.get("DATABASE_URL", "./sysgrid.db"),
+        "storage_root": backend_env.get("STORAGE_ROOT", "./storage"),
+        "image_path": backend_env.get("IMAGE_PATH", "./storage/images"),
+        "backup_path": backend_env.get("BACKUP_PATH", "./backups"),
+        "scripts_path": backend_env.get("SCRIPTS_PATH", "./scripts"),
+        "user_pool_path": backend_env.get("USER_POOL_PATH", "./storage/user_pool.json"),
+        "log_level": backend_env.get("LOG_LEVEL", "INFO"),
+        "venv_path": backend_env.get("VENV_PATH", sys.prefix if hasattr(sys, 'prefix') else "./venv"),
+        "backend_port": int(backend_env.get("PORT", "8000")),
         
         # New Innovative Params
-        "ui_timeout": int(os.getenv("UI_TIMEOUT", "30000")),
-        "ui_backend_url": os.getenv("UI_BACKEND_URL", os.getenv("API_ENDPOINT", "http://localhost:8000")),
-        "ui_debug_logging": os.getenv("UI_DEBUG_LOGGING", "false").lower() == "true",
-        "hot_reload_enabled": os.getenv("HOT_RELOAD_ENABLED", "true").lower() == "true",
-        "feature_flags": json.loads(os.getenv("FEATURE_FLAGS", "{}")),
-        "auth_secret": os.getenv("AUTH_SECRET", "change-me-immediately"),
-        "session_expiry": int(os.getenv("SESSION_EXPIRY", "1440"))
+        "ui_timeout": int(frontend_env.get("VITE_UI_TIMEOUT", backend_env.get("UI_TIMEOUT", "30000"))),
+        "ui_backend_url": frontend_env.get("VITE_API_BASE_URL", backend_env.get("UI_BACKEND_URL", "")),
+        "ui_debug_logging": (frontend_env.get("VITE_UI_DEBUG_LOGGING") or backend_env.get("UI_DEBUG_LOGGING", "false")).lower() == "true",
+        "hot_reload_enabled": backend_env.get("HOT_RELOAD_ENABLED", "true").lower() == "true",
+        "feature_flags": json.loads(backend_env.get("FEATURE_FLAGS", "{}")),
+        "auth_secret": backend_env.get("AUTH_SECRET", "change-me-immediately"),
+        "session_expiry": int(backend_env.get("SESSION_EXPIRY", "1440"))
     }
     
     # Calculate Absolute Paths
-    # Fix: Correctly handle sqlite prefix when calculating absolute path for display
     db_raw_path = env_data["db_path"].replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
     
     abs_paths = {
@@ -109,7 +125,8 @@ async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/env")
 async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
-    mapping = {
+    # Mapping for backend .env
+    backend_mapping = {
         "api_endpoint": "API_ENDPOINT",
         "db_path": "DATABASE_URL",
         "storage_root": "STORAGE_ROOT",
@@ -119,6 +136,7 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         "user_pool_path": "USER_POOL_PATH",
         "log_level": "LOG_LEVEL",
         "venv_path": "VENV_PATH",
+        "backend_port": "PORT",
         "ui_timeout": "UI_TIMEOUT",
         "ui_backend_url": "UI_BACKEND_URL",
         "ui_debug_logging": "UI_DEBUG_LOGGING",
@@ -127,90 +145,85 @@ async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
         "auth_secret": "AUTH_SECRET",
         "session_expiry": "SESSION_EXPIRY"
     }
+
+    # Mapping for frontend .env
+    frontend_mapping = {
+        "ui_backend_url": "VITE_API_BASE_URL",
+        "backend_port": "VITE_BACKEND_PORT",
+        "ui_timeout": "VITE_UI_TIMEOUT",
+        "ui_debug_logging": "VITE_UI_DEBUG_LOGGING"
+    }
     
     username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
-    env_path = ".env"
-    current_env = {}
+    backend_env_path = ".env"
+    frontend_env_path = "../frontend/.env"
     
-    # Read existing .env to preserve other variables
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line and "=" in line and not line.startswith("#"):
-                    parts = line.split("=", 1)
-                    if len(parts) == 2:
-                        current_env[parts[0]] = parts[1]
-
+    current_backend = read_dotenv(backend_env_path)
+    current_frontend = read_dotenv(frontend_env_path)
+    
     update_dict = data.dict(exclude_unset=True)
-    for feat, env_key in mapping.items():
-        if feat in update_dict:
-            new_val = update_dict[feat]
+    
+    # Process updates
+    for feat, val in update_dict.items():
+        # Backend updates
+        if feat in backend_mapping:
+            env_key = backend_mapping[feat]
+            new_val = val
             
-            # Special Handling for DB Path to ensure valid SQLAlchemy URL
-            if feat == "db_path":
+            # Special Handling for DB Path
+            if feat == "db_path" and new_val:
                 if not new_val.startswith("sqlite"):
                     new_val = f"sqlite+aiosqlite:///{new_val}"
             
-            # Convert to string for .env storage
+            # Convert to string
             if isinstance(new_val, (dict, list)):
                 new_val_str = json.dumps(new_val)
             elif isinstance(new_val, bool):
                 new_val_str = str(new_val).lower()
             else:
                 new_val_str = str(new_val)
-                
-            # FIX: Get REAL old value from current config (os.environ or current_env)
-            # This ensures history shows actual previous value, not empty
-            old_val = current_env.get(env_key)
-            if old_val is None:
-                old_val = os.getenv(env_key, "")
             
+            old_val = current_backend.get(env_key, "")
             if new_val_str != old_val:
-                # Log the change
-                history_entry = models.EnvHistory(
-                    field=feat,
-                    old_value=old_val if old_val else "INITIAL_CONFIG",
-                    new_value=new_val_str,
-                    user=username
-                )
-                db.add(history_entry)
-                
-                # Update current process and .env data
-                current_env[env_key] = new_val_str
+                db.add(models.EnvHistory(field=feat, old_value=old_val or "INITIAL", new_value=new_val_str, user=username))
+                current_backend[env_key] = new_val_str
                 os.environ[env_key] = new_val_str
                 
-                # Hot Reload: Attempt to update app_settings in memory
-                if hasattr(app_settings, env_key) and not isinstance(getattr(type(app_settings), env_key, None), property):
-                    try:
-                        # Convert back to expected type if necessary
-                        target_val = new_val
-                        setattr(app_settings, env_key, target_val)
-                    except Exception:
-                        pass 
+                # Hot Reload in-memory settings
+                if hasattr(app_settings, env_key):
+                    try: setattr(app_settings, env_key, new_val)
+                    except: pass
 
-    from ..database import refresh_engine
-    engine_refreshed = refresh_engine()
+        # Frontend updates
+        if feat in frontend_mapping:
+            env_key = frontend_mapping[feat]
+            new_val_str = str(val).lower() if isinstance(val, bool) else str(val)
+            if val is None: new_val_str = "" # Support empty URL for proxying
+            current_frontend[env_key] = new_val_str
+
+    # Refresh DB engine if path changed
+    if "db_path" in update_dict:
+        from ..database import refresh_engine
+        refresh_engine()
     
     await db.commit()
 
-    # Write back to .env
-    with open(env_path, "w") as f:
-        f.write("# SYSGRID AUTO-GENERATED ENVIRONMENT CONFIG\n")
-        f.write(f"# LAST_UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
-        for k, v in sorted(current_env.items()):
+    # Write Backend .env
+    with open(backend_env_path, "w") as f:
+        f.write("# SYSGRID AUTO-GENERATED BACKEND CONFIG\n")
+        f.write(f"# UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
+        for k, v in sorted(current_backend.items()):
             f.write(f"{k}={v}\n")
             
-    # FIXED: Write to frontend/.env for dynamic frontend configuration
-    frontend_env_path = "../frontend/.env"
+    # Write Frontend .env
     if os.path.exists(os.path.dirname(frontend_env_path)):
         with open(frontend_env_path, "w") as f:
             f.write("# SYSGRID AUTO-GENERATED FRONTEND CONFIG\n")
-            f.write(f"VITE_API_BASE_URL={current_env.get('UI_BACKEND_URL', current_env.get('API_ENDPOINT', 'http://localhost:8000'))}\n")
-            f.write(f"VITE_UI_TIMEOUT={current_env.get('UI_TIMEOUT', '30000')}\n")
-            f.write(f"VITE_UI_DEBUG_LOGGING={current_env.get('UI_DEBUG_LOGGING', 'false')}\n")
+            f.write(f"# UPDATED_BY: {username} AT {datetime.datetime.now().isoformat()}\n")
+            for k, v in sorted(current_frontend.items()):
+                f.write(f"{k}={v}\n")
             
-    return {"status": "success", "message": "Environment synchronized and Hot-Reloaded successfully"}
+    return {"status": "success", "message": "Environment synchronized successfully"}
 
 @router.post("/user-pool/refresh")
 async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
@@ -431,7 +444,7 @@ async def get_user_settings():
     if os.path.exists(settings_file):
         with open(settings_file, "r") as f:
             return json.load(f)
-    return {"theme": "dark", "sidebar_open": True}
+    return {"theme": "nordic-frost-v1", "sidebar_open": True}
 
 @router.post("/user/settings")
 async def update_user_settings(data: dict):
