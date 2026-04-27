@@ -90,60 +90,111 @@ def read_dotenv(path):
 @router.get("/env")
 async def get_env_vars():
     # Load from actual .env files to ensure synchronization
-    backend_env = read_dotenv(".env")
-    frontend_env = read_dotenv("../frontend/.env")
+    backend_path = os.path.abspath(".env")
+    frontend_path = os.path.abspath("../frontend/.env")
     
-    env_data = {
-        "api_endpoint": backend_env.get("API_ENDPOINT", "http://localhost:8000"),
-        "db_path": backend_env.get("DATABASE_URL", "./system_grid.db"),
-        "storage_root": backend_env.get("STORAGE_ROOT", "./storage"),
-        "image_path": backend_env.get("IMAGE_PATH", "./storage/images"),
-        "backup_path": backend_env.get("BACKUP_PATH", "./backups"),
-        "scripts_path": backend_env.get("SCRIPTS_PATH", "./scripts"),
-        "user_pool_path": backend_env.get("USER_POOL_PATH", "./storage/user_pool.json"),
-        "log_level": backend_env.get("LOG_LEVEL", "INFO"),
-        "venv_path": backend_env.get("VENV_PATH", sys.prefix if hasattr(sys, 'prefix') else "./venv"),
-        "backend_port": int(backend_env.get("PORT", "8000")),
+    backend_env = read_dotenv(backend_path)
+    frontend_env = read_dotenv(frontend_path)
+    
+    # Define the mapping of internal keys to .env keys and files
+    # This structure allows us to track exactly which parameter is being updated in which file
+    mapping = {
+        "api_endpoint": {"key": "API_ENDPOINT", "file": backend_path, "default": "http://localhost:8000"},
+        "db_path": {"key": "DATABASE_URL", "file": backend_path, "default": "sqlite+aiosqlite:///./system_grid.db"},
+        "storage_root": {"key": "STORAGE_ROOT", "file": backend_path, "default": "./storage"},
+        "image_path": {"key": "IMAGE_PATH", "file": backend_path, "default": "./storage/images"},
+        "backup_path": {"key": "BACKUP_PATH", "file": backend_path, "default": "./backups"},
+        "scripts_path": {"key": "SCRIPTS_PATH", "file": backend_path, "default": "./scripts"},
+        "user_pool_path": {"key": "USER_POOL_PATH", "file": backend_path, "default": "./storage/user_pool.json"},
+        "log_level": {"key": "LOG_LEVEL", "file": backend_path, "default": "INFO"},
+        "venv_path": {"key": "VENV_PATH", "file": backend_path, "default": "./venv"},
+        "backend_port": {"key": "PORT", "file": backend_path, "default": "8000"},
         
-        # Innovative Params
-        "ui_timeout": int(frontend_env.get("VITE_UI_TIMEOUT", backend_env.get("UI_TIMEOUT", "30000"))),
-        "ui_backend_url": frontend_env.get("VITE_API_BASE_URL", backend_env.get("UI_BACKEND_URL", "")),
-        "ui_debug_logging": (frontend_env.get("VITE_UI_DEBUG_LOGGING") or backend_env.get("UI_DEBUG_LOGGING", "false")).lower() == "true",
-        "hot_reload_enabled": backend_env.get("HOT_RELOAD_ENABLED", "true").lower() == "true",
-        "feature_flags": json.loads(backend_env.get("FEATURE_FLAGS", "{}")),
-        "auth_secret": backend_env.get("AUTH_SECRET", "change-me-immediately"),
-        "session_expiry": int(backend_env.get("SESSION_EXPIRY", "1440")),
+        # Innovative Params (Cross-linked)
+        "ui_timeout": {"key": "VITE_UI_TIMEOUT", "file": frontend_path, "alt_key": "UI_TIMEOUT", "alt_file": backend_path, "default": "30000"},
+        "ui_backend_url": {"key": "VITE_API_BASE_URL", "file": frontend_path, "alt_key": "UI_BACKEND_URL", "alt_file": backend_path, "default": ""},
+        "ui_debug_logging": {"key": "VITE_UI_DEBUG_LOGGING", "file": frontend_path, "alt_key": "UI_DEBUG_LOGGING", "alt_file": backend_path, "default": "false"},
+        "hot_reload_enabled": {"key": "HOT_RELOAD_ENABLED", "file": backend_path, "default": "true"},
+        "feature_flags": {"key": "FEATURE_FLAGS", "file": backend_path, "default": "{}"},
+        "auth_secret": {"key": "AUTH_SECRET", "file": backend_path, "default": "change-me-immediately"},
+        "session_expiry": {"key": "SESSION_EXPIRY", "file": backend_path, "default": "1440"},
 
         # Backend New
-        "max_upload_size": int(backend_env.get("MAX_UPLOAD_SIZE", "50")),
-        "worker_count": int(backend_env.get("WORKER_COUNT", "4")),
-        "cache_ttl": int(backend_env.get("CACHE_TTL", "3600")),
-        "smtp_host": backend_env.get("SMTP_HOST", "localhost"),
-        "smtp_port": int(backend_env.get("SMTP_PORT", "1025")),
-        "alert_email": backend_env.get("ALERT_EMAIL", "admin@sysgrid.local"),
-        "enable_audit_logs": backend_env.get("ENABLE_AUDIT_LOGS", "true").lower() == "true",
-        "db_backup_schedule": backend_env.get("DB_BACKUP_SCHEDULE", "0 0 * * *"),
-        "token_algorithm": backend_env.get("TOKEN_ALGORITHM", "HS256"),
-        "request_timeout": int(backend_env.get("REQUEST_TIMEOUT", "60")),
+        "max_upload_size": {"key": "MAX_UPLOAD_SIZE", "file": backend_path, "default": "50"},
+        "worker_count": {"key": "WORKER_COUNT", "file": backend_path, "default": "4"},
+        "cache_ttl": {"key": "CACHE_TTL", "file": backend_path, "default": "3600"},
+        "smtp_host": {"key": "SMTP_HOST", "file": backend_path, "default": "localhost"},
+        "smtp_port": {"key": "SMTP_PORT", "file": backend_path, "default": "1025"},
+        "alert_email": {"key": "ALERT_EMAIL", "file": backend_path, "default": "admin@sysgrid.local"},
+        "enable_audit_logs": {"key": "ENABLE_AUDIT_LOGS", "file": backend_path, "default": "true"},
+        "db_backup_schedule": {"key": "DB_BACKUP_SCHEDULE", "file": backend_path, "default": "0 0 * * *"},
+        "token_algorithm": {"key": "TOKEN_ALGORITHM", "file": backend_path, "default": "HS256"},
+        "request_timeout": {"key": "REQUEST_TIMEOUT", "file": backend_path, "default": "60"},
 
         # Frontend New
-        "app_title": frontend_env.get("VITE_APP_TITLE", "SYSGRID Tactical"),
-        "polling_interval": int(frontend_env.get("VITE_POLLING_INTERVAL", "5000")),
-        "enable_analytics": frontend_env.get("VITE_ENABLE_ANALYTICS", "false").lower() == "true",
-        "max_grid_rows": int(frontend_env.get("VITE_MAX_GRID_ROWS", "100")),
-        "theme_default": frontend_env.get("VITE_THEME_DEFAULT", "nordic-frost-v1"),
-        "maintenance_mode": frontend_env.get("VITE_MAINTENANCE_MODE", "false").lower() == "true",
-        "support_url": frontend_env.get("VITE_SUPPORT_URL", "https://support.sysgrid.local"),
-        "auto_logout_idle": int(frontend_env.get("VITE_AUTO_LOGOUT_IDLE", "3600")),
-        "toast_duration": int(frontend_env.get("VITE_TOAST_DURATION", "3000")),
-        "enable_websockets": frontend_env.get("VITE_ENABLE_WEBSOCKETS", "true").lower() == "true"
+        "app_title": {"key": "VITE_APP_TITLE", "file": frontend_path, "default": "SYSGRID Tactical"},
+        "polling_interval": {"key": "VITE_POLLING_INTERVAL", "file": frontend_path, "default": "5000"},
+        "enable_analytics": {"key": "VITE_ENABLE_ANALYTICS", "file": frontend_path, "default": "false"},
+        "max_grid_rows": {"key": "VITE_MAX_GRID_ROWS", "file": frontend_path, "default": "100"},
+        "theme_default": {"key": "VITE_THEME_DEFAULT", "file": frontend_path, "default": "nordic-frost-v1"},
+        "maintenance_mode": {"key": "VITE_MAINTENANCE_MODE", "file": frontend_path, "default": "false"},
+        "support_url": {"key": "VITE_SUPPORT_URL", "file": frontend_path, "default": "https://support.sysgrid.local"},
+        "auto_logout_idle": {"key": "VITE_AUTO_LOGOUT_IDLE", "file": frontend_path, "default": "3600"},
+        "toast_duration": {"key": "VITE_TOAST_DURATION", "file": frontend_path, "default": "3000"},
+        "enable_websockets": {"key": "VITE_ENABLE_WEBSOCKETS", "file": frontend_path, "default": "true"}
     }
     
-    # Calculate Absolute Paths
+    env_data = {}
+    metadata = {}
+    
+    for field, cfg in mapping.items():
+        val = None
+        # Try primary file
+        if cfg["file"] == backend_path:
+            val = backend_env.get(cfg["key"])
+        else:
+            val = frontend_env.get(cfg["key"])
+            
+        # Try alternate file if missing
+        if val is None and "alt_key" in cfg:
+            if cfg["alt_file"] == backend_path:
+                val = backend_env.get(cfg["alt_key"])
+            else:
+                val = frontend_env.get(cfg["alt_key"])
+                
+        # Final fallback to default
+        final_val = val if val is not None else cfg["default"]
+        
+        # Type conversions
+        if cfg["key"] in ["PORT", "UI_TIMEOUT", "VITE_UI_TIMEOUT", "SESSION_EXPIRY", "MAX_UPLOAD_SIZE", "WORKER_COUNT", "CACHE_TTL", "SMTP_PORT", "REQUEST_TIMEOUT", "VITE_POLLING_INTERVAL", "VITE_MAX_GRID_ROWS", "VITE_AUTO_LOGOUT_IDLE", "VITE_TOAST_DURATION"]:
+            try: env_data[field] = int(final_val)
+            except: env_data[field] = final_val
+        elif final_val.lower() in ["true", "false"]:
+            env_data[field] = final_val.lower() == "true"
+        elif field == "feature_flags":
+            try: env_data[field] = json.loads(final_val)
+            except: env_data[field] = {}
+        else:
+            env_data[field] = final_val
+            
+        metadata[field] = {
+            "param": cfg["key"],
+            "file": cfg["file"],
+            "is_backend": cfg["file"] == backend_path
+        }
+    
+    # Outer Join: Add variables from .env files that are NOT in the mapping
+    raw_env = {
+        "backend": {k: {"value": v, "file": backend_path} for k, v in backend_env.items()},
+        "frontend": {k: {"value": v, "file": frontend_path} for k, v in frontend_env.items()}
+    }
+    
+    # Calculate Absolute Paths for specific filesystem pointers
     db_raw_path = env_data["db_path"].replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
     
     abs_paths = {
-        "env_file": os.path.abspath(".env"),
+        "env_file": backend_path,
+        "frontend_env": frontend_path,
         "db_path": os.path.abspath(db_raw_path),
         "storage_root": os.path.abspath(env_data["storage_root"]),
         "image_path": os.path.abspath(env_data["image_path"]),
@@ -153,7 +204,12 @@ async def get_env_vars():
         "venv_path": os.path.abspath(env_data["venv_path"])
     }
     
-    return {**env_data, "_abs_paths": abs_paths}
+    return {
+        **env_data, 
+        "_metadata": metadata, 
+        "_abs_paths": abs_paths,
+        "_raw_env": raw_env
+    }
 
 @router.get("/env/history")
 async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
