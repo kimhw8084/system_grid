@@ -1,12 +1,11 @@
 import { errorManager } from '../stores/errorStore';
 
-const getBaseUrl = () => 
-  localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || 
-  localStorage.getItem('SYSGRID_CONFIG_VITE_API_BASE_URL') ||
-  import.meta.env.VITE_API_BASE_URL || 
-  '';
-
-let API_BASE_URL = getBaseUrl();
+export function getApiBaseUrl() {
+  return localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || 
+         localStorage.getItem('SYSGRID_CONFIG_VITE_API_BASE_URL') ||
+         import.meta.env.VITE_API_BASE_URL || 
+         '';
+}
 
 export function getConfig(key: string, defaultValue: string = ''): string {
   // Ensure the key has VITE_ prefix if not provided
@@ -26,11 +25,6 @@ export function setApiOverride(url: string | null) {
   } else {
     localStorage.removeItem('SYSGRID_OVERRIDE_API_URL');
   }
-  API_BASE_URL = getBaseUrl();
-}
-
-export function getApiBaseUrl() {
-  return API_BASE_URL;
 }
 
 let lastLatency = 0;
@@ -52,11 +46,12 @@ function notifyLatency(latency: number) {
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const start = performance.now();
+  const baseUrl = getApiBaseUrl();
   // If the endpoint is already a full URL, use it as is
   // Otherwise, prepend the base URL
-  const url = (endpoint.startsWith('http') || !API_BASE_URL) 
+  const url = (endpoint.startsWith('http') || !baseUrl) 
     ? endpoint 
-    : `${API_BASE_URL.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
+    : `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
   
   const headers: Record<string, string> = { ...options.headers } as any;
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {

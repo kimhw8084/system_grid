@@ -15,7 +15,7 @@ const Bootstrap = () => {
       try {
         console.log("BOOTSTRAP: Fetching system configuration...");
         // 1. Try to fetch bootstrap config from the backend
-        const response = await apiFetch('/settings/bootstrap');
+        const response = await apiFetch('/api/v1/settings/bootstrap');
         const config = await response.json();
         
         console.log("BOOTSTRAP: Configuration received", config);
