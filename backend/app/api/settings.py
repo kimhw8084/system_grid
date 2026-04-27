@@ -69,16 +69,20 @@ class PoolSync(BaseModel):
 
 @router.get("/bootstrap")
 async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
-    """Public endpoint for frontend to discover API URL and critical settings."""
-    res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
-    settings = res.scalars().all()
-    
-    if not settings:
-        await initialize_settings(db)
+    """Public endpoint for frontend to discover API URL and critical settings. No authentication required."""
+    try:
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
         settings = res.scalars().all()
         
-    return {s.key: s.value for s in settings}
+        if not settings:
+            await initialize_settings(db)
+            res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
+            settings = res.scalars().all()
+            
+        return {s.key: s.value for s in settings}
+    except Exception as e:
+        print(f"BOOTSTRAP ERROR: {e}")
+        return {"error": str(e)}
 
 @router.get("/user/profile")
 async def get_user_profile():
