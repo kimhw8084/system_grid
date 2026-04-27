@@ -3,7 +3,7 @@ from typing import List, Union
 import os
 
 class Settings(BaseSettings):
-    API_V1_STR: str = "/sysgrid/v1"
+    API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "SYSGRID Production API"
     
     # Environment
@@ -16,14 +16,6 @@ class Settings(BaseSettings):
     # Database
     @property
     def DATABASE_URL(self) -> str:
-        # Allow override from environment
-        env_url = os.getenv("DATABASE_URL")
-        if env_url:
-            if env_url.startswith("sqlite"):
-                if "aiosqlite" not in env_url:
-                    return env_url.replace("sqlite:///", "sqlite+aiosqlite:///")
-            return env_url
-
         # Get the absolute path to the backend directory
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         db_path = os.path.join(base_dir, "system_grid.db")

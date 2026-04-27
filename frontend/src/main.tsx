@@ -2,45 +2,89 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
-import { apiFetch } from './api/apiClient'
+import { apiFetch, setApiOverride, getApiBaseUrl } from './api/apiClient'
 
 console.log("MAIN.TSX: Initializing React Root");
 
 const Bootstrap = () => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedUrl, setFailedUrl] = useState<string>("");
+  const [appKey, setAppKey] = useState(0);
 
   useEffect(() => {
+    let isMounted = true;
+    let ws: WebSocket | null = null;
+    let pollInterval: any = null;
+
+    const fetchConfig = async () => {
+      try {
+        const response = await apiFetch('/api/v1/settings/bootstrap');
+        const config = await response.json();
+        let changed = false;
+        Object.entries(config).forEach(([key, value]) => {
+          const lsKey = `SYSGRID_CONFIG_${key}`;
+          if (localStorage.getItem(lsKey) !== String(value)) {
+            changed = true;
+            localStorage.setItem(lsKey, String(value));
+          }
+        });
+        if (changed && ready) {
+          console.log("BOOTSTRAP: Configuration updated, triggering re-render");
+          setAppKey(prev => prev + 1);
+        }
+        return true;
+      } catch (err: any) {
+        console.error("BOOTSTRAP: Failed to fetch configuration", err);
+        throw err;
+      }
+    };
+
     const init = async () => {
       try {
         console.log("BOOTSTRAP: Fetching system configuration...");
-        // 1. Try to fetch bootstrap config from the backend
-        const response = await apiFetch('/api/v1/settings/bootstrap');
-        const config = await response.json();
+        await fetchConfig();
+        if (isMounted) setReady(true);
+
+        // Try WebSocket, fallback to polling
+        const baseUrl = getApiBaseUrl() || window.location.origin;
+        const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
+        const wsUrl = baseUrl.replace(/^https?/, wsProtocol) + '/api/v1/ws/sync';
         
-        console.log("BOOTSTRAP: Configuration received", config);
-        
-        // 2. Apply config to localStorage (LKG - Last Known Good)
-        Object.entries(config).forEach(([key, value]) => {
-          localStorage.setItem(`SYSGRID_CONFIG_${key}`, String(value));
-        });
-        
-        setReady(true);
+        try {
+          ws = new WebSocket(wsUrl);
+          ws.onmessage = (event) => {
+            if (event.data === 'CONFIG_UPDATED') {
+              console.log("WS: CONFIG_UPDATED signal received");
+              fetchConfig().catch(() => {});
+            }
+          };
+          ws.onerror = () => {
+            console.warn("WS: Connection failed. Gracefully degrading to HTTP polling.");
+            if (!pollInterval) {
+              pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000); // 1 min fallback
+            }
+          };
+        } catch (e) {
+          console.warn("WS: Setup failed. Gracefully degrading to HTTP polling.");
+          pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000);
+        }
+
       } catch (err: any) {
-        console.error("BOOTSTRAP: Failed to fetch configuration", err);
-        
-        // 3. Fallback: Check if we have LKG in localStorage
-        const hasLkg = localStorage.getItem('SYSGRID_CONFIG_PORT') || localStorage.getItem('SYSGRID_CONFIG_VITE_APP_TITLE');
-        if (hasLkg) {
-          console.warn("BOOTSTRAP: Using Last Known Good (LKG) configuration");
-          setReady(true);
-        } else {
-          setError("CRITICAL: Failed to connect to SysGrid Backend and no local cache found.");
+        if (isMounted) {
+          setError(err.message || "Failed to connect to backend");
+          setFailedUrl(err.url || getApiBaseUrl() || "relative path");
         }
       }
     };
+    
     init();
-  }, []);
+    return () => { 
+      isMounted = false; 
+      if (ws) ws.close();
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [ready]);
 
   if (error) {
     return (
@@ -51,38 +95,47 @@ const Bootstrap = () => {
             <h1 className="text-xl font-bold uppercase tracking-tighter">Connection Failure</h1>
           </div>
           
-          <div className="bg-black/40 p-4 rounded mb-8 border border-white/5">
-            <p className="text-xs opacity-80 leading-relaxed text-red-200">{error}</p>
+          <div className="bg-black/40 p-4 rounded mb-4 border border-white/5">
+            <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2">
+              Failed to reach backend API. If you recently entered a custom API URL, it might be routing through a corporate proxy (APISIX) that rejects unauthenticated requests.
+            </p>
+            <p className="text-[10px] text-white/40">
+              Target URL: {failedUrl} <br/>
+              Error: {error}
+            </p>
           </div>
 
           <div className="flex flex-col gap-3">
              <button 
-               onClick={() => window.location.reload()}
+               onClick={() => {
+                 setApiOverride(null); // Clear the bad URL override
+                 window.location.reload();
+               }}
+               className="w-full px-4 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-widest hover:bg-red-400 transition-all active:scale-95"
+             >
+               Clear Overrides & Retry (Self-Heal)
+             </button>
+
+             <button 
+               onClick={() => setReady(true)}
                className="w-full px-4 py-3 bg-[#88c0d0] text-slate-900 text-xs font-bold uppercase tracking-widest hover:bg-white transition-all active:scale-95"
              >
-               Retry Connection
+               Ignore Error & Launch App Anyway
              </button>
+
              <button 
                onClick={() => {
                  const current = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || '';
-                 const newUrl = prompt("Enter Backend API URL (e.g., http://localhost:8000):", current);
+                 const newUrl = prompt("Enter Backend API URL manually (leave blank to clear):", current);
                  if (newUrl !== null) {
-                   if (newUrl) {
-                     localStorage.setItem('SYSGRID_OVERRIDE_API_URL', newUrl);
-                   } else {
-                     localStorage.removeItem('SYSGRID_OVERRIDE_API_URL');
-                   }
+                   setApiOverride(newUrl);
                    window.location.reload();
                  }
                }}
                className="w-full px-4 py-2 border border-[#88c0d0]/30 text-[#88c0d0]/60 text-[10px] uppercase tracking-widest hover:text-[#88c0d0] hover:border-[#88c0d0]/60 transition-all"
              >
-               Manually configure API URL
+               Manually Configure API URL
              </button>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-white/5 text-[9px] text-white/20 uppercase tracking-[0.2em] text-center">
-            SysGrid Tactical Initialization Engine v2.0
           </div>
         </div>
       </div>
@@ -106,7 +159,7 @@ const Bootstrap = () => {
     );
   }
 
-  return <App />;
+  return <App key={appKey} />;
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

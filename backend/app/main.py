@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, vendors, knowledge, investigations, far, projects, rca
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
@@ -73,24 +73,48 @@ async def lifespan(app: FastAPI):
     await _auto_seed()
     yield
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 import traceback
+import asyncio
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except Exception:
+                pass
+
+manager = ConnectionManager()
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
-@app.middleware("http")
-async def add_open_access_headers(request: Request, call_next):
-    response = await call_next(request)
-    # Ensure no browser tries to trigger a 401 login popup
-    if response.status_code == 401:
-        response.status_code = 200 # Downgrade 401s to 200 with empty body for bootstrap safety
-        return JSONResponse(content={"detail": "Tactical Bypass: 401 suppressed"}, status_code=200)
-    
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    return response
+# Make manager accessible to routers
+app.state.ws_manager = manager
+
+@app.websocket(f"{settings.API_V1_STR}/ws/sync")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Just keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception:
+        manager.disconnect(websocket)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -107,10 +131,15 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+# Determine adaptive CORS credentials based on origins
+# If '*' is in origins, credentials must be False per CORS spec.
+origins = settings.BACKEND_CORS_ORIGINS
+allow_creds = False if "*" in origins else True
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -130,12 +159,6 @@ app.include_router(monitoring.router, prefix=settings.API_V1_STR)
 app.include_router(troubleshoot.router, prefix=settings.API_V1_STR)
 app.include_router(data_flows.router, prefix=settings.API_V1_STR)
 app.include_router(intelligence.router, prefix=settings.API_V1_STR)
-app.include_router(vendors.router, prefix=settings.API_V1_STR)
-app.include_router(knowledge.router, prefix=settings.API_V1_STR)
-app.include_router(investigations.router, prefix=settings.API_V1_STR)
-app.include_router(far.router, prefix=settings.API_V1_STR)
-app.include_router(projects.router, prefix=settings.API_V1_STR)
-app.include_router(rca.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():

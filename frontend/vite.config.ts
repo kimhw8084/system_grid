@@ -9,12 +9,11 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: true,
       allowedHosts: true, 
+      hmr: {
+        protocol: 'ws', 
+        host: 'YOUR_CLOUDBASE_URL' 
+      },
       proxy: {
-        '/sysgrid': {
-          target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,
-          changeOrigin: true,
-          secure: false,
-        },
         '/api': {
           target: env.VITE_API_BASE_URL || `http://localhost:${env.VITE_BACKEND_PORT || 8080}`,
           changeOrigin: true,

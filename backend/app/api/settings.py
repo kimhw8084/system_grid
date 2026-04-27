@@ -1,71 +1,43 @@
 import os
-import io
-import json
-import pandas as pd
-import numpy as np
-import sys
-import datetime
-import sqlalchemy as sa
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, desc
+from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
-from ..schemas import schemas
-from ..core.config import settings as app_settings
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
-class EnvUpdate(BaseModel):
-    # Core Engine Envs
-    api_endpoint: str | None = None
-    db_path: str | None = None
-    storage_root: str | None = None
-    image_path: str | None = None
-    backup_path: str | None = None
-    scripts_path: str | None = None
-    user_pool_path: str | None = None
-    log_level: str | None = None
-    venv_path: str | None = None
-    backend_port: int | None = None
-    frontend_backend_port: int | None = None
-    
-    # Innovative Global Envs
-    ui_timeout: int | None = None
-    ui_backend_url: str | None = None
-    ui_debug_logging: bool | None = None
-    hot_reload_enabled: bool | None = None
-    feature_flags: dict | None = None
-    auth_secret: str | None = None
-    session_expiry: int | None = None # Minutes
+def get_current_user_id():
+    return os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown_Operator"
 
-    # New Backend Management Envs
-    max_upload_size: int | None = None
-    worker_count: int | None = None
-    cache_ttl: int | None = None
-    smtp_host: str | None = None
-    smtp_port: int | None = None
-    alert_email: str | None = None
-    enable_audit_logs: bool | None = None
-    db_backup_schedule: str | None = None
-    token_algorithm: str | None = None
-    request_timeout: int | None = None
+@router.get("/user/settings")
+async def get_user_settings(db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id()
+    res = await db.execute(select(models.UserPreference).filter(models.UserPreference.user_id == user_id))
+    prefs = res.scalars().all()
+    return {p.key: p.value for p in prefs}
 
-    # New Frontend Management Envs
-    app_title: str | None = None
-    polling_interval: int | None = None
-    enable_analytics: bool | None = None
-    max_grid_rows: int | None = None
-    theme_default: str | None = None
-    maintenance_mode: bool | None = None
-    support_url: str | None = None
-    auto_logout_idle: int | None = None
-    toast_duration: int | None = None
-    enable_websockets: bool | None = None
+@router.post("/user/settings")
+@router.patch("/user/settings")
+async def update_user_settings(data: dict, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id()
+    for key, value in data.items():
+        res = await db.execute(select(models.UserPreference).filter(
+            models.UserPreference.user_id == user_id,
+            models.UserPreference.key == key
+        ))
+        pref = res.scalar_one_or_none()
+        if pref:
+            pref.value = str(value)
+        else:
+            db.add(models.UserPreference(user_id=user_id, key=key, value=str(value)))
+    await db.commit()
+    return {"status": "success"}
 
-class PoolSync(BaseModel):
-    script: str
+def filter_valid_columns(model, data):
+    valid_keys = {c.name for c in model.__table__.columns}
+    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/bootstrap")
 async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
@@ -74,225 +46,325 @@ async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
         settings = res.scalars().all()
         
-        if not settings:
-            await initialize_settings(db)
-            res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
-            settings = res.scalars().all()
-            
         return {s.key: s.value for s in settings}
     except Exception as e:
         print(f"BOOTSTRAP ERROR: {e}")
         return {"error": str(e)}
 
-@router.get("/user/profile")
-async def get_user_profile():
-    username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
-    return {
-        "username": username,
-        "role": "Lead Systems Engineer",
-        "avatar": None,
-        "department": "Infrastructure Ops"
-    }
+@router.get("/options")
+async def get_options(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.SettingOption))
+    return result.scalars().all()
 
-def read_dotenv(path):
-    env = {}
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            for line in f:
-                line = line.strip()
-                if line and "=" in line and not line.startswith("#"):
-                    parts = line.split("=", 1)
-                    if len(parts) == 2:
-                        env[parts[0]] = parts[1].strip('"').strip("'")
-    return env
-
-@router.get("/env")
-async def get_env_vars(db: AsyncSession = Depends(get_db)):
-    # Prioritize DB but show .env diff for audit
-    backend_path = os.path.abspath(".env")
-    frontend_path = os.path.abspath("../frontend/.env")
-    
-    backend_env = read_dotenv(backend_path)
-    frontend_env = read_dotenv(frontend_path)
-    
-    res = await db.execute(select(models.GlobalSetting))
-    db_settings = {s.key: s.value for s in res.scalars().all()}
-    
-    # If DB is empty, seed it
-    if not db_settings:
-        await initialize_settings(db)
-        res = await db.execute(select(models.GlobalSetting))
-        db_settings = {s.key: s.value for s in res.scalars().all()}
-
-    return {
-        "db": db_settings,
-        "backend_env": backend_env,
-        "frontend_env": frontend_env
-    }
-
-@router.get("/env/history")
-async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(models.EnvHistory)
-        .filter(models.EnvHistory.field == field)
-        .order_by(models.EnvHistory.timestamp.desc())
-        .limit(20)
-    )
-    history = result.scalars().all()
-    return [{
-        "timestamp": h.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-        "old_value": h.old_value,
-        "new_value": h.new_value,
-        "user": h.user
-    } for h in history]
-
-@router.post("/env")
-async def update_env_vars(data: EnvUpdate, db: AsyncSession = Depends(get_db)):
-    username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
-    update_dict = data.dict(exclude_unset=True)
-    
-    # Mapping for cross-compatibility with legacy .env keys
-    mapping = {
-        "api_endpoint": "API_ENDPOINT",
-        "db_path": "DATABASE_URL",
-        "app_title": "VITE_APP_TITLE",
-        "theme_default": "VITE_THEME_DEFAULT",
-        "maintenance_mode": "VITE_MAINTENANCE_MODE",
-        "support_url": "VITE_SUPPORT_URL"
-    }
-
-    for feat, val in update_dict.items():
-        db_key = mapping.get(feat, feat.upper())
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == db_key))
-        setting = res.scalar_one_or_none()
-        
-        old_val = setting.value if setting else "INITIAL"
-        new_val = str(val)
-        
-        if old_val != new_val:
-            if setting:
-                setting.value = new_val
-            else:
-                db.add(models.GlobalSetting(
-                    key=db_key, 
-                    value=new_val, 
-                    category="System",
-                    is_public=db_key.startswith("VITE_")
-                ))
-            
-            db.add(models.EnvHistory(field=db_key, old_value=old_val, new_value=new_val, user=username))
-
+@router.post("/options")
+async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
+    clean_data = filter_valid_columns(models.SettingOption, data)
+    if 'id' in clean_data and not clean_data['id']:
+        del clean_data['id']
+    opt = models.SettingOption(**clean_data)
+    db.add(opt)
     await db.commit()
-    return {"status": "success", "message": "Global settings updated in database"}
+    await db.refresh(opt)
+    return opt
 
-@router.get("/user/settings")
-async def get_user_settings(db: AsyncSession = Depends(get_db)):
-    username = os.environ.get("USER") or os.environ.get("USERNAME") or "default"
-    res = await db.execute(select(models.UserPreference).filter(models.UserPreference.user_id == username))
-    prefs = res.scalars().all()
+@router.put("/options/{opt_id}")
+async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
+    opt = result.scalar_one_or_none()
+    if not opt: raise HTTPException(404, "Option not found")
     
-    default_prefs = {"theme": "nordic-frost-v1", "sidebar_open": "true", "density": "compact"}
+    old_value = opt.value
+    new_value = data.get('value', opt.value)
+    new_label = data.get('label', opt.label)
     
-    if not prefs:
-        settings_dir = "./storage/user_settings"
-        settings_file = os.path.join(settings_dir, f"{username}.json")
-        if os.path.exists(settings_file):
-            try:
-                with open(settings_file, "r") as f:
-                    legacy = json.load(f)
-                    for k, v in legacy.items():
-                        db.add(models.UserPreference(user_id=username, key=k, value=str(v)))
-                    await db.commit()
-                    return legacy
-            except: pass
-        return default_prefs
+    # Update associated models if value changed
+    if old_value != new_value:
+        if opt.category == "Status":
+            await db.execute(update(models.Device).where(models.Device.status == old_value).values(status=new_value))
+            await db.execute(update(models.LogicalService).where(models.LogicalService.status == old_value).values(status=new_value))
+            await db.execute(update(models.MaintenanceWindow).where(models.MaintenanceWindow.status == old_value).values(status=new_value))
+        elif opt.category == "Environment":
+            await db.execute(update(models.Device).where(models.Device.environment == old_value).values(environment=new_value))
+            await db.execute(update(models.LogicalService).where(models.LogicalService.environment == old_value).values(environment=new_value))
+        elif opt.category == "DeviceType":
+            await db.execute(update(models.Device).where(models.Device.type == old_value).values(type=new_value))
+        elif opt.category == "LogicalSystem":
+            await db.execute(update(models.Device).where(models.Device.system == old_value).values(system=new_value))
+    
+    opt.value = new_value
+    opt.label = new_label
+    opt.description = data.get('description', opt.description)
+    
+    # Template Protection: If category is ServiceType, check if removing keys that are in use
+    if opt.category == "ServiceType" and 'metadata_keys' in data:
+        new_keys = set(data.get('metadata_keys', []))
+        old_keys = set(opt.metadata_keys or [])
+        removed_keys = old_keys - new_keys
         
-    return {p.key: p.value for p in prefs}
-
-@router.post("/user/settings")
-async def update_user_settings(data: dict, db: AsyncSession = Depends(get_db)):
-    username = os.environ.get("USER") or os.environ.get("USERNAME") or "default"
-    for k, v in data.items():
-        res = await db.execute(
-            select(models.UserPreference)
-            .filter(models.UserPreference.user_id == username, models.UserPreference.key == k)
-        )
-        pref = res.scalar_one_or_none()
-        if pref:
-            pref.value = str(v)
-        else:
-            db.add(models.UserPreference(user_id=username, key=k, value=str(v)))
+        if removed_keys:
+            # Check if any LogicalService of this type uses these keys
+            from sqlalchemy import and_
+            usage_query = select(models.LogicalService).filter(models.LogicalService.service_type == opt.value)
+            usage_res = await db.execute(usage_query)
+            in_use_services = usage_res.scalars().all()
+            
+            for svc in in_use_services:
+                config = svc.config_json or {}
+                for rk in removed_keys:
+                    if rk in config and config[rk]: # If key exists and has a value
+                        raise HTTPException(status_code=400, detail=f"Cannot remove metadata key '{rk}' because it is in use by service '{svc.name}'")
+        
+        opt.metadata_keys = list(new_keys)
+    elif 'metadata_keys' in data:
+        opt.metadata_keys = data.get('metadata_keys')
     
+    await db.commit()
+    await db.refresh(opt)
+    return opt
+
+@router.delete("/options/{opt_id}")
+async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
+    opt = result.scalar_one_or_none()
+    if not opt: raise HTTPException(404, "Option not found")
+    
+    # Check usage
+    in_use = False
+    if opt.category == "Status":
+        res = await db.execute(select(models.Device).filter(models.Device.status == opt.value))
+        if res.scalars().first(): in_use = True
+        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Environment":
+        res = await db.execute(select(models.Device).filter(models.Device.environment == opt.value))
+        if res.scalars().first(): in_use = True
+        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "DeviceType":
+        res = await db.execute(select(models.Device).filter(models.Device.type == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "LogicalSystem":
+        res = await db.execute(select(models.Device).filter(models.Device.system == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Manufacturer":
+        res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Model":
+        res = await db.execute(select(models.Device).filter(models.Device.model == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Owner":
+        res = await db.execute(select(models.Device).filter(models.Device.owner == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "BusinessUnit":
+        res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "Vendor":
+        res = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "ServiceType":
+        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
+        if res.scalars().first(): in_use = True
+        
+    if in_use:
+        raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
+        
+    db.delete(opt)
     await db.commit()
     return {"status": "success"}
 
-@router.post("/user-pool/refresh")
-async def refresh_user_pool(data: PoolSync, db: AsyncSession = Depends(get_db)):
-    try:
-        username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
-        exec_globals = {"pd": pd, "np": np, "os": os, "json": json, "__builtins__": __builtins__}
-        exec(data.script, exec_globals)
-        
-        if "result_df" not in exec_globals: raise HTTPException(400, "Script must define 'result_df' variable")
-        df = exec_globals["result_df"]
-        new_users = df.to_dict(orient="records")
-        
-        # Snapshot and Diff
-        version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        version = models.UserPoolVersion(version_label=version_label, snapshot_data=new_users, created_by=username, is_active=True)
-        await db.execute(update(models.UserPoolVersion).values(is_active=False))
-        db.add(version)
-        await db.commit()
-        return {"status": "success", "count": len(df)}
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(400, f"Python Execution Error: {str(e)}")
+@router.get("/ui")
+async def get_ui_settings(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "UISettings"))
+    opts = res.scalars().all()
+    
+    settings = {
+        "status_badged": True,
+        "status_colors": {
+            "Active": "#10b981",
+            "Maintenance": "#f59e0b",
+            "Decommissioned": "#f43f5e",
+            "Planned": "#3b82f6"
+        }
+    }
+    
+    for o in opts:
+        if o.label == "status_badged":
+            settings["status_badged"] = (o.value == "true")
+        elif o.label.startswith("color_"):
+            status_name = o.label.replace("color_", "")
+            settings["status_colors"][status_name] = o.value
+            
+    return settings
 
-@router.get("/operators")
-async def get_operators(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.Operator).options(sa.orm.joinedload(models.Operator.role)))
-    return result.scalars().all()
+@router.post("/ui")
+async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
+    # Simple clear and set
+    from sqlalchemy import delete
+    await db.execute(delete(models.SettingOption).where(models.SettingOption.category == "UISettings"))
+    
+    if "status_badged" in data:
+        db.add(models.SettingOption(category="UISettings", label="status_badged", value="true" if data["status_badged"] else "false"))
+    
+    if "status_colors" in data:
+        for status_name, color in data["status_colors"].items():
+            db.add(models.SettingOption(category="UISettings", label=f"color_{status_name}", value=color))
+            
+    await db.commit()
+    return {"status": "success"}
 
 @router.get("/global")
 async def get_global_settings(db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.GlobalSetting))
-    settings = res.scalars().all()
-    if not settings:
-        await initialize_settings(db)
-        res = await db.execute(select(models.GlobalSetting))
-        settings = res.scalars().all()
-    return {s.key: s.value for s in settings}
+    res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
+    opts = res.scalars().all()
+    
+    settings = {
+        "app_name": "SYSGRID ENGINE",
+        "org_name": "Global Infrastructure Corp",
+        "site_id": "HQ-01",
+        "retention_days": "30",
+        "maintenance_mode": "false",
+        "default_timezone": "UTC",
+        "dashboard_refresh_interval": "60",
+        "security_level": "Standard",
+        "audit_log_level": "Full",
+        "ui_primary_color": "#3b82f6",
+        "ui_accent_color": "#10b981",
+        "support_email": "admin@infra.local"
+    }
+    
+    for o in opts:
+        settings[o.label] = o.value
+            
 
-@router.post("/global")
-async def update_global_settings(data: dict, db: AsyncSession = Depends(get_db)):
-    username = os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown Operator"
-    for k, v in data.items():
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == k))
-        setting = res.scalar_one_or_none()
-        if setting: setting.value = str(v)
-        else: db.add(models.GlobalSetting(key=k, value=str(v), category="General", is_public=k.startswith("VITE_")))
-    await db.commit()
-    return {"status": "success"}
+    @router.post("/global")
+    async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+        for key, value in data.items():
+            res = await db.execute(select(models.SettingOption).filter(
+                models.SettingOption.category == "AppGlobal",
+                models.SettingOption.label == key
+            ))
+            opt = res.scalar_one_or_none()
+            if opt:
+                opt.value = str(value)
+            else:
+                db.add(models.SettingOption(category="AppGlobal", label=key, value=str(value)))
+
+        await db.commit()
+
+        # Broadcast configuration update to all active websockets
+        if hasattr(request.app.state, 'ws_manager'):
+            await request.app.state.ws_manager.broadcast("CONFIG_UPDATED")
+
+        return {"status": "success"}
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
-    backend_path = os.path.abspath(".env")
-    frontend_path = os.path.abspath("../frontend/.env")
-    backend_env = read_dotenv(backend_path)
-    frontend_env = read_dotenv(frontend_path)
-    merged = {**backend_env, **frontend_env}
-    
-    count = 0
-    for k, v in merged.items():
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == k))
-        if not res.scalar_one_or_none():
-            is_public = k.startswith("VITE_") or k in ["API_ENDPOINT", "PORT"]
-            db.add(models.GlobalSetting(key=k, value=str(v), category="System", is_public=is_public))
-            count += 1
+    # Simple check if already initialized
+    res = await db.execute(select(models.SettingOption))
+    if res.scalars().first():
+        # Even if initialized, check if AppGlobal exists, if not, add it
+        res_global = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
+        if not res_global.scalars().first():
+             global_defaults = [
+                ("AppGlobal", "app_name", "SYSGRID ENGINE"),
+                ("AppGlobal", "org_name", "Global Infrastructure Corp"),
+                ("AppGlobal", "site_id", "HQ-01"),
+                ("AppGlobal", "retention_days", "30"),
+                ("AppGlobal", "maintenance_mode", "false"),
+                ("AppGlobal", "default_timezone", "UTC"),
+                ("AppGlobal", "dashboard_refresh_interval", "60"),
+                ("AppGlobal", "security_level", "Standard"),
+                ("AppGlobal", "audit_log_level", "Full"),
+                ("AppGlobal", "ui_primary_color", "#3b82f6"),
+                ("AppGlobal", "ui_accent_color", "#10b981"),
+                ("AppGlobal", "support_email", "admin@infra.local")
+            ]
+             for cat, key, val in global_defaults:
+                db.add(models.SettingOption(category=cat, label=key, value=val))
+             await db.commit()
+        return {"status": "already_initialized"}
+        
+    defaults = [
+        # Logical Systems
+        ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
+        ("LogicalSystem", "HR-Core", "Human Resources Core System"),
+        ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
+        ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
+        ("LogicalSystem", "DevOps", "DevOps Platform"),
+        # Device Types
+        ("DeviceType", "Physical", "Bare metal hardware"),
+        ("DeviceType", "Virtual", "Virtual machine or instance"),
+        ("DeviceType", "Storage", "Storage array or appliance"),
+        ("DeviceType", "Switch", "Network switch or router"),
+        ("DeviceType", "Firewall", "Network firewall appliance"),
+        ("DeviceType", "Load Balancer", "Load balancer appliance"),
+        # Operational Status
+        ("Status", "Planned", "Scheduled for deployment"),
+        ("Status", "Active", "Operational and healthy"),
+        ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+        ("Status", "Standby", "Powered on, not serving traffic"),
+        ("Status", "Offline", "Powered off or unreachable"),
+        ("Status", "Decommissioned", "Retired from service"),
+        # Environments
+        ("Environment", "Production", "Live user traffic"),
+        ("Environment", "Staging", "Pre-production staging"),
+        ("Environment", "QA", "Quality Assurance and Testing"),
+        ("Environment", "Dev", "Development and Staging"),
+        ("Environment", "DR", "Disaster Recovery Node"),
+        ("Environment", "Lab", "Lab or sandbox environment"),
+        # Business Units
+        ("BusinessUnit", "Engineering", "Engineering & R&D"),
+        ("BusinessUnit", "Operations", "IT Operations"),
+        ("BusinessUnit", "Finance", "Finance & Accounting"),
+        ("BusinessUnit", "HR", "Human Resources"),
+        ("BusinessUnit", "Sales", "Sales & Business Development"),
+        ("BusinessUnit", "Security", "Information Security"),
+        # Semiconductor Impact Categories
+        ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
+        ("ImpactCategory", "Yield Degradation", "Reduced output quality"),
+        ("ImpactCategory", "Tool Blockage (Down)", "Manufacturing equipment stop"),
+        ("ImpactCategory", "Throughput Slow-down", "Bottleneck in production flow"),
+        ("ImpactCategory", "MES Connectivity Gap", "Data loss between factory and server"),
+        ("ImpactCategory", "Recipe Desync", "Incorrect process parameters"),
+        ("ImpactCategory", "SPC Violation", "Statistical Process Control outlier"),
+        ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
+        ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
+        ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
+    ]
+    for cat, val, desc in defaults:
+        db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+        
+    global_defaults = [
+        ("AppGlobal", "app_name", "SYSGRID ENGINE"),
+        ("AppGlobal", "org_name", "Global Infrastructure Corp"),
+        ("AppGlobal", "site_id", "HQ-01"),
+        ("AppGlobal", "retention_days", "30"),
+        ("AppGlobal", "maintenance_mode", "false"),
+        ("AppGlobal", "default_timezone", "UTC"),
+        ("AppGlobal", "dashboard_refresh_interval", "60"),
+        ("AppGlobal", "security_level", "Standard"),
+        ("AppGlobal", "audit_log_level", "Full"),
+        ("AppGlobal", "ui_primary_color", "#3b82f6"),
+        ("AppGlobal", "ui_accent_color", "#10b981"),
+        ("AppGlobal", "support_email", "admin@infra.local")
+    ]
+    for cat, key, val in global_defaults:
+        db.add(models.SettingOption(category=cat, label=key, value=val))
+        
+    service_types = [
+        ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
+        ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
+        ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
+        ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
+        ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
+        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
+        ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
+        ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"]),
+        ("Internal App", ["Repository", "Framework", "Primary Dev", "CI/CD Pipeline", "Build Version"]),
+        ("External App", ["Vendor Support URL", "Account Manager", "Support Tier", "Installation Manual", "Update Frequency"])
+    ]
+    for val, keys in service_types:
+        db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+        
     await db.commit()
-    return {"status": "success", "seeded_count": count}
-
-@router.get("/user/env-vars")
-async def get_linux_env_vars():
-    important_keys = ["USER", "HOME", "PATH", "SHELL", "PWD", "LANG", "TERM", "HOSTNAME"]
-    return {k: os.environ.get(k, "Not Set") for k in important_keys}
+    return {"status": "initialized"}
