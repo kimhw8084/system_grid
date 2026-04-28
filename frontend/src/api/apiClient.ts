@@ -40,9 +40,14 @@ function notifyLatency(latency: number) {
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   
-  // Normalize endpoint: remove trailing slash if it's not just "/" or if it's an internal API call
+  // Better normalization: remove trailing slash before query params or at the end
   let normalizedEndpoint = endpoint;
-  if (endpoint.length > 1 && endpoint.endsWith('/') && !endpoint.includes('?')) {
+  if (endpoint.includes('?')) {
+    const [path, query] = endpoint.split('?');
+    if (path.length > 1 && path.endsWith('/')) {
+      normalizedEndpoint = path.slice(0, -1) + '?' + query;
+    }
+  } else if (endpoint.length > 1 && endpoint.endsWith('/')) {
     normalizedEndpoint = endpoint.slice(0, -1);
   }
 

@@ -125,20 +125,27 @@ export default function NetworkFabric() {
     { 
       headerName: "Status", 
       field: "status", 
-      width: 100,
-      minWidth: 100,
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
-            p.value === 'Active' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-            p.value === 'Maintenance' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' :
-            p.value === 'Down' ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' :
-            'bg-slate-500/10 border-slate-500/30 text-slate-400'
-          }`}>
-            {p.value || 'Active'}
-          </span>
-        </div>
-      ),
+      width: 110,
+      minWidth: 110,
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          Down: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+          Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
+          Offline: 'text-slate-400 border-white/20 bg-white/10'
+        }
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
+                {p.value || 'Active'}
+              </span>
+            </div>
+          </div>
+        )
+      },
       filter: true,
       cellClass: 'text-center',
       headerClass: 'text-center'
@@ -208,9 +215,20 @@ export default function NetworkFabric() {
       headerName: "Type", 
       width: 120, 
       filter: true,
-      cellClass: 'text-center font-bold text-slate-500 uppercase tracking-widest', 
+      cellClass: 'text-center uppercase tracking-widest', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          Data: 'text-emerald-400',
+          Management: 'text-blue-400',
+          'Storage/iSCSI': 'text-amber-400',
+          Backup: 'text-purple-400',
+          Replication: 'text-orange-400',
+          Heartbeat: 'text-rose-400',
+          vMotion: 'text-sky-400'
+        }
+        return <span className={`font-bold ${colors[p.value] || 'text-slate-500'}`} style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>
+      },
       hide: hiddenColumns.includes("link_type")
     },
     { 
