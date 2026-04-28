@@ -14,6 +14,8 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Project).options(
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.subtasks),
+        selectinload(models.Project.tasks).selectinload(models.ProjectTask.comments),
+        selectinload(models.Project.tasks).selectinload(models.ProjectTask.qa_items),
         selectinload(models.Project.comments),
         selectinload(models.Project.qa_items)
     )

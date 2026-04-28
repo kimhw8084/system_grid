@@ -259,6 +259,17 @@ def seed():
         # 5. Core Network Infrastructure
         print("Seeding Network Core (Racks 1-2)...")
         core_net_devices = []
+        rack_occupancy = {rk.id: [False] * (rk.total_u_height + 1) for rk in racks}
+
+        def find_free_u(rack_id, size_u):
+            rk = next(r for r in racks if r.id == rack_id)
+            total = rk.total_u_height
+            for u in range(total, size_u - 1, -1): # Start from top
+                if not any(rack_occupancy[rack_id][u-i] for i in range(size_u)):
+                    for i in range(size_u): rack_occupancy[rack_id][u-i] = True
+                    return u - size_u + 1
+            return None
+
         for i in range(12):
             rk = racks[0] if i < 6 else racks[4] # Spread core across Rack 1 and 5
             mfr, model, d_type = random.choice([
@@ -266,6 +277,7 @@ def seed():
                 ("Cisco", "Firepower 4110", "Firewall"),
                 ("F5", "Big-IP i7800", "Load Balancer")
             ])
+            p_max = 1200.0
             d = Device(
                 name=f"CORE-{d_type.replace(' ', '').upper()}-{i:02d}",
                 system="GLOBAL-INFRA",
@@ -282,13 +294,17 @@ def seed():
                 asset_tag=f"TAG-NET-{i:03d}",
                 role="Core Aggregation",
                 power_supply_count=2,
-                power_max_w=1200.0,
+                power_max_w=p_max,
+                power_typical_w=p_max * 0.6,
                 depth="Full"
             )
             core_net_devices.append(d)
             db.add(d)
             db.flush()
-            db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=42 - (i*2), size_u=d.size_u))
+            
+            u_start = find_free_u(rk.id, d.size_u)
+            if u_start:
+                db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=u_start, size_u=d.size_u))
             
             # Coverage Link
             try:
@@ -297,7 +313,7 @@ def seed():
                 current_assets.append({"device_id": d.id, "support_type": "Both"})
                 v_ref.contracts[0].covered_assets = current_assets
             except StopIteration:
-                print(f"Warning: No vendor found for {mfr}")
+                pass
             
         db.flush()
 
@@ -319,6 +335,7 @@ def seed():
             
             status = random.choices(cats["Status"], weights=[5, 65, 10, 5, 5, 5, 2, 3])[0]
             
+            p_max = random.uniform(400, 2000) if size > 0 else 0
             d = Device(
                 name=f"{sys.lower()}-{code.lower()}-{i:03d}",
                 system=sys,
@@ -335,7 +352,8 @@ def seed():
                 serial_number=fake.uuid4()[:14].upper(),
                 asset_tag=f"ASSET-{10000+i}",
                 role="Application Server" if d_type == "Physical" else "Shared Storage",
-                power_max_w=random.uniform(400, 2000) if size > 0 else 0,
+                power_max_w=p_max,
+                power_typical_w=p_max * 0.7 if p_max > 0 else 0,
                 purchase_date=datetime.now() - timedelta(days=random.randint(100, 1000)),
                 metadata_json={
                     "last_backup": (datetime.now() - timedelta(hours=random.randint(1, 24))).isoformat(),
@@ -354,7 +372,16 @@ def seed():
             
             if size > 0:
                 # Place in rack
-                db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=random.randint(1, 38), size_u=size))
+                u_start = find_free_u(rk.id, size)
+                if u_start:
+                    db.add(DeviceLocation(device_id=d.id, rack_id=rk.id, start_unit=u_start, size_u=size))
+                else:
+                    # If rack is full, try another rack
+                    for other_rk in random.sample(racks, len(racks)):
+                        u_start = find_free_u(other_rk.id, size)
+                        if u_start:
+                            db.add(DeviceLocation(device_id=d.id, rack_id=other_rk.id, start_unit=u_start, size_u=size))
+                            break
             
             # Components
             if d_type == "Physical":

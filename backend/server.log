@@ -8,3 +8,7 @@ INFO:     127.0.0.1:51453 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51703 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51730 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
 INFO:     127.0.0.1:51777 - "GET /api/v1/settings/bootstrap HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59575]
