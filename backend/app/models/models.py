@@ -716,6 +716,9 @@ class ProjectTask(Base, BaseMixin):
     owner = Column(String)
     assigned_objects = Column(JSON, default=list) # Linked assets/services
     
+    dependencies_json = Column(JSON, default=list) # List of task IDs this task depends on
+    estimate_hours = Column(Float, default=0.0)
+    
     project = relationship("Project", back_populates="tasks")
     subtasks = relationship("ProjectTask", backref=backref("parent_task", remote_side="ProjectTask.id"), cascade="all, delete-orphan")
     comments = relationship("ProjectComment", back_populates="task", cascade="all, delete-orphan")

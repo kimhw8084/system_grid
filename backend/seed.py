@@ -755,7 +755,7 @@ def seed():
         # 16. Project Matrix (Strategic Streams)
         print("Seeding Strategic Project Matrix (Streams & Tasks)...")
         project_scenarios = [
-            ("Project Aegis: Zero Trust Overhaul", "Strategic", "Critical", "PLATFORM", "Overhaul facility networking to Zero Trust architecture."),
+            ("Project Aegis: Zero Trust Overhaul", "Strategic", "Highest", "PLATFORM", "Overhaul facility networking to Zero Trust architecture."),
             ("Sentinel v3: Predictive AI Monitoring", "Research", "High", "SRE-CORE", "Deploy machine learning models for failure prediction."),
             ("Legacy Extraction: ERP Migration", "Tactical", "Medium", "FIN-IT", "Migrate legacy ERP systems to SAP-PROD environment."),
             ("GreenGrid: Power Optimization", "Operational", "Low", "FACILITY", "Reduce idle power consumption across all server rooms.")

@@ -26,9 +26,8 @@ async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends
     return result.scalars().all()
 
 @router.post("", response_model=schemas.ProjectResponse)
-async def create_project(data: dict, db: AsyncSession = Depends(get_db)):
-    clean_data = filter_valid_columns(models.Project, data)
-    db_project = models.Project(**clean_data)
+async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
+    db_project = models.Project(**data.model_dump())
     db.add(db_project)
     await db.commit()
     await db.refresh(db_project)
@@ -50,13 +49,13 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
     return project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
-async def update_project(project_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_project(project_id: int, data: schemas.ProjectBase, db: AsyncSession = Depends(get_db)):
     db_project = await db.get(models.Project, project_id)
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
     
-    clean_data = filter_valid_columns(models.Project, data)
-    for key, value in clean_data.items():
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
         setattr(db_project, key, value)
     
     await db.commit()
