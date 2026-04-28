@@ -475,7 +475,7 @@ export default function Research() {
       headerName: "Problem Statement", 
       width: 200, 
       filter: true, 
-      cellClass: 'text-left font-bold text-slate-500 italic truncate px-4',
+      cellClass: 'text-left font-bold text-slate-500 truncate px-4',
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("problem_statement")

@@ -5,21 +5,9 @@ from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
-from datetime import datetime
+from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/vendors", tags=["Vendor & Contract Management"])
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
-
-def parse_iso_date(date_str):
-    if not date_str: return None
-    try:
-        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-    except:
-        return None
 
 @router.get("/")
 async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):

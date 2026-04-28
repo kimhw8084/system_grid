@@ -34,12 +34,12 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
 
     <div className="mt-8 space-y-4">
       {metrics && Object.entries(metrics).slice(0, 3).map(([key, value]: any) => {
-        const totalForType = Object.values(value).reduce((a: any, b: any) => a + (typeof b === 'number' ? b : 0), 0);
+        const totalForType = Object.values(value).reduce((a: number, b: any) => a + (typeof b === 'number' ? b : 0), 0);
         return (
           <div key={key} className="flex flex-col space-y-1">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tighter">
               <span className="text-slate-400 truncate pr-2">{key}</span>
-              <span className="text-white">{totalForType}</span>
+              <span className="text-white">{(totalForType as number)}</span>
             </div>
             <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-white/5">
                {Object.entries(value).map(([status, count]: any) => (
@@ -52,7 +52,7 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
                       status === 'Maintenance' || status === 'Warning' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' :
                       'bg-blue-500'
                     }`}
-                    style={{ width: `${(count / totalForType) * 100}%` }}
+                    style={{ width: `${((count as number) / (totalForType as number)) * 100}%` }}
                   />
                ))}
             </div>
@@ -256,12 +256,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <div key={type} className="space-y-1">
                        <div className="flex items-center justify-between text-[10px] font-bold uppercase">
                           <span className="text-slate-500">{type}</span>
-                          <span className="text-slate-300">{Object.values(stats).reduce((a:any, b:any) => a + b, 0)}</span>
+                          <span className="text-slate-300">{(Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number)}</span>
                        </div>
                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <motion.div 
                              initial={{ width: 0 }}
-                             animate={{ width: `${(Object.values(stats).reduce((a:any, b:any) => a + b, 0) / metrics?.external_overview.total) * 100}%` }}
+                             animate={{ width: `${((Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number) / (metrics?.external_overview.total || 1)) * 100}%` }}
                              className="h-full bg-indigo-500"
                           />
                        </div>
@@ -284,7 +284,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                  {Object.entries(metrics?.monitoring_overview.breakdown || {}).map(([platform, stats]: any) => (
                     <div key={platform} className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-3">
                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{platform}</span>
-                       <span className="text-sm font-black text-white italic">{Object.values(stats).reduce((a:any, b:any) => a + b, 0)}</span>
+                       <span className="text-sm font-black text-white italic">{(Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number)}</span>
                     </div>
                  ))}
               </div>

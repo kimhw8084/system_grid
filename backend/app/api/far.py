@@ -6,6 +6,7 @@ from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
+from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/far", tags=["FAR"])
 
@@ -91,7 +92,9 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     rpn_fields = {'severity', 'occurrence', 'detection'}
     needs_rpn = False
     
-    for k, v in data.items():
+    clean_data = filter_valid_columns(models.FarFailureMode, data)
+    
+    for k, v in clean_data.items():
         if k == 'affected_assets' and isinstance(v, list):
             asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
             asset_res = await db.execute(asset_stmt)

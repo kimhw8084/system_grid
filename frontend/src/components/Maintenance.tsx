@@ -20,6 +20,8 @@ export default function Maintenance() {
           rowData={windows || []} 
           columnDefs={columnDefs} 
           enableCellTextSelection={true}
+          rowSelection="multiple"
+          onSelectionChanged={() => {}}
         />
       </div>
       <style>{`

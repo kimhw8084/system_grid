@@ -138,6 +138,7 @@ export default function AuditLogs() {
           animateRows={true}
           enableCellTextSelection={true}
           rowSelection="multiple"
+          onSelectionChanged={() => {}}
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
         />

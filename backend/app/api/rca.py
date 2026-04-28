@@ -6,14 +6,9 @@ from typing import List, Optional, Any
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
-from datetime import datetime
+from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/rca", tags=["Incident RCA Management"])
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 def get_rca_options():
     """Reusable options for deep loading RCA records to satisfy RcaRecordResponse schema."""
@@ -57,13 +52,8 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
 
     # Handle ISO dates
     for date_field in ["occurrence_at", "acknowledged_at", "detection_at"]:
-        if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
-            try:
-                clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
-            except Exception:
-                pass
-        elif date_field in clean_data and not clean_data[date_field]:
-            clean_data[date_field] = None
+        if date_field in clean_data:
+            clean_data[date_field] = parse_iso_date(clean_data[date_field])
 
     record = models.RcaRecord(**clean_data)
     
@@ -105,13 +95,8 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
 
     # Handle ISO dates
     for date_field in ["occurrence_at", "acknowledged_at", "detection_at"]:
-        if date_field in clean_data and isinstance(clean_data[date_field], str) and clean_data[date_field]:
-            try:
-                clean_data[date_field] = datetime.fromisoformat(clean_data[date_field].replace('Z', '+00:00'))
-            except Exception:
-                pass
-        elif date_field in clean_data and not clean_data[date_field]:
-            clean_data[date_field] = None
+        if date_field in clean_data:
+            clean_data[date_field] = parse_iso_date(clean_data[date_field])
 
     # Sync primary owner from owners list if provided
     if "owners" in clean_data and isinstance(clean_data["owners"], list) and clean_data["owners"]:

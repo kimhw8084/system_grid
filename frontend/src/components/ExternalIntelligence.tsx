@@ -453,6 +453,8 @@ export default function ExternalIntelligence() {
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
+          rowSelection="multiple"
+          onSelectionChanged={() => {}}
           autoSizeStrategy={autoSizeStrategy}
         />
 

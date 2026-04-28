@@ -612,7 +612,7 @@ result_df = get_user_pool()`)
                                                     {g.views.map(v => (
                                                         <ViewPermissionIcon 
                                                             key={v} level={op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? 0}
-                                                            onClick={() => toast.info(`Toggle permission for ${v}`)}
+                                                            onClick={() => toast.success(`Toggle permission for ${v}`)}
                                                         />
                                                     ))}
                                                 </div>

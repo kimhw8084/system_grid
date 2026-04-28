@@ -926,7 +926,7 @@ export default function AssetGrid() {
       filter: true,
       cellClass: 'text-center', 
       headerClass: 'text-center', 
-      cellRenderer: (p: any) => p.value ? <span className="font-bold text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 italic" style={{ fontSize: `${fontSize}px` }}>registry</span>
+      cellRenderer: (p: any) => p.value ? <span className="font-bold text-indigo-400" style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span className="text-slate-700 font-bold" style={{ fontSize: `${fontSize}px` }}>registry</span>
     },
     { field: "u_start", headerName: "U Pos", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },
     { field: "size_u", headerName: "Size", width: 60, filter: true, cellStyle: { fontSize: `${fontSize}px` }, cellClass: "font-mono text-center", headerClass: 'text-center' },

@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Briefcase, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Calendar, Clock, CheckCircle2, AlertCircle, BarChart3, Users, DollarSign, Target, ChevronRight, ArrowRight, Layers, Server } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'

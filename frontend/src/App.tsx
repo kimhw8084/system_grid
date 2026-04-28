@@ -33,7 +33,35 @@ import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
-const queryClient = new QueryClient()
+
+import { QueryCache, MutationCache } from "@tanstack/react-query"
+
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      errorManager.addError({
+        message: error.message || 'API Query Failure',
+        stack: error.traceback || error.stack,
+        status: error.status,
+        data: error.data,
+        type: 'BACKEND',
+        severity: 'ERROR'
+      });
+    }
+  }),
+  mutationCache: new MutationCache({
+    onError: (error: any) => {
+      errorManager.addError({
+        message: error.message || 'API Mutation Failure',
+        stack: error.traceback || error.stack,
+        status: error.status,
+        data: error.data,
+        type: 'BACKEND',
+        severity: 'ERROR'
+      });
+    }
+  })
+})
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null, showDetails: true }; }
@@ -298,13 +326,16 @@ function MainLayout() {
   useEffect(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const error = event.reason;
-      if (error && (error.traceback || error.status || error.data)) {
+      
+      // If it's a backend error that already has traceback/status, it might have been caught by QueryCache already.
+      // But we still want to log it if it wasn't caught elsewhere.
+      if (error) {
         errorManager.addError({
           message: error.message || 'Unhandled Promise Rejection',
           stack: error.traceback || error.stack,
           status: error.status,
           data: error.data,
-          type: 'BACKEND',
+          type: error.status ? 'BACKEND' : 'FRONTEND',
           severity: 'ERROR'
         });
         event.preventDefault();

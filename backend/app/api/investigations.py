@@ -5,14 +5,9 @@ from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
-from datetime import datetime
+from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/investigations", tags=["Investigation Management"])
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/")
 async def get_investigations(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
@@ -27,8 +22,8 @@ async def create_investigation(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.Investigation, data)
     
     # Handle ISO dates
-    if "initiation_at" in clean_data and isinstance(clean_data["initiation_at"], str) and clean_data["initiation_at"]:
-        clean_data["initiation_at"] = datetime.fromisoformat(clean_data["initiation_at"].replace('Z', '+00:00'))
+    if "initiation_at" in clean_data:
+        clean_data["initiation_at"] = parse_iso_date(clean_data["initiation_at"])
 
     inv = models.Investigation(**clean_data)
     db.add(inv)
@@ -49,8 +44,8 @@ async def update_investigation(inv_id: int, data: dict, db: AsyncSession = Depen
     clean_data = filter_valid_columns(models.Investigation, data)
     
     # Handle ISO dates
-    if "initiation_at" in clean_data and isinstance(clean_data["initiation_at"], str) and clean_data["initiation_at"]:
-        clean_data["initiation_at"] = datetime.fromisoformat(clean_data["initiation_at"].replace('Z', '+00:00'))
+    if "initiation_at" in clean_data:
+        clean_data["initiation_at"] = parse_iso_date(clean_data["initiation_at"])
 
     for k, v in clean_data.items():
         setattr(inv, k, v)

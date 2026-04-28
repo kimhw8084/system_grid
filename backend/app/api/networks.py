@@ -5,13 +5,9 @@ from typing import List
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
+from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/networks", tags=["Network Fabric"])
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/interfaces")
 async def get_interfaces(db: AsyncSession = Depends(get_db)):

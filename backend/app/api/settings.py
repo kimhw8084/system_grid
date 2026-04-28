@@ -5,6 +5,7 @@ from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
 from ..core.config import settings
+from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -72,11 +73,6 @@ async def update_user_settings(data: dict, db: AsyncSession = Depends(get_db)):
             db.add(models.UserPreference(user_id=user_id, key=key, value=str(value)))
     await db.commit()
     return {"status": "success"}
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/bootstrap")
 async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
@@ -274,7 +270,7 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
     
     # Return as a simple key-value map for the UI, plus metadata if needed
     config = {s.key: s.value for s in settings_list}
-    config["_metadata"] = {s.key: {"category": s.category, "description": s.description, "file": s.file_path, "param": s.key} for s in settings_list}
+    config["_metadata"] = {s.key: {"category": s.category, "description": s.description, "file": "Database", "param": s.key} for s in settings_list}
     
     # Inject Raw Environment Data for Analysis tab
     raw_env = {"backend": {}, "frontend": {}}
@@ -466,28 +462,62 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     # Simple check if already initialized
     res = await db.execute(select(models.SettingOption))
     if res.scalars().first():
-        # Even if initialized, check if AppGlobal exists, if not, add it
-        res_global = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "AppGlobal"))
+        # Even if initialized, check if AppGlobal exists in GlobalSetting, if not, add it
+        res_global = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.category == "AppGlobal"))
         if not res_global.scalars().first():
              global_defaults = [
-                ("AppGlobal", "app_name", "SYSGRID ENGINE"),
-                ("AppGlobal", "org_name", "Global Infrastructure Corp"),
-                ("AppGlobal", "site_id", "HQ-01"),
-                ("AppGlobal", "retention_days", "30"),
-                ("AppGlobal", "maintenance_mode", "false"),
-                ("AppGlobal", "default_timezone", "UTC"),
-                ("AppGlobal", "dashboard_refresh_interval", "60"),
-                ("AppGlobal", "security_level", "Standard"),
-                ("AppGlobal", "audit_log_level", "Full"),
-                ("AppGlobal", "ui_primary_color", "#3b82f6"),
-                ("AppGlobal", "ui_accent_color", "#10b981"),
-                ("AppGlobal", "support_email", "admin@infra.local")
+                ("app_name", "SYSGRID ENGINE", "App Name", False),
+                ("org_name", "Global Infrastructure Corp", "Organization", False),
+                ("site_id", "HQ-01", "Primary Site ID", False),
+                ("retention_days", "30", "Data Retention Days", False),
+                ("maintenance_mode", "false", "Maintenance Mode Status", False),
+                ("default_timezone", "UTC", "Default System Timezone", False),
+                ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False),
+                ("security_level", "Standard", "Base Security Profile", False),
+                ("audit_log_level", "Full", "Audit Detail Level", False),
+                ("ui_primary_color", "#3b82f6", "Primary Branding Color", False),
+                ("ui_accent_color", "#10b981", "Accent Branding Color", False),
+                ("support_email", "admin@infra.local", "Admin Support Email", False),
+                ("VITE_APP_TITLE", "SYSGRID Tactical", "UI Title", True),
+                ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True),
+                ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True),
+                ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True),
+                ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True),
+                ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True),
+                ("PORT", "8000", "Backend Port", True),
+                ("API_ENDPOINT", "/api/v1", "API Prefix", True)
             ]
-             for cat, key, val in global_defaults:
-                db.add(models.SettingOption(category=cat, label=key, value=val))
+             for key, val, desc, public in global_defaults:
+                db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
              await db.commit()
         return {"status": "already_initialized"}
         
+    # Main initialization for first run
+    global_defaults = [
+        ("app_name", "SYSGRID ENGINE", "App Name", False),
+        ("org_name", "Global Infrastructure Corp", "Organization", False),
+        ("site_id", "HQ-01", "Primary Site ID", False),
+        ("retention_days", "30", "Data Retention Days", False),
+        ("maintenance_mode", "false", "Maintenance Mode Status", False),
+        ("default_timezone", "UTC", "Default System Timezone", False),
+        ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False),
+        ("security_level", "Standard", "Base Security Profile", False),
+        ("audit_log_level", "Full", "Audit Detail Level", False),
+        ("ui_primary_color", "#3b82f6", "Primary Branding Color", False),
+        ("ui_accent_color", "#10b981", "Accent Branding Color", False),
+        ("support_email", "admin@infra.local", "Admin Support Email", False),
+        ("VITE_APP_TITLE", "SYSGRID Tactical", "UI Title", True),
+        ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True),
+        ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True),
+        ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True),
+        ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True),
+        ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True),
+        ("PORT", "8000", "Backend Port", True),
+        ("API_ENDPOINT", "/api/v1", "API Prefix", True)
+    ]
+    for key, val, desc, public in global_defaults:
+        db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
+    
     defaults = [
         # Logical Systems
         ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
@@ -537,23 +567,6 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     ]
     for cat, val, desc in defaults:
         db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-        
-    global_defaults = [
-        ("AppGlobal", "app_name", "SYSGRID ENGINE"),
-        ("AppGlobal", "org_name", "Global Infrastructure Corp"),
-        ("AppGlobal", "site_id", "HQ-01"),
-        ("AppGlobal", "retention_days", "30"),
-        ("AppGlobal", "maintenance_mode", "false"),
-        ("AppGlobal", "default_timezone", "UTC"),
-        ("AppGlobal", "dashboard_refresh_interval", "60"),
-        ("AppGlobal", "security_level", "Standard"),
-        ("AppGlobal", "audit_log_level", "Full"),
-        ("AppGlobal", "ui_primary_color", "#3b82f6"),
-        ("AppGlobal", "ui_accent_color", "#10b981"),
-        ("AppGlobal", "support_email", "admin@infra.local")
-    ]
-    for cat, key, val in global_defaults:
-        db.add(models.SettingOption(category=cat, label=key, value=val))
         
     service_types = [
         ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),

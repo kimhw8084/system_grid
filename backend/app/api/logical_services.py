@@ -4,13 +4,9 @@ from sqlalchemy import select, delete, update
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
+from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
-
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
 
 @router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
