@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from ..database import Base
 
@@ -663,29 +663,89 @@ class Project(Base, BaseMixin):
     __tablename__ = "projects"
     name = Column(String, index=True)
     description = Column(Text)
-    status = Column(String, default="Planning") # Planning, In Progress, On Hold, Completed, Cancelled
-    priority = Column(String, default="Medium") # Low, Medium, High, Critical
+    type = Column(String) # Strategic, Tactical, Operational, Research
+    status = Column(String, default="Planning") 
+    priority = Column(String, default="Medium")
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     owner = Column(String)
-    team_members = Column(JSON, default=list) # List of names/IDs
+    
+    jira_links = Column(JSON, default=list)
+    target_systems = Column(JSON, default=list)
+    target_assets = Column(JSON, default=list)
+    target_services = Column(JSON, default=list)
+    beneficiaries = Column(JSON, default=list)
+    
+    problem_statement = Column(Text)
+    objective = Column(Text)
+    key_functions = Column(JSON, default=list) # List of strings
+    expected_outcomes = Column(JSON, default=list) # List of strings
+    
+    parent_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    
+    # ROI Metrics
+    roi_defense_line = Column(Integer, default=0) # 0, 1, 2
+    man_hours_saved = Column(Float, default=0.0)
+    stoploss_minutes_saved = Column(Float, default=0.0)
+    wafers_gained = Column(Float, default=0.0)
+    
+    appendix_json = Column(JSON, default=dict) # {glossary: [], images: []}
+    
+    team_members = Column(JSON, default=list)
     budget = Column(Float, default=0.0)
     currency = Column(String, default="USD")
     
-    # Gantt/Timeline data
-    tasks_json = Column(JSON, default=list) # [{id, name, start, end, progress, dependencies: []}]
-    
-    # Resources/Assets linked to project
-    linked_device_ids = Column(JSON, default=list)
-    linked_service_ids = Column(JSON, default=list)
-    
-    # Innovative Visuals Metadata
-    milestones_json = Column(JSON, default=list) # [{name, date, status}]
-    risk_assessment = Column(Text)
-    kpis_json = Column(JSON, default=dict) # {target_uptime: 99.9, etc}
-    
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
+
+    tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan")
+    comments = relationship("ProjectComment", back_populates="project", cascade="all, delete-orphan")
+    qa_items = relationship("ProjectQA", back_populates="project", cascade="all, delete-orphan")
+
+class ProjectTask(Base, BaseMixin):
+    __tablename__ = "project_tasks"
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+    parent_task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+    
+    name = Column(String, index=True)
+    description = Column(Text)
+    start_date = Column(DateTime)
+    end_date = Column(DateTime)
+    progress = Column(Integer, default=0) # 0-100
+    status = Column(String, default="To Do")
+    owner = Column(String)
+    assigned_objects = Column(JSON, default=list) # Linked assets/services
+    
+    project = relationship("Project", back_populates="tasks")
+    subtasks = relationship("ProjectTask", backref=backref("parent_task", remote_side="ProjectTask.id"), cascade="all, delete-orphan")
+    comments = relationship("ProjectComment", back_populates="task", cascade="all, delete-orphan")
+    qa_items = relationship("ProjectQA", back_populates="task", cascade="all, delete-orphan")
+
+class ProjectComment(Base, BaseMixin):
+    __tablename__ = "project_comments"
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+    
+    author = Column(String)
+    content = Column(Text)
+    timestamp = Column(DateTime, server_default=func.now())
+    
+    project = relationship("Project", back_populates="comments")
+    task = relationship("ProjectTask", back_populates="comments")
+
+class ProjectQA(Base, BaseMixin):
+    __tablename__ = "project_qa"
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+    
+    question = Column(Text)
+    answer = Column(Text, nullable=True)
+    asked_by = Column(String)
+    answered_by = Column(String, nullable=True)
+    status = Column(String, default="Pending") # Pending, Answered
+    
+    project = relationship("Project", back_populates="qa_items")
+    task = relationship("ProjectTask", back_populates="qa_items")
 
 # --- INCIDENT RCA (ROOT CAUSE ANALYSIS) MODULE ---
 

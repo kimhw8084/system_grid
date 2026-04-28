@@ -373,28 +373,86 @@ class RcaRecordResponse(BaseSchema):
     mitigations: List[RcaMitigationResponse] = []
     linked_failure_modes: List[FarFailureModeResponse] = []
 
+class ProjectCommentBase(BaseModel):
+    author: str
+    content: str
+    project_id: int
+    task_id: Optional[int] = None
+
+class ProjectCommentCreate(ProjectCommentBase): pass
+class ProjectCommentResponse(ProjectCommentBase, BaseSchema):
+    timestamp: datetime
+
+class ProjectQABase(BaseModel):
+    question: str
+    answer: Optional[str] = None
+    asked_by: str
+    answered_by: Optional[str] = None
+    status: str = "Pending"
+    project_id: int
+    task_id: Optional[int] = None
+
+class ProjectQACreate(ProjectQABase): pass
+class ProjectQAResponse(ProjectQABase, BaseSchema): pass
+
+class ProjectTaskBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    progress: int = 0
+    status: str = "To Do"
+    owner: Optional[str] = None
+    assigned_objects: Optional[List[Any]] = []
+    project_id: int
+    parent_task_id: Optional[int] = None
+
+class ProjectTaskCreate(ProjectTaskBase): pass
+class ProjectTaskResponse(ProjectTaskBase, BaseSchema):
+    comments: List[ProjectCommentResponse] = []
+    qa_items: List[ProjectQAResponse] = []
+    subtasks: List["ProjectTaskResponse"] = []
+
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
+    type: Optional[str] = None
     status: Optional[str] = "Planning"
     priority: Optional[str] = "Medium"
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     owner: Optional[str] = None
+    
+    jira_links: Optional[List[str]] = []
+    target_systems: Optional[List[str]] = []
+    target_assets: Optional[List[str]] = []
+    target_services: Optional[List[str]] = []
+    beneficiaries: Optional[List[str]] = []
+    
+    problem_statement: Optional[str] = None
+    objective: Optional[str] = None
+    key_functions: Optional[List[str]] = []
+    expected_outcomes: Optional[List[str]] = []
+    
+    parent_project_id: Optional[int] = None
+    
+    roi_defense_line: int = 0
+    man_hours_saved: float = 0.0
+    stoploss_minutes_saved: float = 0.0
+    wafers_gained: float = 0.0
+    
+    appendix_json: Optional[Dict[str, Any]] = {}
     team_members: Optional[List[str]] = []
-    budget: Optional[float] = 0.0
-    currency: Optional[str] = "USD"
-    tasks_json: Optional[List[Dict[str, Any]]] = []
-    linked_device_ids: Optional[List[int]] = []
-    linked_service_ids: Optional[List[int]] = []
-    milestones_json: Optional[List[Dict[str, Any]]] = []
-    risk_assessment: Optional[str] = None
-    kpis_json: Optional[Dict[str, Any]] = None
-    metadata_json: Optional[Dict[str, Any]] = None
+    budget: float = 0.0
+    currency: str = "USD"
+    metadata_json: Optional[Dict[str, Any]] = {}
 
 class ProjectCreate(ProjectBase): pass
 class ProjectResponse(ProjectBase, BaseSchema):
     is_deleted: bool = False
+    tasks: List[ProjectTaskResponse] = []
+    comments: List[ProjectCommentResponse] = []
+    qa_items: List[ProjectQAResponse] = []
 
 class GlobalSettingBase(BaseModel):
     key: str
