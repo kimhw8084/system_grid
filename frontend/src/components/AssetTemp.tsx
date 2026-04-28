@@ -621,7 +621,8 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'dependency' | 'network', devices: any[] }) => {
+const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: number, type: 'dependency' | 'network', devices: any[], onNodeClick?: (d: any) => void }) => {
+  const fgRef = React.useRef<any>();
   const { data: rels } = useQuery({ 
     queryKey: ['device-rel', deviceId], 
     queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
@@ -637,7 +638,7 @@ const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'd
   const centerDevice = devices?.find(d => d.id === deviceId)
   
   const graphData = useMemo(() => {
-    const nodes = [{ id: deviceId, name: centerDevice?.name, isCenter: true, type: centerDevice?.type }]
+    const nodes = [{ id: deviceId, name: centerDevice?.name, isCenter: true, type: centerDevice?.type, fullData: centerDevice }]
     const links: any[] = []
 
     if (type === 'dependency' && rels) {
@@ -646,7 +647,9 @@ const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'd
         const peerId = isSource ? r.target_device_id : r.source_device_id
         const peer = devices?.find(d => d.id === peerId)
         if (peer) {
-          nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
+          if (!nodes.find(n => n.id === peerId)) {
+            nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type, fullData: peer })
+          }
           links.push({ 
             source: isSource ? deviceId : peerId, 
             target: isSource ? peerId : deviceId, 
@@ -662,12 +665,14 @@ const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'd
         const peerId = isSource ? c.dst_device_id : c.src_device_id
         const peer = devices?.find(d => d.id === peerId)
         if (peer) {
-          nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
+          if (!nodes.find(n => n.id === peerId)) {
+            nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type, fullData: peer })
+          }
           links.push({ 
             source: isSource ? deviceId : peerId, 
             target: isSource ? peerId : deviceId, 
-            label: c.connection_type,
-            details: `${c.src_port ? `P:${c.src_port}` : ''} ${c.dst_port ? `-> P:${c.dst_port}` : ''} [${c.vlan ? `VLAN:${c.vlan}` : ''}]`
+            label: c.connection_type || c.link_type,
+            details: `${c.src_port || c.source_port ? `P:${c.src_port || c.source_port}` : ''} ${c.dst_port || c.target_port ? `-> P:${c.dst_port || c.target_port}` : ''} [${c.vlan ? `V:${c.vlan}` : ''}]`
           })
         }
       })
@@ -684,70 +689,78 @@ const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'd
          </div>
        ) : (
          <ForceGraph2D
+           ref={fgRef}
            graphData={graphData}
            height={300}
            width={500}
-           nodeColor={n => n.isCenter ? '#3b82f6' : '#64748b'}
-           nodeLabel={n => `${n.name} [${n.type}]`}
-           linkColor={() => 'rgba(255, 255, 255, 0.15)'}
-           linkDirectionalArrowLength={4}
+           nodeRelSize={4}
+           nodeColor={n => (n as any).isCenter ? '#60a5fa' : '#fbbf24'}
+           linkColor={() => 'rgba(255, 255, 255, 0.1)'}
+           linkDirectionalArrowLength={6}
            linkDirectionalArrowRelPos={1}
+           linkDirectionalParticles={2}
+           linkDirectionalParticleSpeed={0.005}
+           onNodeClick={(node: any) => onNodeClick?.(node.fullData)}
+           onEngineStop={() => fgRef.current?.zoomToFit(400, 30)}
            linkCanvasObjectMode={() => 'after'}
            linkCanvasObject={(link: any, ctx, globalScale) => {
-              const MAX_FONT_SIZE = 8;
-              const LABEL_NODE_MARGIN = globalScale * 2;
-
+              const MAX_FONT_SIZE = 7;
               const start = link.source;
               const end = link.target;
-
               if (typeof start !== 'object' || typeof end !== 'object') return;
 
               const text = type === 'dependency' ? link.label : link.details || link.label;
-              const fontSize = Math.min(MAX_FONT_SIZE, 10 / globalScale);
-              ctx.font = `${fontSize}px Inter`;
-              const textWidth = ctx.measureText(text).width;
-              const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number];
+              if (!text) return;
+              
+              const fontSize = Math.min(MAX_FONT_SIZE, 12 / globalScale);
+              ctx.font = `bold ${fontSize}px Inter`;
+              const textWidth = ctx.measureText(text.toUpperCase()).width;
+              const padding = fontSize * 0.8;
+              const bckgDimensions = [textWidth + padding, fontSize + padding/2];
 
               const relLink = { x: end.x - start.x, y: end.y - start.y };
-              const maxRange = Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2));
               const textPos = { x: start.x + relLink.x * 0.5, y: start.y + relLink.y * 0.5 };
 
               ctx.save();
               ctx.translate(textPos.x, textPos.y);
               ctx.rotate(Math.atan2(relLink.y, relLink.x));
               
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
               ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
 
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillStyle = type === 'dependency' ? '#818cf8' : '#34d399';
-              ctx.fillText(text, 0, 0);
+              ctx.fillText(text.toUpperCase(), 0, 0);
               ctx.restore();
            }}
            nodeCanvasObject={(node: any, ctx, globalScale) => {
-             const label = node.name;
-             const fontSize = node.isCenter ? 12/globalScale : 10/globalScale;
-             ctx.font = `${fontSize}px Inter`;
-             const textWidth = ctx.measureText(label).width;
-             const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number];
+             const label = node.name.toUpperCase();
+             const fontSize = 9/globalScale;
+             ctx.font = `bold ${fontSize}px Inter`;
 
-             ctx.fillStyle = node.isCenter ? '#3b82f6' : '#1e293b';
-             ctx.beginPath(); ctx.arc(node.x, node.y, node.isCenter ? 6 : 4, 0, 2 * Math.PI, false); ctx.fill();
+             // Draw shadow for node
+             ctx.shadowColor = node.isCenter ? 'rgba(96, 165, 250, 0.5)' : 'rgba(251, 191, 36, 0.3)';
+             ctx.shadowBlur = 10 / globalScale;
+             
+             ctx.fillStyle = node.isCenter ? '#60a5fa' : '#fbbf24';
+             ctx.beginPath(); 
+             ctx.arc(node.x, node.y, node.isCenter ? 6 : 4, 0, 2 * Math.PI, false); 
+             ctx.fill();
 
+             ctx.shadowBlur = 0; // Reset shadow for text
              ctx.textAlign = 'center';
-             ctx.textBaseline = 'middle';
-             ctx.fillStyle = node.isCenter ? '#fff' : '#94a3b8';
-             ctx.fillText(label, node.x, node.y + (node.isCenter ? 12 : 10));
+             ctx.textBaseline = 'top';
+             ctx.fillStyle = '#f1f5f9';
+             ctx.fillText(label, node.x, node.y + (node.isCenter ? 8 : 6));
            }}
-           cooldownTicks={100}
          />
        )}
     </div>
   )
 }
 
-const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onViewServiceDetails, onEditService, devices }: any) => {
+const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onViewServiceDetails, onEditService, devices, onViewAssetDetails }: any) => {
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState({ name: '', system: '', type: '', status: '', env: '' })
   
@@ -990,11 +1003,11 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Dependency Vector Map</p>
-                     <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} />
+                     <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
                   <div className="space-y-3">
                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Network Interconnect Map</p>
-                     <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} />
+                     <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
                </div>
             </div>
@@ -1665,6 +1678,7 @@ export default function AssetTemp() {
            onViewServiceDetails={(s: any) => setActiveServiceDetails(s)}
            onEditService={(s: any) => setActiveServiceEdit(s)}
            devices={devices}
+           onViewAssetDetails={setActiveDetails}
         />      ) : (
         <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
            <AssetMap 

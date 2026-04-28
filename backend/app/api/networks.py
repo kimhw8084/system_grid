@@ -41,8 +41,12 @@ async def update_interface(interface_id: int, data: dict, db: AsyncSession = Dep
     return item
 
 @router.get("/connections")
-async def get_connections(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.PortConnection))
+async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_db)):
+    query = select(models.PortConnection)
+    if device_id:
+        query = query.filter(or_(models.PortConnection.source_device_id == device_id, models.PortConnection.target_device_id == device_id))
+    
+    result = await db.execute(query)
     conns = result.scalars().all()
     
     final_result = []
@@ -55,23 +59,29 @@ async def get_connections(db: AsyncSession = Depends(get_db)):
         final_result.append({
             "id": c.id,
             "source_device_id": c.source_device_id,
+            "src_device_id": c.source_device_id, # Frontend compatibility
             "server_a": dev_a.name if dev_a else "Unknown",
             "source_port": c.source_port,
             "port_a": c.source_port,
+            "src_port": c.source_port, # Frontend compatibility
             "source_ip": c.source_ip,
             "source_mac": c.source_mac,
             "source_vlan": c.source_vlan,
             "target_device_id": c.target_device_id,
+            "dst_device_id": c.target_device_id, # Frontend compatibility
             "server_b": dev_b.name if dev_b else "Unknown",
             "target_port": c.target_port,
             "port_b": c.target_port,
+            "dst_port": c.target_port, # Frontend compatibility
             "target_ip": c.target_ip,
             "target_mac": c.target_mac,
             "target_vlan": c.target_vlan,
+            "vlan": c.source_vlan or c.target_vlan, # Frontend compatibility
             "speed": f"{c.speed_gbps} {c.unit}" if c.speed_gbps else "Unknown",
             "speed_gbps": c.speed_gbps,
             "unit": c.unit,
             "link_type": c.link_type,
+            "connection_type": c.link_type, # Frontend compatibility
             "purpose": c.purpose,
             "direction": c.direction,
             "cable_type": c.cable_type,
