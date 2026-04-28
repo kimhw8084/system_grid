@@ -15,7 +15,7 @@ async def test_evolution():
         
         # 1. Test Device Update & Relationship Consistency
         print("Testing Device updates...")
-        devices_res = await ac.get("/api/v1/devices/")
+        devices_res = await ac.get("/api/v1/devices")
         devices = devices_res.json()
         if not devices:
             print("ERROR: No devices found to test.")
@@ -31,7 +31,7 @@ async def test_evolution():
             print(f"BUG in PUT /devices/{dev_id}: {update_res.text}")
         
         # Check if OS service synced (per devices.py sync_device_to_os logic)
-        services_res = await ac.get(f"/api/v1/logical-services/?device_id={dev_id}")
+        services_res = await ac.get(f"/api/v1/logical-services?device_id={dev_id}")
         services = services_res.json()
         os_svc = next((s for s in services if s["service_type"] == "OS"), None)
         if os_svc:
@@ -42,7 +42,7 @@ async def test_evolution():
 
         # 2. Test Rack Reordering
         print("Testing Rack reordering...")
-        racks_res = await ac.get("/api/v1/racks/")
+        racks_res = await ac.get("/api/v1/racks")
         racks = racks_res.json()
         if len(racks) > 2:
             rack_ids = [r["id"] for r in racks]
@@ -79,7 +79,7 @@ async def test_evolution():
                 print(f"BUG in DELETE /logical-services/{svc_id_to_del}: {del_res.text}")
             
             # Verify it's gone from active list
-            get_active_res = await ac.get("/api/v1/logical-services/")
+            get_active_res = await ac.get("/api/v1/logical-services")
             active_ids = [s["id"] for s in get_active_res.json()]
             if svc_id_to_del in active_ids:
                 print(f"BUG: Service {svc_id_to_del} still active after soft delete.")
@@ -89,7 +89,7 @@ async def test_evolution():
             if restore_res.status_code != 200:
                 print(f"BUG in bulk-restore services: {restore_res.text}")
             else:
-                get_active_res_2 = await ac.get("/api/v1/logical-services/")
+                get_active_res_2 = await ac.get("/api/v1/logical-services")
                 active_ids_2 = [s["id"] for s in get_active_res_2.json()]
                 if svc_id_to_del not in active_ids_2:
                     print(f"BUG: Service {svc_id_to_del} not restored.")
@@ -102,7 +102,7 @@ async def test_evolution():
         print("Testing cascade delete...")
         # Create a temp device to delete
         rand_name = f"TMP-DEL-{random.randint(1000, 9999)}"
-        tmp_dev_res = await ac.post("/api/v1/devices/", json={"name": rand_name, "system": "TEMP", "type": "Physical"})
+        tmp_dev_res = await ac.post("/api/v1/devices", json={"name": rand_name, "system": "TEMP", "type": "Physical"})
         if tmp_dev_res.status_code != 200:
             print(f"BUG in POST /devices/ for temp device: {tmp_dev_res.text}")
             return

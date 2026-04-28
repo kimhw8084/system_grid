@@ -62,15 +62,15 @@ async def test_provision_asset_full_flow():
         "business_unit": "METROLOGY"
     }
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        response = await ac.post("/api/v1/devices/", json=payload)
+        response = await ac.post("/api/v1/devices", json=payload)
     assert response.status_code == 200, response.text
     assert response.json()["system"] == "GRID-ASYNC"
 
 @pytest.mark.anyio
 async def test_create_site_and_audit():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        await ac.post("/api/v1/sites/", json={"name": "ASYNC-SITE", "address": "Cloud"})
-        logs_res = await ac.get("/api/v1/audit/")
+        await ac.post("/api/v1/sites", json={"name": "ASYNC-SITE", "address": "Cloud"})
+        logs_res = await ac.get("/api/v1/audit")
     logs = logs_res.json()
     assert any(l["target_table"] == "sites" for l in logs)
 
@@ -120,7 +120,7 @@ async def test_global_settings_flow():
 async def test_monitoring_matrix_flow():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # Create a device first
-        dev_res = await ac.post("/api/v1/devices/", json={
+        dev_res = await ac.post("/api/v1/devices", json={
             "name": "MON-SRV", "serial_number": "MON-SN", "asset_tag": "MON-AT",
             "system": "GRID-TEST", "status": "Active", "type": "Physical",
             "owner": "IT", "business_unit": "ENG"
@@ -138,12 +138,12 @@ async def test_monitoring_matrix_flow():
             "purpose": "Prevent overheating",
             "notification_method": "Slack"
         }
-        post_res = await ac.post("/api/v1/monitoring/", json=payload)
+        post_res = await ac.post("/api/v1/monitoring", json=payload)
         assert post_res.status_code == 200
         item_id = post_res.json()["id"]
         
         # Verify get with enrichment
-        get_res = await ac.get("/api/v1/monitoring/")
+        get_res = await ac.get("/api/v1/monitoring")
         items = get_res.json()
         assert any(i["id"] == item_id and i["device_name"] == "MON-SRV" for i in items)
         
@@ -151,6 +151,6 @@ async def test_monitoring_matrix_flow():
         await ac.put(f"/api/v1/monitoring/{item_id}", json={"status": "Existing"})
         
         # Verify
-        get_res_2 = await ac.get("/api/v1/monitoring/")
+        get_res_2 = await ac.get("/api/v1/monitoring")
         assert any(i["id"] == item_id and i["status"] == "Existing" for i in get_res_2.json())
 
