@@ -623,6 +623,18 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
 
 const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: number, type: 'dependency' | 'network', devices: any[], onNodeClick?: (d: any) => void }) => {
   const fgRef = React.useRef<any>();
+  const [dimensions, setDimensions] = useState({ width: 500, height: 300 });
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setDimensions({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight
+      });
+    }
+  }, []);
+
   const { data: rels } = useQuery({ 
     queryKey: ['device-rel', deviceId], 
     queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
@@ -638,7 +650,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
   const centerDevice = devices?.find(d => d.id === deviceId)
   
   const graphData = useMemo(() => {
-    const nodes = [{ id: deviceId, name: centerDevice?.name, isCenter: true, type: centerDevice?.type, fullData: centerDevice }]
+    const nodes = [{ id: deviceId, name: centerDevice?.name || 'CENTRAL_NODE', isCenter: true, type: centerDevice?.type, fullData: centerDevice }]
     const links: any[] = []
 
     if (type === 'dependency' && rels) {
@@ -681,8 +693,15 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
     return { nodes, links }
   }, [deviceId, rels, conns, devices, type, centerDevice])
 
+  useEffect(() => {
+    if (fgRef.current) {
+      fgRef.current.d3Force('link').distance(150);
+      fgRef.current.d3Force('charge').strength(-400);
+    }
+  }, [graphData]);
+
   return (
-    <div className="h-[300px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+    <div ref={containerRef} className="h-[300px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
        {graphData.nodes.length <= 1 ? (
          <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 italic tracking-widest">
             No active {type} vectors identified
@@ -691,8 +710,8 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
          <ForceGraph2D
            ref={fgRef}
            graphData={graphData}
-           height={300}
-           width={500}
+           height={dimensions.height}
+           width={dimensions.width}
            nodeRelSize={4}
            nodeColor={n => (n as any).isCenter ? '#60a5fa' : '#fbbf24'}
            linkColor={() => 'rgba(255, 255, 255, 0.1)'}
@@ -701,10 +720,10 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
            linkDirectionalParticles={2}
            linkDirectionalParticleSpeed={0.005}
            onNodeClick={(node: any) => onNodeClick?.(node.fullData)}
-           onEngineStop={() => fgRef.current?.zoomToFit(400, 30)}
+           onEngineStop={() => fgRef.current?.zoomToFit(400, 20)}
            linkCanvasObjectMode={() => 'after'}
            linkCanvasObject={(link: any, ctx, globalScale) => {
-              const MAX_FONT_SIZE = 7;
+              const MAX_FONT_SIZE = 8;
               const start = link.source;
               const end = link.target;
               if (typeof start !== 'object' || typeof end !== 'object') return;
@@ -713,7 +732,8 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               if (!text) return;
               
               const fontSize = Math.min(MAX_FONT_SIZE, 12 / globalScale);
-              ctx.font = `bold ${fontSize}px Inter`;
+              // Use italic 900 for "Vector Topologies" standard
+              ctx.font = `italic 900 ${fontSize}px Inter`;
               const textWidth = ctx.measureText(text.toUpperCase()).width;
               const padding = fontSize * 0.8;
               const bckgDimensions = [textWidth + padding, fontSize + padding/2];
@@ -721,27 +741,32 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               const relLink = { x: end.x - start.x, y: end.y - start.y };
               const textPos = { x: start.x + relLink.x * 0.5, y: start.y + relLink.y * 0.5 };
 
+              let angle = Math.atan2(relLink.y, relLink.x);
+              // Ensure text is never upside down
+              if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+
               ctx.save();
               ctx.translate(textPos.x, textPos.y);
-              ctx.rotate(Math.atan2(relLink.y, relLink.x));
+              ctx.rotate(angle);
               
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
               ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
 
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillStyle = type === 'dependency' ? '#818cf8' : '#34d399';
+              // Standard style: font-black uppercase tracking-tighter italic
               ctx.fillText(text.toUpperCase(), 0, 0);
               ctx.restore();
            }}
            nodeCanvasObject={(node: any, ctx, globalScale) => {
-             const label = node.name.toUpperCase();
-             const fontSize = 9/globalScale;
-             ctx.font = `bold ${fontSize}px Inter`;
+             const label = (node.name || 'UNKNOWN').toUpperCase();
+             const fontSize = 10/globalScale;
+             ctx.font = `italic 900 ${fontSize}px Inter`;
 
              // Draw shadow for node
-             ctx.shadowColor = node.isCenter ? 'rgba(96, 165, 250, 0.5)' : 'rgba(251, 191, 36, 0.3)';
-             ctx.shadowBlur = 10 / globalScale;
+             ctx.shadowColor = node.isCenter ? 'rgba(96, 165, 250, 0.6)' : 'rgba(251, 191, 36, 0.4)';
+             ctx.shadowBlur = 12 / globalScale;
              
              ctx.fillStyle = node.isCenter ? '#60a5fa' : '#fbbf24';
              ctx.beginPath(); 
@@ -3205,6 +3230,7 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
 }
 
 function AssetMap({ assets, connections, systemsList }: any) {
+  const fgRef = React.useRef<any>();
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [depth, setDepth] = useState(1)
   const [selectedNode, setSelectedNode] = useState<any>(null)
@@ -3260,6 +3286,13 @@ function AssetMap({ assets, connections, systemsList }: any) {
       links: links
     }
   }, [assets, connections, selectedSystems, depth, searchTerm])
+
+  useEffect(() => {
+    if (fgRef.current) {
+      fgRef.current.d3Force('link').distance(200);
+      fgRef.current.d3Force('charge').strength(-600);
+    }
+  }, [graphData]);
 
   return (
     <div className="h-full flex flex-col relative">
@@ -3343,30 +3376,37 @@ function AssetMap({ assets, connections, systemsList }: any) {
 
       <div className="flex-1 w-full h-full">
          <ForceGraph2D
+           ref={fgRef}
            graphData={graphData}
            nodeLabel="label"
            nodeColor={n => n.system === 'External' ? '#f43f5e' : n.environment === 'Production' ? '#6366f1' : '#10b981'}
            nodeRelSize={6}
+           onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
            nodeCanvasObject={(node: any, ctx, globalScale) => {
-             const label = node.label
-             const fontSize = 12/globalScale
-             ctx.font = `${fontSize}px Inter, sans-serif`
-             const textWidth = ctx.measureText(label).width
-             const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number]
+             const label = (node.label || node.name || 'UNKNOWN').toUpperCase();
+             const fontSize = 11/globalScale;
+             // Use italic 900 for "Vector Topologies" standard
+             ctx.font = `italic 900 ${fontSize}px Inter`;
+             const textWidth = ctx.measureText(label).width;
+             const padding = fontSize * 0.4;
+             const bckgDimensions = [textWidth + padding, fontSize + padding/2];
 
-             ctx.fillStyle = 'rgba(2, 6, 23, 0.8)'
-             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 + 8, bckgDimensions[0], bckgDimensions[1])
+             ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y + 10, bckgDimensions[0], bckgDimensions[1]);
 
-             ctx.textAlign = 'center'
-             ctx.textBaseline = 'middle'
-             ctx.fillStyle = node.color
-             ctx.fillText(label, node.x, node.y + 8)
+             ctx.textAlign = 'center';
+             ctx.textBaseline = 'top';
+             ctx.fillStyle = node.system === 'External' ? '#f43f5e' : node.environment === 'Production' ? '#6366f1' : '#10b981';
+             ctx.fillText(label, node.x, node.y + 10 + padding/4);
 
-             // Draw node point
-             ctx.beginPath()
-             ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false)
-             ctx.fillStyle = node.color
-             ctx.fill()
+             // Draw node point with glow
+             ctx.shadowColor = node.color;
+             ctx.shadowBlur = 10 / globalScale;
+             ctx.beginPath();
+             ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI, false);
+             ctx.fillStyle = node.system === 'External' ? '#f43f5e' : node.environment === 'Production' ? '#6366f1' : '#10b981';
+             ctx.fill();
+             ctx.shadowBlur = 0;
            }}
            linkColor={() => 'rgba(255, 255, 255, 0.1)'}
            linkDirectionalArrowLength={3.5}
@@ -3378,11 +3418,11 @@ function AssetMap({ assets, connections, systemsList }: any) {
       </div>
 
       <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 bg-slate-900/50 backdrop-blur-md">
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
+         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 bg-slate-900/50 backdrop-blur-md pointer-events-auto">
+            <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
+            <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
             <div className="h-px bg-white/5 mx-1" />
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
+            <button onClick={() => fgRef.current?.zoomToFit(400, 40)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
          </div>
       </div>
     </div>

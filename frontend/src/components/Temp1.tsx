@@ -281,8 +281,8 @@ export default function Temp1() {
   useEffect(() => {
     if (fgRef.current && graphData.nodes.length > 0) {
       fgRef.current.d3Force('charge').strength(nodeStrength);
-      fgRef.current.d3Force('link').distance(100);
-      setTimeout(() => fgRef.current.zoomToFit(600, 100), 200)
+      fgRef.current.d3Force('link').distance(150);
+      setTimeout(() => fgRef.current.zoomToFit(600, 40), 200)
     }
   }, [graphData.nodes.length, nodeStrength, dimensions])
 
@@ -389,14 +389,16 @@ export default function Temp1() {
                   
                   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
                   let fSize = radius * 0.6; 
-                  ctx.font = `900 ${fSize}px Inter, sans-serif`;
-                  while (ctx.measureText(node.name).width > radius * 1.7 && fSize > 6) {
-                    fSize -= 1; ctx.font = `900 ${fSize}px Inter, sans-serif`;
+                  // Use italic 900 for "standard"
+                  ctx.font = `italic 900 ${fSize}px Inter, sans-serif`;
+                  const label = node.name.toUpperCase();
+                  while (ctx.measureText(label).width > radius * 1.7 && fSize > 6) {
+                    fSize -= 1; ctx.font = `italic 900 ${fSize}px Inter, sans-serif`;
                   }
-                  ctx.fillText(node.name, node.x, node.y - (fSize * 0.15));
+                  ctx.fillText(label, node.x, node.y - (fSize * 0.15));
                   
                   const subFSize = Math.max(fSize * 0.45, 6);
-                  ctx.font = `900 ${subFSize}px Inter, sans-serif`;
+                  ctx.font = `italic 900 ${subFSize}px Inter, sans-serif`;
                   ctx.fillStyle = node.color;
                   ctx.fillText(node.type.toUpperCase(), node.x, node.y + (radius * 0.5));
                 }}
@@ -409,14 +411,14 @@ export default function Temp1() {
                 linkCanvasObject={(link: any, ctx: any, globalScale: any) => {
                   const start = link.source; const end = link.target;
                   if (typeof start !== 'object' || typeof end !== 'object') return;
-                  const label = link.label;
+                  const label = link.label.toUpperCase();
                   const midX = start.x + (end.x - start.x) * 0.5;
                   const midY = start.y + (end.y - start.y) * 0.5;
                   let angle = Math.atan2(end.y - start.y, end.x - start.x);
-                  if (angle > Math.PI / 2) angle -= Math.PI; if (angle < -Math.PI / 2) angle += Math.PI;
+                  if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
                   const fontSize = 12 / globalScale;
                   ctx.save(); ctx.translate(midX, midY); ctx.rotate(angle);
-                  ctx.font = `900 ${fontSize}px Inter, sans-serif`;
+                  ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`;
                   const textWidth = ctx.measureText(label).width;
                   const padding = 12 / globalScale;
                   const boxW = textWidth + padding;
