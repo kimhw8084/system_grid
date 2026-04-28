@@ -43,7 +43,7 @@ def format_incident(inc: models.IncidentLog, devices_map: dict = {}):
         "todos": inc.todos_json or []
     }
 
-@router.get("")
+@router.get("/")
 async def get_incidents(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.IncidentLog).order_by(models.IncidentLog.created_at.desc()))
     incidents = result.scalars().all()
@@ -61,7 +61,7 @@ async def get_incidents(db: AsyncSession = Depends(get_db)):
 
     return [format_incident(inc, devices_map) for inc in incidents]
 
-@router.post("")
+@router.post("/")
 async def create_incident(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.IncidentLog, data)
     

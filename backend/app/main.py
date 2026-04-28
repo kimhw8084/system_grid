@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge
 
 async def _auto_seed():
     async with AsyncSessionLocal() as db:
@@ -212,6 +212,12 @@ app.include_router(monitoring.router, prefix=settings.API_V1_STR)
 app.include_router(troubleshoot.router, prefix=settings.API_V1_STR)
 app.include_router(data_flows.router, prefix=settings.API_V1_STR)
 app.include_router(intelligence.router, prefix=settings.API_V1_STR)
+app.include_router(rca.router, prefix=settings.API_V1_STR)
+app.include_router(investigations.router, prefix=settings.API_V1_STR)
+app.include_router(far.router, prefix=settings.API_V1_STR)
+app.include_router(projects.router, prefix=settings.API_V1_STR)
+app.include_router(vendors.router, prefix=settings.API_V1_STR)
+app.include_router(knowledge.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():

@@ -8,7 +8,7 @@ from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 
-@router.get("")
+@router.get("/")
 async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     query = select(models.LogicalService).options(selectinload(models.LogicalService.secrets))
@@ -101,7 +101,7 @@ async def sync_service_to_device(service, db: AsyncSession):
             dev.os_version = service.version
             # No internal commit here, calling code handles it
 
-@router.post("")
+@router.post("/")
 async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     # data includes: name, service_type, status, version, environment, device_id, config_json, custom_attributes
     name = data.get('name')

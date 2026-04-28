@@ -26,7 +26,7 @@ def get_rca_options():
         selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas)
     ]
 
-@router.get("", response_model=List[schemas.RcaRecordResponse])
+@router.get("/", response_model=List[schemas.RcaRecordResponse])
 async def get_rca_records(db: AsyncSession = Depends(get_db)):
     query = select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.is_deleted == False)
     result = await db.execute(query)
@@ -40,7 +40,7 @@ async def get_rca_detail(rca_id: int, db: AsyncSession = Depends(get_db)):
     if not record: raise HTTPException(404, "RCA Record not found")
     return record
 
-@router.post("", response_model=schemas.RcaRecordResponse)
+@router.post("/", response_model=schemas.RcaRecordResponse)
 async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
     linked_modes_data = data.pop("linked_failure_modes", [])
     clean_data = filter_valid_columns(models.RcaRecord, data)

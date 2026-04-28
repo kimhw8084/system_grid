@@ -34,7 +34,7 @@ async def sync_device_to_os(device, db: AsyncSession):
             db.add(svc)
         # No internal commit here, calling code handles it
 
-@router.get("")
+@router.get("/")
 async def get_devices(system: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     
@@ -246,7 +246,7 @@ async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_d
         
     return result
 
-@router.post("")
+@router.post("/")
 async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     required = ["name", "system"]
     for f in required:

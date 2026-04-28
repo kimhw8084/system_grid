@@ -8,7 +8,7 @@ from typing import List, Optional
 
 router = APIRouter(prefix="/racks", tags=["Racks"])
 
-@router.get("")
+@router.get("/")
 async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     if site_id == "missing":
         query = select(models.Rack).filter(models.Rack.room_id == None)
@@ -99,7 +99,7 @@ async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
-@router.post("")
+@router.post("/")
 async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     site_id = data.get('site_id')
     if not site_id:

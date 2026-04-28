@@ -8,7 +8,7 @@ from ..schemas import schemas
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
-@router.get("", response_model=List[schemas.ProjectResponse])
+@router.get("/", response_model=List[schemas.ProjectResponse])
 async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Project)
     if not include_deleted:
@@ -17,7 +17,7 @@ async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends
     result = await db.execute(query)
     return result.scalars().all()
 
-@router.post("", response_model=schemas.ProjectResponse)
+@router.post("/", response_model=schemas.ProjectResponse)
 async def create_project(project: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
     db_project = models.Project(**project.model_dump())
     db.add(db_project)
