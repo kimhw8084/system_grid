@@ -7,7 +7,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 
-@router.get("/")
+@router.get("")
 async def get_maintenance_windows(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.MaintenanceWindow))
     windows = result.scalars().all()
@@ -29,7 +29,7 @@ async def get_maintenance_windows(db: AsyncSession = Depends(get_db)):
         })
     return final
 
-@router.post("/")
+@router.post("")
 async def create_maintenance_window(data: dict, db: AsyncSession = Depends(get_db)):
     # Parse dates
     start = datetime.fromisoformat(data['start_time'].replace("Z", "+00:00")) if data.get('start_time') else None

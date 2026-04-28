@@ -8,7 +8,7 @@ from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base & Q&A"])
 
-@router.get("/")
+@router.get("")
 async def get_entries(category: Optional[str] = None, search: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     query = select(models.KnowledgeEntry).filter(models.KnowledgeEntry.is_deleted == False)
     
@@ -24,7 +24,7 @@ async def get_entries(category: Optional[str] = None, search: Optional[str] = No
     result = await db.execute(query.order_by(models.KnowledgeEntry.updated_at.desc()))
     return result.scalars().all()
 
-@router.post("/")
+@router.post("")
 async def create_entry(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.KnowledgeEntry, data)
     entry = models.KnowledgeEntry(**clean_data)

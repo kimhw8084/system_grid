@@ -65,7 +65,7 @@ async def get_monitoring_history(item_id: int, db: AsyncSession = Depends(get_db
     )
     return result.scalars().all()
 
-@router.get("/", response_model=List[schemas.MonitoringItemResponse])
+@router.get("", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners))
     if not include_deleted:
@@ -97,7 +97,7 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
         
     return res
 
-@router.post("/", response_model=schemas.MonitoringItemResponse)
+@router.post("", response_model=schemas.MonitoringItemResponse)
 async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSession = Depends(get_db)):
     owners_data = data.owners
     item_data = data.model_dump(exclude={"owners"})

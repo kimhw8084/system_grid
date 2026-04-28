@@ -9,7 +9,7 @@ from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/investigations", tags=["Investigation Management"])
 
-@router.get("/")
+@router.get("")
 async def get_investigations(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Investigation).options(joinedload(models.Investigation.progress_logs))
     if not include_deleted:
@@ -17,7 +17,7 @@ async def get_investigations(include_deleted: bool = False, db: AsyncSession = D
     result = await db.execute(query.order_by(models.Investigation.updated_at.desc()))
     return result.unique().scalars().all()
 
-@router.post("/")
+@router.post("")
 async def create_investigation(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.Investigation, data)
     

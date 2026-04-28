@@ -598,6 +598,26 @@ export default function Projects() {
   const [registryModal, setRegistryModal] = useState<any>(null)
   const gridRef = useRef<any>(null)
 
+  const { data: projects, isLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => (await (await apiFetch('/api/v1/projects')).json())
+  })
+
+  const { data: options } = useQuery({ 
+    queryKey: ['settings-options'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+  })
+  
+  const { data: devices } = useQuery({ 
+    queryKey: ['devices-all'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
+  })
+  
+  const { data: services } = useQuery({ 
+    queryKey: ['services-all'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) 
+  })
+
   const columnDefs = useMemo(() => [
     { field: 'name', headerName: 'TITLE', minWidth: 200 },
     { field: 'type', headerName: 'TYPE', valueFormatter: (p: any) => p.value?.toUpperCase() },
@@ -643,26 +663,6 @@ export default function Projects() {
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : ''
     }
   ], [projects])
-
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: async () => (await (await apiFetch('/api/v1/projects')).json())
-  })
-
-  const { data: options } = useQuery({ 
-    queryKey: ['settings-options'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
-  })
-  
-  const { data: devices } = useQuery({ 
-    queryKey: ['devices-all'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
-  })
-  
-  const { data: services } = useQuery({ 
-    queryKey: ['services-all'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) 
-  })
 
   const selectedProject = useMemo(() => projects?.find((p: any) => p.id === selectedProjectId), [projects, selectedProjectId])
 
