@@ -16,6 +16,19 @@ import { ConnectionsListModal } from './shared/ConnectionsListModal'
 
 // ─── Constants & Helpers ──────────────────────────────────────────────────────
 
+const highlightAnimation = `
+  @keyframes highlight-glow {
+    0% { box-shadow: 0 0 0px #f59e0b; background-color: rgba(245, 158, 11, 0.2); }
+    50% { box-shadow: 0 0 15px #f59e0b; background-color: rgba(245, 158, 11, 0.4); }
+    100% { box-shadow: 0 0 0px #f59e0b; background-color: rgba(245, 158, 11, 0.2); }
+  }
+  .search-highlight {
+    animation: highlight-glow 1.5s infinite;
+    z-index: 10;
+    border: 1px solid #f59e0b !important;
+  }
+`
+
 const STATUS_CONFIG: Record<string, { color: string; dot: string; badge: string }> = {
   Active:        { color: 'text-emerald-400', dot: 'bg-emerald-400', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25' },
   Maintenance:   { color: 'text-amber-400',   dot: 'bg-amber-400',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/25' },
@@ -337,7 +350,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
       : isConnected
         ? 'bg-emerald-500/30 border-emerald-400/40'
         : highlight
-          ? 'bg-amber-500/30'
+          ? 'search-highlight'
           : isReservation
             ? 'bg-violet-500/20 border-violet-500/30'
             : device.status === 'Maintenance'
@@ -408,11 +421,11 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
 // ─── Power / Fill Mini Bar ─────────────────────────────────────────────────────
 
 const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: number; colorFn: (p: number) => string; label: string; unit: string }) => {
-  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="space-y-0.5">
       <div className="flex justify-between items-center">
-        <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider">{label}</span>
+        <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider">{label} <span className="text-slate-400 font-black ml-1">({pct}%)</span></span>
         <span className="text-[8px] font-black text-slate-300 tabular-nums">{value.toFixed(1)}<span className="text-slate-500 font-normal">/{max}{unit}</span></span>
       </div>
       <div className="h-1 bg-white/5 rounded-full overflow-hidden">
@@ -429,6 +442,7 @@ interface RackElevationProps {
   onDelete: (id: number) => void
   onEdit: (rack: any) => void
   onMove?: (dir: 'left' | 'right') => void
+  onShowInfo?: (rack: any) => void
   searchTerm: string
   onMount: (rackId: number, u: number) => void
   onManageDevice: (device: any, loc: any, event: React.MouseEvent) => void
@@ -436,14 +450,14 @@ interface RackElevationProps {
   onToggleSelect: (id: number) => void
   onRestore?: (id: number) => void
   isDeleted: boolean
-  viewMode: 'normal' | 'compact'
+  rackWidth: number
   focusedDeviceId?: number | null
   connectedDeviceIds?: number[]
 }
 
 const RackElevation = ({
-  rack, onDelete, onEdit, onMove, searchTerm, onMount, onManageDevice,
-  isSelected, onToggleSelect, onRestore, isDeleted, viewMode,
+  rack, onDelete, onEdit, onMove, onShowInfo, searchTerm, onMount, onManageDevice,
+  isSelected, onToggleSelect, onRestore, isDeleted, rackWidth,
   focusedDeviceId, connectedDeviceIds
 }: RackElevationProps) => {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -460,23 +474,15 @@ const RackElevation = ({
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + ((l.device?.power_typical_w || 0) / 1000), 0),
   [rack.device_locations])
 
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const l of rack.device_locations || []) {
-      const s = l.device?.status || 'Unknown'
-      counts[s] = (counts[s] || 0) + 1
-    }
-    return counts
-  }, [rack.device_locations])
-
   const isHighlighted = (device: any) =>
     !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 
   return (
-    <div className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
+    <div 
+      style={{ width: `${rackWidth}px` }}
+      className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
-      ${viewMode === 'compact' ? 'w-52' : 'w-64'}
     `}>
 
       {/* Checkbox */}
@@ -535,8 +541,12 @@ const RackElevation = ({
                         initial={{ opacity: 0, scale: 0.95, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                        className="absolute right-0 top-8 w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
+                        className="absolute right-0 top-8 w-40 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
                       >
+                        <button onClick={() => { onShowInfo?.(rack); setMenuOpen(false) }} className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-2 transition-colors">
+                          <BarChart3 size={9} /> Detailed Info
+                        </button>
+                        <div className="h-px bg-white/5 my-1" />
                         {onMove && (<>
                           <button onClick={() => { onMove('left'); setMenuOpen(false) }} className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-2 transition-colors">
                             <ArrowRightLeft size={9} className="scale-x-[-1]" /> Move Left
@@ -567,28 +577,6 @@ const RackElevation = ({
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
           <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 10} colorFn={powerColor} label="Power" unit="kW" />
         </div>
-
-        {/* KPI pills */}
-        <div className="flex flex-wrap gap-1">
-          <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-slate-400 border border-white/5 tabular-nums">
-            {totalU}U
-          </span>
-          <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md border tabular-nums ${
-            fillPct >= 90 ? 'bg-rose-500/15 text-rose-400 border-rose-500/25' :
-            fillPct >= 70 ? 'bg-amber-500/15 text-amber-400 border-amber-500/25' :
-            'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
-          }`}>
-            {fillPct}% fill
-          </span>
-          {Object.entries(statusCounts).map(([s, n]) => (
-            <span key={s} className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md border ${getStatusCfg(s).badge} tabular-nums`}>
-              {n} {s.slice(0,3)}
-            </span>
-          ))}
-          {isDeleted && (
-            <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/25">Purged</span>
-          )}
-        </div>
       </div>
 
       {/* Elevation grid */}
@@ -617,8 +605,11 @@ const RackElevation = ({
 
       {/* Footer */}
       <div className="px-4 py-2 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between">
-        <span className="text-[7px] text-slate-600 font-bold uppercase tracking-wider">{(rack.device_locations || []).length} assets</span>
-        <span className="text-[7px] text-slate-600 font-mono">{totalU - occupiedU}U free</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">{(rack.device_locations || []).length} assets</span>
+          <span className="text-[7px] text-blue-500/80 font-black tracking-widest uppercase">{totalU}U TOTAL</span>
+        </div>
+        <span className="text-[7px] text-emerald-400/80 font-black tracking-widest uppercase">{totalU - occupiedU}U FREE</span>
       </div>
     </div>
   )
@@ -949,6 +940,129 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
   )
 }
 
+// ─── Rack Info Modal ───────────────────────────────────────────────────────────
+
+const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) => {
+  const totalU = rack.total_u || 42
+  const occupiedU = (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.size_u || 1), 0)
+  const freeU = totalU - occupiedU
+  const fillPct = Math.round((occupiedU / totalU) * 100)
+  
+  const totalPowerW = (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.device?.power_typical_w || 0), 0)
+  const powerLimitW = (rack.max_power_kw || 10) * 1000
+  const powerPct = Math.round((totalPowerW / powerLimitW) * 100)
+
+  const distribution = useMemo(() => {
+    const stats: Record<string, Record<string, number>> = {
+      status: {},
+      type: {},
+      environment: {},
+      owner: {}
+    }
+    for (const l of rack.device_locations || []) {
+      const d = l.device
+      if (!d) continue
+      stats.status[d.status] = (stats.status[d.status] || 0) + 1
+      stats.type[d.type] = (stats.type[d.type] || 0) + 1
+      stats.environment[d.environment] = (stats.environment[d.environment] || 0) + 1
+      stats.owner[d.owner || 'Unassigned'] = (stats.owner[d.owner || 'Unassigned'] || 0) + 1
+    }
+    return stats
+  }, [rack.device_locations])
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        className="glass-panel w-full max-w-2xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <BarChart3 size={24} className="text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-tight text-white">{rack.name} <span className="text-slate-500 ml-2">Summary</span></h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{rack.site_name} · Deployment Unit Report</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+          {/* Capacity Gauges */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Space Utilization</p>
+                  <p className="text-2xl font-black text-white">{fillPct}%</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{occupiedU}U Used</p>
+                  <p className="text-[10px] font-bold text-emerald-400 uppercase">{freeU}U Available</p>
+                </div>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
+              </div>
+            </div>
+
+            <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Power Consumption</p>
+                  <p className="text-2xl font-black text-white">{powerPct}%</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{(totalPowerW/1000).toFixed(2)} kW</p>
+                  <p className="text-[10px] font-bold text-blue-400 uppercase">{rack.max_power_kw || 10} kW Cap</p>
+                </div>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${powerColor(powerPct)}`} style={{ width: `${powerPct}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Distribution Tables */}
+          <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+            {Object.entries(distribution).map(([category, data]) => (
+              <div key={category} className="space-y-3">
+                <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] border-l-2 border-blue-500 pl-3 leading-none">{category} Distribution</h3>
+                <div className="space-y-1">
+                  {Object.entries(data).length === 0 ? (
+                    <p className="text-[10px] text-slate-600 italic">No assets mounted</p>
+                  ) : (
+                    Object.entries(data).sort((a,b) => b[1] - a[1]).map(([label, count]) => (
+                      <div key={label} className="flex justify-between items-center py-2 border-b border-white/[0.03]">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase">{label}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-1 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                            <div className="h-full bg-blue-500/40" style={{ width: `${(count / (rack.device_locations?.length || 1)) * 100}%` }} />
+                          </div>
+                          <span className="text-[11px] font-black text-white w-6 text-right tabular-nums">{count}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-8 py-4 bg-white/[0.02] border-t border-white/5 flex justify-end">
+          <button onClick={onClose} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">
+            Close Report
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function RackTemp() {
@@ -972,10 +1086,11 @@ export default function RackTemp() {
   const [reserveInfo, setReserveInfo] = useState({ temporary_name: '', est_date: '', poc: '' })
 
   const [managingDevice, setManagingDevice] = useState<{ device: any; loc: any; rack: any } | null>(null)
+  const [showingRackInfo, setShowingRackInfo] = useState<any>(null)
   const [showCompareOnly, setShowCompareOnly] = useState(false)
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
   const [selectedRacks, setSelectedRacks] = useState<number[]>([])
-  const [viewMode, setViewMode] = useState<'normal' | 'compact'>('compact')
+  const [rackWidth, setRackWidth] = useState(208)
   const [showRelocateModal, setShowRelocateModal] = useState(false)
   const [mountSearch, setMountSearch] = useState('')
   
@@ -1281,6 +1396,7 @@ export default function RackTemp() {
 
   return (
     <div className="h-full flex flex-col gap-5 min-h-0">
+      <style>{highlightAnimation}</style>
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4 shrink-0">
@@ -1302,16 +1418,15 @@ export default function RackTemp() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* View mode toggle */}
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
-            <button onClick={() => setViewMode('normal')} title="Normal"
-              className={`p-1.5 rounded-lg transition-all ${viewMode === 'normal' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Server size={13} />
-            </button>
-            <button onClick={() => setViewMode('compact')} title="Compact"
-              className={`p-1.5 rounded-lg transition-all ${viewMode === 'compact' ? 'bg-white/15 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Layers size={13} />
-            </button>
+          {/* Width slider */}
+          <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/[0.06]">
+            <Layers size={11} className="text-slate-500" />
+            <input 
+              type="range" min={160} max={400} value={rackWidth}
+              onChange={e => setRackWidth(parseInt(e.target.value))}
+              className="w-24 accent-blue-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+            />
+            <span className="text-[8px] font-black text-slate-500 w-8 tabular-nums">{rackWidth}px</span>
           </div>
 
           {/* Site View / Compare */}
@@ -1497,13 +1612,14 @@ export default function RackTemp() {
               }
             }}
             onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+            onShowInfo={rack => setShowingRackInfo(rack)}
             onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
             onManageDevice={(device, loc, e) => {
               setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
             }}
             isDeleted={activeTab === 'deleted'}
             onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-            viewMode={viewMode}
+            rackWidth={rackWidth}
             focusedDeviceId={focusedConnection?.sourceId ?? null}
             connectedDeviceIds={focusedConnection?.targetIds}
           />
@@ -1990,6 +2106,13 @@ export default function RackTemp() {
           </motion.div>
         )}
 
+        {/* Rack Info Summary Modal */}
+        {showingRackInfo && (
+          <RackInfoModal
+            rack={showingRackInfo}
+            onClose={() => setShowingRackInfo(null)}
+          />
+        )}
     </div>
   )
 }

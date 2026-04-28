@@ -29,7 +29,8 @@ from app.models.models import (
     Vendor, VendorPersonnel, VendorContract, KnowledgeEntry,
     Investigation, InvestigationProgress,
     FarFailureMode, FarFailureCause, FarResolution, FarMitigation, FarPrevention,
-    RcaRecord, RcaTimelineEvent, RcaMitigation
+    RcaRecord, RcaTimelineEvent, RcaMitigation,
+    Project, ProjectTask, ProjectComment, ProjectQA
 )
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "system_grid.db")
@@ -723,6 +724,69 @@ def seed():
                     external_id=f"OWN-{random.randint(1000, 9999)}",
                     role=random.choice(cats["MonitoringOwnerRole"])
                 ))
+
+        # 16. Project Matrix (Strategic Streams)
+        print("Seeding Strategic Project Matrix (Streams & Tasks)...")
+        project_scenarios = [
+            ("Project Aegis: Zero Trust Overhaul", "Strategic", "Critical", "PLATFORM", "Overhaul facility networking to Zero Trust architecture."),
+            ("Sentinel v3: Predictive AI Monitoring", "Research", "High", "SRE-CORE", "Deploy machine learning models for failure prediction."),
+            ("Legacy Extraction: ERP Migration", "Tactical", "Medium", "FIN-IT", "Migrate legacy ERP systems to SAP-PROD environment."),
+            ("GreenGrid: Power Optimization", "Operational", "Low", "FACILITY", "Reduce idle power consumption across all server rooms.")
+        ]
+        
+        for name, ptype, priority, owner, objective in project_scenarios:
+            p = Project(
+                name=name,
+                type=ptype,
+                priority=priority,
+                status="In Progress" if priority != "Critical" else "Planning",
+                owner=owner,
+                objective=objective,
+                problem_statement=f"Current systems lack the {name.split(':')[0]} capabilities required for 2026 throughput goals.",
+                start_date=datetime.now() - timedelta(days=random.randint(30, 90)),
+                end_date=datetime.now() + timedelta(days=random.randint(180, 365)),
+                target_systems=random.sample(cats["LogicalSystem"], 2),
+                roi_defense_line=random.randint(0, 2),
+                man_hours_saved=random.uniform(500, 5000),
+                wafers_gained=random.uniform(10, 100) if ptype == "Strategic" else 0,
+                team_members=[fake.name() for _ in range(5)],
+                appendix_json={"glossary": [{"term": "MTBF", "definition": "Mean Time Between Failures"}], "images": []}
+            )
+            db.add(p)
+            db.flush()
+            
+            # Tasks for project
+            tasks = []
+            for i in range(5):
+                t = ProjectTask(
+                    project_id=p.id,
+                    name=f"Phase {i+1}: {fake.bs().upper()}",
+                    description=fake.paragraph(),
+                    start_date=p.start_date + timedelta(days=i*20),
+                    end_date=p.start_date + timedelta(days=(i+1)*20),
+                    progress=random.randint(0, 100),
+                    status=random.choice(["Completed", "In Progress", "To Do"]),
+                    owner=random.choice(p.team_members)
+                )
+                db.add(t)
+                db.flush()
+                tasks.append(t)
+                
+                # Subtasks
+                for j in range(2):
+                    st = ProjectTask(
+                        project_id=p.id,
+                        parent_task_id=t.id,
+                        name=f"Subtask {i+1}.{j+1}: {fake.catch_phrase()}",
+                        progress=random.randint(0, 100),
+                        status=random.choice(["Completed", "In Progress", "To Do"]),
+                        owner=t.owner
+                    )
+                    db.add(st)
+            
+            # Comments & QA
+            db.add(ProjectComment(project_id=p.id, author=fake.name(), content="Baseline metrics look promising. Proceeding with phase 1."))
+            db.add(ProjectQA(project_id=p.id, question="What is the impact on legacy wafers?", asked_by=fake.name(), answer="Minimal, we are using the secondary shadow bus.", answered_by=owner, status="Answered"))
 
         db.commit()
         print("--- ULTIMATE SEED COMPLETE ---")

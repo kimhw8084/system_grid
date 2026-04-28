@@ -35,10 +35,10 @@ const PROJECT_STATUSES = [
   { value: 'Cancelled', label: 'CANCELLED' }
 ]
 
-const DEFENSE_LINES = [
-  { value: 0, label: 'LINE 0: BASE' },
-  { value: 1, label: 'LINE 1: FORTIFIED' },
-  { value: 2, label: 'LINE 2: RESILIENT' }
+export const DEFENSE_LINES = [
+  { value: '0', label: 'LINE 0: BASE' },
+  { value: '1', label: 'LINE 1: FORTIFIED' },
+  { value: '2', label: 'LINE 2: RESILIENT' }
 ]
 
 // --- Sub-components ---
@@ -199,7 +199,7 @@ const BookOpen = ({ size, className }: any) => <FileText size={size} className={
 
 // --- Main Form Modal ---
 
-const ProjectForm = ({ initialData, onSave, isSaving }: any) => {
+export function ProjectForm({ initialData, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -405,12 +405,14 @@ export default function Projects() {
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'TASKS' | 'QA' | 'APPENDIX'>('DETAILS')
 
+
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => (await (await apiFetch('/api/v1/projects/')).json())
   })
 
   const mutation = useMutation({
+
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/projects/${data.id}` : `/api/v1/projects/`
       const method = data.id ? 'PUT' : 'POST'
@@ -457,8 +459,8 @@ export default function Projects() {
   // --- Grid Config ---
   const columnDefs = [
     { field: 'name', headerName: 'PROJECT STREAM', flex: 2, cellClass: 'font-bold' },
-    { field: 'type', headerName: 'TYPE', width: 100, cellRenderer: (p:any) => <StatusPill status={p.value} type="PROJECT_TYPE" /> },
-    { field: 'status', headerName: 'STATUS', width: 110, cellRenderer: (p:any) => <StatusPill status={p.value} /> },
+    { field: 'type', headerName: 'TYPE', width: 100, cellRenderer: (p:any) => <StatusPill value={p.value} /> },
+    { field: 'status', headerName: 'STATUS', width: 110, cellRenderer: (p:any) => <StatusPill value={p.value} /> },
     { field: 'owner', headerName: 'OWNER', flex: 1 },
     { 
       headerName: 'ROI METRICS', 
@@ -539,8 +541,9 @@ export default function Projects() {
                 <div className="flex justify-between items-start mb-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                       <StatusPill status={selectedProject.type} type="PROJECT_TYPE" />
-                       <StatusPill status={selectedProject.status} />
+                       <StatusPill value={selectedProject.type} />
+                       <StatusPill value={selectedProject.status} />
+
                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${
                          selectedProject.priority === 'Critical' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
                          selectedProject.priority === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :

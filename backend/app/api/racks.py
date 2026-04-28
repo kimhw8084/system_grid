@@ -230,6 +230,12 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
 async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     device_id = int(data['device_id'])
 
+    # Get rack info
+    rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == rack_id))
+    rack = rack_res.scalar_one_or_none()
+    if not rack:
+        raise HTTPException(status_code=404, detail="Rack not found")
+
     # Get ALL existing locations for this device in ACTIVE racks
     loc_res = await db.execute(
         select(models.DeviceLocation)
@@ -240,8 +246,8 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
 
     if existing_locs and not data.get('relocate'):
         existing_loc = existing_locs[0]
-        rack_res = await db.execute(select(models.Rack).filter(models.Rack.id == existing_loc.rack_id))
-        r = rack_res.scalar_one_or_none()
+        r_res = await db.execute(select(models.Rack).filter(models.Rack.id == existing_loc.rack_id))
+        r = r_res.scalar_one_or_none()
         
         # Return structured data for frontend to handle confirmation
         return JSONResponse(
@@ -258,7 +264,12 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     rack_locs = rack_locs_res.scalars().all()
 
     new_start = int(data['start_u'])
-    new_end = new_start + int(data['size_u'])
+    new_size_u = int(data['size_u'])
+    new_end = new_start + new_size_u
+
+    # SAFETY: Check if mount exceeds rack height
+    if new_start + new_size_u - 1 > rack.total_u_height:
+        raise HTTPException(status_code=400, detail=f"RACK_OVERFLOW: Device exceeds max U height of {rack.total_u_height}")
 
     for loc in rack_locs:
         if loc.device_id == device_id: continue
@@ -275,7 +286,7 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
         rack_id=rack_id,
         device_id=device_id,
         start_unit=new_start,
-        size_u=int(data['size_u']),
+        size_u=new_size_u,
         orientation=data.get('orientation', 'Front'),
         depth=data.get('depth', 'Full')
     )
@@ -399,8 +410,12 @@ async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
     rack = rack_res.scalar_one_or_none()
     if not rack: raise HTTPException(404, "Target rack not found")
     
-    # 3. Conflict check (simplified for sandbox, but good practice)
+    # 2.5 Safety Check: Max height
     size = device.size_u or 1
+    if target_start_u + size - 1 > rack.total_u_height:
+        raise HTTPException(status_code=400, detail=f"RACK_OVERFLOW: Device exceeds max U height of {rack.total_u_height}")
+
+    # 3. Conflict check (simplified for sandbox, but good practice)
     conf_res = await db.execute(
         select(models.DeviceLocation)
         .filter(
