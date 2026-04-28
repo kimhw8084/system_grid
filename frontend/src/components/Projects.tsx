@@ -8,7 +8,7 @@ import {
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon,
-  Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle
+  Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle, BookOpen, Filter
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -16,7 +16,6 @@ import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
-import { StatusPill } from './shared/StatusPill'
 
 // --- Types & Constants ---
 
@@ -194,8 +193,6 @@ const AppendixSection = ({ project, onUpdate }: { project: any, onUpdate: (data:
     </div>
   )
 }
-
-const BookOpen = ({ size, className }: any) => <FileText size={size} className={className} />
 
 // --- Main Form Modal ---
 
@@ -404,7 +401,10 @@ export default function Projects() {
   const [activeModal, setActiveModal] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'TASKS' | 'QA' | 'APPENDIX'>('DETAILS')
-
+  const [searchTerm, setSearchTerm] = useState('')
+  const [detailWidth, setDetailWidth] = useState(700)
+  const [isResizing, setIsResizing] = useState(false)
+  const gridRef = useRef<any>(null)
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
@@ -412,7 +412,6 @@ export default function Projects() {
   })
 
   const mutation = useMutation({
-
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/projects/${data.id}` : `/api/v1/projects`
       const method = data.id ? 'PUT' : 'POST'
@@ -457,31 +456,110 @@ export default function Projects() {
   }, [projects])
 
   // --- Grid Config ---
-  const columnDefs = [
-    { field: 'name', headerName: 'PROJECT STREAM', flex: 2, cellClass: 'font-bold' },
-    { field: 'type', headerName: 'TYPE', width: 100, cellRenderer: (p:any) => <StatusPill value={p.value} /> },
-    { field: 'status', headerName: 'STATUS', width: 110, cellRenderer: (p:any) => <StatusPill value={p.value} /> },
-    { field: 'owner', headerName: 'OWNER', flex: 1 },
+  const columnDefs = useMemo(() => [
     { 
-      headerName: 'ROI METRICS', 
-      flex: 1.5,
-      valueGetter: (p:any) => `${p.data.man_hours_saved}h / ${p.data.wafers_gained}w`,
+      field: 'name', 
+      headerName: 'PROJECT STREAM', 
+      minWidth: 200,
+      flex: 2, 
+      cellClass: 'font-bold text-blue-400',
+      headerClass: 'text-center',
+      filter: 'agTextColumnFilter'
+    },
+    { 
+      field: 'type', 
+      headerName: 'TYPE', 
+      width: 120, 
+      filter: 'agSetColumnFilter',
+      cellClass: 'text-center font-bold',
+      headerClass: 'text-center',
+      cellRenderer: (p:any) => {
+        const colors: any = {
+          Strategic: 'text-emerald-400',
+          Tactical: 'text-blue-400',
+          Operational: 'text-amber-400',
+          Research: 'text-rose-400'
+        }
+        return <span className={`${colors[p.value] || 'text-slate-500'}`}>{p.value}</span>
+      }
+    },
+    { 
+      field: 'status', 
+      headerName: 'STATUS', 
+      width: 130, 
+      filter: 'agSetColumnFilter',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p:any) => {
+        const colors: any = {
+          'In Progress': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          'Planning': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          'On Hold': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+          'Completed': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+          'Cancelled': 'text-rose-400 border-rose-500/40 bg-rose-500/20'
+        }
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className={`flex items-center justify-center w-28 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+              <span className="font-bold tracking-tighter leading-none text-[10px]">
+                {p.value}
+              </span>
+            </div>
+          </div>
+        )
+      }
+    },
+    { field: 'owner', headerName: 'OWNER', width: 130, filter: 'agTextColumnFilter', cellClass: 'text-center font-bold', headerClass: 'text-center' },
+    { 
+      field: 'man_hours_saved',
+      headerName: 'HRS SAVED', 
+      width: 110,
+      filter: 'agNumberColumnFilter',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
       cellRenderer: (p:any) => (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-emerald-400 font-bold">
-            <Clock size={12}/> {p.data.man_hours_saved}h
-          </div>
-          <div className="flex items-center gap-1 text-blue-400 font-bold">
-            <Zap size={12}/> {p.data.wafers_gained}w
-          </div>
+        <div className="flex items-center justify-center gap-1 text-emerald-400 font-bold">
+          <Clock size={12}/> {p.value}h
+        </div>
+      )
+    },
+    {
+      field: 'wafers_gained',
+      headerName: 'WAFERS',
+      width: 110,
+      filter: 'agNumberColumnFilter',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p:any) => (
+        <div className="flex items-center justify-center gap-1 text-blue-400 font-bold">
+          <Zap size={12}/> {p.value}w
         </div>
       )
     }
-  ]
+  ], [])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    const newWidth = window.innerWidth - e.clientX
+    if (newWidth > 300 && newWidth < window.innerWidth - 300) {
+      setDetailWidth(newWidth)
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsResizing(false)
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6">
-      {/* Header */}
+      {/* Standard Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tighter text-white italic flex items-center gap-3">
@@ -489,267 +567,316 @@ export default function Projects() {
           </h1>
           <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Infrastructure Strategic Evolution Roadmap</p>
         </div>
+        
         <div className="flex items-center gap-4">
-           <div className="flex gap-8 bg-white/5 border border-white/5 px-6 py-2 rounded-xl">
-              <div>
-                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Active Streams</p>
+           <div className="flex bg-white/5 border border-white/5 px-6 py-2 rounded-xl">
+              <div className="text-center px-4">
+                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Active</p>
                 <p className="text-lg font-black text-blue-400">{stats.active}</p>
               </div>
               <div className="w-px h-8 bg-white/10" />
-              <div>
+              <div className="text-center px-4">
                 <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Wafers/Day</p>
                 <p className="text-lg font-black text-emerald-400">+{stats.wafers}</p>
               </div>
               <div className="w-px h-8 bg-white/10" />
-              <div>
-                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Efficiency</p>
-                <p className="text-lg font-black text-amber-400">{stats.hours}h/yr</p>
+              <div className="text-center px-4">
+                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Hrs Saved</p>
+                <p className="text-lg font-black text-amber-400">{stats.hours}h</p>
               </div>
            </div>
-           <button onClick={() => setActiveModal({})} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all">+ NEW STREAM</button>
+           
+           <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
+             <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                <input 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)} 
+                  placeholder="SEARCH MATRIX..." 
+                  className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-48 transition-all" 
+                />
+             </div>
+             <button onClick={() => gridRef.current?.api?.showColumnChooser()} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Toggle Columns">
+                <Settings size={18} />
+             </button>
+             <button onClick={() => gridRef.current?.api?.showFilterMenu()} className="p-2 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Advanced Filter">
+                <Filter size={18} />
+             </button>
+           </div>
+
+           <button onClick={() => setActiveModal({})} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95">+ NEW STREAM</button>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
-        {/* Left: Project List */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col glass-panel rounded-2xl border border-white/5 overflow-hidden">
-          <div className="p-4 border-b border-white/5 flex items-center gap-2">
-            <Search size={16} className="text-slate-500" />
-            <input placeholder="SEARCH MATRIX..." className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-white outline-none flex-1" />
-          </div>
-          <div className="flex-1 ag-theme-alpine-dark">
-            <AgGridReact 
-              rowData={projects}
-              columnDefs={columnDefs}
-              rowSelection="multiple"
-              onSelectionChanged={(e) => {
-                const selected = e.api.getSelectedRows()
-                if (selected.length > 0) setSelectedProjectId(selected[0].id)
-              }}
-              onRowDoubleClicked={(e) => setSelectedProjectId(e.data.id)}
-              defaultColDef={{ resizable: true, sortable: true }}
-            />
-          </div>
+      <div className="flex-1 flex overflow-hidden gap-0 relative">
+        {/* Project Table - Always Visible */}
+        <div className="flex-1 glass-panel rounded-2xl border border-white/5 overflow-hidden flex flex-col ag-theme-alpine-dark">
+          <AgGridReact 
+            ref={gridRef}
+            rowData={projects}
+            columnDefs={columnDefs}
+            rowSelection="multiple"
+            onSelectionChanged={(e) => {
+              const selected = e.api.getSelectedRows()
+              if (selected.length > 0) setSelectedProjectId(selected[0].id)
+            }}
+            quickFilterText={searchTerm}
+            animateRows={true}
+            headerHeight={40}
+            rowHeight={45}
+            defaultColDef={{ 
+              resizable: true, 
+              sortable: true, 
+              filter: true,
+              flex: 1,
+              minWidth: 100
+            }}
+            onFirstDataRendered={(params) => {
+              params.api.autoSizeAllColumns();
+            }}
+          />
         </div>
 
-        {/* Right: Detailed View */}
-        <div className="col-span-12 lg:col-span-8 flex flex-col glass-panel rounded-2xl border border-white/5 overflow-hidden bg-black/20">
-          {selectedProject ? (
-            <div className="flex flex-col h-full">
-              {/* Top Detail Header */}
-              <div className="p-6 border-b border-white/5 bg-white/5">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                       <StatusPill value={selectedProject.type} />
-                       <StatusPill value={selectedProject.status} />
+        {/* Detail Pane - Slides Out */}
+        <AnimatePresence>
+          {selectedProject && (
+            <>
+              {/* Resizer Handle */}
+              <div 
+                onMouseDown={handleMouseDown}
+                className={`w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors z-30 ${isResizing ? 'bg-blue-500' : ''}`}
+              />
+              
+              <motion.div 
+                initial={{ x: '100%', opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                style={{ width: detailWidth }}
+                className="glass-panel border-l border-white/10 bg-slate-900/95 backdrop-blur-xl flex flex-col z-20 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+              >
+                {/* Detail Header */}
+                <div className="p-6 border-b border-white/5 bg-white/5">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${
+                            selectedProject.type === 'Strategic' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                            selectedProject.type === 'Tactical' ? 'text-blue-400 border-blue-500/20 bg-blue-500/5' :
+                            'text-amber-400 border-amber-500/20 bg-amber-500/5'
+                         }`}>{selectedProject.type}</span>
+                         
+                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${
+                            selectedProject.status === 'In Progress' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                            'text-slate-400 border-white/10 bg-white/5'
+                         }`}>{selectedProject.status}</span>
 
-                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${
-                         selectedProject.priority === 'Critical' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                         selectedProject.priority === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                         'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                       }`}>{selectedProject.priority} PRIORITY</span>
+                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${
+                           selectedProject.priority === 'Critical' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                           selectedProject.priority === 'High' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                           'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                         }`}>{selectedProject.priority} PRIORITY</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-white uppercase tracking-tighter mt-2">{selectedProject.name}</h2>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mt-1">
+                        <User size={12}/> {selectedProject.owner} <span className="text-slate-700 mx-1">//</span> <Calendar size={12}/> {new Date(selectedProject.start_date).toLocaleDateString()} — {new Date(selectedProject.end_date).toLocaleDateString()}
+                      </p>
                     </div>
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{selectedProject.name}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                      <User size={12}/> {selectedProject.owner} <Calendar size={12} className="ml-2"/> {new Date(selectedProject.start_date).toLocaleDateString()} — {new Date(selectedProject.end_date).toLocaleDateString()}
-                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setActiveModal(selectedProject)} className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all"><Edit2 size={16}/></button>
+                      <button onClick={() => setConfirmModal({ isOpen: true, id: selectedProject.id })} className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-rose-500 transition-all"><Trash2 size={16}/></button>
+                      <button onClick={() => setSelectedProjectId(null)} className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all ml-2"><X size={16}/></button>
+                    </div>
                   </div>
+
                   <div className="flex gap-2">
-                    <button onClick={() => setActiveModal(selectedProject)} className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all"><Edit2 size={16}/></button>
-                    <button onClick={() => setConfirmModal({ isOpen: true, id: selectedProject.id })} className="p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-rose-500 transition-all"><Trash2 size={16}/></button>
+                     {['DETAILS', 'TASKS', 'QA', 'APPENDIX'].map(tab => (
+                       <button 
+                         key={tab}
+                         onClick={() => setActiveTab(tab as any)}
+                         className={`px-6 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10 hover:text-slate-300'}`}
+                       >
+                         {tab}
+                       </button>
+                     ))}
                   </div>
                 </div>
 
-                <div className="flex gap-4">
-                   {['DETAILS', 'TASKS', 'QA', 'APPENDIX'].map(tab => (
-                     <button 
-                       key={tab}
-                       onClick={() => setActiveTab(tab as any)}
-                       className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                     >
-                       {tab}
-                     </button>
-                   ))}
-                </div>
-              </div>
-
-              {/* Tab Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-                {activeTab === 'DETAILS' && (
-                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="grid grid-cols-2 gap-8">
-                       <div className="space-y-4">
-                          <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                             <MessageSquare size={14} /> Mission Scope
-                          </h4>
-                          <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-4">
-                             <div>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Problem Statement</p>
-                                <p className="text-[11px] font-bold text-slate-300">{selectedProject.problem_statement || 'N/A'}</p>
-                             </div>
-                             <div>
-                                <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Objective</p>
-                                <p className="text-[11px] font-bold text-slate-300">{selectedProject.objective || 'N/A'}</p>
-                             </div>
-                          </div>
-                       </div>
-                       <div className="space-y-4">
-                          <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                             <TrendingUp size={14} /> ROI Baseline
-                          </h4>
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
-                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
-                                <p className="text-xl font-black text-white">L{selectedProject.roi_defense_line}</p>
-                             </div>
-                             <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
-                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours/Yr</p>
-                                <p className="text-xl font-black text-emerald-400">{selectedProject.man_hours_saved}h</p>
-                             </div>
-                             <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
-                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Mins</p>
-                                <p className="text-xl font-black text-amber-400">{selectedProject.stoploss_minutes_saved}m</p>
-                             </div>
-                             <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-center">
-                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafers/Day</p>
-                                <p className="text-xl font-black text-blue-400">+{selectedProject.wafers_gained}</p>
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-6">
-                       <div className="space-y-2">
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Layers size={12}/> Target Systems</p>
-                          <div className="flex flex-wrap gap-1">
-                             {selectedProject.target_systems?.map((s:string, i:number) => <span key={i} className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-slate-400 uppercase">{s}</span>)}
-                          </div>
-                       </div>
-                       <div className="space-y-2">
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Server size={12}/> Target Assets</p>
-                          <div className="flex flex-wrap gap-1">
-                             {selectedProject.target_assets?.map((s:string, i:number) => <span key={i} className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-slate-400 uppercase">{s}</span>)}
-                          </div>
-                       </div>
-                       <div className="space-y-2">
-                          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><ExternalLink size={12}/> Jira Records</p>
-                          <div className="flex flex-wrap gap-1">
-                             {selectedProject.jira_links?.map((s:string, i:number) => <span key={i} className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[9px] font-bold uppercase">{s}</span>)}
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'TASKS' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                       <Calendar size={14} /> Schedule Visualization
-                    </h4>
-                    <GanttChart tasks={selectedProject.tasks} />
-                    
-                    <div className="space-y-4">
-                       <div className="flex justify-between items-center">
-                          <h4 className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Task Matrix</h4>
-                          <button onClick={() => toast.error('Task Management requires Edit Mode')} className="px-3 py-1 bg-white/5 border border-white/10 rounded text-[9px] font-bold uppercase tracking-widest hover:bg-white/10">+ Add Task</button>
-                       </div>
-                       <div className="space-y-2">
-                          {selectedProject.tasks?.map((task: any) => (
-                            <div key={task.id} className="bg-white/5 p-4 rounded-xl border border-white/5 flex items-center justify-between group">
-                               <div className="flex items-center gap-4">
-                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${
-                                    task.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
-                                  }`}>
-                                     {task.progress}%
-                                  </div>
-                                  <div>
-                                     <p className="text-xs font-bold text-white uppercase">{task.name}</p>
-                                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{task.owner} // {new Date(task.start_date).toLocaleDateString()}</p>
-                                  </div>
+                {/* Tab Content */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                  {activeTab === 'DETAILS' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="grid grid-cols-2 gap-8">
+                         <div className="space-y-4">
+                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                               <MessageSquare size={14} /> Mission Scope
+                            </h4>
+                            <div className="bg-black/40 p-5 rounded-2xl border border-white/5 space-y-5">
+                               <div>
+                                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-widest">Problem Statement</p>
+                                  <p className="text-[11px] font-bold text-slate-300 leading-relaxed">{selectedProject.problem_statement || 'N/A'}</p>
                                </div>
-                               <div className="flex items-center gap-4">
-                                  <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                                    task.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'
-                                  }`}>{task.status}</span>
-                                  <button className="p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"><ChevronRight size={14}/></button>
+                               <div className="h-px bg-white/5" />
+                               <div>
+                                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-widest">Objective</p>
+                                  <p className="text-[11px] font-bold text-slate-300 leading-relaxed">{selectedProject.objective || 'N/A'}</p>
                                </div>
                             </div>
-                          ))}
-                       </div>
-                    </div>
-                  </div>
-                )}
+                         </div>
+                         <div className="space-y-4">
+                            <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                               <TrendingUp size={14} /> ROI Baseline
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-center group hover:border-blue-500/30 transition-colors">
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
+                                  <p className="text-2xl font-black text-white italic">L{selectedProject.roi_defense_line}</p>
+                               </div>
+                               <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-center group hover:border-emerald-500/30 transition-colors">
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Man-Hours/Yr</p>
+                                  <p className="text-2xl font-black text-emerald-400 italic">{selectedProject.man_hours_saved}h</p>
+                               </div>
+                               <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-center group hover:border-amber-500/30 transition-colors">
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Stoploss Mins</p>
+                                  <p className="text-2xl font-black text-amber-400 italic">{selectedProject.stoploss_minutes_saved}m</p>
+                               </div>
+                               <div className="bg-black/40 p-5 rounded-2xl border border-white/5 text-center group hover:border-blue-500/30 transition-colors">
+                                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Wafers/Day</p>
+                                  <p className="text-2xl font-black text-blue-400 italic">+{selectedProject.wafers_gained}</p>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
 
-                {activeTab === 'QA' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                         <HelpCircle size={14} /> Consolidated Q&A
-                      </h4>
-                      <button className="px-3 py-1 bg-blue-600 rounded text-[9px] font-bold uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-500/20">+ ASK QUESTION</button>
+                      <div className="grid grid-cols-3 gap-8">
+                         <div className="space-y-3">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Layers size={12} className="text-blue-500"/> Target Systems</p>
+                            <div className="flex flex-wrap gap-1.5">
+                               {selectedProject.target_systems?.map((s:string, i:number) => <span key={i} className="px-2.5 py-1 bg-white/5 rounded text-[10px] font-bold text-slate-400 uppercase tracking-tight">{s}</span>)}
+                            </div>
+                         </div>
+                         <div className="space-y-3">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Server size={12} className="text-emerald-500"/> Target Assets</p>
+                            <div className="flex flex-wrap gap-1.5">
+                               {selectedProject.target_assets?.map((s:string, i:number) => <span key={i} className="px-2.5 py-1 bg-white/5 rounded text-[10px] font-bold text-slate-400 uppercase tracking-tight">{s}</span>)}
+                            </div>
+                         </div>
+                         <div className="space-y-3">
+                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><ExternalLink size={12} className="text-blue-400"/> Jira Records</p>
+                            <div className="flex flex-wrap gap-1.5">
+                               {selectedProject.jira_links?.map((s:string, i:number) => <span key={i} className="px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded text-[10px] font-black uppercase tracking-tighter hover:bg-blue-500/20 cursor-pointer transition-colors">{s}</span>)}
+                            </div>
+                         </div>
+                      </div>
                     </div>
-                    <div className="overflow-hidden border border-white/5 rounded-xl">
-                       <table className="w-full text-left text-[10px] font-bold uppercase tracking-widest border-collapse">
-                          <thead className="bg-white/5 text-slate-500">
-                             <tr>
-                                <th className="p-3 border-b border-white/5">Question</th>
-                                <th className="p-3 border-b border-white/5">Asked By</th>
-                                <th className="p-3 border-b border-white/5">Status</th>
-                                <th className="p-3 border-b border-white/5 text-right">Action</th>
-                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                             {selectedProject.qa_items?.map((qa:any) => (
-                               <tr key={qa.id} className="hover:bg-white/5">
-                                  <td className="p-3 text-white truncate max-w-[200px]">{qa.question}</td>
-                                  <td className="p-3 text-slate-400">{qa.asked_by}</td>
-                                  <td className="p-3">
-                                     <span className={qa.status === 'Answered' ? 'text-emerald-400' : 'text-amber-400'}>{qa.status}</span>
-                                  </td>
-                                  <td className="p-3 text-right">
-                                     <button className="text-blue-400 hover:underline">VIEW</button>
-                                  </td>
+                  )}
+
+                  {activeTab === 'TASKS' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                           <Calendar size={14} /> Schedule Visualization
+                        </h4>
+                      </div>
+                      <GanttChart tasks={selectedProject.tasks} />
+                      
+                      <div className="space-y-5">
+                         <div className="flex justify-between items-center">
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Task Matrix</h4>
+                            <button onClick={() => toast.error('Task Management requires Edit Mode')} className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-colors">+ Add Task</button>
+                         </div>
+                         <div className="space-y-3">
+                            {selectedProject.tasks?.map((task: any) => (
+                              <div key={task.id} className="bg-black/40 p-5 rounded-2xl border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-colors">
+                                 <div className="flex items-center gap-5">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black shadow-inner ${
+                                      task.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                                    }`}>
+                                       {task.progress}%
+                                    </div>
+                                    <div>
+                                       <p className="text-[13px] font-black text-white uppercase tracking-tight">{task.name}</p>
+                                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{task.owner} <span className="text-slate-700 mx-1">//</span> {new Date(task.start_date).toLocaleDateString()}</p>
+                                    </div>
+                                 </div>
+                                 <div className="flex items-center gap-5">
+                                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
+                                      task.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-500 border-white/10'
+                                    }`}>{task.status}</span>
+                                    <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/5 rounded-lg hover:text-blue-400"><ChevronRight size={16}/></button>
+                                 </div>
+                              </div>
+                            ))}
+                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'QA' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                           <HelpCircle size={14} /> Consolidated Q&A
+                        </h4>
+                        <button className="px-4 py-2 bg-blue-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all active:scale-95">+ ASK QUESTION</button>
+                      </div>
+                      <div className="overflow-hidden border border-white/5 rounded-2xl bg-black/40">
+                         <table className="w-full text-left text-[10px] font-black uppercase tracking-widest border-collapse">
+                            <thead className="bg-white/5 text-slate-500">
+                               <tr>
+                                  <th className="p-4 border-b border-white/5">Question</th>
+                                  <th className="p-4 border-b border-white/5">Asked By</th>
+                                  <th className="p-4 border-b border-white/5">Status</th>
+                                  <th className="p-4 border-b border-white/5 text-right">Action</th>
                                </tr>
-                             ))}
-                             {selectedProject.qa_items?.length === 0 && (
-                               <tr><td colSpan={4} className="p-8 text-center text-slate-600 italic">No consolidated Q&A items found for this stream</td></tr>
-                             )}
-                          </tbody>
-                       </table>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                               {selectedProject.qa_items?.map((qa:any) => (
+                                 <tr key={qa.id} className="hover:bg-white/5 transition-colors group">
+                                    <td className="p-4 text-white truncate max-w-[200px] font-bold">{qa.question}</td>
+                                    <td className="p-4 text-slate-400 font-bold">{qa.asked_by}</td>
+                                    <td className="p-4">
+                                       <span className={`font-black ${qa.status === 'Answered' ? 'text-emerald-400' : 'text-amber-400'}`}>{qa.status}</span>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                       <button className="text-blue-400 hover:text-blue-300 font-black tracking-tighter opacity-0 group-hover:opacity-100 transition-all">VIEW</button>
+                                    </td>
+                                 </tr>
+                               ))}
+                               {selectedProject.qa_items?.length === 0 && (
+                                 <tr><td colSpan={4} className="p-12 text-center text-slate-600 font-black italic tracking-[0.2em] opacity-50">No consolidated Q&A items found</td></tr>
+                               )}
+                            </tbody>
+                         </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {activeTab === 'APPENDIX' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <AppendixSection 
-                      project={selectedProject} 
-                      onUpdate={(data) => mutation.mutate(data)} 
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center opacity-10 space-y-4">
-               <Briefcase size={80} />
-               <p className="text-[14px] font-black uppercase tracking-[0.5em]">SELECT MATRIX VECTOR</p>
-            </div>
+                  {activeTab === 'APPENDIX' && (
+                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                      <AppendixSection 
+                        project={selectedProject} 
+                        onUpdate={(data) => mutation.mutate(data)} 
+                      />
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
         {activeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[1000px] max-h-[90vh] overflow-y-auto p-10 rounded-3xl border border-blue-500/30 custom-scrollbar shadow-2xl">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[1100px] max-h-[90vh] overflow-y-auto p-12 rounded-[40px] border border-blue-500/30 custom-scrollbar shadow-2xl">
+               <div className="flex items-center justify-between border-b border-white/5 pb-8">
                   <div>
-                    <h2 className="text-3xl font-black uppercase text-white tracking-tighter">{activeModal.id ? 'COMMIT BASELINE UPDATE' : 'INITIALIZE PROJECT STREAM'}</h2>
+                    <h2 className="text-3xl font-black uppercase text-white tracking-tighter italic">{activeModal.id ? 'COMMIT BASELINE UPDATE' : 'INITIALIZE PROJECT STREAM'}</h2>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Strategic Infrastructure Roadmap Development</p>
                   </div>
-                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white bg-white/5 p-3 rounded-full"><X size={24}/></button>
+                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white bg-white/5 p-4 rounded-2xl hover:bg-white/10 transition-all"><X size={24}/></button>
                </div>
                <ProjectForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} />
             </motion.div>
@@ -765,6 +892,42 @@ export default function Projects() {
         message="THIS WILL PERMANENTLY ARCHIVE THIS STRATEGIC VECTOR FROM THE ACTIVE MATRIX. AUDIT LOGS WILL BE PRESERVED. PROCEED?"
         variant="danger"
       />
+
+      <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: transparent;
+          --ag-header-background-color: rgba(255, 255, 255, 0.03);
+          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-foreground-color: #f1f5f9;
+          --ag-header-foreground-color: #3b82f6;
+          --ag-font-family: 'Inter', sans-serif;
+          --ag-font-size: 10px;
+        }
+        .ag-root-wrapper { border: none !important; background: transparent !important; }
+        .ag-header-cell-label { 
+            font-weight: 900 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            justify-content: center !important;
+            font-style: italic !important;
+        }
+        .ag-cell { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center !important; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02) !important;
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.1) !important; border-left: 2px solid #3b82f6 !important; }
+        
+        .ag-header { border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important; }
+        
+        /* Hide Resizer Scrollbars */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+      `}</style>
     </div>
   )
 }

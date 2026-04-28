@@ -39,9 +39,16 @@ function notifyLatency(latency: number) {
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
-  const url = (endpoint.startsWith('http') || !baseUrl) 
-    ? endpoint 
-    : `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
+  
+  // Normalize endpoint: remove trailing slash if it's not just "/" or if it's an internal API call
+  let normalizedEndpoint = endpoint;
+  if (endpoint.length > 1 && endpoint.endsWith('/') && !endpoint.includes('?')) {
+    normalizedEndpoint = endpoint.slice(0, -1);
+  }
+
+  const url = (normalizedEndpoint.startsWith('http') || !baseUrl) 
+    ? normalizedEndpoint 
+    : `${baseUrl.replace(/\/$/, '')}/${normalizedEndpoint.replace(/^\//, '')}`;
   
   const headers: Record<string, string> = { ...options.headers } as any;
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
