@@ -9,7 +9,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
-@router.get("/")
+@router.get("")
 async def get_audit_logs(
     start_date: Optional[str] = None, 
     end_date: Optional[str] = None, 

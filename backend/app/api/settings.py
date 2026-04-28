@@ -459,40 +459,7 @@ async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db))
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
-    # Simple check if already initialized
-    res = await db.execute(select(models.SettingOption))
-    if res.scalars().first():
-        # Even if initialized, check if AppGlobal exists in GlobalSetting, if not, add it
-        res_global = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.category == "AppGlobal"))
-        if not res_global.scalars().first():
-             global_defaults = [
-                ("app_name", "SYSGRID ENGINE", "App Name", False),
-                ("org_name", "Global Infrastructure Corp", "Organization", False),
-                ("site_id", "HQ-01", "Primary Site ID", False),
-                ("retention_days", "30", "Data Retention Days", False),
-                ("maintenance_mode", "false", "Maintenance Mode Status", False),
-                ("default_timezone", "UTC", "Default System Timezone", False),
-                ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False),
-                ("security_level", "Standard", "Base Security Profile", False),
-                ("audit_log_level", "Full", "Audit Detail Level", False),
-                ("ui_primary_color", "#3b82f6", "Primary Branding Color", False),
-                ("ui_accent_color", "#10b981", "Accent Branding Color", False),
-                ("support_email", "admin@infra.local", "Admin Support Email", False),
-                ("VITE_APP_TITLE", "SYSGRID Tactical", "UI Title", True),
-                ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True),
-                ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True),
-                ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True),
-                ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True),
-                ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True),
-                ("PORT", "8000", "Backend Port", True),
-                ("API_ENDPOINT", "/api/v1", "API Prefix", True)
-            ]
-             for key, val, desc, public in global_defaults:
-                db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
-             await db.commit()
-        return {"status": "already_initialized"}
-        
-    # Main initialization for first run
+    # Global Defaults list
     global_defaults = [
         ("app_name", "SYSGRID ENGINE", "App Name", False),
         ("org_name", "Global Infrastructure Corp", "Organization", False),
@@ -515,73 +482,81 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("PORT", "8000", "Backend Port", True),
         ("API_ENDPOINT", "/api/v1", "API Prefix", True)
     ]
+
+    # 1. Idempotent check for GlobalSettings
     for key, val, desc, public in global_defaults:
-        db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
+        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
+        if not res.scalar_one_or_none():
+            db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
     
-    defaults = [
-        # Logical Systems
-        ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
-        ("LogicalSystem", "HR-Core", "Human Resources Core System"),
-        ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
-        ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
-        ("LogicalSystem", "DevOps", "DevOps Platform"),
-        # Device Types
-        ("DeviceType", "Physical", "Bare metal hardware"),
-        ("DeviceType", "Virtual", "Virtual machine or instance"),
-        ("DeviceType", "Storage", "Storage array or appliance"),
-        ("DeviceType", "Switch", "Network switch or router"),
-        ("DeviceType", "Firewall", "Network firewall appliance"),
-        ("DeviceType", "Load Balancer", "Load balancer appliance"),
-        # Operational Status
-        ("Status", "Planned", "Scheduled for deployment"),
-        ("Status", "Active", "Operational and healthy"),
-        ("Status", "Maintenance", "Undergoing scheduled maintenance"),
-        ("Status", "Standby", "Powered on, not serving traffic"),
-        ("Status", "Offline", "Powered off or unreachable"),
-        ("Status", "Decommissioned", "Retired from service"),
-        # Environments
-        ("Environment", "Production", "Live user traffic"),
-        ("Environment", "Staging", "Pre-production staging"),
-        ("Environment", "QA", "Quality Assurance and Testing"),
-        ("Environment", "Dev", "Development and Staging"),
-        ("Environment", "DR", "Disaster Recovery Node"),
-        ("Environment", "Lab", "Lab or sandbox environment"),
-        # Business Units
-        ("BusinessUnit", "Engineering", "Engineering & R&D"),
-        ("BusinessUnit", "Operations", "IT Operations"),
-        ("BusinessUnit", "Finance", "Finance & Accounting"),
-        ("BusinessUnit", "HR", "Human Resources"),
-        ("BusinessUnit", "Sales", "Sales & Business Development"),
-        ("BusinessUnit", "Security", "Information Security"),
-        # Semiconductor Impact Categories
-        ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
-        ("ImpactCategory", "Yield Degradation", "Reduced output quality"),
-        ("ImpactCategory", "Tool Blockage (Down)", "Manufacturing equipment stop"),
-        ("ImpactCategory", "Throughput Slow-down", "Bottleneck in production flow"),
-        ("ImpactCategory", "MES Connectivity Gap", "Data loss between factory and server"),
-        ("ImpactCategory", "Recipe Desync", "Incorrect process parameters"),
-        ("ImpactCategory", "SPC Violation", "Statistical Process Control outlier"),
-        ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
-        ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
-        ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
-    ]
-    for cat, val, desc in defaults:
-        db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-        
-    service_types = [
-        ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
-        ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
-        ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
-        ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
-        ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
-        ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
-        ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
-        ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"]),
-        ("Internal App", ["Repository", "Framework", "Primary Dev", "CI/CD Pipeline", "Build Version"]),
-        ("External App", ["Vendor Support URL", "Account Manager", "Support Tier", "Installation Manual", "Update Frequency"])
-    ]
-    for val, keys in service_types:
-        db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+    # 2. Idempotent check for SettingOptions (Metadata)
+    res_opt = await db.execute(select(models.SettingOption))
+    if not res_opt.scalars().first():
+        # Main initialization for first run
+        defaults = [
+            # Logical Systems
+            ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
+            ("LogicalSystem", "HR-Core", "Human Resources Core System"),
+            ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
+            ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
+            ("LogicalSystem", "DevOps", "DevOps Platform"),
+            # Device Types
+            ("DeviceType", "Physical", "Bare metal hardware"),
+            ("DeviceType", "Virtual", "Virtual machine or instance"),
+            ("DeviceType", "Storage", "Storage array or appliance"),
+            ("DeviceType", "Switch", "Network switch or router"),
+            ("DeviceType", "Firewall", "Network firewall appliance"),
+            ("DeviceType", "Load Balancer", "Load balancer appliance"),
+            # Operational Status
+            ("Status", "Planned", "Scheduled for deployment"),
+            ("Status", "Active", "Operational and healthy"),
+            ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+            ("Status", "Standby", "Powered on, not serving traffic"),
+            ("Status", "Offline", "Powered off or unreachable"),
+            ("Status", "Decommissioned", "Retired from service"),
+            # Environments
+            ("Environment", "Production", "Live user traffic"),
+            ("Environment", "Staging", "Pre-production staging"),
+            ("Environment", "QA", "Quality Assurance and Testing"),
+            ("Environment", "Dev", "Development and Staging"),
+            ("Environment", "DR", "Disaster Recovery Node"),
+            ("Environment", "Lab", "Lab or sandbox environment"),
+            # Business Units
+            ("BusinessUnit", "Engineering", "Engineering & R&D"),
+            ("BusinessUnit", "Operations", "IT Operations"),
+            ("BusinessUnit", "Finance", "Finance & Accounting"),
+            ("BusinessUnit", "HR", "Human Resources"),
+            ("BusinessUnit", "Sales", "Sales & Business Development"),
+            ("BusinessUnit", "Security", "Information Security"),
+            # Semiconductor Impact Categories
+            ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
+            ("ImpactCategory", "Yield Degradation", "Reduced output quality"),
+            ("ImpactCategory", "Tool Blockage (Down)", "Manufacturing equipment stop"),
+            ("ImpactCategory", "Throughput Slow-down", "Bottleneck in production flow"),
+            ("ImpactCategory", "MES Connectivity Gap", "Data loss between factory and server"),
+            ("ImpactCategory", "Recipe Desync", "Incorrect process parameters"),
+            ("ImpactCategory", "SPC Violation", "Statistical Process Control outlier"),
+            ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
+            ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
+            ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
+        ]
+        for cat, val, desc in defaults:
+            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+            
+        service_types = [
+            ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
+            ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
+            ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
+            ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
+            ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
+            ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
+            ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
+            ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"]),
+            ("Internal App", ["Repository", "Framework", "Primary Dev", "CI/CD Pipeline", "Build Version"]),
+            ("External App", ["Vendor Support URL", "Account Manager", "Support Tier", "Installation Manual", "Update Frequency"])
+        ]
+        for val, keys in service_types:
+            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
         
     await db.commit()
     return {"status": "initialized"}

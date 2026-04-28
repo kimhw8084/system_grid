@@ -9,7 +9,7 @@ from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/vendors", tags=["Vendor & Contract Management"])
 
-@router.get("/")
+@router.get("")
 async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Vendor).options(
         joinedload(models.Vendor.contracts),
@@ -20,7 +20,7 @@ async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(
     result = await db.execute(query.order_by(models.Vendor.name))
     return result.unique().scalars().all()
 
-@router.post("/")
+@router.post("")
 async def create_vendor(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.Vendor, data)
     vendor = models.Vendor(**clean_data)
@@ -94,7 +94,7 @@ async def delete_personnel(personnel_id: int, db: AsyncSession = Depends(get_db)
 
 # --- CONTRACTS ---
 
-@router.get("/contracts/")
+@router.get("/contracts")
 async def get_contracts(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.VendorContract).options(joinedload(models.VendorContract.vendor_ref))
     if not include_deleted:
@@ -102,7 +102,7 @@ async def get_contracts(include_deleted: bool = False, db: AsyncSession = Depend
     result = await db.execute(query.order_by(models.VendorContract.expiry_date))
     return result.unique().scalars().all()
 
-@router.post("/contracts/")
+@router.post("/contracts")
 async def create_contract(data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.VendorContract, data)
     

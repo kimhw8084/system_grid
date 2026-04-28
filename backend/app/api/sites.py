@@ -6,7 +6,7 @@ from ..models import models
 
 router = APIRouter(prefix="/sites", tags=["Sites"])
 
-@router.get("/")
+@router.get("")
 async def get_sites(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Site).order_by(models.Site.order_index.asc()))
     sites = result.scalars().all()
@@ -25,7 +25,7 @@ async def reorder_sites(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
-@router.post("/")
+@router.post("")
 async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
     name = data.get('name', 'New Site')
     # Check for duplicate name

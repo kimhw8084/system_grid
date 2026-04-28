@@ -13,14 +13,26 @@ async def _auto_seed():
         if not res_global.scalars().first():
             print("AUTO-BOOT: Seeding missing Global Settings...")
             global_defaults = [
-                ('VITE_APP_TITLE', 'SYSGRID Tactical', 'General', True),
-                ('VITE_POLLING_INTERVAL', '5000', 'Infrastructure', True),
-                ('VITE_ENABLE_WEBSOCKETS', 'true', 'Infrastructure', True),
-                ('VITE_THEME_DEFAULT', 'nordic-frost-v1', 'UI', True),
-                ('VITE_UI_TIMEOUT', '30000', 'Infrastructure', True),
-                ('VITE_MAX_GRID_ROWS', '100', 'UI', True),
-                ('PORT', '8000', 'Infrastructure', True),
-                ('API_ENDPOINT', '/api/v1', 'Infrastructure', True)
+                ("app_name", "SYSGRID ENGINE", "AppGlobal", False),
+                ("org_name", "Global Infrastructure Corp", "AppGlobal", False),
+                ("site_id", "HQ-01", "AppGlobal", False),
+                ("retention_days", "30", "AppGlobal", False),
+                ("maintenance_mode", "false", "AppGlobal", False),
+                ("default_timezone", "UTC", "AppGlobal", False),
+                ("dashboard_refresh_interval", "60", "AppGlobal", False),
+                ("security_level", "Standard", "AppGlobal", False),
+                ("audit_log_level", "Full", "AppGlobal", False),
+                ("ui_primary_color", "#3b82f6", "AppGlobal", False),
+                ("ui_accent_color", "#10b981", "AppGlobal", False),
+                ("support_email", "admin@infra.local", "AppGlobal", False),
+                ("VITE_APP_TITLE", "SYSGRID Tactical", "AppGlobal", True),
+                ("VITE_POLLING_INTERVAL", "5000", "AppGlobal", True),
+                ("VITE_ENABLE_WEBSOCKETS", "true", "AppGlobal", True),
+                ("VITE_THEME_DEFAULT", "nordic-frost-v1", "AppGlobal", True),
+                ("VITE_UI_TIMEOUT", "30000", "AppGlobal", True),
+                ("VITE_MAX_GRID_ROWS", "100", "AppGlobal", True),
+                ("PORT", "8000", "AppGlobal", True),
+                ("API_ENDPOINT", "/api/v1", "AppGlobal", True)
             ]
             for key, val, cat, public in global_defaults:
                 db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))

@@ -23,7 +23,7 @@ def format_flow(flow: models.DataFlow):
         "updated_at": flow.updated_at.isoformat() if flow.updated_at else None
     }
 
-@router.get("/")
+@router.get("")
 async def get_flows(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.DataFlow)
     if not include_deleted:
@@ -35,7 +35,7 @@ async def get_flows(include_deleted: bool = False, db: AsyncSession = Depends(ge
     flows = result.scalars().all()
     return [format_flow(f) for f in flows]
 
-@router.post("/")
+@router.post("")
 async def create_flow(data: dict, db: AsyncSession = Depends(get_db)):
     flow = models.DataFlow(
         name=data.get("name", "New Data Flow"),
