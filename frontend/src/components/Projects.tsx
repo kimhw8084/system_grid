@@ -408,13 +408,13 @@ export default function Projects() {
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: async () => (await (await apiFetch('/api/v1/projects/')).json())
+    queryFn: async () => (await (await apiFetch('/api/v1/projects')).json())
   })
 
   const mutation = useMutation({
 
     mutationFn: async (data: any) => {
-      const url = data.id ? `/api/v1/projects/${data.id}` : `/api/v1/projects/`
+      const url = data.id ? `/api/v1/projects/${data.id}` : `/api/v1/projects`
       const method = data.id ? 'PUT' : 'POST'
       const res = await apiFetch(url, { method, body: JSON.stringify(data) })
       if (!res.ok) throw new Error(await res.text())

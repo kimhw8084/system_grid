@@ -257,7 +257,7 @@ const SharedNetworkModals = ({
 const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: number, onViewDetails: (s: any) => void, onEdit: (s: any) => void }) => {
   const { data: services, isLoading } = useQuery({
     queryKey: ['device-services', deviceId],
-    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json())
+    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services?device_id=${deviceId}`)).json())
   })
 
   return (
@@ -887,7 +887,7 @@ export default function AssetTemp() {
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
   const { data: devices } = useQuery({ 
     queryKey: ["devices-list-all"], 
-    queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
+    queryFn: async () => (await (await apiFetch("/api/v1/devices")).json()) 
   })
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
@@ -910,7 +910,7 @@ export default function AssetTemp() {
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: allAssets, isLoading } = useQuery({
     queryKey: ['devices'],
-    queryFn: async () => (await (await apiFetch('/api/v1/devices/?include_deleted=true')).json())
+    queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
   })
 
   const { inventoryAssets, deletedAssets } = useMemo(() => {
@@ -930,7 +930,7 @@ export default function AssetTemp() {
 
   const mutation = useMutation({
     mutationFn: async ({ data }: any) => {
-      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
+      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices`
       const method = data.id ? 'PUT' : 'POST'
       try {
         const res = await apiFetch(url, { method, body: JSON.stringify(data) })
@@ -1761,7 +1761,7 @@ const SecurityTab = ({ device }: { device: any }) => {
 
   const { data: devices } = useQuery({
     queryKey: ['devices-list-simple'],
-    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json())
+    queryFn: async () => (await (await apiFetch('/api/v1/devices')).json())
   })
 
   const { data: fabricConnections } = useQuery({ 
@@ -1981,7 +1981,7 @@ const SecurityTab = ({ device }: { device: any }) => {
 const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
   const { data: items, isLoading } = useQuery({
     queryKey: ['device-monitoring', deviceId],
-    queryFn: async () => (await apiFetch(`/api/v1/monitoring/?device_id=${deviceId}`)).json()
+    queryFn: async () => (await apiFetch(`/api/v1/monitoring?device_id=${deviceId}`)).json()
   })
 
   return (
@@ -2424,7 +2424,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
 
 const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
   
   const types = useMemo(() => [
     { label: 'Depends On', s: 'Consumer', t: 'Provider' },
@@ -2556,7 +2556,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 const RelationsTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editData, setEditData] = useState<any>(null)

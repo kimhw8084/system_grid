@@ -152,7 +152,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan, redirect_slashes=False)
 
 # Make manager accessible to routers
 app.state.ws_manager = manager
