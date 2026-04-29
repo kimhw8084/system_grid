@@ -1184,6 +1184,7 @@ export default function AssetGrid() {
   ], [activeTab, fontSize]) as any
 
   const { data: allConnections } = useQuery({ queryKey: ['all-connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
+  const { data: allRelationships } = useQuery({ queryKey: ['all-relationships'], queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()) })
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -1358,6 +1359,7 @@ export default function AssetGrid() {
            <AssetMap 
              assets={allAssets || []} 
              connections={allConnections || []}
+             relationships={allRelationships || []}
              systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
            />
         </div>
@@ -2415,85 +2417,158 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
   )
 }
 
-function AssetMap({ assets, connections, systemsList }: any) {
+function AssetMap({ assets, connections, relationships, systemsList }: any) {
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
+  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([])
   const [depth, setDepth] = useState(1)
   const [selectedNode, setSelectedNode] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showLegend, setShowLegend] = useState(true)
+  const fgRef = React.useRef<any>()
+
+  const hasFilter = selectedSystems.length > 0 || selectedAssetIds.length > 0 || searchTerm.length >= 2
 
   const graphData = useMemo(() => {
-    // 1. Build initial nodes from selected systems or search
-    let rootNodes = assets.filter((a: any) => 
-      (selectedSystems.length === 0 || selectedSystems.includes(a.system)) &&
-      (!searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
+    if (!hasFilter) return { nodes: [], links: [] }
 
-    const nodes = new Map<number, any>()
-    const links: any[] = []
+    const nodesMap = new Map<number, any>()
+    const linksMap = new Map<string, any>()
     const processedNodes = new Set<number>()
 
-    const addConnections = (currentNodeIds: number[], currentDepth: number) => {
+    // 1. Identify Root Nodes
+    let rootAssets = assets.filter((a: any) => 
+      selectedSystems.includes(a.system) || 
+      selectedAssetIds.includes(a.id) ||
+      (searchTerm.length >= 2 && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+
+    const addNode = (asset: any) => {
+      if (!nodesMap.has(asset.id)) {
+        nodesMap.set(asset.id, { 
+          ...asset, 
+          id: asset.id, 
+          label: asset.name,
+          isHighlighted: searchTerm.length >= 2 && asset.name.toLowerCase().includes(searchTerm.toLowerCase())
+        })
+      }
+    }
+
+    const addLink = (source: number, target: number, type: string, category: 'network' | 'relationship', label: string) => {
+      const key = `${Math.min(source, target)}-${Math.max(source, target)}-${type}`
+      if (!linksMap.has(key)) {
+        linksMap.set(key, { source, target, type, category, label })
+      }
+    }
+
+    const traverse = (currentNodeIds: number[], currentDepth: number) => {
       if (currentDepth > depth) return
       
       const nextNodeIds: number[] = []
       
-      connections.forEach((conn: any) => {
-        if (currentNodeIds.includes(conn.src_device_id) || currentNodeIds.includes(conn.dst_device_id)) {
-          const srcId = conn.src_device_id
-          const dstId = conn.dst_device_id
-          
+      // Process Connections (Network)
+      connections?.forEach((conn: any) => {
+        const srcId = conn.src_device_id
+        const dstId = conn.dst_device_id
+        
+        if (currentNodeIds.includes(srcId) || currentNodeIds.includes(dstId)) {
           const src = assets.find((a: any) => a.id === srcId)
           const dst = assets.find((a: any) => a.id === dstId)
           
           if (src && dst) {
-            if (!nodes.has(srcId)) nodes.set(srcId, { ...src, id: srcId, label: src.name })
-            if (!nodes.has(dstId)) nodes.set(dstId, { ...dst, id: dstId, label: dst.name })
+            addNode(src); addNode(dst)
+            addLink(srcId, dstId, conn.connection_type, 'network', conn.connection_type)
             
-            links.push({ source: srcId, target: dstId, type: conn.connection_type })
+            if (currentNodeIds.includes(srcId) && !processedNodes.has(dstId)) nextNodeIds.push(dstId)
+            if (currentNodeIds.includes(dstId) && !processedNodes.has(srcId)) nextNodeIds.push(srcId)
+          }
+        }
+      })
+
+      // Process Relationships
+      relationships?.forEach((rel: any) => {
+        const srcId = rel.source_device_id
+        const dstId = rel.target_device_id
+        
+        if (currentNodeIds.includes(srcId) || currentNodeIds.includes(dstId)) {
+          const src = assets.find((a: any) => a.id === srcId)
+          const dst = assets.find((a: any) => a.id === dstId)
+          
+          if (src && dst) {
+            addNode(src); addNode(dst)
+            addLink(srcId, dstId, rel.relationship_type, 'relationship', rel.relationship_type)
             
-            if (!processedNodes.has(srcId)) nextNodeIds.push(srcId)
-            if (!processedNodes.has(dstId)) nextNodeIds.push(dstId)
+            if (currentNodeIds.includes(srcId) && !processedNodes.has(dstId)) nextNodeIds.push(dstId)
+            if (currentNodeIds.includes(dstId) && !processedNodes.has(srcId)) nextNodeIds.push(srcId)
           }
         }
       })
       
       currentNodeIds.forEach(id => processedNodes.add(id))
-      if (nextNodeIds.length > 0) addConnections(nextNodeIds, currentDepth + 1)
+      const uniqueNext = Array.from(new Set(nextNodeIds)).filter(id => !processedNodes.has(id))
+      if (uniqueNext.length > 0) traverse(uniqueNext, currentDepth + 1)
     }
 
-    if (rootNodes.length > 0) {
-      rootNodes.forEach((a: any) => nodes.set(a.id, { ...a, id: a.id, label: a.name }))
-      addConnections(rootNodes.map((a: any) => a.id), 1)
-    }
+    rootAssets.forEach((a: any) => addNode(a))
+    traverse(rootAssets.map((a: any) => a.id), 1)
 
     return {
-      nodes: Array.from(nodes.values()),
-      links: links
+      nodes: Array.from(nodesMap.values()),
+      links: Array.from(linksMap.values())
     }
-  }, [assets, connections, selectedSystems, depth, searchTerm])
+  }, [assets, connections, relationships, selectedSystems, selectedAssetIds, depth, searchTerm, hasFilter])
+
+  const typeColors: any = {
+    Physical: '#10b981', // emerald-500
+    Virtual: '#3b82f6',  // blue-500
+    Storage: '#f59e0b',  // amber-500
+    Switch: '#f43f5e',   // rose-500
+    Firewall: '#f97316', // orange-500
+    'Load Balancer': '#8b5cf6' // violet-500
+  }
+
+  const [assetSearch, setAssetSearch] = useState('')
+
+  const filteredAssetsForSelection = useMemo(() => {
+    return assets.filter((a: any) => 
+      !a.is_deleted && 
+      (assetSearch.length === 0 || a.name.toLowerCase().includes(assetSearch.toLowerCase()))
+    )
+  }, [assets, assetSearch])
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative bg-[#020617]">
       {/* Controls Overlay */}
       <div className="absolute top-6 left-6 z-10 w-80 space-y-4 pointer-events-none">
-         <div className="glass-panel p-6 rounded-lg border border-white/10 shadow-2xl pointer-events-auto space-y-6">
+         <div className="glass-panel p-6 rounded-lg border border-white/10 shadow-2xl pointer-events-auto space-y-6 bg-slate-950/80 backdrop-blur-xl">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                <div className="flex items-center gap-3">
-                  <Share2 size={18} className="text-indigo-400" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Map Controller</h3>
+                  <Share2 size={18} className="text-blue-400" />
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white italic">Vector Intelligence</h3>
                </div>
-               <div className="px-2 py-0.5 rounded bg-indigo-600/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">{graphData.nodes.length} NODES</div>
+               <div className="px-2 py-0.5 rounded bg-blue-600/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-widest">
+                 {hasFilter ? `${graphData.nodes.length} NODES` : 'NO FILTER'}
+               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
+               <div className="relative">
+                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                  <input 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="FOCUS HIGHLIGHT (NAME/IP)..." 
+                    className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[9px] font-black text-white outline-none focus:border-blue-500/50 uppercase tracking-widest transition-all" 
+                  />
+               </div>
+
                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Primary Systems</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">System Aggregation</label>
                   <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                      {systemsList.map((sys: string) => (
                         <button
                            key={sys}
                            onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
-                           className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+                           className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
                         >
                            {sys}
                         </button>
@@ -2502,100 +2577,225 @@ function AssetMap({ assets, connections, systemsList }: any) {
                </div>
 
                <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Propagation Depth: {depth}</label>
-                  <input 
-                    type="range" min="1" max="5" step="1" 
-                    value={depth} onChange={e => setDepth(Number(e.target.value))}
-                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                  <div className="flex justify-between text-[8px] font-bold text-slate-600 uppercase mt-1">
-                     <span>Direct</span>
-                     <span>Extended</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Asset Selection</label>
+                    {selectedAssetIds.length > 0 && (
+                      <button onClick={() => setSelectedAssetIds([])} className="text-[8px] font-black text-rose-500 uppercase hover:text-rose-400">Clear ({selectedAssetIds.length})</button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Filter size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
+                      <input 
+                        value={assetSearch} 
+                        onChange={e => setAssetSearch(e.target.value)}
+                        placeholder="FILTER ASSETS..." 
+                        className="w-full bg-black/60 border border-white/5 rounded-md pl-7 pr-3 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/30 uppercase"
+                      />
+                    </div>
+                    <div className="max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-0.5">
+                      {filteredAssetsForSelection.map((a: any) => (
+                        <button
+                          key={a.id}
+                          onClick={() => setSelectedAssetIds(prev => prev.includes(a.id) ? prev.filter(id => id !== a.id) : [...prev, a.id])}
+                          className={`w-full text-left px-2 py-1 rounded text-[8px] font-bold uppercase transition-all ${selectedAssetIds.includes(a.id) ? 'bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                        >
+                          {a.name}
+                        </button>
+                      ))}
+                      {filteredAssetsForSelection.length === 0 && (
+                        <div className="py-4 text-center text-[8px] font-bold text-slate-700 uppercase italic">No Matching Assets</div>
+                      )}
+                    </div>
                   </div>
                </div>
 
-               <div className="relative">
-                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+               <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Propagation Depth</label>
+                    <span className="text-[10px] font-black text-blue-400">{depth}x</span>
+                  </div>
                   <input 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)}
-                    placeholder="FOCUS SEARCH..." 
-                    className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest" 
+                    type="range" min="1" max="4" step="1" 
+                    value={depth} onChange={e => setDepth(Number(e.target.value))}
+                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                   />
                </div>
             </div>
          </div>
 
          {selectedNode && (
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-lg border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-lg border border-blue-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/95 backdrop-blur-xl">
                <div className="flex items-start justify-between">
-                  <div>
-                     <p className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">{selectedNode.system}</p>
-                     <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none">{selectedNode.name}</h4>
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                        <Box size={24} />
+                     </div>
+                     <div>
+                        <p className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em] mb-0.5">{selectedNode.system}</p>
+                        <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none italic">{selectedNode.name}</h4>
+                     </div>
                   </div>
                   <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
                </div>
                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-2 rounded bg-white/5 border border-white/5">
+                  <div className="p-2 rounded bg-black/40 border border-white/5">
                      <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
                      <p className="text-[9px] font-black text-emerald-400 uppercase">{selectedNode.status}</p>
                   </div>
-                  <div className="p-2 rounded bg-white/5 border border-white/5">
-                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Environment</p>
-                     <p className="text-[9px] font-black text-amber-500 uppercase">{selectedNode.environment}</p>
+                  <div className="p-2 rounded bg-black/40 border border-white/5">
+                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Type</p>
+                     <p className="text-[9px] font-black text-indigo-400 uppercase">{selectedNode.type}</p>
                   </div>
                </div>
                <div className="pt-2">
-                  <button className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-black uppercase tracking-widest transition-all">Deep Inspection</button>
+                  <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">Vector Inspection</button>
                </div>
             </motion.div>
          )}
       </div>
 
-      <div className="flex-1 w-full h-full">
-         <ForceGraph2D
-           graphData={graphData}
-           nodeLabel="label"
-           nodeColor={n => n.system === 'External' ? '#f43f5e' : n.environment === 'Production' ? '#6366f1' : '#10b981'}
-           nodeRelSize={6}
-           nodeCanvasObject={(node: any, ctx, globalScale) => {
-             const label = node.label
-             const fontSize = 12/globalScale
-             ctx.font = `${fontSize}px Inter, sans-serif`
-             const textWidth = ctx.measureText(label).width
-             const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number]
+      <div className="flex-1 w-full h-full relative">
+         {!hasFilter ? (
+           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-700 bg-slate-950/50 backdrop-blur-sm z-0">
+              <Globe size={64} className="mb-6 opacity-10 animate-pulse" />
+              <p className="text-[11px] font-black uppercase tracking-[0.5em] italic opacity-40">Awaiting Intelligence Filter Deployment</p>
+              <p className="text-[8px] font-bold uppercase tracking-widest mt-2 opacity-20">Select Systems or Assets to Begin Mapping</p>
+           </div>
+         ) : (
+           <ForceGraph2D
+             ref={fgRef}
+             graphData={graphData}
+             nodeLabel="label"
+             nodeRelSize={5}
+             nodeColor={n => typeColors[n.type] || '#64748b'}
+             linkColor={l => l.category === 'network' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(129, 140, 248, 0.2)'}
+             linkWidth={l => l.category === 'network' ? 1.5 : 1}
+             linkDirectionalArrowLength={4}
+             linkDirectionalArrowRelPos={1}
+             linkCurvature={0.2}
+             linkDirectionalParticles={l => l.category === 'network' ? 4 : 0}
+             linkDirectionalParticleSpeed={0.01}
+             linkDirectionalParticleWidth={2}
+             nodeCanvasObject={(node: any, ctx, globalScale) => {
+               const label = node.label.toUpperCase()
+               const fontSize = 11/globalScale
+               ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`
+               const textWidth = ctx.measureText(label).width
+               const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.4) as [number, number]
 
-             ctx.fillStyle = 'rgba(2, 6, 23, 0.8)'
-             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 + 8, bckgDimensions[0], bckgDimensions[1])
+               // Draw glow for highlighted
+               if (node.isHighlighted) {
+                 ctx.beginPath()
+                 ctx.arc(node.x, node.y, 8, 0, 2 * Math.PI, false)
+                 ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'
+                 ctx.fill()
+                 ctx.shadowBlur = 15
+                 ctx.shadowColor = '#3b82f6'
+               }
 
-             ctx.textAlign = 'center'
-             ctx.textBaseline = 'middle'
-             ctx.fillStyle = node.color
-             ctx.fillText(label, node.x, node.y + 8)
+               // Draw node point
+               ctx.beginPath()
+               ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false)
+               ctx.fillStyle = typeColors[node.type] || '#64748b'
+               ctx.fill()
+               ctx.shadowBlur = 0 // reset
 
-             // Draw node point
-             ctx.beginPath()
-             ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI, false)
-             ctx.fillStyle = node.color
-             ctx.fill()
-           }}
-           linkColor={() => 'rgba(255, 255, 255, 0.1)'}
-           linkDirectionalArrowLength={3.5}
-           linkDirectionalArrowRelPos={1}
-           linkCurvature={0.25}
-           onNodeClick={node => setSelectedNode(node)}
-           backgroundColor="#020617"
-         />
+               // Label background
+               ctx.fillStyle = 'rgba(2, 6, 23, 0.9)'
+               ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y + 8, bckgDimensions[0], bckgDimensions[1])
+
+               // Label text
+               ctx.textAlign = 'center'
+               ctx.textBaseline = 'middle'
+               ctx.fillStyle = node.isHighlighted ? '#60a5fa' : '#cbd5e1'
+               ctx.fillText(label, node.x, node.y + 8 + bckgDimensions[1]/2)
+             }}
+             linkCanvasObjectMode={() => 'after'}
+             linkCanvasObject={(link: any, ctx, globalScale) => {
+                const MAX_FONT_SIZE = 6;
+                const LABEL_NODE_MARGIN = globalScale * 2;
+                const start = link.source;
+                const end = link.target;
+                if (typeof start !== 'object' || typeof end !== 'object') return;
+
+                const text = link.label.toUpperCase();
+                const fontSize = Math.min(MAX_FONT_SIZE, 8 / globalScale);
+                ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`;
+                const textWidth = ctx.measureText(text).width;
+                const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number];
+
+                const relLink = { x: end.x - start.x, y: end.y - start.y };
+                const textPos = { x: start.x + relLink.x * 0.5, y: start.y + relLink.y * 0.5 };
+
+                ctx.save();
+                ctx.translate(textPos.x, textPos.y);
+                ctx.rotate(Math.atan2(relLink.y, relLink.x));
+                
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
+                ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = link.category === 'network' ? '#34d399' : '#818cf8';
+                ctx.fillText(text, 0, 0);
+                ctx.restore();
+             }}
+             onNodeClick={node => setSelectedNode(node)}
+             backgroundColor="#020617"
+             d3AlphaDecay={0.02}
+             d3VelocityDecay={0.3}
+           />
+         )}
       </div>
 
-      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1">
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
+      {/* Legend & Controls Overlay */}
+      <div className="absolute bottom-6 left-6 z-10 space-y-2 pointer-events-none">
+         <AnimatePresence>
+           {showLegend && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="glass-panel p-4 rounded-lg border border-white/10 shadow-2xl pointer-events-auto bg-slate-950/80 backdrop-blur-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                   <span className="text-[9px] font-black text-white uppercase tracking-widest italic">Vector Legend</span>
+                   <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-white"><X size={10}/></button>
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                   {Object.entries(typeColors).map(([type, color]: any) => (
+                     <div key={type} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{type}</span>
+                     </div>
+                   ))}
+                </div>
+                <div className="h-px bg-white/5" />
+                <div className="flex flex-col gap-2">
+                   <div className="flex items-center gap-2">
+                      <div className="w-4 h-0.5 bg-emerald-500/40" />
+                      <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest italic">Network Fabric</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <div className="w-4 h-0.5 bg-indigo-500/40" />
+                      <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest italic">Dependency Vector</span>
+                   </div>
+                </div>
+             </motion.div>
+           )}
+         </AnimatePresence>
+         {!showLegend && (
+           <button onClick={() => setShowLegend(true)} className="glass-panel p-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto bg-slate-950/80 backdrop-blur-xl text-slate-500 hover:text-blue-400">
+              <Layers size={16} />
+           </button>
+         )}
+      </div>
+
+      <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10 pointer-events-none">
+         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 pointer-events-auto bg-slate-950/80 backdrop-blur-xl">
+            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() * 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
+            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() / 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
             <div className="h-px bg-white/5 mx-1" />
-            <button className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
+            <button onClick={() => fgRef.current?.zoomToFit(400, 50)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
          </div>
       </div>
     </div>
   )
 }
+
