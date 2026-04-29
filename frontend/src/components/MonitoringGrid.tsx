@@ -44,7 +44,7 @@ export default function MonitoringGrid() {
   const [historyItem, setHistoryItem] = useState<any>(null)
   const [servicePopup, setServicePopup] = useState<{ names: string[], title: string } | null>(null)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
-  const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[] } | null>(null)
+  const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -257,24 +257,6 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("is_active")
     },
     { 
-      field: "version", 
-      headerName: "Ver", 
-      width: 80, 
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full w-full">
-          <button 
-            onClick={() => setHistoryItem(p.data)}
-            className="flex items-center justify-center w-14 h-5 rounded-md border shadow-sm border-blue-500/40 bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 transition-all"
-          >
-            <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">v{p.value || 1}</span>
-          </button>
-        </div>
-      ),
-      hide: hiddenColumns.includes("version")
-    },
-    { 
       field: "owners", 
       headerName: "Owners", 
       filter: true,
@@ -288,7 +270,6 @@ export default function MonitoringGrid() {
       },
       hide: hiddenColumns.includes("owners")
     },
-
     { 
       field: "title", 
       headerName: "Title", 
@@ -397,8 +378,8 @@ export default function MonitoringGrid() {
     },
     {
       headerName: "Action",
-      width: 150,
-      minWidth: 150,
+      width: 180,
+      minWidth: 180,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -407,7 +388,8 @@ export default function MonitoringGrid() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [] })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
+               <button onClick={() => setHistoryItem(p.data)} title="Version History" className="p-1.5 text-purple-400 hover:text-purple-200 transition-all border-r border-white/5"><Clock size={14}/></button>
+               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [], monitorId: p.data.id })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
                <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
                {activeTab === 'active' ? (
                  <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
@@ -841,10 +823,46 @@ function RecipientsModal({ recipients, method, onClose }: any) {
   )
 }
 
-function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
+function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
+  const queryClient = useQueryClient()
+  const [recoverySearch, setRecoverySearch] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
+
+  const { data: knowledgeEntries } = useQuery({
+    queryKey: ['knowledge-entries'],
+    queryFn: async () => (await apiFetch('/api/v1/knowledge/')).json()
+  })
+
+  const filteredKnowledge = useMemo(() => {
+    if (!knowledgeEntries) return []
+    return knowledgeEntries.filter((e: any) => 
+      (e.title.toLowerCase().includes(recoverySearch.toLowerCase()) ||
+      e.category.toLowerCase().includes(recoverySearch.toLowerCase())) &&
+      !ids.includes(e.id)
+    )
+  }, [knowledgeEntries, recoverySearch, ids])
+
+  const mutation = useMutation({
+    mutationFn: async (newIds: number[]) => {
+      return (await apiFetch(`/api/v1/monitoring/${monitorId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ recovery_docs: newIds })
+      })).json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+      toast.success('Recovery procedures updated')
+    }
+  })
+
+  const toggleRecoveryDoc = (id: number) => {
+    const nextIds = ids.includes(id) ? ids.filter((i: number) => i !== id) : [...ids, id]
+    mutation.mutate(nextIds)
+  }
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
              <BookOpen size={20} className="text-amber-500" />
@@ -852,15 +870,52 @@ function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
         </div>
-        <p className="text-[10px] text-slate-500 font-black uppercase mb-4 tracking-widest">Linked Procedures (BKM)</p>
-        <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+
+        <div className="flex items-center justify-between mb-4">
+           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Linked Procedures (BKM)</p>
+           <button 
+             onClick={() => setIsAdding(!isAdding)}
+             className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all flex items-center space-x-1.5 ${isAdding ? 'bg-amber-500 text-white' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20'}`}
+           >
+              {isAdding ? <X size={12}/> : <Plus size={12}/>}
+              <span>{isAdding ? 'Close Search' : 'Link Procedure'}</span>
+           </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+          {isAdding && (
+            <div className="space-y-3 mb-6 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg animate-in fade-in slide-in-from-top-2">
+               <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input 
+                    value={recoverySearch}
+                    onChange={e => setRecoverySearch(e.target.value)}
+                    placeholder="Search Knowledge Base..."
+                    className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-amber-500/50"
+                  />
+               </div>
+               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                  {filteredKnowledge.map((entry: any) => (
+                    <button 
+                      key={entry.id}
+                      onClick={() => toggleRecoveryDoc(entry.id)}
+                      className="w-full text-left p-2 hover:bg-white/5 rounded-lg flex items-center justify-between group transition-all"
+                    >
+                       <span className="text-[10px] font-bold text-slate-300 group-hover:text-amber-400">{entry.title}</span>
+                       <Plus size={12} className="text-slate-600 group-hover:text-amber-500" />
+                    </button>
+                  ))}
+                  {filteredKnowledge.length === 0 && <p className="text-center py-4 text-[9px] text-slate-600 uppercase font-black italic">No available procedures found</p>}
+               </div>
+            </div>
+          )}
+
           {ids.map((id: number, i: number) => (
-            <button 
+            <div 
               key={id} 
-              onClick={() => onOpenBkm(id)}
-              className="w-full text-left bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
+              className="w-full bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
             >
-              <div className="flex items-center space-x-4">
+              <button onClick={() => onOpenBkm(id)} className="flex items-center space-x-4 flex-1">
                  <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
                     <FileText size={16} />
                  </div>
@@ -868,11 +923,20 @@ function BkmListModal({ ids, titles, onOpenBkm, onClose }: any) {
                     <span className="text-[11px] font-black uppercase text-slate-200 block leading-tight">{titles[i]}</span>
                     <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
                  </div>
+              </button>
+              <div className="flex items-center space-x-2">
+                 <button 
+                   onClick={() => toggleRecoveryDoc(id)}
+                   className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                   title="Unlink Procedure"
+                 >
+                    <Trash2 size={14} />
+                 </button>
+                 <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
               </div>
-              <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
-            </button>
+            </div>
           ))}
-          {ids.length === 0 && (
+          {ids.length === 0 && !isAdding && (
              <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-lg">
                 <BookOpen size={24} className="text-slate-800" />
                 <p className="text-[10px] text-slate-700 font-black uppercase italic tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
@@ -1843,19 +1907,33 @@ function MonitoringHistoryModal({ item, onClose }: any) {
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
   })
 
-  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
 
-  const current = history?.[selectedIndex]
-  const previous = history?.[selectedIndex + 1]
+  const toggleSelection = (idx: number) => {
+    if (selectedIndices.includes(idx)) {
+       if (selectedIndices.length > 1) {
+          setSelectedIndices(selectedIndices.filter(i => i !== idx))
+       }
+    } else {
+       if (selectedIndices.length === 2) {
+          setSelectedIndices([selectedIndices[1], idx])
+       } else {
+          setSelectedIndices([...selectedIndices, idx].sort((a, b) => a - b))
+       }
+    }
+  }
 
-  const getDiff = (v1: any, v2: any) => {
-    if (!v1) return []
-    const s1 = v1.snapshot || {}
-    const s2 = v2?.snapshot || {}
+  const newer = history?.[Math.min(...selectedIndices)]
+  const older = selectedIndices.length > 1 ? history?.[Math.max(...selectedIndices)] : history?.[selectedIndices[0] + 1]
+
+  const getDiff = (curr: any, prev: any) => {
+    if (!curr) return []
+    const s1 = curr.snapshot || {}
+    const s2 = prev?.snapshot || {}
     const keys = Array.from(new Set([...Object.keys(s1), ...Object.keys(s2)]))
     
     return keys.filter(k => {
-      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted'].includes(k)) return false
+      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
       return JSON.stringify(s1[k]) !== JSON.stringify(s2[k])
     }).map(k => ({
       field: k,
@@ -1864,97 +1942,199 @@ function MonitoringHistoryModal({ item, onClose }: any) {
     }))
   }
 
-  const diffs = getDiff(current, previous)
+  const diffs = getDiff(newer, older)
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-8">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[80vh] flex flex-col p-8 rounded-lg border-blue-500/30">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 sm:p-10">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-full flex flex-col p-6 sm:p-10 rounded-lg border-purple-500/30 shadow-[0_0_100px_rgba(168,85,247,0.1)]">
         <div className="flex items-center justify-between mb-8">
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400">
-                <Clock size={24} />
+           <div className="flex items-center space-x-6">
+              <div className="w-14 h-14 bg-purple-600/10 border border-purple-500/20 rounded-lg flex items-center justify-center text-purple-400">
+                <Clock size={32} strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Version History</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</p>
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">Temporal Evolution Matrix</h2>
+                <div className="flex items-center space-x-2 mt-1">
+                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</span>
+                   <span className="w-1 h-1 rounded-full bg-slate-700" />
+                   <span className="text-[10px] text-purple-400 font-black uppercase tracking-widest">Version Lineage</span>
+                </div>
               </div>
            </div>
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
-              <X size={24} />
-           </button>
+           
+           <div className="flex items-center space-x-4">
+              <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-lg">
+                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">Comparison Mode</p>
+                 <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1.5">
+                       <div className="w-2 h-2 rounded-full bg-purple-500" />
+                       <span className="text-[10px] font-black text-white uppercase">v{newer?.version}</span>
+                    </div>
+                    <ChevronRight size={10} className="text-slate-600" />
+                    <div className="flex items-center space-x-1.5">
+                       <div className="w-2 h-2 rounded-full bg-slate-600" />
+                       <span className="text-[10px] font-black text-slate-400 uppercase">{older ? `v${older.version}` : 'Genesis'}</span>
+                    </div>
+                 </div>
+              </div>
+              <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
+                <X size={24} />
+              </button>
+           </div>
         </div>
 
-        <div className="flex-1 flex space-x-8 min-h-0">
-           {/* Version List */}
-           <div className="w-64 flex flex-col space-y-2 overflow-y-auto custom-scrollbar pr-2">
-              {isLoading ? (
-                <div className="flex-1 flex items-center justify-center">
-                   <RefreshCcw size={24} className="animate-spin text-blue-500" />
-                </div>
-              ) : (
-                history?.map((h: any, idx: number) => (
-                  <button 
-                    key={h.id}
-                    onClick={() => setSelectedIndex(idx)}
-                    className={`w-full p-4 rounded-lg border text-left transition-all ${selectedIndex === idx ? 'bg-blue-600 border-blue-400 shadow-lg' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                       <span className={`text-[10px] font-black uppercase ${selectedIndex === idx ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
-                       <span className={`text-[8px] font-bold uppercase ${selectedIndex === idx ? 'text-blue-200' : 'text-slate-500'}`}>
-                          {new Date(h.created_at).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                       </span>
-                    </div>
-                    <p className={`text-[9px] font-bold truncate ${selectedIndex === idx ? 'text-blue-100' : 'text-slate-400'}`}>
-                       {h.change_summary || 'Manual Edit'}
-                    </p>
-                  </button>
-                ))
-              )}
+        <div className="flex-1 flex space-x-10 min-h-0">
+           {/* Timeline Sidebar */}
+           <div className="w-72 flex flex-col min-h-0">
+              <div className="mb-4 flex items-center justify-between px-1">
+                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Revision History</h3>
+                 <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">{history?.length || 0} States</span>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                {isLoading ? (
+                   <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-20">
+                      <RefreshCcw size={24} className="animate-spin text-purple-500" />
+                      <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest animate-pulse">Syncing Timeline...</span>
+                   </div>
+                ) : (
+                  history?.map((h: any, idx: number) => {
+                    const isSelected = selectedIndices.includes(idx);
+                    const isNewest = idx === Math.min(...selectedIndices);
+                    return (
+                      <button 
+                        key={h.id}
+                        onClick={() => toggleSelection(idx)}
+                        className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
+                          isSelected 
+                            ? isNewest ? 'bg-purple-600 border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-slate-700 border-slate-500' 
+                            : 'bg-white/5 border-white/5 hover:border-white/10'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-purple-400 text-purple-900' : 'bg-slate-500 text-slate-200'}`}>
+                             {isNewest ? 'Primary' : 'Reference'}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mb-2">
+                           <span className={`text-[11px] font-black uppercase tracking-tighter ${isSelected ? 'text-white' : 'text-purple-400'}`}>v{h.version}</span>
+                           <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
+                              {new Date(h.created_at).toLocaleDateString()}
+                           </span>
+                        </div>
+                        <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
+                           {h.change_summary || 'Configuration Modification'}
+                        </p>
+                        <div className="mt-2 flex items-center space-x-2">
+                           <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
+                           <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
+                              {new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </span>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+              <div className="mt-4 p-4 bg-purple-500/5 border border-purple-500/10 rounded-lg">
+                 <p className="text-[9px] text-slate-500 font-bold leading-relaxed uppercase italic">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
+              </div>
            </div>
 
-           {/* Diff View */}
-           <div className="flex-1 bg-black/40 rounded-lg border border-white/5 overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    {previous ? `Comparing v${previous.version} → v${current?.version}` : `Initial Version v${current?.version}`}
-                 </h3>
-                 {diffs.length > 0 && <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{diffs.length} Changes Detected</span>}
+           {/* Diff Panel */}
+           <div className="flex-1 bg-black/40 rounded-lg border border-white/10 overflow-hidden flex flex-col shadow-inner">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
+                 <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                       <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-[12px] font-black italic">v{newer?.version}</div>
+                       <div className="w-4 h-px bg-slate-700" />
+                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black italic">{older ? `v${older.version}` : 'Ø'}</div>
+                    </div>
+                    <div>
+                       <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-300">Semantic Delta Analysis</h3>
+                       <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{diffs.length} modification vectors detected</p>
+                    </div>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                    <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 uppercase tracking-widest">
+                       Confidence Matrix: High
+                    </span>
+                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
-                 {diffs.map((d: any, i: number) => (
-                    <div key={i} className="space-y-2">
-                       <div className="flex items-center space-x-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest">{d.field.replace(/_/g, ' ')}</span>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                 {diffs.length > 0 ? (
+                    <div className="space-y-10">
+                       {diffs.map((d: any, i: number) => (
+                          <div key={i} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
+                             <div className="flex items-center justify-between mb-3 px-1">
+                                <div className="flex items-center space-x-3">
+                                   <div className="w-2 h-6 bg-purple-500 rounded-full" />
+                                   <span className="text-[12px] font-black uppercase text-white tracking-[0.2em]">{d.field.replace(/_/g, ' ')}</span>
+                                </div>
+                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">Vector Field: {d.field}</span>
+                             </div>
+                             
+                             <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                   <div className="flex items-center justify-between px-2">
+                                      <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Pre-Mutation State</span>
+                                      <Trash2 size={12} className="text-rose-900" />
+                                   </div>
+                                   <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-rose-500/10 hover:border-rose-500/20">
+                                      <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
+                                         {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty_state)')}
+                                      </pre>
+                                   </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                   <div className="flex items-center justify-between px-2">
+                                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Post-Mutation State</span>
+                                      <Zap size={12} className="text-emerald-900" />
+                                   </div>
+                                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20">
+                                      <pre className="text-[12px] text-emerald-300 whitespace-pre-wrap font-mono font-bold leading-relaxed">
+                                         {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty_state)')}
+                                      </pre>
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                 ) : !isLoading ? (
+                    <div className="h-full flex flex-col items-center justify-center space-y-6 max-w-md mx-auto">
+                       <div className="relative">
+                          <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full" />
+                          <div className="relative p-8 bg-black/40 rounded-full border border-purple-500/30">
+                             <Check size={48} className="text-purple-400" strokeWidth={1} />
+                          </div>
                        </div>
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 relative overflow-hidden">
-                             <div className="absolute top-0 right-0 px-2 py-0.5 bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase rounded-bl-lg">OLD</div>
-                             <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono">
-                                {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
-                             </pre>
-                          </div>
-                          <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 relative overflow-hidden">
-                             <div className="absolute top-0 right-0 px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-bl-lg">NEW</div>
-                             <pre className="text-[11px] text-emerald-300 whitespace-pre-wrap font-mono font-bold">
-                                {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}
-                             </pre>
-                          </div>
+                       <div className="text-center space-y-2">
+                          <h4 className="text-[13px] font-black text-white uppercase tracking-[0.2em]">Synchronous Integrity</h4>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase leading-relaxed tracking-widest">
+                             {selectedIndices.length > 1 
+                                ? "No semantic variance detected between the selected temporal snapshots. Configuration states are identical." 
+                                : "This state represents the system genesis. No previous configuration cycles detected."}
+                          </p>
                        </div>
                     </div>
-                 ))}
-                 
-                 {diffs.length === 0 && !isLoading && (
-                    <div className="h-full flex flex-col items-center justify-center space-y-4">
-                       <div className="p-4 bg-white/5 rounded-full">
-                          <Check size={32} className="text-slate-700" />
-                       </div>
-                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest italic text-center">
-                          {previous ? 'No semantic differences detected between these versions' : 'This is the genesis version of this monitoring node'}
-                       </p>
+                 ) : null}
+              </div>
+
+              {/* Snapshot Footer */}
+              <div className="p-4 bg-black/60 border-t border-white/5 flex items-center justify-between">
+                 <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-2">
+                       <User size={12} className="text-slate-600" />
+                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Authored by: Operational Kernel</span>
                     </div>
-                 )}
+                    <div className="flex items-center space-x-2">
+                       <Tag size={12} className="text-slate-600" />
+                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Trace ID: {newer?.id}</span>
+                    </div>
+                 </div>
+                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] italic">Temporal Data Repository - v4.2</div>
               </div>
            </div>
         </div>
