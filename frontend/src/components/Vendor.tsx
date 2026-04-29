@@ -54,6 +54,14 @@ export default function Vendor() {
     queryFn: async () => (await apiFetch('/api/v1/vendors/')).json() 
   })
 
+  // Sync activeDetails if vendors data changes
+  React.useEffect(() => {
+    if (activeDetails && vendors) {
+      const updated = vendors.find((v: any) => v.id === activeDetails.id)
+      if (updated) setActiveDetails(updated)
+    }
+  }, [vendors, activeDetails?.id])
+
   React.useEffect(() => {
     if (gridRef.current?.api) {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
@@ -214,7 +222,7 @@ export default function Vendor() {
           </div>
 
           <button 
-            onClick={() => setActiveModal({ name: '', primary_email: '', primary_phone: '', country: '' })}
+            onClick={() => setActiveModal({ name: '', country: 'South Korea' })}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
           >
             + Add Vendor
@@ -419,7 +427,7 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
     if (countries && countries.length > 0) return countries;
     return [
       { label: 'South Korea', value: 'South Korea' },
-      { label: 'United States', value: 'United States' }
+      { label: 'USA', value: 'USA' }
     ]
   }, [countries])
 
@@ -445,18 +453,10 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
                 <select 
                   value={formData.country || 'South Korea'} 
                   onChange={e => setFormData({...formData, country: e.target.value})} 
-                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white"
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]"
                 >
                   {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
-                <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Phone</label>
-                <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
             </div>
         </div>
@@ -486,6 +486,19 @@ function VendorDetails({ vendor, devices, onClose }: any) {
     queryKey: ['settings', 'LogicalSystem'], 
     queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json() 
   })
+
+  const { data: countries } = useQuery({ 
+    queryKey: ['settings', 'VendorCountry'], 
+    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() 
+  })
+
+  const countryOptions = useMemo(() => {
+    if (countries && countries.length > 0) return countries;
+    return [
+      { label: 'South Korea', value: 'South Korea' },
+      { label: 'USA', value: 'USA' }
+    ]
+  }, [countries])
 
   const vendorMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -605,27 +618,15 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                       <div>
                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Country</label>
                          {isEditing ? (
-                           <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                           <select 
+                            value={formData.country || 'South Korea'} 
+                            onChange={e => setFormData({...formData, country: e.target.value})} 
+                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]"
+                           >
+                            {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                           </select>
                          ) : (
                            <p className="text-sm font-bold text-white uppercase">{vendor.country}</p>
-                         )}
-                      </div>
-                   </div>
-                   <div className="space-y-6">
-                      <div>
-                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Email</label>
-                         {isEditing ? (
-                           <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                         ) : (
-                           <p className="text-sm font-bold text-white font-mono">{vendor.primary_email || '---'}</p>
-                         )}
-                      </div>
-                      <div>
-                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Phone</label>
-                         {isEditing ? (
-                           <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                         ) : (
-                           <p className="text-sm font-bold text-white uppercase">{vendor.primary_phone || '---'}</p>
                          )}
                       </div>
                    </div>
@@ -784,15 +785,25 @@ function VendorDetails({ vendor, devices, onClose }: any) {
 function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(!item.id) // Default to edit if new
+  const [selectedAccIndex, setSelectedAccIndex] = useState<number | null>(null)
+  const [isEditingAcc, setIsEditingAcc] = useState(false)
+  const [selectedPcIndex, setSelectedPcIndex] = useState<number | null>(null)
+  const [isEditingPc, setIsEditingPc] = useState(false)
   
   const addAccount = () => {
-    const accs = [...(formData.accounts || []), { type: '', username: '', purpose_description: '' }]
+    const newAcc = { type: 'LDAP', username: '', purpose_description: '' };
+    const accs = [...(formData.accounts || []), newAcc]
     setFormData({ ...formData, accounts: accs })
+    setSelectedAccIndex(accs.length - 1)
+    setIsEditingAcc(true)
   }
   
   const addPC = () => {
-    const pcs = [...(formData.pcs || []), { name: '', type: 'PC', purpose_description: '' }]
+    const newPc = { name: '', type: 'PC', purpose_description: '' };
+    const pcs = [...(formData.pcs || []), newPc]
     setFormData({ ...formData, pcs: pcs })
+    setSelectedPcIndex(pcs.length - 1)
+    setIsEditingPc(true)
   }
 
   const handleSave = () => {
@@ -800,9 +811,21 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
     setIsEditing(false)
   }
 
+  const updateAccItem = (index: number, field: string, value: any) => {
+    const newAccs = [...formData.accounts];
+    newAccs[index] = { ...newAccs[index], [field]: value };
+    setFormData({ ...formData, accounts: newAccs });
+  }
+
+  const updatePcItem = (index: number, field: string, value: any) => {
+    const newPcs = [...formData.pcs];
+    newPcs[index] = { ...newPcs[index], [field]: value };
+    setFormData({ ...formData, pcs: newPcs });
+  }
+
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1200px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Info</h2>
@@ -810,7 +833,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Personnel</button>
             ) : (
                <div className="flex items-center gap-2">
-                 <button onClick={() => { setFormData({...item}); setIsEditing(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => { setFormData({...item}); setIsEditing(false); setIsEditingAcc(false); setIsEditingPc(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
                </div>
             )}
           </div>
@@ -892,53 +915,72 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                   </button>
                 )}
               </div>
-              <div className="space-y-3">
-                {formData.accounts?.map((acc: any, i: number) => (
-                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-3 relative group hover:bg-white/10 transition-all">
-                    {isEditing && (
-                      <button onClick={() => setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
-                        <Trash size={12}/>
-                      </button>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                       <div>
-                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Account Type</label>
-                         {isEditing ? (
-                           <input placeholder="Type" value={acc.type} onChange={e => {
-                             const newAccs = [...formData.accounts]; newAccs[i].type = e.target.value; setFormData({...formData, accounts: newAccs})
-                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
-                         ) : (
-                           <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">{acc.type || '---'}</p>
-                         )}
-                       </div>
-                       <div>
-                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Username</label>
-                         {isEditing ? (
-                           <input placeholder="Username" value={acc.username} onChange={e => {
-                             const newAccs = [...formData.accounts]; newAccs[i].username = e.target.value; setFormData({...formData, accounts: newAccs})
-                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
-                         ) : (
-                           <p className="text-[10px] font-bold text-white font-mono">{acc.username || '---'}</p>
-                         )}
-                       </div>
+              
+              <div className="grid grid-cols-12 gap-4">
+                 <div className="col-span-4">
+                    <div className="bg-black/40 rounded-lg border border-white/5 h-[300px] overflow-y-auto custom-scrollbar">
+                       {formData.accounts?.map((acc: any, i: number) => (
+                          <button 
+                             key={i} 
+                             onClick={() => { setSelectedAccIndex(i); setIsEditingAcc(false); }}
+                             className={`w-full text-left p-3 border-b border-white/5 transition-all hover:bg-white/5 ${selectedAccIndex === i ? 'bg-emerald-600/10 border-l-2 border-l-emerald-500' : ''}`}
+                          >
+                             <div className="flex flex-col">
+                                <span className={`text-[10px] font-bold uppercase truncate ${selectedAccIndex === i ? 'text-white' : 'text-slate-400'}`}>{acc.username || 'NEW_ACCOUNT'}</span>
+                                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{acc.type}</span>
+                             </div>
+                          </button>
+                       ))}
                     </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
-                      {isEditing ? (
-                        <input placeholder="Purpose Description" value={acc.purpose_description} onChange={e => {
-                          const newAccs = [...formData.accounts]; newAccs[i].purpose_description = e.target.value; setFormData({...formData, accounts: newAccs})
-                        }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
-                      ) : (
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{acc.purpose_description || 'No description provided'}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {(!formData.accounts || formData.accounts.length === 0) && (
-                  <div className="py-10 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
-                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No system accounts linked</p>
-                  </div>
-                )}
+                 </div>
+                 <div className="col-span-8">
+                    <AnimatePresence mode="wait">
+                       {selectedAccIndex !== null ? (
+                          <motion.div key={selectedAccIndex} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="bg-white/5 border border-white/5 rounded-lg p-6 relative h-full">
+                             {isEditing && (
+                                <div className="absolute top-4 right-4 flex items-center space-x-2">
+                                   {!isEditingAcc ? (
+                                      <button onClick={() => setIsEditingAcc(true)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"><Edit2 size={12}/></button>
+                                   ) : (
+                                      <button onClick={() => setIsEditingAcc(false)} className="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"><Check size={12}/></button>
+                                   )}
+                                   <button onClick={() => { setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== selectedAccIndex)}); setSelectedAccIndex(null); }} className="p-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-all"><Trash2 size={12}/></button>
+                                </div>
+                             )}
+                             <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Account Type</label>
+                                      {isEditingAcc ? (
+                                         <input value={formData.accounts[selectedAccIndex].type} onChange={e => updateAccItem(selectedAccIndex, 'type', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white" />
+                                      ) : (
+                                         <p className="text-[10px] font-bold text-emerald-400 uppercase">{formData.accounts[selectedAccIndex].type || '---'}</p>
+                                      )}
+                                   </div>
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Username</label>
+                                      {isEditingAcc ? (
+                                         <input value={formData.accounts[selectedAccIndex].username} onChange={e => updateAccItem(selectedAccIndex, 'username', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono" />
+                                      ) : (
+                                         <p className="text-[10px] font-bold text-white font-mono">{formData.accounts[selectedAccIndex].username || '---'}</p>
+                                      )}
+                                   </div>
+                                </div>
+                                <div>
+                                   <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
+                                   {isEditingAcc ? (
+                                      <textarea value={formData.accounts[selectedAccIndex].purpose_description} onChange={e => updateAccItem(selectedAccIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
+                                   ) : (
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase italic leading-relaxed">{formData.accounts[selectedAccIndex].purpose_description || 'No description provided'}</p>
+                                   )}
+                                </div>
+                             </div>
+                          </motion.div>
+                       ) : (
+                          <div className="h-full bg-white/5 border border-dashed border-white/5 rounded-lg flex items-center justify-center text-slate-600 text-[9px] font-bold uppercase tracking-widest">Select Account</div>
+                       )}
+                    </AnimatePresence>
+                 </div>
               </div>
             </section>
 
@@ -951,58 +993,77 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                   </button>
                 )}
               </div>
-              <div className="space-y-3">
-                {formData.pcs?.map((pc: any, i: number) => (
-                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-3 relative group hover:bg-white/10 transition-all">
-                    {isEditing && (
-                      <button onClick={() => setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
-                        <Trash size={12}/>
-                      </button>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                       <div>
-                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Asset Name</label>
-                         {isEditing ? (
-                           <input placeholder="Asset Name" value={pc.name} onChange={e => {
-                             const newPcs = [...formData.pcs]; newPcs[i].name = e.target.value; setFormData({...formData, pcs: newPcs})
-                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all" />
-                         ) : (
-                           <p className="text-[10px] font-bold text-white uppercase tracking-tight">{pc.name || '---'}</p>
-                         )}
-                       </div>
-                       <div>
-                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Device Type</label>
-                         {isEditing ? (
-                           <select value={pc.type} onChange={e => {
-                             const newPcs = [...formData.pcs]; newPcs[i].type = e.target.value; setFormData({...formData, pcs: newPcs})
-                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all">
-                             <option value="PC">PC</option>
-                             <option value="VDI">VDI</option>
-                             <option value="Laptop">Laptop</option>
-                             <option value="Workstation">Workstation</option>
-                           </select>
-                         ) : (
-                           <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-tight">{pc.type || '---'}</p>
-                         )}
-                       </div>
+              
+              <div className="grid grid-cols-12 gap-4">
+                 <div className="col-span-4">
+                    <div className="bg-black/40 rounded-lg border border-white/5 h-[300px] overflow-y-auto custom-scrollbar">
+                       {formData.pcs?.map((pc: any, i: number) => (
+                          <button 
+                             key={i} 
+                             onClick={() => { setSelectedPcIndex(i); setIsEditingPc(false); }}
+                             className={`w-full text-left p-3 border-b border-white/5 transition-all hover:bg-white/5 ${selectedPcIndex === i ? 'bg-indigo-600/10 border-l-2 border-l-indigo-500' : ''}`}
+                          >
+                             <div className="flex flex-col">
+                                <span className={`text-[10px] font-bold uppercase truncate ${selectedPcIndex === i ? 'text-white' : 'text-slate-400'}`}>{pc.name || 'NEW_ASSET'}</span>
+                                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{pc.type}</span>
+                             </div>
+                          </button>
+                       ))}
                     </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
-                      {isEditing ? (
-                        <input placeholder="Purpose Description" value={pc.purpose_description} onChange={e => {
-                          const newPcs = [...formData.pcs]; newPcs[i].purpose_description = e.target.value; setFormData({...formData, pcs: newPcs})
-                        }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all" />
-                      ) : (
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{pc.purpose_description || 'No description provided'}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {(!formData.pcs || formData.pcs.length === 0) && (
-                  <div className="py-10 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
-                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No managed assets linked</p>
-                  </div>
-                )}
+                 </div>
+                 <div className="col-span-8">
+                    <AnimatePresence mode="wait">
+                       {selectedPcIndex !== null ? (
+                          <motion.div key={selectedPcIndex} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="bg-white/5 border border-white/5 rounded-lg p-6 relative h-full">
+                             {isEditing && (
+                                <div className="absolute top-4 right-4 flex items-center space-x-2">
+                                   {!isEditingPc ? (
+                                      <button onClick={() => setIsEditingPc(true)} className="p-1.5 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"><Edit2 size={12}/></button>
+                                   ) : (
+                                      <button onClick={() => setIsEditingPc(false)} className="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"><Check size={12}/></button>
+                                   )}
+                                   <button onClick={() => { setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== selectedPcIndex)}); setSelectedPcIndex(null); }} className="p-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-all"><Trash2 size={12}/></button>
+                                </div>
+                             )}
+                             <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Asset Name</label>
+                                      {isEditingPc ? (
+                                         <input value={formData.pcs[selectedPcIndex].name} onChange={e => updatePcItem(selectedPcIndex, 'name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white" />
+                                      ) : (
+                                         <p className="text-[10px] font-bold text-white uppercase">{formData.pcs[selectedPcIndex].name || '---'}</p>
+                                      )}
+                                   </div>
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Device Type</label>
+                                      {isEditingPc ? (
+                                         <select value={formData.pcs[selectedPcIndex].type} onChange={e => updatePcItem(selectedPcIndex, 'type', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white [color-scheme:dark]">
+                                            <option value="PC">PC</option>
+                                            <option value="VDI">VDI</option>
+                                            <option value="Laptop">Laptop</option>
+                                            <option value="Workstation">Workstation</option>
+                                         </select>
+                                      ) : (
+                                         <p className="text-[10px] font-bold text-indigo-400 uppercase">{formData.pcs[selectedPcIndex].type || '---'}</p>
+                                      )}
+                                   </div>
+                                </div>
+                                <div>
+                                   <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
+                                   {isEditingPc ? (
+                                      <textarea value={formData.pcs[selectedPcIndex].purpose_description} onChange={e => updatePcItem(selectedPcIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
+                                   ) : (
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase italic leading-relaxed">{formData.pcs[selectedPcIndex].purpose_description || 'No description provided'}</p>
+                                   )}
+                                </div>
+                             </div>
+                          </motion.div>
+                       ) : (
+                          <div className="h-full bg-white/5 border border-dashed border-white/5 rounded-lg flex items-center justify-center text-slate-600 text-[9px] font-bold uppercase tracking-widest">Select Asset</div>
+                       )}
+                    </AnimatePresence>
+                 </div>
               </div>
             </section>
           </div>
@@ -1074,6 +1135,9 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [isInfraCollapsed, setIsInfraCollapsed] = useState(true)
+  const [selectedSowIndex, setSelectedSowIndex] = useState<number | null>(null)
+  const [isEditingSow, setIsEditingSow] = useState(false)
 
   // Filter systems to only those present in devices
   const usedSystems = useMemo(() => {
@@ -1082,9 +1146,12 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
   }, [devices, systems]);
 
   const addSOW = () => {
-    const sow = [...(formData.scope_of_work || []), { work_description: '', frequency: '', response: '', objective_description: '', importance: 'Medium' }]
+    const newSowItem = { work_description: 'NEW SCOPE ITEM', frequency: 'Monthly', response: 'NBD', objective_description: '', importance: 'Medium' };
+    const sow = [...(formData.scope_of_work || []), newSowItem]
     setFormData({ ...formData, scope_of_work: sow })
     setHasChanges(true)
+    setSelectedSowIndex(sow.length - 1)
+    setIsEditingSow(true)
   }
 
   const filteredAssets = useMemo(() => {
@@ -1141,7 +1208,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1100px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1200px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center gap-6">
              <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Contract Details</h2>
@@ -1149,16 +1216,17 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Enable Edit Mode</button>
              ) : (
                <div className="flex items-center gap-2">
-                 <button onClick={() => { setFormData({...item}); setIsEditing(false); setHasChanges(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                 <button onClick={() => { setFormData({...item}); setIsEditing(false); setHasChanges(false); setIsEditingSow(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
                </div>
              )}
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-10 mt-8">
-           <div className="space-y-8">
-              <section>
+        <div className="mt-8 space-y-10">
+           {/* Row 1: Admin & Policy */}
+           <div className="grid grid-cols-2 gap-10">
+              <section className="space-y-6">
                  <SectionHeader icon={Info} title="Administrative Info" />
                  <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
@@ -1182,7 +1250,11 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                        {isEditing ? (
                          <input value={formData.document_link} onChange={e => updateField('document_link', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
                        ) : (
-                         <p className="text-sm font-bold text-blue-400 font-mono py-2 tracking-tight">{formData.document_link || '---'}</p>
+                         formData.document_link ? (
+                           <a href={formData.document_link} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-400 py-2 tracking-tight hover:underline flex items-center gap-2">
+                             <ExternalLink size={12} /> View Document
+                           </a>
+                         ) : <p className="text-sm font-bold text-slate-500 py-2 tracking-tight italic">No link provided</p>
                        )}
                     </div>
                     <div>
@@ -1204,69 +1276,29 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                  </div>
               </section>
 
-              <section>
-                 <SectionHeader icon={Layers} title="Infrastructure Coverage" color="text-indigo-400" />
-                 <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Covered Systems</label>
-                       <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
-                          {usedSystems.length === 0 && <p className="text-[8px] text-slate-600 text-center py-16 uppercase font-bold">No active systems found in assets</p>}
-                          {usedSystems.map((s: any) => (
-                             <label key={s.value} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
-                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500/20" />
-                                <span className={`text-[10px] font-bold uppercase tracking-tight ${formData.covered_systems?.includes(s.value) ? 'text-white' : 'text-slate-500'}`}>{s.label}</span>
-                             </label>
-                          ))}
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Propagated Assets</label>
-                       <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
-                          {filteredAssets.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full space-y-2 text-slate-600">
-                               <Server size={20} className="opacity-20" />
-                               <p className="text-[8px] uppercase font-bold text-center">Select systems to list assets</p>
-                            </div>
-                          )}
-                          {filteredAssets.map((a: any) => (
-                             <label key={a.id} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
-                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500/20" />
-                                <div className="flex flex-col min-w-0">
-                                   <span className={`text-[10px] font-bold uppercase tracking-tight truncate ${formData.covered_assets?.includes(a.id) ? 'text-white' : 'text-slate-500'}`}>{a.name}</span>
-                                   <span className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter">{a.system}</span>
-                                </div>
-                             </label>
-                          ))}
-                       </div>
-                    </div>
-                 </div>
-              </section>
-
-              <section>
+              <section className="space-y-6">
                  <SectionHeader icon={Clock} title="Availability & Policy" color="text-emerald-400" />
-                 <div className="grid grid-cols-1 gap-6">
-                    <div className="grid grid-cols-2 gap-4">
-                       <div>
-                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Work Schedule</label>
-                          {isEditing ? (
-                            <input value={formData.schedule?.work_schedule} onChange={e => updateSchedule('work_schedule', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
-                          ) : (
-                            <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.work_schedule || '---'}</p>
-                          )}
-                       </div>
-                       <div>
-                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">On-Call Method</label>
-                          {isEditing ? (
-                            <input value={formData.schedule?.oncall_method} onChange={e => updateSchedule('oncall_method', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
-                          ) : (
-                            <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.oncall_method || '---'}</p>
-                          )}
-                       </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Work Schedule</label>
+                       {isEditing ? (
+                         <input value={formData.schedule?.work_schedule} onChange={e => updateSchedule('work_schedule', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.work_schedule || '---'}</p>
+                       )}
                     </div>
                     <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">On-Call Method</label>
+                       {isEditing ? (
+                         <input value={formData.schedule?.oncall_method} onChange={e => updateSchedule('oncall_method', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.oncall_method || '---'}</p>
+                       )}
+                    </div>
+                    <div className="col-span-2">
                        <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Holiday Policy</label>
                        {isEditing ? (
-                         <textarea value={formData.schedule?.holiday_policy} onChange={e => updateSchedule('holiday_policy', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[80px] outline-none focus:border-emerald-500/30 transition-all" />
+                         <textarea value={formData.schedule?.holiday_policy} onChange={e => updateSchedule('holiday_policy', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[60px] outline-none focus:border-emerald-500/30 transition-all" />
                        ) : (
                          <p className="text-sm font-bold text-white uppercase py-2 tracking-tight leading-relaxed">{formData.schedule?.holiday_policy || '---'}</p>
                        )}
@@ -1275,97 +1307,197 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
               </section>
            </div>
 
-           <div className="space-y-8">
-              <section>
-                 <div className="flex items-center justify-between mb-4">
-                    <SectionHeader icon={Terminal} title="Scope of Work Matrix" color="text-amber-400" />
-                    {isEditing && (
-                      <button onClick={addSOW} className="p-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg transition-all active:scale-95 shadow-lg shadow-amber-500/10">
-                        <Plus size={14} />
-                      </button>
+           {/* Row 2: Infrastructure Coverage (Collapsible) */}
+           <section className="bg-white/5 border border-white/5 rounded-lg overflow-hidden">
+              <button 
+                onClick={() => setIsInfraCollapsed(!isInfraCollapsed)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-all"
+              >
+                 <div className="flex items-center space-x-3">
+                    <Layers size={16} className="text-indigo-400" />
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Infrastructure Coverage</h3>
+                    {isInfraCollapsed && formData.covered_systems?.length > 0 && (
+                      <div className="flex items-center space-x-2 ml-4">
+                         <span className="px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-400 text-[8px] font-bold uppercase">{formData.covered_systems[0]}</span>
+                         {formData.covered_systems.length > 1 && (
+                           <span className="text-[8px] font-bold text-slate-600">+{formData.covered_systems.length - 1} MORE</span>
+                         )}
+                      </div>
                     )}
                  </div>
-                 <div className="space-y-4 max-h-[480px] overflow-y-auto custom-scrollbar pr-3">
-                    {formData.scope_of_work?.map((s: any, i: number) => (
-                       <div key={i} className="bg-white/5 p-5 rounded-lg border border-white/5 space-y-4 relative group hover:bg-white/10 transition-all">
-                          {isEditing && (
-                            <button onClick={() => { setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)}); setHasChanges(true); }} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
-                              <Trash size={12}/>
-                            </button>
-                          )}
-                          
-                          <div>
-                            <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Work Description</label>
-                            {isEditing ? (
-                              <input placeholder="Describe the task..." value={s.work_description} onChange={e => updateSowItem(i, 'work_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
-                            ) : (
-                              <p className="text-[11px] font-bold text-white uppercase tracking-tight">{s.work_description || '---'}</p>
-                            )}
-                          </div>
+                 {isInfraCollapsed ? <Plus size={14} className="text-slate-500"/> : <X size={14} className="text-slate-500"/>}
+              </button>
 
-                          <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Frequency</label>
-                                {isEditing ? (
-                                  <input placeholder="e.g. Monthly" value={s.frequency} onChange={e => updateSowItem(i, 'frequency', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
-                                ) : (
-                                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">{s.frequency || '---'}</p>
-                                )}
+              <AnimatePresence>
+                {!isInfraCollapsed && (
+                  <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                    <div className="p-6 border-t border-white/5 grid grid-cols-2 gap-10">
+                       <div className="space-y-2">
+                          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Covered Systems</label>
+                          <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
+                             {usedSystems.length === 0 && <p className="text-[8px] text-slate-600 text-center py-16 uppercase font-bold">No active systems found in assets</p>}
+                             {usedSystems.map((s: any) => (
+                                <label key={s.value} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
+                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500/20" />
+                                   <span className={`text-[10px] font-bold uppercase tracking-tight ${formData.covered_systems?.includes(s.value) ? 'text-white' : 'text-slate-500'}`}>{s.label}</span>
+                                </label>
+                             ))}
+                          </div>
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Propagated Assets</label>
+                          <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
+                             {filteredAssets.length === 0 && (
+                               <div className="flex flex-col items-center justify-center h-full space-y-2 text-slate-600">
+                                  <Server size={20} className="opacity-20" />
+                                  <p className="text-[8px] uppercase font-bold text-center">Select systems to list assets</p>
+                               </div>
+                             )}
+                             {filteredAssets.map((a: any) => (
+                                <label key={a.id} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
+                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500/20" />
+                                   <div className="flex flex-col min-w-0">
+                                      <span className={`text-[10px] font-bold uppercase tracking-tight truncate ${formData.covered_assets?.includes(a.id) ? 'text-white' : 'text-slate-500'}`}>{a.name}</span>
+                                      <span className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter">{a.system}</span>
+                                   </div>
+                                </label>
+                             ))}
+                          </div>
+                       </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+           </section>
+
+           {/* Row 3: Scope of Work Matrix */}
+           <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                 <SectionHeader icon={Terminal} title="Scope of Work Matrix" color="text-amber-400" />
+                 {isEditing && (
+                   <button onClick={addSOW} className="p-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg transition-all active:scale-95 shadow-lg shadow-amber-500/10">
+                     <Plus size={14} />
+                   </button>
+                 )}
+              </div>
+              
+              <div className="grid grid-cols-12 gap-8">
+                 <div className="col-span-4 space-y-2">
+                    <div className="bg-black/40 rounded-lg border border-white/5 h-[400px] overflow-y-auto custom-scrollbar">
+                       {formData.scope_of_work?.map((s: any, i: number) => (
+                          <button 
+                             key={i} 
+                             onClick={() => { setSelectedSowIndex(i); setIsEditingSow(false); }}
+                             className={`w-full text-left p-4 border-b border-white/5 transition-all hover:bg-white/5 ${selectedSowIndex === i ? 'bg-amber-600/10 border-l-2 border-l-amber-500' : ''}`}
+                          >
+                             <div className="flex items-center justify-between">
+                                <span className={`text-[10px] font-bold uppercase tracking-tight truncate flex-1 ${selectedSowIndex === i ? 'text-white' : 'text-slate-400'}`}>{s.work_description || 'Untitled Work'}</span>
+                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ml-2 ${
+                                   s.importance === 'Critical' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-500'
+                                }`}>{s.importance}</span>
                              </div>
-                             <div>
-                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Response Time</label>
-                                {isEditing ? (
-                                  <input placeholder="e.g. NBD" value={s.response} onChange={e => updateSowItem(i, 'response', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
-                                ) : (
-                                  <p className="text-[10px] font-bold text-white uppercase tracking-widest font-mono">{s.response || '---'}</p>
-                                )}
-                             </div>
-                             <div className="col-span-2">
-                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Objective & Criticality</label>
-                                <div className="flex gap-2">
-                                  {isEditing ? (
-                                    <>
-                                      <input placeholder="Purpose of this task..." value={s.objective_description} onChange={e => updateSowItem(i, 'objective_description', e.target.value)} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
-                                      <select value={s.importance} onChange={e => updateSowItem(i, 'importance', e.target.value)} className="w-32 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all">
-                                        <option value="Critical">Critical</option>
-                                        <option value="High">High</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Low">Low</option>
-                                      </select>
-                                    </>
+                          </button>
+                       ))}
+                       {(!formData.scope_of_work || formData.scope_of_work.length === 0) && (
+                          <div className="p-10 text-center text-slate-600 text-[9px] font-bold uppercase tracking-widest">No scope items</div>
+                       )}
+                    </div>
+                 </div>
+
+                 <div className="col-span-8">
+                    <AnimatePresence mode="wait">
+                       {selectedSowIndex !== null ? (
+                          <motion.div key={selectedSowIndex} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="bg-white/5 border border-white/5 rounded-lg p-8 relative h-full">
+                             {isEditing && (
+                               <div className="absolute top-4 right-4 flex items-center space-x-2">
+                                  {!isEditingSow ? (
+                                    <button onClick={() => setIsEditingSow(true)} className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all"><Edit2 size={14}/></button>
                                   ) : (
-                                    <div className="flex items-center justify-between w-full">
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{s.objective_description || 'No objective defined'}</p>
-                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${
-                                        s.importance === 'Critical' ? 'bg-rose-600 text-white' : 
-                                        s.importance === 'High' ? 'bg-amber-600 text-white' : 
-                                        'bg-slate-700 text-slate-300'
-                                      }`}>{s.importance}</span>
-                                    </div>
+                                    <button onClick={() => setIsEditingSow(false)} className="p-2 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all"><Check size={14}/></button>
                                   )}
+                                  <button onClick={() => { setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== selectedSowIndex)}); setHasChanges(true); setSelectedSowIndex(null); }} className="p-2 bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white rounded-lg transition-all"><Trash2 size={14}/></button>
+                               </div>
+                             )}
+                             
+                             <div className="space-y-6">
+                                <div>
+                                   <label className="text-[8px] font-bold text-slate-600 uppercase mb-2 block">Work Description</label>
+                                   {isEditingSow ? (
+                                     <input value={formData.scope_of_work[selectedSowIndex].work_description} onChange={e => updateSowItem(selectedSowIndex, 'work_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+                                   ) : (
+                                     <p className="text-sm font-bold text-white uppercase tracking-tight">{formData.scope_of_work[selectedSowIndex].work_description || '---'}</p>
+                                   )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-2 block">Frequency</label>
+                                      {isEditingSow ? (
+                                        <input value={formData.scope_of_work[selectedSowIndex].frequency} onChange={e => updateSowItem(selectedSowIndex, 'frequency', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+                                      ) : (
+                                        <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">{formData.scope_of_work[selectedSowIndex].frequency || '---'}</p>
+                                      )}
+                                   </div>
+                                   <div>
+                                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-2 block">Response Time</label>
+                                      {isEditingSow ? (
+                                        <input value={formData.scope_of_work[selectedSowIndex].response} onChange={e => updateSowItem(selectedSowIndex, 'response', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+                                      ) : (
+                                        <p className="text-xs font-bold text-white uppercase tracking-widest font-mono">{formData.scope_of_work[selectedSowIndex].response || '---'}</p>
+                                      )}
+                                   </div>
+                                </div>
+
+                                <div>
+                                   <label className="text-[8px] font-bold text-slate-600 uppercase mb-2 block">Objective & Criticality</label>
+                                   <div className="flex gap-4">
+                                      {isEditingSow ? (
+                                        <>
+                                          <input placeholder="Purpose of this task..." value={formData.scope_of_work[selectedSowIndex].objective_description} onChange={e => updateSowItem(selectedSowIndex, 'objective_description', e.target.value)} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+                                          <select value={formData.scope_of_work[selectedSowIndex].importance} onChange={e => updateSowItem(selectedSowIndex, 'importance', e.target.value)} className="w-32 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all">
+                                            <option value="Critical">Critical</option>
+                                            <option value="High">High</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="Low">Low</option>
+                                          </select>
+                                        </>
+                                      ) : (
+                                        <div className="flex items-center justify-between w-full p-4 bg-black/20 rounded-lg border border-white/5">
+                                          <p className="text-xs font-bold text-slate-400 uppercase tracking-tight italic">{formData.scope_of_work[selectedSowIndex].objective_description || 'No objective defined'}</p>
+                                          <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${
+                                            formData.scope_of_work[selectedSowIndex].importance === 'Critical' ? 'bg-rose-600 text-white' : 
+                                            formData.scope_of_work[selectedSowIndex].importance === 'High' ? 'bg-amber-600 text-white' : 
+                                            'bg-slate-700 text-slate-300'
+                                          }`}>{formData.scope_of_work[selectedSowIndex].importance}</span>
+                                        </div>
+                                      )}
+                                   </div>
                                 </div>
                              </div>
+                          </motion.div>
+                       ) : (
+                          <div className="h-full bg-white/5 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-slate-600 space-y-4">
+                             <Terminal size={48} className="opacity-10" />
+                             <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Select an entry to view details</p>
                           </div>
-                       </div>
-                    ))}
-                    {(!formData.scope_of_work || formData.scope_of_work.length === 0) && (
-                       <div className="py-20 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
-                          <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No scope items defined for this contract</p>
-                       </div>
-                    )}
+                       )}
+                    </AnimatePresence>
                  </div>
-              </section>
+              </div>
+           </section>
 
-              <section>
-                 <SectionHeader icon={RefreshCcw} title="Evolution & Changes" color="text-blue-400" />
-                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 tracking-widest">Key modifications from previous version</label>
+           {/* Row 4: Evolution & Changes */}
+           <section className="space-y-6">
+              <SectionHeader icon={RefreshCcw} title="Evolution & Changes" color="text-blue-400" />
+              <div className="bg-white/5 border border-white/5 rounded-lg p-6">
+                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-3 tracking-widest">Key modifications from previous version</label>
                  {isEditing ? (
                    <textarea value={formData.previous_contract_changes} onChange={e => updateField('previous_contract_changes', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs text-white min-h-[120px] outline-none focus:border-blue-500/30 transition-all" placeholder="Document commercial or technical deviations..." />
                  ) : (
-                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight leading-relaxed min-h-[100px]">{formData.previous_contract_changes || 'Initial version - no previous changes recorded'}</p>
+                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight leading-relaxed min-h-[100px] whitespace-pre-wrap">{formData.previous_contract_changes || 'Initial version - no previous changes recorded'}</p>
                  )}
-              </section>
-           </div>
+              </div>
+           </section>
         </div>
 
         <div className="flex space-x-3 pt-12 mt-auto">
