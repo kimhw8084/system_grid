@@ -1107,6 +1107,173 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
   )
 }
 
+const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], selectedIds: number[], onBack: () => void }) => {
+  const selectedAssets = useMemo(() => 
+    assets.filter(a => selectedIds.includes(a.id)),
+    [assets, selectedIds]
+  )
+
+  // Fetch hardware for all selected assets
+  const hardwareQueries = useMemo(() => selectedIds.map(id => ({
+    queryKey: ['device-hw', id],
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${id}/hardware`)).json())
+  })), [selectedIds])
+
+  const hardwareResults = useQuery({
+    queryKey: ['bulk-hw', selectedIds],
+    queryFn: async () => {
+      const results = await Promise.all(selectedIds.map(async id => {
+        const res = await apiFetch(`/api/v1/devices/${id}/hardware`)
+        return { id, data: await res.json() }
+      }))
+      return results.reduce((acc, curr) => ({ ...acc, [curr.id]: curr.data }), {})
+    }
+  })
+
+  const comparisonFields = [
+    { label: 'Identity', fields: [
+      { key: 'name', label: 'Hostname' },
+      { key: 'role', label: 'Role' },
+      { key: 'system', label: 'System' },
+      { key: 'owner', label: 'Owner' },
+      { key: 'business_unit', label: 'Business Unit' }
+    ]},
+    { label: 'Classification', fields: [
+      { key: 'type', label: 'Type' },
+      { key: 'status', label: 'Status' },
+      { key: 'environment', label: 'Environment' }
+    ]},
+    { label: 'Connectivity', fields: [
+      { key: 'primary_ip', label: 'Primary IP' },
+      { key: 'management_ip', label: 'Mgmt IP' },
+      { key: 'management_url', label: 'Mgmt URL' }
+    ]},
+    { label: 'Specifications', fields: [
+      { key: 'manufacturer', label: 'Make' },
+      { key: 'model', label: 'Model' },
+      { key: 'os_name', label: 'OS Name' },
+      { key: 'os_version', label: 'OS Version' },
+      { key: 'hardware_summary', label: 'HW Summary' },
+      { key: 'power_typical_w', label: 'Typical Power', format: (v: any) => v ? `${v}W` : '-' },
+      { key: 'power_max_w', label: 'Max Power', format: (v: any) => v ? `${v}W` : '-' }
+    ]},
+    { label: 'Hardware Inventory', isHardware: true, categories: ['CPU', 'Memory', 'Disk', 'NIC', 'Card', 'PSU'] },
+    { label: 'Logistics', fields: [
+      { key: 'serial_number', label: 'Serial' },
+      { key: 'asset_tag', label: 'Asset Tag' },
+      { key: 'install_date', label: 'Install Date', format: (v: any) => v ? new Date(v).toLocaleDateString() : '-' },
+      { key: 'warranty_end', label: 'Warranty End', format: (v: any) => v ? new Date(v).toLocaleDateString() : '-' },
+      { key: 'hardware_age', label: 'HW Age' }
+    ]}
+  ]
+
+  const renderHardwareRow = (category: string) => (
+    <tr key={category} className="hover:bg-white/[0.02] transition-colors group">
+      <td className="p-4 px-6 border-r border-white/5">
+        <div className="text-[10px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors">
+          {category}
+        </div>
+      </td>
+      {selectedAssets.map(asset => {
+        const hwList = (hardwareResults.data as any)?.[asset.id] || []
+        const comps = hwList.filter((h: any) => h.category === category)
+        return (
+          <td key={`${asset.id}-${category}`} className="p-4 px-6 border-l border-white/5">
+            <div className="space-y-1">
+              {comps.length > 0 ? comps.map((c: any, i: number) => (
+                <div key={i} className="text-[10px] leading-tight">
+                  <span className="text-white font-bold">{c.count}x</span> <span className="text-slate-300">{c.name}</span>
+                  <div className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">{c.specs}</div>
+                </div>
+              )) : <span className="text-slate-600 font-bold uppercase text-[9px]">None</span>}
+            </div>
+          </td>
+        )
+      })}
+    </tr>
+  )
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-[#020617] p-8 animate-in fade-in duration-500 overflow-hidden">
+       <div className="flex items-center justify-between mb-8 shrink-0">
+          <div className="flex items-center space-x-6">
+             <button onClick={onBack} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all">
+                <ArrowRightLeft className="rotate-180" size={20} />
+             </button>
+             <div>
+                <h1 className="text-3xl font-bold uppercase tracking-tighter text-white italic">System <span className="text-blue-500">Matrix Comparison</span></h1>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Comparative Analysis of {selectedAssets.length} Infrastructure Assets</p>
+             </div>
+          </div>
+          <button onClick={onBack} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-rose-500 transition-all">
+             <X size={24} />
+          </button>
+       </div>
+
+       <div className="flex-1 overflow-auto custom-scrollbar glass-panel rounded-2xl border border-white/5 bg-slate-900/20 shadow-2xl">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+             <thead className="sticky top-0 z-10">
+                <tr>
+                   <th className="p-6 bg-slate-950 border-b border-white/5 w-64 shrink-0">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Comparison Vector</div>
+                   </th>
+                   {selectedAssets.map(asset => (
+                      <th key={asset.id} className="p-6 bg-slate-950 border-b border-white/5 border-l border-white/5 min-w-[250px]">
+                         <div className="flex flex-col">
+                            <span className="text-blue-400 text-lg font-bold uppercase tracking-tight leading-none mb-1">{asset.name}</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{asset.system} · {asset.type}</span>
+                         </div>
+                      </th>
+                   ))}
+                </tr>
+             </thead>
+             <tbody className="divide-y divide-white/5">
+                {comparisonFields.map(section => (
+                   <React.Fragment key={section.label}>
+                      <tr className="bg-indigo-600/5">
+                         <td colSpan={selectedAssets.length + 1} className="px-6 py-2.5 text-[9px] font-black uppercase tracking-widest text-indigo-400 border-y border-white/5">
+                            {section.label}
+                         </td>
+                      </tr>
+                      {section.isHardware ? (
+                        section.categories?.map(cat => renderHardwareRow(cat))
+                      ) : (
+                        section.fields?.map(field => (
+                          <tr key={field.key} className="hover:bg-white/[0.02] transition-colors group">
+                              <td className="p-4 px-6 border-r border-white/5">
+                                <div className="text-[10px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors">
+                                    {field.label}
+                                </div>
+                              </td>
+                              {selectedAssets.map(asset => (
+                                <td key={`${asset.id}-${field.key}`} className="p-4 px-6 border-l border-white/5">
+                                    <div className={`text-[11px] font-bold ${field.key === 'status' ? (
+                                      asset.status === 'Active' ? 'text-emerald-400' : 
+                                      asset.status === 'Maintenance' ? 'text-amber-400' :
+                                      asset.status === 'Failed' ? 'text-rose-400' : 'text-slate-300'
+                                    ) : 'text-slate-300'}`}>
+                                      {field.format ? field.format(asset[field.key]) : (asset[field.key] || '-')}
+                                    </div>
+                                </td>
+                              ))}
+                          </tr>
+                        ))
+                      )}
+                   </React.Fragment>
+                ))}
+             </tbody>
+          </table>
+          {hardwareResults.isLoading && (
+            <div className="p-20 flex flex-col items-center justify-center text-slate-500 space-y-4">
+               <RefreshCcw size={24} className="animate-spin text-blue-500" />
+               <p className="text-[10px] font-bold uppercase tracking-widest">Hydrating Hardware Registry...</p>
+            </div>
+          )}
+       </div>
+    </div>
+  )
+}
+
 export default function Assets() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -1123,7 +1290,7 @@ export default function Assets() {
   }, [fontSize, rowDensity])
 
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
-  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeModal, setActiveModal] = useState<any>(null)
@@ -1560,6 +1727,12 @@ export default function Assets() {
                        <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
                      ) : (
                        <>
+                          {selectedIds.length >= 2 && (
+                            <button onClick={() => { setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
+                               <span>Compare Selected</span>
+                               <ArrowRightLeft size={12} />
+                            </button>
+                          )}
                           <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
                           <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
                        </>
@@ -1705,7 +1878,14 @@ export default function Assets() {
            onEditService={(s: any) => setActiveServiceEdit(s)}
            devices={devices}
            onViewAssetDetails={setActiveDetails}
-        />      ) : (
+        />
+      ) : viewMode === 'compare' ? (
+        <AssetComparisonView 
+          assets={inventoryAssets} 
+          selectedIds={selectedIds} 
+          onBack={() => setViewMode('grid')} 
+        />
+      ) : (
         <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
            <AssetMap 
              assets={inventoryAssets} 
