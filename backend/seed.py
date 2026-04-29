@@ -220,9 +220,11 @@ def seed():
             
             # Personnel for each vendor
             for _ in range(random.randint(2, 4)):
+                fname = fake.name()
                 vp = VendorPersonnel(
                     vendor_id=v.id,
-                    name=fake.name(),
+                    name=fname,
+                    name_original=fname.split()[0] + " " + fake.last_name() if random.random() > 0.7 else None,
                     position=random.choice(["TAM", "Support Lead", "Field Engineer", "Sales Exec"]),
                     team=random.choice(["Critical Infrastructure", "Enterprise Support", "Global Accounts"]),
                     company_email=fake.email(),
@@ -246,12 +248,15 @@ def seed():
                 contract_id=f"MSA-{code}-{random.randint(10000, 99999)}",
                 effective_date=datetime.now() - timedelta(days=random.randint(100, 500)),
                 expiry_date=datetime.now() + timedelta(days=random.randint(200, 800)),
+                covered_systems=random.sample(cats["LogicalSystem"], random.randint(1, 3)),
+                covered_assets=[],
                 document_link=f"https://sharepoint.corp/legal/contracts/{v.id}",
                 scope_of_work=[
                     {"deliverable": "Hardware Maintenance", "when": "NBD", "response_time": "4h", "objective": "Restoration"},
                     {"deliverable": "Software Updates", "when": "Quarterly", "response_time": "72h", "objective": "Compliance"}
                 ],
-                schedule={"work_schedule": "Mon-Fri 08:00-18:00", "holiday_policy": "Standard Corporate Holidays"}
+                schedule={"work_schedule": "Mon-Fri 08:00-18:00", "holiday_policy": "Standard Corporate Holidays"},
+                previous_contract_changes="Consolidated legacy support tiers into unified Gold SLA." if random.random() > 0.5 else None
             )
             db.add(contract)
             db.flush()
@@ -793,7 +798,9 @@ def seed():
                     end_date=p.start_date + timedelta(days=(i+1)*20),
                     progress=random.randint(0, 100),
                     status=random.choice(["Completed", "In Progress", "To Do"]),
-                    owner=random.choice(p.team_members)
+                    owner=random.choice(p.team_members),
+                    estimate_hours=float(random.randint(20, 100)),
+                    dependencies_json=[tasks[i-1].id] if i > 0 and random.random() > 0.3 else []
                 )
                 db.add(t)
                 db.flush()
@@ -807,7 +814,8 @@ def seed():
                         name=f"Subtask {i+1}.{j+1}: {fake.catch_phrase()}",
                         progress=random.randint(0, 100),
                         status=random.choice(["Completed", "In Progress", "To Do"]),
-                        owner=t.owner
+                        owner=t.owner,
+                        estimate_hours=float(random.randint(4, 16))
                     )
                     db.add(st)
             
