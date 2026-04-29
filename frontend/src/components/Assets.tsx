@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Shield, Zap } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -701,7 +701,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
   }, [graphData]);
 
   return (
-    <div ref={containerRef} className="h-[300px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+    <div ref={containerRef} className="h-[260px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
        {graphData.nodes.length <= 1 ? (
          <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 italic tracking-widest">
             No active {type} vectors identified
@@ -732,7 +732,6 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               if (!text) return;
               
               const fontSize = Math.min(MAX_FONT_SIZE, 12 / globalScale);
-              // Use italic 900 for "Vector Topologies" standard
               ctx.font = `italic 900 ${fontSize}px Inter`;
               const textWidth = ctx.measureText(text.toUpperCase()).width;
               const padding = fontSize * 0.8;
@@ -742,7 +741,6 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               const textPos = { x: start.x + relLink.x * 0.5, y: start.y + relLink.y * 0.5 };
 
               let angle = Math.atan2(relLink.y, relLink.x);
-              // Ensure text is never upside down
               if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
 
               ctx.save();
@@ -755,7 +753,6 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillStyle = type === 'dependency' ? '#818cf8' : '#34d399';
-              // Standard style: font-black uppercase tracking-tighter italic
               ctx.fillText(text.toUpperCase(), 0, 0);
               ctx.restore();
            }}
@@ -764,7 +761,6 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
              const fontSize = 10/globalScale;
              ctx.font = `italic 900 ${fontSize}px Inter`;
 
-             // Draw shadow for node
              ctx.shadowColor = node.isCenter ? 'rgba(96, 165, 250, 0.6)' : 'rgba(251, 191, 36, 0.4)';
              ctx.shadowBlur = 12 / globalScale;
              
@@ -773,7 +769,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
              ctx.arc(node.x, node.y, node.isCenter ? 6 : 4, 0, 2 * Math.PI, false); 
              ctx.fill();
 
-             ctx.shadowBlur = 0; // Reset shadow for text
+             ctx.shadowBlur = 0; 
              ctx.textAlign = 'center';
              ctx.textBaseline = 'top';
              ctx.fillStyle = '#f1f5f9';
@@ -882,137 +878,137 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
       {/* Right Report Content */}
       <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
-          <div className="p-10 space-y-10">
+          <div className="p-6 space-y-6">
             {/* Report Header */}
             <div className="flex items-start justify-between">
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex items-center space-x-6">
-                   <div className="bg-blue-600 p-3 rounded-xl text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
-                      <Box size={48} />
+                   <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
+                      <Box size={40} />
                    </div>
                    <div>
-                      <h1 className="text-5xl font-black uppercase tracking-tighter text-white italic">{selectedAsset.name}</h1>
-                      <div className="flex items-center space-x-4 mt-2">
-                        <span className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[14px]">{selectedAsset.system}</span>
+                      <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic">{selectedAsset.name}</h1>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[12px]">{selectedAsset.system}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                        <span className="text-slate-500 font-bold uppercase tracking-[0.1em] text-[10px]">{selectedAsset.type} // {selectedAsset.environment} // {selectedAsset.owner || 'NO OWNER'}</span>
+                        <span className="text-slate-500 font-bold uppercase tracking-[0.1em] text-[9px]">{selectedAsset.type} // {selectedAsset.environment} // {selectedAsset.owner || 'NO OWNER'}</span>
                       </div>
                    </div>
                 </div>
 
-                <div className="flex items-center space-x-8 bg-black/40 p-6 rounded-xl border border-white/5">
+                <div className="flex items-center space-x-6 bg-black/40 p-4 rounded-xl border border-white/5">
                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
-                      <span className={`px-4 py-1 rounded-lg text-[11px] font-bold uppercase border w-fit ${
+                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
+                      <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
                         selectedAsset.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                         selectedAsset.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                         'text-rose-400 border-rose-500/20 bg-rose-500/5'
                       }`}>{selectedAsset.status}</span>
                    </div>
-                   <div className="w-px h-10 bg-white/5" />
+                   <div className="w-px h-8 bg-white/5" />
                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</span>
-                      <span className="text-xl font-mono text-blue-400 font-bold">{selectedAsset.primary_ip || '---.---.---.---'}</span>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</span>
+                      <span className="text-lg font-mono text-blue-400 font-bold">{selectedAsset.primary_ip || '---.---.---.---'}</span>
                    </div>
-                   <div className="w-px h-10 bg-white/5" />
+                   <div className="w-px h-8 bg-white/5" />
                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</span>
-                      <span className="text-xl font-mono text-indigo-400 font-bold">{selectedAsset.management_ip || '---.---.---.---'}</span>
+                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</span>
+                      <span className="text-lg font-mono text-indigo-400 font-bold">{selectedAsset.management_ip || '---.---.---.---'}</span>
                    </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end space-y-3">
-                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-3 px-6 py-3 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">
-                    <Edit2 size={16}/> <span>Modify Config</span>
+              <div className="flex flex-col items-end space-y-2">
+                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">
+                    <Edit2 size={14}/> <span>Modify Config</span>
                  </button>
                  <div className="text-right">
-                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Last Synced</p>
-                    <p className="text-[10px] font-mono text-slate-400">{new Date().toLocaleString()}</p>
+                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Last Synced</p>
+                    <p className="text-[9px] font-mono text-slate-400">{new Date().toLocaleString()}</p>
                  </div>
               </div>
             </div>
 
             {/* Quick Stats Banner */}
-            <div className="grid grid-cols-6 gap-4 bg-white/5 p-6 rounded-xl border border-white/5">
+            <div className="grid grid-cols-6 gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Power Avg/Max</span>
-                  <span className="text-xs font-mono text-white font-bold">{selectedAsset.power_typical_w}W / {selectedAsset.power_max_w}W</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Power Avg/Max</span>
+                  <span className="text-[10px] font-mono text-white font-bold">{selectedAsset.power_typical_w}W / {selectedAsset.power_max_w}W</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Site Location</span>
-                  <span className="text-xs font-bold text-blue-400 uppercase">{selectedAsset.site_name || 'UNPLACED'}</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Site Location</span>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase">{selectedAsset.site_name || 'UNPLACED'}</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Rack ID</span>
-                  <span className="text-xs font-bold text-white uppercase">{selectedAsset.rack_name || 'N/A'}</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Rack ID</span>
+                  <span className="text-[10px] font-bold text-white uppercase">{selectedAsset.rack_name || 'N/A'}</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">U Position</span>
-                  <span className="text-xs font-bold text-indigo-400 uppercase">{selectedAsset.u_start || '--'}U</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">U Position</span>
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase">{selectedAsset.u_start || '--'}U</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Form Factor</span>
-                  <span className="text-xs font-bold text-white uppercase">{selectedAsset.size_u || 1}U / {selectedAsset.depth || 'Full'}</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Form Factor</span>
+                  <span className="text-[10px] font-bold text-white uppercase">{selectedAsset.size_u || 1}U / {selectedAsset.depth || 'Full'}</span>
                </div>
                <div className="flex flex-col">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Asset Tag</span>
-                  <span className="text-xs font-mono text-amber-500 font-bold uppercase">{selectedAsset.asset_tag || 'NO TAG'}</span>
+                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Asset Tag</span>
+                  <span className="text-[10px] font-mono text-amber-500 font-bold uppercase">{selectedAsset.asset_tag || 'NO TAG'}</span>
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8 items-stretch">
+            <div className="grid grid-cols-2 gap-6 items-stretch">
                {/* Hardware & System */}
-               <div className="space-y-6 flex flex-col h-full">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <CpuIcon size={16} className="text-amber-400" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
+               <div className="space-y-4 flex flex-col h-full">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <CpuIcon size={14} className="text-amber-400" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
                   </div>
-                  <div className="bg-black/20 p-8 rounded-xl border border-white/5 grid grid-cols-2 gap-y-8 gap-x-12 flex-1">
+                  <div className="bg-black/20 p-6 rounded-xl border border-white/5 grid grid-cols-2 gap-y-6 gap-x-8 flex-1">
                      <div>
-                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Platform Identity</p>
-                        <p className="text-sm font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
-                        <p className="text-[10px] font-mono text-slate-500 mt-1">SN: {selectedAsset.serial_number || 'UNKNOWN'}</p>
+                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-0.5">Platform Identity</p>
+                        <p className="text-xs font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
+                        <p className="text-[9px] font-mono text-slate-500 mt-0.5">SN: {selectedAsset.serial_number || 'UNKNOWN'}</p>
                      </div>
                      <div>
-                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Operating Environment</p>
-                        <p className="text-sm font-bold text-blue-400 uppercase">{selectedAsset.os_name} {selectedAsset.os_version}</p>
-                        <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Registry Depth: {selectedAsset.depth || 'Full'}</p>
+                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-0.5">Operating Environment</p>
+                        <p className="text-xs font-bold text-blue-400 uppercase">{selectedAsset.os_name} {selectedAsset.os_version}</p>
+                        <p className="text-[9px] font-bold text-slate-500 mt-0.5 uppercase">Registry Depth: {selectedAsset.depth || 'Full'}</p>
                      </div>
                      <div className="col-span-2">
-                        <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">Resource Utilization Summary</p>
-                        <div className="bg-black/40 p-4 rounded-lg border border-white/5">
-                           <p className="text-xs font-bold text-slate-300 uppercase leading-relaxed">{selectedAsset.hardware_summary || 'No hardware details registered for this unit.'}</p>
+                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">Resource Utilization Summary</p>
+                        <div className="bg-black/40 p-3 rounded-lg border border-white/5">
+                           <p className="text-[10px] font-bold text-slate-300 uppercase leading-relaxed">{selectedAsset.hardware_summary || 'No hardware details registered for this unit.'}</p>
                         </div>
                      </div>
                   </div>
                </div>
 
                {/* Lifecycle & Logistics */}
-               <div className="space-y-6 flex flex-col h-full">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <Calendar size={16} className="text-rose-400" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics Registry</h3>
+               <div className="space-y-4 flex flex-col h-full">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <Calendar size={14} className="text-rose-400" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics Registry</h3>
                   </div>
-                  <div className="bg-black/20 p-8 rounded-xl border border-white/5 grid grid-cols-2 gap-8 flex-1">
-                     <div className="space-y-8">
+                  <div className="bg-black/20 p-6 rounded-xl border border-white/5 grid grid-cols-2 gap-6 flex-1">
+                     <div className="space-y-6">
                         <div>
-                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Deployment Phase</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
-                           <p className="text-[10px] font-bold text-blue-400 mt-1 uppercase italic">Total Uptime Age: {selectedAsset.hardware_age}</p>
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Deployment Phase</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-[9px] font-bold text-blue-400 mt-0.5 uppercase italic">Total Uptime Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
-                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Warranty Coverage</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Warranty Coverage</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
                         </div>
                      </div>
-                     <div className="space-y-8 text-right">
+                     <div className="space-y-6 text-right">
                         <div>
-                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Acquisition Date</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Acquisition Date</p>
+                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
                         </div>
                         <div>
-                           <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Retirement EOL</p>
-                           <p className="text-sm font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Retirement EOL</p>
+                           <p className="text-xs font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
                         </div>
                      </div>
                   </div>
@@ -1020,29 +1016,29 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </div>
 
             {/* Connection Maps Section */}
-            <div className="space-y-6">
-               <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                  <Share2 size={16} className="text-indigo-400" />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Vector Topologies & Interconnects</h3>
+            <div className="space-y-4">
+               <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                  <Share2 size={14} className="text-indigo-400" />
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Vector Topologies & Interconnects</h3>
                </div>
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Dependency Vector Map</p>
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Dependency Vector Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
-                  <div className="space-y-3">
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Network Interconnect Map</p>
+                  <div className="space-y-2">
+                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Network Interconnect Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
                </div>
             </div>
 
             {/* Logical Services & Telemetry */}
-            <div className="grid grid-cols-2 gap-8">
-               <div className="space-y-6">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <Layers size={16} className="text-blue-400" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
+            <div className="grid grid-cols-2 gap-6">
+               <div className="space-y-4">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <Layers size={14} className="text-blue-400" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
                   <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
@@ -1053,10 +1049,10 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   </div>
                </div>
 
-               <div className="space-y-6">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <Activity size={16} className="text-emerald-400" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
+               <div className="space-y-4">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <Activity size={14} className="text-emerald-400" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
                   </div>
                   <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
                      <MiniMonitoringTable deviceId={selectedAsset.id} />
@@ -1065,33 +1061,33 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </div>
 
             {/* Security & Metadata */}
-            <div className="grid grid-cols-2 gap-8">
-               <div className="space-y-6">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <Shield size={16} className="text-amber-500" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Security Credentials & Secrets</h3>
+            <div className="grid grid-cols-2 gap-6">
+               <div className="space-y-4">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <Shield size={14} className="text-amber-500" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Security Credentials & Secrets</h3>
                   </div>
                   <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
                      <SecretsTable deviceId={selectedAsset.id} />
                   </div>
                </div>
 
-               <div className="space-y-6">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                     <FileJson size={16} className="text-slate-400" />
-                     <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Registry Metadata Payload</h3>
+               <div className="space-y-4">
+                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                     <FileJson size={14} className="text-slate-400" />
+                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Registry Metadata Payload</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10 min-h-[150px]">
+                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10 min-h-[120px]">
                      <MetadataViewer data={selectedAsset.metadata_json} />
                   </div>
                </div>
             </div>
 
             {/* Resources Registry (Bottom Full Width) */}
-            <div className="space-y-6 pb-20">
-               <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
-                  <HardDrive size={16} className="text-emerald-400" />
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Physical Component Inventory</h3>
+            <div className="space-y-4 pb-12">
+               <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
+                  <HardDrive size={14} className="text-emerald-400" />
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Physical Component Inventory</h3>
                </div>
                <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
@@ -3243,6 +3239,9 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
   const [selectedNode, setSelectedNode] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showLegend, setShowLegend] = useState(true)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isTopologyCollapsed, setIsTopologyCollapsed] = useState(false)
+  const [hoveredLink, setHoveredLink] = useState<any>(null)
 
   const hasFilter = selectedSystems.length > 0 || selectedAssetIds.length > 0 || searchTerm.length >= 2
 
@@ -3250,7 +3249,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
     if (!hasFilter) return { nodes: [], links: [] }
 
     const nodesMap = new Map<number, any>()
-    const linksMap = new Map<string, any>()
+    const linksMap = new Map<string, any>() // Group by source-target-type
 
     // 1. Initial nodes from filters
     const rootNodes = assets.filter((a: any) => 
@@ -3275,15 +3274,24 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
             const peerId = c.source_device_id === node.id ? c.target_device_id : c.source_device_id
             const peer = assets.find((a: any) => a.id === peerId)
             if (peer) {
-              const linkKey = `net-${Math.min(node.id, peerId)}-${Math.max(node.id, peerId)}`
-              if (!linksMap.has(linkKey)) {
+              const pairKey = [node.id, peerId].sort().join('-')
+              const linkKey = `net-${pairKey}`
+              const existing = linksMap.get(linkKey)
+              
+              const connType = c.link_type || 'Ethernet'
+              if (!existing) {
                 linksMap.set(linkKey, { 
                   source: c.source_device_id, 
                   target: c.target_device_id, 
                   type: 'network',
-                  label: c.link_type || 'Ethernet'
+                  labels: [connType],
+                  count: 1
                 })
+              } else if (!existing.labels.includes(connType)) {
+                existing.labels.push(connType)
+                existing.count++
               }
+
               if (!nodesMap.has(peerId)) {
                 const peerData = { ...peer, label: peer.name }
                 nodesMap.set(peerId, peerData)
@@ -3299,15 +3307,24 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
             const peerId = r.source_device_id === node.id ? r.target_device_id : r.source_device_id
             const peer = assets.find((a: any) => a.id === peerId)
             if (peer) {
-              const linkKey = `rel-${r.id}`
-              if (!linksMap.has(linkKey)) {
+              const pairKey = [node.id, peerId].sort().join('-')
+              const linkKey = `rel-${pairKey}`
+              const existing = linksMap.get(linkKey)
+              
+              const relType = r.relationship_type
+              if (!existing) {
                 linksMap.set(linkKey, { 
                   source: r.source_device_id, 
                   target: r.target_device_id, 
                   type: 'dependency',
-                  label: r.relationship_type
+                  labels: [relType],
+                  count: 1
                 })
+              } else if (!existing.labels.includes(relType)) {
+                existing.labels.push(relType)
+                existing.count++
               }
+
               if (!nodesMap.has(peerId)) {
                 const peerData = { ...peer, label: peer.name }
                 nodesMap.set(peerId, peerData)
@@ -3323,9 +3340,34 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
 
     addNodesAndLinks(rootNodes, 0)
 
+    // After grouping, handle curvatures for double links between same pair
+    const finalLinks = Array.from(linksMap.values())
+    const pairLinksCount: Record<string, number> = {}
+    
+    finalLinks.forEach(link => {
+      const pairKey = [
+        typeof link.source === 'object' ? link.source.id : link.source,
+        typeof link.target === 'object' ? link.target.id : link.target
+      ].sort().join('-')
+      pairLinksCount[pairKey] = (pairLinksCount[pairKey] || 0) + 1
+    })
+
+    finalLinks.forEach(link => {
+      const pairKey = [
+        typeof link.source === 'object' ? link.source.id : link.source,
+        typeof link.target === 'object' ? link.target.id : link.target
+      ].sort().join('-')
+      
+      if (pairLinksCount[pairKey] > 1) {
+        link.curvature = link.type === 'network' ? 0.15 : -0.15
+      } else {
+        link.curvature = 0
+      }
+    })
+
     return {
       nodes: Array.from(nodesMap.values()),
-      links: Array.from(linksMap.values())
+      links: finalLinks
     }
   }, [assets, connections, relationships, selectedSystems, selectedAssetIds, depth, searchTerm, hasFilter])
 
@@ -3347,7 +3389,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                     <Share2 size={48} className="animate-pulse" />
                  </div>
                  <div className="space-y-2">
-                    <h2 className="text-4xl font-black uppercase tracking-tighter text-white italic italic">Vector <span className="text-indigo-500">Topology</span></h2>
+                    <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Vector <span className="text-indigo-500">Topology</span></h2>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Infrastructure Connectivity Matrix</p>
                  </div>
                  <div className="max-w-md p-6 bg-black/40 rounded-2xl border border-white/5">
@@ -3371,76 +3413,102 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
         </div>
       ) : (
         <>
-          <div className="absolute top-8 left-8 z-10 w-80 space-y-4 pointer-events-none">
-             <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl pointer-events-auto space-y-6 bg-slate-900/80 backdrop-blur-xl">
-                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                   <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                         <Share2 size={16} />
-                      </div>
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Vector Topology</h3>
-                   </div>
-                   <div className="px-2 py-0.5 rounded bg-indigo-600/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">{graphData.nodes.length} NODES</div>
-                </div>
-
-                <div className="space-y-5">
-                   <div>
-                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Logical Systems</label>
-                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                         {systemsList.map((sys: string) => (
-                            <button
-                               key={sys}
-                               onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
-                               className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
-                            >
-                               {sys}
-                            </button>
-                         ))}
-                      </div>
-                   </div>
-
-                   <div>
-                      <div className="flex items-center justify-between mb-2 px-1">
-                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Crawl Depth</label>
-                         <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{depth} HOPS</span>
-                      </div>
-                      <input 
-                        type="range" min="0" max="3" step="1" 
-                        value={depth} onChange={e => setDepth(Number(e.target.value))}
-                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                      />
-                      <div className="flex justify-between text-[7px] font-black text-slate-600 uppercase mt-1.5 px-0.5">
-                         <span>Source</span>
-                         <span>Discovery</span>
-                         <span>Global</span>
-                         <span>Matrix</span>
-                      </div>
-                   </div>
-
-                   <div className="relative">
-                      <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                      <input 
-                        value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)}
-                        placeholder="FOCUS SEARCH..." 
-                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-3 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest transition-all" 
-                      />
-                   </div>
-                </div>
-
-                <div className="pt-2">
+          <div className="absolute top-8 left-8 z-20 flex flex-col space-y-4 pointer-events-none">
+             <motion.div 
+               animate={{ width: isSidebarCollapsed ? 48 : 320, height: isTopologyCollapsed ? 48 : 'auto' }}
+               className="glass-panel rounded-2xl border border-white/10 shadow-2xl pointer-events-auto overflow-hidden bg-slate-900/80 backdrop-blur-xl relative"
+             >
+                <div className="absolute top-4 right-4 flex items-center gap-2 z-30">
+                   {!isSidebarCollapsed && !isTopologyCollapsed && (
+                      <button 
+                        onClick={() => setIsTopologyCollapsed(true)}
+                        className="text-slate-500 hover:text-white transition-colors"
+                        title="Collapse Topology"
+                      >
+                         <Minimize2 size={16}/>
+                      </button>
+                   )}
                    <button 
-                     onClick={() => { setSelectedSystems([]); setSearchTerm(''); setSelectedAssetIds([]); }}
-                     className="w-full py-3 bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-all rounded-xl"
+                     onClick={() => {
+                        if (isTopologyCollapsed) setIsTopologyCollapsed(false);
+                        else setIsSidebarCollapsed(!isSidebarCollapsed);
+                     }}
+                     className="text-slate-500 hover:text-white transition-colors"
                    >
-                      Reset Workspace
+                      {isTopologyCollapsed ? <Maximize2 size={16}/> : (isSidebarCollapsed ? <Search size={16}/> : <X size={16}/>)}
                    </button>
                 </div>
-             </div>
+
+                <div className={`p-6 space-y-6 transition-all duration-300 ${isSidebarCollapsed || isTopologyCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                   <div className="flex items-center justify-between border-b border-white/5 pb-4 pr-10">
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                            <Share2 size={16} />
+                         </div>
+                         <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">Vector Topology</h3>
+
+                      </div>
+                   </div>
+
+                   <div className="space-y-5">
+                      <div>
+                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Logical Systems</label>
+                         <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                            {systemsList.map((sys: string) => (
+                               <button
+                                  key={sys}
+                                  onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
+                                  className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+                               >
+                                  {sys}
+                               </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      <div>
+                         <div className="flex items-center justify-between mb-2 px-1">
+                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Crawl Depth</label>
+                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{depth} HOPS</span>
+                         </div>
+                         <input 
+                           type="range" min="0" max="3" step="1" 
+                           value={depth} onChange={e => setDepth(Number(e.target.value))}
+                           className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                         />
+                         <div className="flex justify-between text-[7px] font-black text-slate-600 uppercase mt-1.5 px-0.5">
+                            <span>Source</span>
+                            <span>Discovery</span>
+                            <span>Global</span>
+                            <span>Matrix</span>
+                         </div>
+                      </div>
+
+                      <div className="relative">
+                         <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                         <input 
+                           value={searchTerm} 
+                           onChange={e => setSearchTerm(e.target.value)}
+                           placeholder="FOCUS SEARCH..." 
+                           className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-3 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest transition-all" 
+                         />
+                      </div>
+                   </div>
+
+                   <div className="pt-2">
+                      <button 
+                        onClick={() => { setSelectedSystems([]); setSearchTerm(''); setSelectedAssetIds([]); }}
+                        className="w-full py-3 bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-all rounded-xl"
+                      >
+                         Reset Workspace
+                      </button>
+                   </div>
+                </div>
+             </motion.div>
 
              <AnimatePresence>
-               {selectedNode && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="glass-panel p-6 rounded-2xl border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
+               {selectedNode && !isSidebarCollapsed && (
+                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-panel w-80 p-6 rounded-2xl border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
                      <div className="flex items-start justify-between">
                         <div>
                            <div className="flex items-center gap-2 mb-1">
@@ -3471,7 +3539,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
              </AnimatePresence>
           </div>
 
-          <div className="flex-1 w-full h-full relative">
+          <div className={`flex-1 w-full h-full relative transition-opacity duration-500 ${isTopologyCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
              <ForceGraph2D
                ref={fgRef}
                graphData={graphData}
@@ -3480,16 +3548,14 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                nodeCanvasObject={(node: any, ctx, globalScale) => {
                  const label = (node.name || 'UNKNOWN').toUpperCase();
                  const fontSize = 11/globalScale;
-                 ctx.font = `italic 900 ${fontSize}px Inter`;
+                 ctx.font = `700 ${fontSize}px Inter`;
                  
-                 // Node Color Logic
                  const color = node.type === 'Physical' ? '#10b981' : 
                                node.type === 'Virtual' ? '#3b82f6' :
                                node.type === 'Switch' ? '#f43f5e' :
                                node.type === 'Firewall' ? '#f59e0b' :
                                node.type === 'Storage' ? '#8b5cf6' : '#64748b';
 
-                 // Background label bubble
                  const textWidth = ctx.measureText(label).width;
                  const padding = fontSize * 0.4;
                  const bckgDimensions = [textWidth + padding, fontSize + padding/2];
@@ -3502,7 +3568,6 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                  ctx.fillStyle = '#f8fafc';
                  ctx.fillText(label, node.x, node.y + 10 + padding/4);
 
-                 // Draw Node Point
                  ctx.shadowColor = color;
                  ctx.shadowBlur = 15 / globalScale;
                  ctx.beginPath();
@@ -3510,7 +3575,6 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                  ctx.fillStyle = color;
                  ctx.fill();
                  
-                 // Ring for center/selected
                  if (selectedNode?.id === node.id) {
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 2 / globalScale;
@@ -3518,66 +3582,125 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                  }
                  ctx.shadowBlur = 0;
                }}
+               linkCanvasObjectMode={() => 'after'}
+               linkCanvasObject={(link: any, ctx, globalScale) => {
+                 const MAX_FONT_SIZE = 8;
+                 const start = link.source;
+                 const end = link.target;
+                 if (typeof start !== 'object' || typeof end !== 'object') return;
+
+                 const countLabel = link.count > 1 ? ` +${link.count - 1}` : '';
+                 const text = `${link.labels[0]}${countLabel}`.toUpperCase();
+                 
+                 const fontSize = Math.min(MAX_FONT_SIZE, 12 / globalScale);
+                 ctx.font = `700 ${fontSize}px Inter`;
+                 
+                 const textWidth = ctx.measureText(text).width;
+                 const padding = fontSize * 0.8;
+                 const bckgDimensions = [textWidth + padding, fontSize + padding/2];
+
+                 const cp = link.__controlPoints;
+                 const textPos = cp 
+                    ? { x: cp[0], y: cp[1] }
+                    : { x: start.x + (end.x - start.x) * 0.5, y: start.y + (end.y - start.y) * 0.5 };
+
+                 const relLink = { x: end.x - start.x, y: end.y - start.y };
+                 let angle = Math.atan2(relLink.y, relLink.x);
+                 if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
+
+                 ctx.save();
+                 ctx.translate(textPos.x, textPos.y);
+                 ctx.rotate(angle);
+                 
+                 ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+                 ctx.fillRect(-bckgDimensions[0] / 2, -bckgDimensions[1] / 2, bckgDimensions[0], bckgDimensions[1]);
+
+                 ctx.textAlign = 'center';
+                 ctx.textBaseline = 'middle';
+                 ctx.fillStyle = link.type === 'network' ? '#34d399' : '#818cf8';
+                 ctx.fillText(text, 0, 0);
+                 ctx.restore();
+               }}
                linkColor={l => (l as any).type === 'network' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.3)'}
                linkWidth={l => (l as any).type === 'network' ? 1 : 2}
                linkDirectionalParticles={l => (l as any).type === 'network' ? 4 : 0}
                linkDirectionalParticleWidth={2}
                linkDirectionalParticleSpeed={0.005}
                linkDirectionalParticleColor={() => '#10b981'}
-               linkCurvature={0}
+               linkCurvature={l => (l as any).curvature || 0}
                onNodeClick={node => setSelectedNode(node)}
+               onLinkHover={link => setHoveredLink(link)}
                backgroundColor="#020617"
              />
           </div>
 
-          {/* Legend Overlay */}
-          <AnimatePresence>
-             {showLegend && (
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }} 
-                  animate={{ opacity: 1, x: 0 }} 
-                  exit={{ opacity: 0, x: 20 }}
-                  className="absolute bottom-8 left-8 z-10 glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl pointer-events-auto"
-                >
-                   <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vector Legend</h4>
-                      <button onClick={() => setShowLegend(false)} className="text-slate-600 hover:text-white transition-colors"><X size={14}/></button>
-                   </div>
-                   <div className="space-y-4">
-                      <div className="flex flex-col gap-2">
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Dependency Vector</span>
-                         </div>
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-0.5 bg-emerald-500/30 flex items-center justify-center">
-                               <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                            </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Network Fabric</span>
-                         </div>
-                      </div>
-                      <div className="h-px bg-white/5" />
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                         {[
-                            { label: 'Physical', color: 'bg-emerald-500' },
-                            { label: 'Virtual', color: 'bg-blue-500' },
-                            { label: 'Switch', color: 'bg-rose-500' },
-                            { label: 'Firewall', color: 'bg-orange-500' },
-                            { label: 'Storage', color: 'bg-purple-500' },
-                            { label: 'Other', color: 'bg-slate-500' }
-                         ].map(type => (
-                            <div key={type.label} className="flex items-center gap-2">
-                               <div className={`w-2 h-2 rounded-full ${type.color}`} />
-                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{type.label}</span>
-                            </div>
-                         ))}
-                      </div>
-                   </div>
-                </motion.div>
-             )}
-          </AnimatePresence>
+          {/* Legend Overlay - Moved to Top Right */}
+          <div className={`absolute top-8 right-8 z-20 flex flex-col items-end gap-3 pointer-events-none transition-opacity duration-500 ${isTopologyCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+             <AnimatePresence>
+               {showLegend && !isTopologyCollapsed && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }} 
+                    animate={{ opacity: 1, x: 0 }} 
+                    exit={{ opacity: 0, x: 20 }}
+                    className="glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl pointer-events-auto w-64"
+                  >
+                     <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                        <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vector Legend</h4>
+                        <button onClick={() => setShowLegend(false)} className="text-slate-600 hover:text-white transition-colors"><X size={14}/></button>
+                     </div>
+                     <div className="space-y-4">
+                        <div className="flex flex-col gap-2">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                              <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Dependency Vector</span>
+                           </div>
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-0.5 bg-emerald-500/30 flex items-center justify-center">
+                                 <div className="w-1 h-1 rounded-full bg-emerald-400" />
+                              </div>
+                              <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Network Fabric</span>
+                           </div>
+                        </div>
+                        <div className="h-px bg-white/5" />
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                           {[
+                              { label: 'Physical', color: 'bg-emerald-500' },
+                              { label: 'Virtual', color: 'bg-blue-500' },
+                              { label: 'Switch', color: 'bg-rose-500' },
+                              { label: 'Firewall', color: 'bg-orange-500' },
+                              { label: 'Storage', color: 'bg-purple-500' },
+                              { label: 'Other', color: 'bg-slate-500' }
+                           ].map(type => (
+                              <div key={type.label} className="flex items-center gap-2">
+                                 <div className={`w-2 h-2 rounded-full ${type.color}`} />
+                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{type.label}</span>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  </motion.div>
+               )}
+             </AnimatePresence>
 
-          <div className="absolute bottom-8 right-8 flex flex-col gap-3">
+             {/* Link Tooltip for hovered multi-links */}
+             <AnimatePresence>
+               {hoveredLink && hoveredLink.labels.length > 0 && (
+                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-panel p-4 rounded-xl border border-blue-500/30 shadow-2xl bg-slate-900/90 backdrop-blur-xl pointer-events-auto min-w-[200px]">
+                   <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2 pb-2 border-b border-white/5">Active Vectors ({hoveredLink.labels.length})</p>
+                   <div className="space-y-1.5">
+                     {hoveredLink.labels.map((l: string, i: number) => (
+                       <div key={i} className="flex items-center gap-2">
+                         <div className={`w-1 h-1 rounded-full ${hoveredLink.type === 'network' ? 'bg-emerald-400' : 'bg-indigo-400'}`} />
+                         <span className="text-[9px] font-black text-white uppercase tracking-tighter italic">{l}</span>
+                       </div>
+                     ))}
+                   </div>
+                 </motion.div>
+               )}
+             </AnimatePresence>
+          </div>
+
+          <div className={`absolute bottom-8 right-8 flex flex-col gap-3 transition-opacity duration-500 ${isTopologyCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
              <div className="glass-panel p-2 rounded-xl border border-white/10 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-xl pointer-events-auto shadow-2xl">
                 <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom In"><ZoomIn size={18}/></button>
                 <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom Out"><ZoomOut size={18}/></button>
