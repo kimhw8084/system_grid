@@ -62,12 +62,17 @@ async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/{vendor_id}/personnel")
 async def add_personnel(vendor_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.VendorPersonnel, data)
+    # Ensure vendor_id is set correctly from the URL path
     clean_data["vendor_id"] = vendor_id
     personnel = models.VendorPersonnel(**clean_data)
     db.add(personnel)
-    await db.commit()
-    await db.refresh(personnel)
-    return personnel
+    try:
+        await db.commit()
+        await db.refresh(personnel)
+        return personnel
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, detail=str(e))
 
 @router.put("/personnel/{personnel_id}")
 async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Depends(get_db)):
@@ -76,11 +81,19 @@ async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Dep
     if not personnel: raise HTTPException(404, "Personnel not found")
     
     clean_data = filter_valid_columns(models.VendorPersonnel, data)
+    # Don't allow changing vendor_id via PUT for now
+    if "vendor_id" in clean_data: del clean_data["vendor_id"]
+    
     for k, v in clean_data.items():
         setattr(personnel, k, v)
     
-    await db.commit()
-    return personnel
+    try:
+        await db.commit()
+        await db.refresh(personnel)
+        return personnel
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, detail=str(e))
 
 @router.delete("/personnel/{personnel_id}")
 async def delete_personnel(personnel_id: int, db: AsyncSession = Depends(get_db)):
@@ -104,7 +117,12 @@ async def get_contracts(include_deleted: bool = False, db: AsyncSession = Depend
 
 @router.post("/contracts")
 async def create_contract(data: dict, db: AsyncSession = Depends(get_db)):
+    # If vendor_id is missing, it will fail anyway, but let's be safe
+    if 'vendor_id' not in data:
+        raise HTTPException(400, detail="vendor_id is required")
+        
     clean_data = filter_valid_columns(models.VendorContract, data)
+    clean_data['vendor_id'] = data['vendor_id'] # Ensure it's passed through
     
     # Handle dates
     if 'effective_date' in data:

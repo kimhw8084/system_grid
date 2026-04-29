@@ -64,7 +64,8 @@ def seed():
             "IncidentType": ["Network Outage", "Database Failure", "Application Crash", "Security Incident", "Hardware Fault", "Performance Degradation"],
             "DetectionType": ["Automated Alert", "Manual Observation", "Customer Report", "Log Analysis", "Security Scanner", "External Intelligence"],
             "ImpactType": ["Service Unavailable", "Data Loss", "Performance Degradation", "Internal Only", "Regulatory Non-compliance"],
-            "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"]
+            "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"],
+            "VendorCountry": ["South Korea", "USA", "Japan", "Germany", "Taiwan", "Netherlands"]
         }
         for cat, vals in cats.items():
             for v in vals:
@@ -315,7 +316,7 @@ def seed():
             try:
                 v_ref = next(v for v in vendors if mfr in v.name or v.name in mfr)
                 current_assets = list(v_ref.contracts[0].covered_assets or [])
-                current_assets.append({"device_id": d.id, "support_type": "Both"})
+                current_assets.append(d.id)
                 v_ref.contracts[0].covered_assets = current_assets
             except StopIteration:
                 pass

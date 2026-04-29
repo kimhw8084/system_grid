@@ -16,7 +16,8 @@ def update_enums():
         "IncidentType": ["Network Outage", "Database Failure", "Application Crash", "Security Incident", "Hardware Fault", "Performance Degradation"],
         "DetectionType": ["Automated Alert", "Manual Observation", "Customer Report", "Log Analysis", "Security Scanner", "External Intelligence"],
         "ImpactType": ["Service Unavailable", "Data Loss", "Performance Degradation", "Internal Only", "Regulatory Non-compliance"],
-        "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"]
+        "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"],
+        "VendorCountry": ["South Korea", "USA"]
     }
     
     with Session(engine) as db:

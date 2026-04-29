@@ -339,7 +339,8 @@ export default function Vendor() {
         title="Vendor Matrix Config"
         sections={[
             { title: "Service Categories", category: "VendorCategory", icon: Layers },
-            { title: "Relationship Status", category: "Status", icon: RefreshCcw }
+            { title: "Relationship Status", category: "Status", icon: RefreshCcw },
+            { title: "Country List", category: "VendorCountry", icon: Flag }
         ]}
       />
 
@@ -782,6 +783,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
 
 function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
+  const [isEditing, setIsEditing] = useState(!item.id) // Default to edit if new
   
   const addAccount = () => {
     const accs = [...(formData.accounts || []), { type: '', username: '', purpose_description: '' }]
@@ -793,112 +795,227 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
     setFormData({ ...formData, pcs: pcs })
   }
 
+  const handleSave = () => {
+    onSave(formData)
+    setIsEditing(false)
+  }
+
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Member Credentials</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Info</h2>
+            {!isEditing ? (
+               <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Personnel</button>
+            ) : (
+               <div className="flex items-center gap-2">
+                 <button onClick={() => { setFormData({...item}); setIsEditing(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+               </div>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-10 mt-8">
-          <div className="space-y-6">
+        <div className="mt-8 space-y-10">
+          {/* Identity Info - Full Row */}
+          <section className="space-y-6">
             <SectionHeader icon={User} title="Identity Info" />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-4 gap-6">
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Name (English)</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Name (English)</label>
+                {isEditing ? (
+                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.name || '---'}</p>
+                )}
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Name (Original)</label>
-                <input value={formData.name_original} onChange={e => setFormData({...formData, name_original: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Name (Original)</label>
+                {isEditing ? (
+                  <input value={formData.name_original} onChange={e => setFormData({...formData, name_original: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.name_original || '---'}</p>
+                )}
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Position</label>
-                <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Position</label>
+                {isEditing ? (
+                  <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.position || '---'}</p>
+                )}
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Team</label>
-                <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Email (Company)</label>
-                <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Email (Internal)</label>
-                <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Team</label>
+                {isEditing ? (
+                  <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.team || '---'}</p>
+                )}
               </div>
               <div className="col-span-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Phone</label>
-                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Email (Company)</label>
+                {isEditing ? (
+                  <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-blue-400 font-mono py-2 tracking-tight">{formData.company_email || '---'}</p>
+                )}
+              </div>
+              <div className="col-span-1">
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Email (Internal)</label>
+                {isEditing ? (
+                  <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-emerald-400 font-mono py-2 tracking-tight">{formData.internal_email || '---'}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Phone</label>
+                {isEditing ? (
+                  <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                ) : (
+                  <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.phone || '---'}</p>
+                )}
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="space-y-8">
-            <div>
-              <div className="flex items-center justify-between mb-4">
+          {/* Accounts & Assets Side-by-Side */}
+          <div className="grid grid-cols-2 gap-10">
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
                 <SectionHeader icon={Key} title="System Accounts" color="text-emerald-400" />
-                <button onClick={addAccount} className="p-1 text-emerald-400 hover:text-white transition-all hover:scale-110"><PlusCircle size={18}/></button>
+                {isEditing && (
+                  <button onClick={addAccount} className="p-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-lg transition-all active:scale-95 shadow-lg shadow-emerald-500/10">
+                    <Plus size={14} />
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 {formData.accounts?.map((acc: any, i: number) => (
-                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-2 relative group">
-                    <button onClick={() => setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
-                    <div className="grid grid-cols-2 gap-2">
-                       <input placeholder="Type" value={acc.type} onChange={e => {
-                         const newAccs = [...formData.accounts]; newAccs[i].type = e.target.value; setFormData({...formData, accounts: newAccs})
-                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
-                       <input placeholder="Username" value={acc.username} onChange={e => {
-                         const newAccs = [...formData.accounts]; newAccs[i].username = e.target.value; setFormData({...formData, accounts: newAccs})
-                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-3 relative group hover:bg-white/10 transition-all">
+                    {isEditing && (
+                      <button onClick={() => setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
+                        <Trash size={12}/>
+                      </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Account Type</label>
+                         {isEditing ? (
+                           <input placeholder="Type" value={acc.type} onChange={e => {
+                             const newAccs = [...formData.accounts]; newAccs[i].type = e.target.value; setFormData({...formData, accounts: newAccs})
+                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
+                         ) : (
+                           <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-tight">{acc.type || '---'}</p>
+                         )}
+                       </div>
+                       <div>
+                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Username</label>
+                         {isEditing ? (
+                           <input placeholder="Username" value={acc.username} onChange={e => {
+                             const newAccs = [...formData.accounts]; newAccs[i].username = e.target.value; setFormData({...formData, accounts: newAccs})
+                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
+                         ) : (
+                           <p className="text-[10px] font-bold text-white font-mono">{acc.username || '---'}</p>
+                         )}
+                       </div>
                     </div>
-                    <input placeholder="Purpose Description" value={acc.purpose_description} onChange={e => {
-                      const newAccs = [...formData.accounts]; newAccs[i].purpose_description = e.target.value; setFormData({...formData, accounts: newAccs})
-                    }} className="w-full bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                    <div>
+                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
+                      {isEditing ? (
+                        <input placeholder="Purpose Description" value={acc.purpose_description} onChange={e => {
+                          const newAccs = [...formData.accounts]; newAccs[i].purpose_description = e.target.value; setFormData({...formData, accounts: newAccs})
+                        }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-emerald-500/30 transition-all" />
+                      ) : (
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{acc.purpose_description || 'No description provided'}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
+                {(!formData.accounts || formData.accounts.length === 0) && (
+                  <div className="py-10 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
+                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No system accounts linked</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
 
-            <div>
-              <div className="flex items-center justify-between mb-4">
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
                 <SectionHeader icon={Monitor} title="PC / VDI Assets" color="text-indigo-400" />
-                <button onClick={addPC} className="p-1 text-indigo-400 hover:text-white transition-all hover:scale-110"><PlusCircle size={18}/></button>
+                {isEditing && (
+                  <button onClick={addPC} className="p-1.5 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg transition-all active:scale-95 shadow-lg shadow-indigo-500/10">
+                    <Plus size={14} />
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 {formData.pcs?.map((pc: any, i: number) => (
-                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-2 relative group">
-                    <button onClick={() => setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
-                    <div className="grid grid-cols-2 gap-2">
-                       <input placeholder="Asset Name" value={pc.name} onChange={e => {
-                         const newPcs = [...formData.pcs]; newPcs[i].name = e.target.value; setFormData({...formData, pcs: newPcs})
-                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
-                       <select value={pc.type} onChange={e => {
-                         const newPcs = [...formData.pcs]; newPcs[i].type = e.target.value; setFormData({...formData, pcs: newPcs})
-                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white">
-                         <option value="PC">PC</option>
-                         <option value="VDI">VDI</option>
-                         <option value="Laptop">Laptop</option>
-                       </select>
+                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-3 relative group hover:bg-white/10 transition-all">
+                    {isEditing && (
+                      <button onClick={() => setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
+                        <Trash size={12}/>
+                      </button>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                       <div>
+                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Asset Name</label>
+                         {isEditing ? (
+                           <input placeholder="Asset Name" value={pc.name} onChange={e => {
+                             const newPcs = [...formData.pcs]; newPcs[i].name = e.target.value; setFormData({...formData, pcs: newPcs})
+                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all" />
+                         ) : (
+                           <p className="text-[10px] font-bold text-white uppercase tracking-tight">{pc.name || '---'}</p>
+                         )}
+                       </div>
+                       <div>
+                         <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Device Type</label>
+                         {isEditing ? (
+                           <select value={pc.type} onChange={e => {
+                             const newPcs = [...formData.pcs]; newPcs[i].type = e.target.value; setFormData({...formData, pcs: newPcs})
+                           }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all">
+                             <option value="PC">PC</option>
+                             <option value="VDI">VDI</option>
+                             <option value="Laptop">Laptop</option>
+                             <option value="Workstation">Workstation</option>
+                           </select>
+                         ) : (
+                           <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-tight">{pc.type || '---'}</p>
+                         )}
+                       </div>
                     </div>
-                    <input placeholder="Purpose Description" value={pc.purpose_description} onChange={e => {
-                      const newPcs = [...formData.pcs]; newPcs[i].purpose_description = e.target.value; setFormData({...formData, pcs: newPcs})
-                    }} className="w-full bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                    <div>
+                      <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Purpose Description</label>
+                      {isEditing ? (
+                        <input placeholder="Purpose Description" value={pc.purpose_description} onChange={e => {
+                          const newPcs = [...formData.pcs]; newPcs[i].purpose_description = e.target.value; setFormData({...formData, pcs: newPcs})
+                        }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-indigo-500/30 transition-all" />
+                      ) : (
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{pc.purpose_description || 'No description provided'}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
+                {(!formData.pcs || formData.pcs.length === 0) && (
+                  <div className="py-10 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
+                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No managed assets linked</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
           </div>
         </div>
 
-        <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-          <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-            {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-            Synchronize Member
-          </button>
+        <div className="flex space-x-3 pt-12 mt-auto">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
+          {isEditing && (
+            <button onClick={handleSave} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+              {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
+              Save Personnel Info
+            </button>
+          )}
         </div>
       </motion.div>
     </div>
@@ -956,10 +1073,18 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
 function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
   const [isEditing, setIsEditing] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+
+  // Filter systems to only those present in devices
+  const usedSystems = useMemo(() => {
+    const assetSystems = new Set(devices?.map((d: any) => d.system).filter(Boolean));
+    return systems?.filter((s: any) => assetSystems.has(s.value)) || [];
+  }, [devices, systems]);
 
   const addSOW = () => {
     const sow = [...(formData.scope_of_work || []), { work_description: '', frequency: '', response: '', objective_description: '', importance: 'Medium' }]
     setFormData({ ...formData, scope_of_work: sow })
+    setHasChanges(true)
   }
 
   const filteredAssets = useMemo(() => {
@@ -969,20 +1094,49 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
 
   const toggleSystem = (sys: string) => {
     const syss = [...(formData.covered_systems || [])]
+    let newSyss;
     if (syss.includes(sys)) {
-      setFormData({...formData, covered_systems: syss.filter(s => s !== sys)})
+      newSyss = syss.filter(s => s !== sys)
     } else {
-      setFormData({...formData, covered_systems: [...syss, sys]})
+      newSyss = [...syss, sys]
     }
+    setFormData({...formData, covered_systems: newSyss})
+    setHasChanges(true)
   }
 
   const toggleAsset = (assetId: number) => {
     const assets = [...(formData.covered_assets || [])]
+    let newAssets;
     if (assets.includes(assetId)) {
-      setFormData({...formData, covered_assets: assets.filter(id => id !== assetId)})
+      newAssets = assets.filter(id => id !== assetId)
     } else {
-      setFormData({...formData, covered_assets: [...assets, assetId]})
+      newAssets = [...assets, assetId]
     }
+    setFormData({...formData, covered_assets: newAssets})
+    setHasChanges(true)
+  }
+
+  const handleSave = () => {
+    onSave(formData)
+    setIsEditing(false)
+    setHasChanges(false)
+  }
+
+  const updateField = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
+    setHasChanges(true)
+  }
+
+  const updateSchedule = (field: string, value: any) => {
+    setFormData({ ...formData, schedule: { ...formData.schedule, [field]: value } })
+    setHasChanges(true)
+  }
+
+  const updateSowItem = (index: number, field: string, value: any) => {
+    const newSow = [...formData.scope_of_work];
+    newSow[index] = { ...newSow[index], [field]: value };
+    setFormData({ ...formData, scope_of_work: newSow });
+    setHasChanges(true);
   }
 
   return (
@@ -992,9 +1146,11 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
           <div className="flex items-center gap-6">
              <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Contract Details</h2>
              {!isEditing ? (
-               <button onClick={() => setIsEditing(true)} className="px-4 py-1 bg-blue-600 text-white rounded text-[9px] font-bold uppercase tracking-widest">Enable Edit</button>
+               <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Enable Edit Mode</button>
              ) : (
-               <button onClick={() => setIsEditing(false)} className="px-4 py-1 bg-white/10 text-slate-400 rounded text-[9px] font-bold uppercase tracking-widest">View Mode</button>
+               <div className="flex items-center gap-2">
+                 <button onClick={() => { setFormData({...item}); setIsEditing(false); setHasChanges(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+               </div>
              )}
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
@@ -1006,24 +1162,44 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                  <SectionHeader icon={Info} title="Administrative Info" />
                  <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
-                       <input readOnly={!isEditing} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Contract Title</label>
+                       {isEditing ? (
+                         <input value={formData.title} onChange={e => updateField('title', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.title || '---'}</p>
+                       )}
                     </div>
                     <div>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
-                       <input readOnly={!isEditing} value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Contract ID</label>
+                       {isEditing ? (
+                         <input value={formData.contract_id} onChange={e => updateField('contract_id', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.contract_id || '---'}</p>
+                       )}
                     </div>
                     <div>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
-                       <input readOnly={!isEditing} value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white font-mono" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Doc Link</label>
+                       {isEditing ? (
+                         <input value={formData.document_link} onChange={e => updateField('document_link', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-blue-400 font-mono py-2 tracking-tight">{formData.document_link || '---'}</p>
+                       )}
                     </div>
                     <div>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
-                       <input readOnly={!isEditing} type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Effective Date</label>
+                       {isEditing ? (
+                         <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => updateField('effective_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.effective_date ? new Date(formData.effective_date).toLocaleDateString() : '---'}</p>
+                       )}
                     </div>
                     <div>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
-                       <input readOnly={!isEditing} type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Expiry Date</label>
+                       {isEditing ? (
+                         <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => updateField('expiry_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.expiry_date ? new Date(formData.expiry_date).toLocaleDateString() : '---'}</p>
+                       )}
                     </div>
                  </div>
               </section>
@@ -1032,26 +1208,32 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                  <SectionHeader icon={Layers} title="Infrastructure Coverage" color="text-indigo-400" />
                  <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                       <label className="text-[9px] font-bold text-slate-600 uppercase">Covered Systems</label>
-                       <div className="bg-black/20 rounded-lg border border-white/5 p-2 h-40 overflow-y-auto custom-scrollbar space-y-1">
-                          {systems?.map((s: any) => (
-                             <label key={s.value} className="flex items-center space-x-2 p-1.5 hover:bg-white/5 rounded cursor-pointer transition-all">
-                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-3 h-3 rounded bg-slate-900" />
-                                <span className="text-[10px] font-bold uppercase text-slate-300">{s.label}</span>
+                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Covered Systems</label>
+                       <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
+                          {usedSystems.length === 0 && <p className="text-[8px] text-slate-600 text-center py-16 uppercase font-bold">No active systems found in assets</p>}
+                          {usedSystems.map((s: any) => (
+                             <label key={s.value} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
+                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500/20" />
+                                <span className={`text-[10px] font-bold uppercase tracking-tight ${formData.covered_systems?.includes(s.value) ? 'text-white' : 'text-slate-500'}`}>{s.label}</span>
                              </label>
                           ))}
                        </div>
                     </div>
                     <div className="space-y-2">
-                       <label className="text-[9px] font-bold text-slate-600 uppercase">Propagated Assets</label>
-                       <div className="bg-black/20 rounded-lg border border-white/5 p-2 h-40 overflow-y-auto custom-scrollbar space-y-1">
-                          {filteredAssets.length === 0 && <p className="text-[8px] text-slate-600 text-center py-10 uppercase font-bold">Select systems to list assets</p>}
+                       <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Propagated Assets</label>
+                       <div className="bg-black/20 rounded-lg border border-white/5 p-3 h-48 overflow-y-auto custom-scrollbar space-y-1.5">
+                          {filteredAssets.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-full space-y-2 text-slate-600">
+                               <Server size={20} className="opacity-20" />
+                               <p className="text-[8px] uppercase font-bold text-center">Select systems to list assets</p>
+                            </div>
+                          )}
                           {filteredAssets.map((a: any) => (
-                             <label key={a.id} className="flex items-center space-x-2 p-1.5 hover:bg-white/5 rounded cursor-pointer transition-all">
-                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-3 h-3 rounded bg-slate-900" />
-                                <div className="flex flex-col">
-                                   <span className="text-[10px] font-bold uppercase text-white">{a.name}</span>
-                                   <span className="text-[8px] text-slate-500 font-bold uppercase">{a.system}</span>
+                             <label key={a.id} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
+                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500/20" />
+                                <div className="flex flex-col min-w-0">
+                                   <span className={`text-[10px] font-bold uppercase tracking-tight truncate ${formData.covered_assets?.includes(a.id) ? 'text-white' : 'text-slate-500'}`}>{a.name}</span>
+                                   <span className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter">{a.system}</span>
                                 </div>
                              </label>
                           ))}
@@ -1062,20 +1244,32 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
 
               <section>
                  <SectionHeader icon={Clock} title="Availability & Policy" color="text-emerald-400" />
-                 <div className="grid grid-cols-1 gap-4">
+                 <div className="grid grid-cols-1 gap-6">
                     <div className="grid grid-cols-2 gap-4">
                        <div>
-                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Work Schedule</label>
-                          <input readOnly={!isEditing} value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded px-4 py-2 text-xs text-white" />
+                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Work Schedule</label>
+                          {isEditing ? (
+                            <input value={formData.schedule?.work_schedule} onChange={e => updateSchedule('work_schedule', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+                          ) : (
+                            <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.work_schedule || '---'}</p>
+                          )}
                        </div>
                        <div>
-                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">On-Call Method</label>
-                          <input readOnly={!isEditing} value={formData.schedule?.oncall_method} onChange={e => setFormData({...formData, schedule: {...formData.schedule, oncall_method: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded px-4 py-2 text-xs text-white" />
+                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">On-Call Method</label>
+                          {isEditing ? (
+                            <input value={formData.schedule?.oncall_method} onChange={e => updateSchedule('oncall_method', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+                          ) : (
+                            <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.schedule?.oncall_method || '---'}</p>
+                          )}
                        </div>
                     </div>
                     <div>
-                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Holiday Policy</label>
-                       <textarea readOnly={!isEditing} value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[60px]" />
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Holiday Policy</label>
+                       {isEditing ? (
+                         <textarea value={formData.schedule?.holiday_policy} onChange={e => updateSchedule('holiday_policy', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[80px] outline-none focus:border-emerald-500/30 transition-all" />
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight leading-relaxed">{formData.schedule?.holiday_policy || '---'}</p>
+                       )}
                     </div>
                  </div>
               </section>
@@ -1085,56 +1279,101 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
               <section>
                  <div className="flex items-center justify-between mb-4">
                     <SectionHeader icon={Terminal} title="Scope of Work Matrix" color="text-amber-400" />
-                    {isEditing && <button onClick={addSOW} className="p-1 text-amber-400 hover:text-white transition-all"><PlusCircle size={18}/></button>}
+                    {isEditing && (
+                      <button onClick={addSOW} className="p-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded-lg transition-all active:scale-95 shadow-lg shadow-amber-500/10">
+                        <Plus size={14} />
+                      </button>
+                    )}
                  </div>
-                 <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                 <div className="space-y-4 max-h-[480px] overflow-y-auto custom-scrollbar pr-3">
                     {formData.scope_of_work?.map((s: any, i: number) => (
-                       <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 relative group">
-                          {isEditing && <button onClick={() => setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>}
-                          <input readOnly={!isEditing} placeholder="Work Description" value={s.work_description} onChange={e => {
-                            const newSow = [...formData.scope_of_work]; newSow[i].work_description = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                          }} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-1.5 text-xs text-white" />
-                          <div className="grid grid-cols-2 gap-2">
-                             <input readOnly={!isEditing} placeholder="Frequency" value={s.frequency} onChange={e => {
-                               const newSow = [...formData.scope_of_work]; newSow[i].frequency = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
-                             <input readOnly={!isEditing} placeholder="Response" value={s.response} onChange={e => {
-                               const newSow = [...formData.scope_of_work]; newSow[i].response = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
-                             <input readOnly={!isEditing} placeholder="Objective Description" value={s.objective_description} onChange={e => {
-                               const newSow = [...formData.scope_of_work]; newSow[i].objective_description = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white col-span-2" />
-                             <select disabled={!isEditing} value={s.importance} onChange={e => {
-                               const newSow = [...formData.scope_of_work]; newSow[i].importance = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white">
-                                <option value="Critical">Critical</option>
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                             </select>
+                       <div key={i} className="bg-white/5 p-5 rounded-lg border border-white/5 space-y-4 relative group hover:bg-white/10 transition-all">
+                          {isEditing && (
+                            <button onClick={() => { setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)}); setHasChanges(true); }} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-all p-1">
+                              <Trash size={12}/>
+                            </button>
+                          )}
+                          
+                          <div>
+                            <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Work Description</label>
+                            {isEditing ? (
+                              <input placeholder="Describe the task..." value={s.work_description} onChange={e => updateSowItem(i, 'work_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+                            ) : (
+                              <p className="text-[11px] font-bold text-white uppercase tracking-tight">{s.work_description || '---'}</p>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                             <div>
+                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Frequency</label>
+                                {isEditing ? (
+                                  <input placeholder="e.g. Monthly" value={s.frequency} onChange={e => updateSowItem(i, 'frequency', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
+                                ) : (
+                                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">{s.frequency || '---'}</p>
+                                )}
+                             </div>
+                             <div>
+                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Response Time</label>
+                                {isEditing ? (
+                                  <input placeholder="e.g. NBD" value={s.response} onChange={e => updateSowItem(i, 'response', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
+                                ) : (
+                                  <p className="text-[10px] font-bold text-white uppercase tracking-widest font-mono">{s.response || '---'}</p>
+                                )}
+                             </div>
+                             <div className="col-span-2">
+                                <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Objective & Criticality</label>
+                                <div className="flex gap-2">
+                                  {isEditing ? (
+                                    <>
+                                      <input placeholder="Purpose of this task..." value={s.objective_description} onChange={e => updateSowItem(i, 'objective_description', e.target.value)} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all" />
+                                      <select value={s.importance} onChange={e => updateSowItem(i, 'importance', e.target.value)} className="w-32 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white outline-none focus:border-amber-500/30 transition-all">
+                                        <option value="Critical">Critical</option>
+                                        <option value="High">High</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="Low">Low</option>
+                                      </select>
+                                    </>
+                                  ) : (
+                                    <div className="flex items-center justify-between w-full">
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight italic">{s.objective_description || 'No objective defined'}</p>
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${
+                                        s.importance === 'Critical' ? 'bg-rose-600 text-white' : 
+                                        s.importance === 'High' ? 'bg-amber-600 text-white' : 
+                                        'bg-slate-700 text-slate-300'
+                                      }`}>{s.importance}</span>
+                                    </div>
+                                  )}
+                                </div>
+                             </div>
                           </div>
                        </div>
                     ))}
                     {(!formData.scope_of_work || formData.scope_of_work.length === 0) && (
-                       <p className="text-[9px] text-slate-600 text-center font-bold uppercase py-10">No scope items defined</p>
+                       <div className="py-20 text-center bg-black/20 border border-dashed border-white/5 rounded-lg">
+                          <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">No scope items defined for this contract</p>
+                       </div>
                     )}
                  </div>
               </section>
 
               <section>
                  <SectionHeader icon={RefreshCcw} title="Evolution & Changes" color="text-blue-400" />
-                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">What changed from previous contract</label>
-                 <textarea readOnly={!isEditing} value={formData.previous_contract_changes} onChange={e => setFormData({...formData, previous_contract_changes: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[100px]" placeholder="Record key structural or commercial changes..." />
+                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 tracking-widest">Key modifications from previous version</label>
+                 {isEditing ? (
+                   <textarea value={formData.previous_contract_changes} onChange={e => updateField('previous_contract_changes', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs text-white min-h-[120px] outline-none focus:border-blue-500/30 transition-all" placeholder="Document commercial or technical deviations..." />
+                 ) : (
+                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight leading-relaxed min-h-[100px]">{formData.previous_contract_changes || 'Initial version - no previous changes recorded'}</p>
+                 )}
               </section>
            </div>
         </div>
 
-        <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Close</button>
-          {isEditing && (
-            <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-emerald-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+        <div className="flex space-x-3 pt-12 mt-auto">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Close Portal</button>
+          {isEditing && hasChanges && (
+            <button onClick={handleSave} className="flex-[2] py-4 bg-emerald-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
               {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-              Save Contract Changes
+              Commit Changes
             </button>
           )}
         </div>

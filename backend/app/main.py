@@ -78,6 +78,9 @@ async def _auto_seed():
             ("BusinessUnit", "HR", "Human Resources"),
             ("BusinessUnit", "Sales", "Sales & Business Development"),
             ("BusinessUnit", "Security", "Information Security"),
+            # Vendor Countries
+            ("VendorCountry", "South Korea", "Republic of Korea"),
+            ("VendorCountry", "USA", "United States of America"),
         ]
         for cat, val, desc in defaults:
             db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
