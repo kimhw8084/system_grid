@@ -471,3 +471,55 @@ class UserPreferenceBase(BaseModel):
 class UserPreferenceCreate(UserPreferenceBase): pass
 class UserPreferenceResponse(UserPreferenceBase, BaseSchema):
     user_id: str
+
+# --- VENDOR SCHEMAS ---
+
+class VendorPersonnelBase(BaseModel):
+    name: str
+    name_original: Optional[str] = None
+    position: Optional[str] = None
+    team: Optional[str] = None
+    company_email: Optional[str] = None
+    internal_email: Optional[str] = None
+    phone: Optional[str] = None
+    accounts: Optional[List[Dict[str, Any]]] = []
+    pcs: Optional[List[Dict[str, Any]]] = []
+    metadata_json: Optional[Dict[str, Any]] = {}
+
+class VendorPersonnelCreate(VendorPersonnelBase):
+    vendor_id: int
+
+class VendorPersonnelResponse(VendorPersonnelBase, BaseSchema):
+    vendor_id: int
+
+class VendorContractBase(BaseModel):
+    title: str
+    contract_id: Optional[str] = None
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    covered_systems: Optional[List[str]] = []
+    covered_assets: Optional[List[int]] = []
+    scope_of_work: Optional[List[Dict[str, Any]]] = []
+    schedule: Optional[Dict[str, Any]] = {}
+    document_link: Optional[str] = None
+    previous_contract_changes: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = {}
+
+class VendorContractCreate(VendorContractBase):
+    vendor_id: int
+
+class VendorContractResponse(VendorContractBase, BaseSchema):
+    vendor_id: int
+
+class VendorBase(BaseModel):
+    name: str
+    country: Optional[str] = "South Korea"
+    primary_email: Optional[str] = None
+    primary_phone: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = {}
+
+class VendorCreate(VendorBase): pass
+class VendorResponse(VendorBase, BaseSchema):
+    is_deleted: bool = False
+    personnel: List[VendorPersonnelResponse] = []
+    contracts: List[VendorContractResponse] = []

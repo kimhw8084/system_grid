@@ -4,7 +4,7 @@ import {
   Plus, Search, Trash2, Edit2, Info, Globe, 
   Save, X, PlusCircle, User, MessageSquare,
   MoreVertical, RefreshCcw, Shield, Eye,
-  FileText, Briefcase, Calendar, LayoutGrid, List,
+  FileText, Briefcase, Calendar, LayoutGrid, List, Mail,
   Terminal, Monitor, Key, Clock, ShieldCheck, Check, ArrowRight, Server, Phone, Flag, ExternalLink, Trash, Zap, Layers, Activity, Settings, Sliders, Clipboard
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -130,16 +130,6 @@ export default function Vendor() {
       suppressHide: true
     },
     { 
-      field: "id", 
-      headerName: "ID", 
-      width: 70,
-      minWidth: 70,
-      pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-    },
-    { 
       field: "name", 
       headerName: "Vendor Name", 
       flex: 1, 
@@ -151,112 +141,20 @@ export default function Vendor() {
       hide: hiddenColumns.includes("name")
     },
     { 
-      field: "primary_email", 
-      headerName: "Primary Email", 
-      width: 180, 
-      filter: true, 
-      cellClass: 'font-bold font-mono',
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("primary_email")
-    },
-    { 
-      field: "primary_phone", 
-      headerName: "Primary Phone", 
-      width: 130, 
-      filter: true, 
-      cellClass: 'font-bold',
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("primary_phone")
-    },
-    { 
       field: "country", 
       headerName: "Country", 
-      width: 100, 
+      width: 150, 
       filter: true, 
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("country")
     },
-    { 
-      headerName: "First Contract", 
-      width: 120,
-      filter: 'agDateColumnFilter',
-      valueGetter: (p: any) => {
-        const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
-        if (!dates || dates.length === 0) return null;
-        return new Date(Math.min(...dates.map((d: any) => new Date(d).getTime())));
-      },
-      cellClass: 'text-center font-bold text-slate-400 uppercase',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("first_contract")
-    },
-    { 
-      headerName: "Latest Contract", 
-      width: 120,
-      filter: 'agDateColumnFilter',
-      valueGetter: (p: any) => {
-        const dates = p.data.contracts?.map((c: any) => c.effective_date).filter(Boolean);
-        if (!dates || dates.length === 0) return null;
-        return new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
-      },
-      cellClass: 'text-center font-bold text-emerald-400 uppercase',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleDateString()}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("latest_contract")
-    },
-    {
-      headerName: "Active",
-      width: 80,
-      filter: true,
-      valueGetter: (p: any) => {
-        const now = new Date();
-        return p.data.contracts?.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > now).length || 0;
-      },
-      cellClass: 'text-center font-bold text-blue-400',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
-      hide: hiddenColumns.includes("active_contracts")
-    },
-    {
-      headerName: "Historic",
-      width: 80,
-      filter: true,
-      valueGetter: (p: any) => {
-        const now = new Date();
-        return p.data.contracts?.filter((c: any) => c.expiry_date && new Date(c.expiry_date) <= now).length || 0;
-      },
-      cellClass: 'text-center font-bold text-slate-400',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
-      hide: hiddenColumns.includes("historic_contracts")
-    },
-    {
-      headerName: "Assets",
-      width: 80,
-      filter: true,
-      valueGetter: (p: any) => {
-        const assets = new Set();
-        p.data.contracts?.forEach((c: any) => {
-          c.covered_assets?.forEach((a: any) => {
-            if (a.device_id) assets.add(a.device_id);
-          });
-        });
-        return assets.size;
-      },
-      cellClass: 'text-center font-bold text-amber-500',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">0</span>,
-      hide: hiddenColumns.includes("covered_assets")
-    },
     {
       field: "actions",
       headerName: "Action",
-      width: 120,
-      minWidth: 120,
+      width: 100,
+      minWidth: 100,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -265,14 +163,13 @@ export default function Vendor() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
                <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
       ),
       suppressHide: true
     }
-  ], [setActiveDetails, setActiveModal, deleteMutation, fontSize, hiddenColumns]) as any
+  ], [setActiveDetails, deleteMutation, fontSize, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -512,6 +409,18 @@ export default function Vendor() {
 
 function VendorForm({ item, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
+  const { data: countries } = useQuery({ 
+    queryKey: ['settings', 'VendorCountry'], 
+    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() 
+  })
+
+  const countryOptions = useMemo(() => {
+    if (countries && countries.length > 0) return countries;
+    return [
+      { label: 'South Korea', value: 'South Korea' },
+      { label: 'United States', value: 'United States' }
+    ]
+  }, [countries])
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
@@ -531,16 +440,22 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
                 <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Country</label>
+                <select 
+                  value={formData.country || 'South Korea'} 
+                  onChange={e => setFormData({...formData, country: e.target.value})} 
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white"
+                >
+                  {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Email</label>
                 <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Primary Phone</label>
                 <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Country</label>
-                <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
             </div>
         </div>
@@ -559,9 +474,28 @@ function VendorForm({ item, onClose, onSave, isSaving }: any) {
 
 function VendorDetails({ vendor, devices, onClose }: any) {
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState('Personnel')
+  const [activeTab, setActiveTab] = useState('Overview')
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState({ ...vendor })
   const [showPersonnelModal, setShowPersonnelModal] = useState<any>(null)
   const [showContractModal, setShowContractModal] = useState<any>(null)
+  const [activeContractDetails, setActiveContractDetails] = useState<any>(null)
+
+  const { data: systems } = useQuery({ 
+    queryKey: ['settings', 'LogicalSystem'], 
+    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json() 
+  })
+
+  const vendorMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return (await apiFetch(`/api/v1/vendors/${vendor.id}`, { method: 'PUT', body: JSON.stringify(data) })).json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      setIsEditing(false)
+      toast.success('Vendor Profile Updated')
+    }
+  })
 
   const personnelMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -576,6 +510,14 @@ function VendorDetails({ vendor, devices, onClose }: any) {
     }
   })
 
+  const deletePersonnelMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/personnel/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      toast.success('Personnel Removed')
+    }
+  })
+
   const contractMutation = useMutation({
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/vendors/contracts/${data.id}` : `/api/v1/vendors/contracts/`
@@ -586,98 +528,106 @@ function VendorDetails({ vendor, devices, onClose }: any) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] })
       setShowContractModal(null)
-      toast.success('Contract Updated')
+      setActiveContractDetails(null)
+      toast.success('Contract Synchronized')
+    }
+  })
+
+  const deleteContractMutation = useMutation({
+    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/bulk-action`, { 
+      method: 'POST', 
+      body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      toast.success('Contract Terminated')
     }
   })
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[90vh] rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-7xl h-[90vh] rounded-lg border border-blue-500/20 overflow-hidden flex flex-col shadow-2xl">
         
         {/* Header Section */}
         <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
           <div className="space-y-4">
              <div className="flex items-center space-x-3">
-                <div className="px-3 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-[9px] font-bold text-blue-400 uppercase tracking-widest">VENDOR_ID: {vendor.id}</div>
+                <div className="px-3 py-1 rounded-lg bg-blue-600/20 border border-blue-500/30 text-[9px] font-bold text-blue-400 uppercase tracking-widest">PARTNER_CODE: {vendor.id}</div>
                 <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400 uppercase tracking-widest">{vendor.country}</div>
              </div>
              <h1 className="text-5xl font-bold uppercase  tracking-tighter text-white">{vendor.name}</h1>
-             <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2 text-slate-400 font-mono text-xs"><Globe size={14} className="text-blue-500" /> <span>{vendor.primary_email}</span></div>
-                <div className="flex items-center space-x-2 text-slate-400 font-mono text-xs"><Phone size={14} className="text-amber-500" /> <span>{vendor.primary_phone}</span></div>
-             </div>
           </div>
           <button onClick={onClose} className="p-3 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar Nav */}
-          <div className="w-56 border-r border-white/5 bg-black/20 p-6 space-y-1">
-             {['Personnel', 'Contracts'].map(tab => (
+          <div className="w-64 border-r border-white/5 bg-black/20 p-6 space-y-1">
+             {['Overview', 'Contracts', 'Personnel'].map(tab => (
                <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${activeTab === tab ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:bg-white/5'}`}>
-                 {tab === 'Personnel' && <User size={16} />}
+                 {tab === 'Overview' && <LayoutGrid size={16} />}
                  {tab === 'Contracts' && <FileText size={16} />}
+                 {tab === 'Personnel' && <User size={16} />}
                  <span className="text-[10px] font-bold uppercase tracking-widest">{tab}</span>
                </button>
              ))}
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-10">
-            {activeTab === 'Personnel' && (
-              <div className="space-y-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#020617]/40">
+            {activeTab === 'Overview' && (
+              <div className="space-y-8 max-w-3xl">
                 <div className="flex items-center justify-between">
-                  <SectionHeader icon={User} title="Vendor Personnel" />
-                  <button onClick={() => setShowPersonnelModal({ name: '', position: '', team: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
-                    <Plus size={14} /> Add Personnel
-                  </button>
+                   <SectionHeader icon={Info} title="Vendor Profile Overview" />
+                   {!isEditing ? (
+                     <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Profile</button>
+                   ) : (
+                     <div className="flex items-center space-x-2">
+                        <button onClick={() => { setFormData({...vendor}); setIsEditing(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                        <button onClick={() => vendorMutation.mutate(formData)} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+                          <Save size={12} /> Save Changes
+                        </button>
+                     </div>
+                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  {vendor.personnel?.map((p: any) => (
-                    <div key={p.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
-                            <User size={20} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white uppercase tracking-tight">{p.name}</h4>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{p.position} // {p.team}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <button onClick={() => setShowPersonnelModal(p)} className="p-2 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={16}/></button>
-                        </div>
+                <div className="grid grid-cols-2 gap-8">
+                   <div className="space-y-6">
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Vendor Name</label>
+                         {isEditing ? (
+                           <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                         ) : (
+                           <p className="text-sm font-bold text-white uppercase">{vendor.name}</p>
+                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-4 mt-6">
-                        <div className="space-y-2">
-                          <p className="text-[8px] font-bold text-slate-600 uppercase">Contact</p>
-                          <p className="text-[10px] text-slate-300 font-mono">{p.company_email}</p>
-                          <p className="text-[10px] text-slate-300 font-mono">{p.phone}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-[8px] font-bold text-slate-600 uppercase">Accounts ({p.accounts?.length || 0})</p>
-                          <div className="flex flex-wrap gap-1">
-                            {p.accounts?.map((acc: any, i: number) => (
-                              <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-bold uppercase">{acc.name}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-[8px] font-bold text-slate-600 uppercase">PCs ({p.pcs?.length || 0})</p>
-                          <div className="flex flex-wrap gap-1">
-                            {p.pcs?.map((pc: any, i: number) => (
-                              <span key={i} className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 rounded text-[8px] font-bold uppercase">{pc.name} ({pc.type})</span>
-                            ))}
-                          </div>
-                        </div>
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Country</label>
+                         {isEditing ? (
+                           <input value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                         ) : (
+                           <p className="text-sm font-bold text-white uppercase">{vendor.country}</p>
+                         )}
                       </div>
-                    </div>
-                  ))}
-                  {(!vendor.personnel || vendor.personnel.length === 0) && (
-                    <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No personnel records found</div>
-                  )}
+                   </div>
+                   <div className="space-y-6">
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Email</label>
+                         {isEditing ? (
+                           <input value={formData.primary_email} onChange={e => setFormData({...formData, primary_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                         ) : (
+                           <p className="text-sm font-bold text-white font-mono">{vendor.primary_email || '---'}</p>
+                         )}
+                      </div>
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Phone</label>
+                         {isEditing ? (
+                           <input value={formData.primary_phone} onChange={e => setFormData({...formData, primary_phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                         ) : (
+                           <p className="text-sm font-bold text-white uppercase">{vendor.primary_phone || '---'}</p>
+                         )}
+                      </div>
+                   </div>
                 </div>
               </div>
             )}
@@ -685,75 +635,113 @@ function VendorDetails({ vendor, devices, onClose }: any) {
             {activeTab === 'Contracts' && (
               <div className="space-y-6">
                  <div className="flex items-center justify-between">
-                    <SectionHeader icon={FileText} title="Vendor Service Contracts" />
-                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_assets: [], scope_of_work: [], schedule: {} })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
-                       <Plus size={14} /> Register Contract
+                    <SectionHeader icon={FileText} title="Service Level Agreements" />
+                    <button onClick={() => setShowContractModal({ title: '', contract_id: '', covered_systems: [], covered_assets: [], scope_of_work: [], schedule: {}, document_link: '', previous_contract_changes: '' })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                       <Plus size={14} /> Register New Contract
                     </button>
                  </div>
                  
                  <div className="grid grid-cols-1 gap-4">
                     {vendor.contracts?.map((c: any) => (
-                       <div key={c.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all">
+                       <div key={c.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all cursor-pointer" onClick={() => setActiveContractDetails(c)}>
                           <div className="flex items-center justify-between">
                              <div className="flex items-center space-x-6">
-                                <div className="w-12 h-12 bg-black/40 rounded-lg flex items-center justify-center text-blue-400 border border-white/5">
+                                <div className="w-12 h-12 bg-black/40 rounded-lg flex items-center justify-center text-blue-400 border border-white/5 group-hover:border-blue-500/30 transition-all">
                                    <FileText size={20} />
                                 </div>
                                 <div>
                                    <h4 className="text-sm font-bold text-white uppercase tracking-tight">{c.title}</h4>
-                                   <div className="flex items-center space-x-3 mt-1">
-                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">ID: {c.contract_id}</span>
-                                      <span className="text-slate-700">•</span>
-                                      <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">EXPIRES: {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'N/A'}</span>
+                                   <div className="flex items-center space-x-3 mt-1 text-[9px] font-bold uppercase tracking-widest">
+                                      <span className="text-slate-500">REF: {c.contract_id || '---'}</span>
+                                      <span className="text-slate-700">|</span>
+                                      <span className={new Date(c.expiry_date) < new Date() ? 'text-rose-500' : 'text-emerald-500'}>
+                                        {c.expiry_date ? `EXP: ${new Date(c.expiry_date).toLocaleDateString()}` : 'OPEN-ENDED'}
+                                      </span>
                                    </div>
                                 </div>
                              </div>
                              <div className="flex items-center space-x-2">
-                                <button onClick={() => setShowContractModal(c)} className="p-2 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={16}/></button>
-                                {c.document_link && (
-                                  <a href={c.document_link} target="_blank" rel="noreferrer" className="p-2 text-slate-500 hover:text-white transition-all"><ExternalLink size={16}/></a>
-                                )}
-                             </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-6 mt-6 border-t border-white/5 pt-6">
-                             <div>
-                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Covered Assets</p>
-                                <div className="space-y-1">
-                                  {c.covered_assets?.map((asset: any, i: number) => {
-                                    const dev = devices?.find((d: any) => d.id === asset.device_id)
-                                    return (
-                                      <div key={i} className="flex items-center justify-between text-[9px] font-bold text-slate-400">
-                                        <span>{dev?.name || 'Unknown'}</span>
-                                        <span className="text-[8px] px-1 bg-white/5 rounded text-slate-500">{asset.support_type}</span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                             </div>
-                             <div>
-                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Scope Summary</p>
-                                <div className="space-y-2">
-                                  {c.scope_of_work?.slice(0, 2).map((s: any, i: number) => (
-                                    <div key={i} className="bg-white/5 p-2 rounded text-[9px] text-slate-300 ">
-                                      {s.deliverable}
-                                    </div>
-                                  ))}
-                                </div>
-                             </div>
-                             <div>
-                                <p className="text-[8px] font-bold text-slate-600 uppercase mb-2">Schedule</p>
-                                <div className="text-[10px] text-slate-400 font-bold">
-                                  {c.schedule?.work_schedule || 'No schedule set'}
-                                </div>
+                                <button onClick={(e) => { e.stopPropagation(); deleteContractMutation.mutate(c.id); }} className="p-2 text-slate-600 hover:text-rose-400 transition-all"><Trash2 size={16}/></button>
+                                <ArrowRight size={16} className="text-slate-600 group-hover:text-blue-400 transition-all" />
                              </div>
                           </div>
                        </div>
                     ))}
                     {(!vendor.contracts || vendor.contracts.length === 0) && (
-                       <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No active service contracts found for this vendor</div>
+                       <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No active service contracts found</div>
                     )}
                  </div>
+              </div>
+            )}
+
+            {activeTab === 'Personnel' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <SectionHeader icon={User} title="Assigned Personnel" />
+                  <button onClick={() => setShowPersonnelModal({ name: '', name_original: '', position: '', team: '', company_email: '', internal_email: '', phone: '', accounts: [], pcs: [] })} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2">
+                    <Plus size={14} /> Add Member
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {vendor.personnel?.map((p: any) => (
+                    <div key={p.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all">
+                      <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
+                            <User size={20} />
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                               <h4 className="text-sm font-bold text-white uppercase tracking-tight">{p.name}</h4>
+                               {p.name_original && <span className="text-[10px] text-slate-500 font-bold">({p.name_original})</span>}
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{p.position} // {p.team}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button onClick={() => setShowPersonnelModal(p)} className="p-2 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={16}/></button>
+                          <button onClick={() => deletePersonnelMutation.mutate(p.id)} className="p-2 text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-8">
+                        <div className="space-y-4">
+                          <p className="text-[8px] font-bold text-slate-600 uppercase border-b border-white/5 pb-1">Communications</p>
+                          <div className="space-y-2">
+                             <div className="flex items-center space-x-2 text-[10px] text-slate-300 font-mono"><Mail size={12} className="text-blue-500" /> <span>{p.company_email}</span></div>
+                             {p.internal_email && <div className="flex items-center space-x-2 text-[10px] text-slate-400 font-mono"><ShieldCheck size={12} className="text-emerald-500" /> <span>{p.internal_email}</span></div>}
+                             <div className="flex items-center space-x-2 text-[10px] text-slate-300 font-mono"><Phone size={12} className="text-amber-500" /> <span>{p.phone}</span></div>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[8px] font-bold text-slate-600 uppercase border-b border-white/5 pb-1">System Accounts ({p.accounts?.length || 0})</p>
+                          <div className="space-y-1">
+                            {p.accounts?.map((acc: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                <span className="text-emerald-400">{acc.type}</span>
+                                <span className="text-white">{acc.username}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <p className="text-[8px] font-bold text-slate-600 uppercase border-b border-white/5 pb-1">Managed Assets ({p.pcs?.length || 0})</p>
+                          <div className="space-y-1">
+                            {p.pcs?.map((pc: any, i: number) => (
+                              <div key={i} className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                                <span className="text-indigo-400">{pc.type}</span>
+                                <span className="text-white">{pc.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {(!vendor.personnel || vendor.personnel.length === 0) && (
+                    <div className="py-20 text-center text-slate-600  text-[10px] font-bold uppercase tracking-widest bg-black/20 rounded-lg border border-dashed border-white/5">No personnel records identified</div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -770,10 +758,19 @@ function VendorDetails({ vendor, devices, onClose }: any) {
           />
         )}
         {showContractModal && (
-          <ContractForm 
+          <ContractRegistrationForm 
             item={showContractModal} 
-            devices={devices} 
             onClose={() => setShowContractModal(null)} 
+            onSave={(d: any) => contractMutation.mutate(d)}
+            isSaving={contractMutation.isPending}
+          />
+        )}
+        {activeContractDetails && (
+          <ContractDetailsForm 
+            item={activeContractDetails} 
+            devices={devices}
+            systems={systems}
+            onClose={() => setActiveContractDetails(null)} 
             onSave={(d: any) => contractMutation.mutate(d)}
             isSaving={contractMutation.isPending}
           />
@@ -787,30 +784,34 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
   
   const addAccount = () => {
-    const accs = [...(formData.accounts || []), { name: '', type: '', created_date: '', status: 'Active' }]
+    const accs = [...(formData.accounts || []), { type: '', username: '', purpose_description: '' }]
     setFormData({ ...formData, accounts: accs })
   }
   
   const addPC = () => {
-    const pcs = [...(formData.pcs || []), { name: '', type: 'PC', created_date: '', status: 'Active' }]
+    const pcs = [...(formData.pcs || []), { name: '', type: 'PC', purpose_description: '' }]
     setFormData({ ...formData, pcs: pcs })
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[800px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Details</h2>
+          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Member Credentials</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 mt-8">
+        <div className="grid grid-cols-2 gap-10 mt-8">
           <div className="space-y-6">
-            <SectionHeader icon={User} title="Core Info" />
+            <SectionHeader icon={User} title="Identity Info" />
             <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Full Name</label>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Name (English)</label>
                 <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Name (Original)</label>
+                <input value={formData.name_original} onChange={e => setFormData({...formData, name_original: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Position</label>
@@ -821,11 +822,11 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                 <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Company Email</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Email (Company)</label>
                 <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Internal Email</label>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Email (Internal)</label>
                 <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
               </div>
               <div className="col-span-2">
@@ -838,19 +839,24 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
           <div className="space-y-8">
             <div>
               <div className="flex items-center justify-between mb-4">
-                <SectionHeader icon={Key} title="Accounts" color="text-emerald-400" />
-                <button onClick={addAccount} className="p-1 text-emerald-400 hover:text-white"><PlusCircle size={16}/></button>
+                <SectionHeader icon={Key} title="System Accounts" color="text-emerald-400" />
+                <button onClick={addAccount} className="p-1 text-emerald-400 hover:text-white transition-all hover:scale-110"><PlusCircle size={18}/></button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {formData.accounts?.map((acc: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input placeholder="Name" value={acc.name} onChange={e => {
-                      const newAccs = [...formData.accounts]; newAccs[i].name = e.target.value; setFormData({...formData, accounts: newAccs})
-                    }} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                    <input placeholder="Type" value={acc.type} onChange={e => {
-                      const newAccs = [...formData.accounts]; newAccs[i].type = e.target.value; setFormData({...formData, accounts: newAccs})
-                    }} className="w-20 bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                    <button onClick={() => setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== i)})} className="text-rose-500"><Trash size={12}/></button>
+                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-2 relative group">
+                    <button onClick={() => setFormData({...formData, accounts: formData.accounts.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
+                    <div className="grid grid-cols-2 gap-2">
+                       <input placeholder="Type" value={acc.type} onChange={e => {
+                         const newAccs = [...formData.accounts]; newAccs[i].type = e.target.value; setFormData({...formData, accounts: newAccs})
+                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                       <input placeholder="Username" value={acc.username} onChange={e => {
+                         const newAccs = [...formData.accounts]; newAccs[i].username = e.target.value; setFormData({...formData, accounts: newAccs})
+                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                    </div>
+                    <input placeholder="Purpose Description" value={acc.purpose_description} onChange={e => {
+                      const newAccs = [...formData.accounts]; newAccs[i].purpose_description = e.target.value; setFormData({...formData, accounts: newAccs})
+                    }} className="w-full bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
                   </div>
                 ))}
               </div>
@@ -858,22 +864,28 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
 
             <div>
               <div className="flex items-center justify-between mb-4">
-                <SectionHeader icon={Monitor} title="PCs / VDIs" color="text-indigo-400" />
-                <button onClick={addPC} className="p-1 text-indigo-400 hover:text-white"><PlusCircle size={16}/></button>
+                <SectionHeader icon={Monitor} title="PC / VDI Assets" color="text-indigo-400" />
+                <button onClick={addPC} className="p-1 text-indigo-400 hover:text-white transition-all hover:scale-110"><PlusCircle size={18}/></button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {formData.pcs?.map((pc: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input placeholder="Name" value={pc.name} onChange={e => {
-                      const newPcs = [...formData.pcs]; newPcs[i].name = e.target.value; setFormData({...formData, pcs: newPcs})
-                    }} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                    <select value={pc.type} onChange={e => {
-                      const newPcs = [...formData.pcs]; newPcs[i].type = e.target.value; setFormData({...formData, pcs: newPcs})
-                    }} className="w-20 bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white">
-                      <option value="PC">PC</option>
-                      <option value="VDI">VDI</option>
-                    </select>
-                    <button onClick={() => setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== i)})} className="text-rose-500"><Trash size={12}/></button>
+                  <div key={i} className="p-4 bg-white/5 border border-white/5 rounded-lg space-y-2 relative group">
+                    <button onClick={() => setFormData({...formData, pcs: formData.pcs.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
+                    <div className="grid grid-cols-2 gap-2">
+                       <input placeholder="Asset Name" value={pc.name} onChange={e => {
+                         const newPcs = [...formData.pcs]; newPcs[i].name = e.target.value; setFormData({...formData, pcs: newPcs})
+                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                       <select value={pc.type} onChange={e => {
+                         const newPcs = [...formData.pcs]; newPcs[i].type = e.target.value; setFormData({...formData, pcs: newPcs})
+                       }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white">
+                         <option value="PC">PC</option>
+                         <option value="VDI">VDI</option>
+                         <option value="Laptop">Laptop</option>
+                       </select>
+                    </div>
+                    <input placeholder="Purpose Description" value={pc.purpose_description} onChange={e => {
+                      const newPcs = [...formData.pcs]; newPcs[i].purpose_description = e.target.value; setFormData({...formData, pcs: newPcs})
+                    }} className="w-full bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
                   </div>
                 ))}
               </div>
@@ -882,10 +894,10 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
           <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-            Sync Personnel
+            Synchronize Member
           </button>
         </div>
       </motion.div>
@@ -893,141 +905,238 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   )
 }
 
-function ContractForm({ item, devices, onClose, onSave, isSaving }: any) {
+function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
   const [formData, setFormData] = useState({ ...item })
-  
-  const addSOW = () => {
-    const sow = [...(formData.scope_of_work || []), { deliverable: '', when: '', response_time: '', objective: '' }]
-    setFormData({ ...formData, scope_of_work: sow })
-  }
-
-  const toggleAsset = (devId: number) => {
-    const exists = formData.covered_assets?.find((a:any) => a.device_id === devId)
-    if (exists) {
-      setFormData({...formData, covered_assets: formData.covered_assets.filter((a:any) => a.device_id !== devId)})
-    } else {
-      setFormData({...formData, covered_assets: [...(formData.covered_assets || []), { device_id: devId, support_type: 'Both' }]})
-    }
-  }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1000px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Service Contract</h2>
+          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> New Contract</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="grid grid-cols-2 gap-10 mt-8">
-          <div className="space-y-8">
-            <section>
-              <SectionHeader icon={Info} title="Contract Basics" />
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
-                  <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
-                  <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
-                  <input value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
-                  <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
-                  <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
-                </div>
+        <div className="space-y-4 mt-8">
+           <div>
+             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
+             <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" placeholder="e.g. 2026 Global Support" />
+           </div>
+           <div>
+             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
+             <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+           </div>
+           <div>
+             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
+             <input value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white font-mono" />
+           </div>
+           <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
+                <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
               </div>
-            </section>
-
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <SectionHeader icon={Terminal} title="Scope of Work" color="text-amber-400" />
-                <button onClick={addSOW} className="p-1 text-amber-400 hover:text-white"><PlusCircle size={16}/></button>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
+                <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
               </div>
-              <div className="space-y-4">
-                {formData.scope_of_work?.map((s: any, i: number) => (
-                  <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 relative group">
-                    <button onClick={() => setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>
-                    <input placeholder="Deliverable / Description" value={s.deliverable} onChange={e => {
-                      const newSow = [...formData.scope_of_work]; newSow[i].deliverable = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                    }} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white" />
-                    <div className="grid grid-cols-3 gap-2">
-                      <input placeholder="When" value={s.when} onChange={e => {
-                        const newSow = [...formData.scope_of_work]; newSow[i].when = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                      }} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                      <input placeholder="Response" value={s.response_time} onChange={e => {
-                        const newSow = [...formData.scope_of_work]; newSow[i].response_time = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                      }} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                      <input placeholder="Objective" value={s.objective} onChange={e => {
-                        const newSow = [...formData.scope_of_work]; newSow[i].objective = e.target.value; setFormData({...formData, scope_of_work: newSow})
-                      }} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <div className="space-y-8">
-            <section>
-              <SectionHeader icon={Shield} title="Covered Assets" color="text-indigo-400" />
-              <div className="bg-black/20 rounded-lg border border-white/5 h-[300px] overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {devices?.map((d: any) => {
-                  const asset = formData.covered_assets?.find((a:any) => a.device_id === d.id)
-                  return (
-                    <div key={d.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-all">
-                      <div className="flex items-center space-x-3">
-                        <input type="checkbox" checked={!!asset} onChange={() => toggleAsset(d.id)} className="w-4 h-4 rounded bg-slate-900 border-white/10" />
-                        <div>
-                          <p className="text-[10px] font-bold uppercase text-white">{d.name}</p>
-                          <p className="text-[8px] text-slate-500 uppercase">{d.system}</p>
-                        </div>
-                      </div>
-                      {asset && (
-                        <select value={asset.support_type} onChange={e => {
-                          const newAssets = formData.covered_assets.map((a:any) => a.device_id === d.id ? {...a, support_type: e.target.value} : a)
-                          setFormData({...formData, covered_assets: newAssets})
-                        }} className="bg-slate-900 border border-white/10 rounded text-[8px] text-indigo-400 p-1">
-                          <option value="HW">HW Only</option>
-                          <option value="SW">SW Only</option>
-                          <option value="Both">Both</option>
-                        </select>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-
-            <section>
-              <SectionHeader icon={Clock} title="Schedule & Policy" color="text-emerald-400" />
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Work Schedule</label>
-                  <input value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" placeholder="e.g. 24/7 or 9-5" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Holiday Policy</label>
-                  <textarea value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[80px]" />
-                </div>
-              </div>
-            </section>
-          </div>
+           </div>
         </div>
 
         <div className="flex space-x-3 pt-10 mt-auto">
           <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
           <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
             {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-            Sync Contract
+            Initialize Contract
           </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving }: any) {
+  const [formData, setFormData] = useState({ ...item })
+  const [isEditing, setIsEditing] = useState(false)
+
+  const addSOW = () => {
+    const sow = [...(formData.scope_of_work || []), { work_description: '', frequency: '', response: '', objective_description: '', importance: 'Medium' }]
+    setFormData({ ...formData, scope_of_work: sow })
+  }
+
+  const filteredAssets = useMemo(() => {
+    if (!formData.covered_systems || formData.covered_systems.length === 0) return [];
+    return devices?.filter((d: any) => formData.covered_systems.includes(d.system)) || [];
+  }, [devices, formData.covered_systems])
+
+  const toggleSystem = (sys: string) => {
+    const syss = [...(formData.covered_systems || [])]
+    if (syss.includes(sys)) {
+      setFormData({...formData, covered_systems: syss.filter(s => s !== sys)})
+    } else {
+      setFormData({...formData, covered_systems: [...syss, sys]})
+    }
+  }
+
+  const toggleAsset = (assetId: number) => {
+    const assets = [...(formData.covered_assets || [])]
+    if (assets.includes(assetId)) {
+      setFormData({...formData, covered_assets: assets.filter(id => id !== assetId)})
+    } else {
+      setFormData({...formData, covered_assets: [...assets, assetId]})
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1100px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
+        <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <div className="flex items-center gap-6">
+             <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} /> Contract Details</h2>
+             {!isEditing ? (
+               <button onClick={() => setIsEditing(true)} className="px-4 py-1 bg-blue-600 text-white rounded text-[9px] font-bold uppercase tracking-widest">Enable Edit</button>
+             ) : (
+               <button onClick={() => setIsEditing(false)} className="px-4 py-1 bg-white/10 text-slate-400 rounded text-[9px] font-bold uppercase tracking-widest">View Mode</button>
+             )}
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-10 mt-8">
+           <div className="space-y-8">
+              <section>
+                 <SectionHeader icon={Info} title="Administrative Info" />
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract Title</label>
+                       <input readOnly={!isEditing} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
+                       <input readOnly={!isEditing} value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
+                       <input readOnly={!isEditing} value={formData.document_link} onChange={e => setFormData({...formData, document_link: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white font-mono" />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Effective Date</label>
+                       <input readOnly={!isEditing} type="date" value={formData.effective_date?.split('T')[0]} onChange={e => setFormData({...formData, effective_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Expiry Date</label>
+                       <input readOnly={!isEditing} type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]" />
+                    </div>
+                 </div>
+              </section>
+
+              <section>
+                 <SectionHeader icon={Layers} title="Infrastructure Coverage" color="text-indigo-400" />
+                 <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[9px] font-bold text-slate-600 uppercase">Covered Systems</label>
+                       <div className="bg-black/20 rounded-lg border border-white/5 p-2 h-40 overflow-y-auto custom-scrollbar space-y-1">
+                          {systems?.map((s: any) => (
+                             <label key={s.value} className="flex items-center space-x-2 p-1.5 hover:bg-white/5 rounded cursor-pointer transition-all">
+                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-3 h-3 rounded bg-slate-900" />
+                                <span className="text-[10px] font-bold uppercase text-slate-300">{s.label}</span>
+                             </label>
+                          ))}
+                       </div>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[9px] font-bold text-slate-600 uppercase">Propagated Assets</label>
+                       <div className="bg-black/20 rounded-lg border border-white/5 p-2 h-40 overflow-y-auto custom-scrollbar space-y-1">
+                          {filteredAssets.length === 0 && <p className="text-[8px] text-slate-600 text-center py-10 uppercase font-bold">Select systems to list assets</p>}
+                          {filteredAssets.map((a: any) => (
+                             <label key={a.id} className="flex items-center space-x-2 p-1.5 hover:bg-white/5 rounded cursor-pointer transition-all">
+                                <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-3 h-3 rounded bg-slate-900" />
+                                <div className="flex flex-col">
+                                   <span className="text-[10px] font-bold uppercase text-white">{a.name}</span>
+                                   <span className="text-[8px] text-slate-500 font-bold uppercase">{a.system}</span>
+                                </div>
+                             </label>
+                          ))}
+                       </div>
+                    </div>
+                 </div>
+              </section>
+
+              <section>
+                 <SectionHeader icon={Clock} title="Availability & Policy" color="text-emerald-400" />
+                 <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                       <div>
+                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Work Schedule</label>
+                          <input readOnly={!isEditing} value={formData.schedule?.work_schedule} onChange={e => setFormData({...formData, schedule: {...formData.schedule, work_schedule: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded px-4 py-2 text-xs text-white" />
+                       </div>
+                       <div>
+                          <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">On-Call Method</label>
+                          <input readOnly={!isEditing} value={formData.schedule?.oncall_method} onChange={e => setFormData({...formData, schedule: {...formData.schedule, oncall_method: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded px-4 py-2 text-xs text-white" />
+                       </div>
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Holiday Policy</label>
+                       <textarea readOnly={!isEditing} value={formData.schedule?.holiday_policy} onChange={e => setFormData({...formData, schedule: {...formData.schedule, holiday_policy: e.target.value}})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[60px]" />
+                    </div>
+                 </div>
+              </section>
+           </div>
+
+           <div className="space-y-8">
+              <section>
+                 <div className="flex items-center justify-between mb-4">
+                    <SectionHeader icon={Terminal} title="Scope of Work Matrix" color="text-amber-400" />
+                    {isEditing && <button onClick={addSOW} className="p-1 text-amber-400 hover:text-white transition-all"><PlusCircle size={18}/></button>}
+                 </div>
+                 <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                    {formData.scope_of_work?.map((s: any, i: number) => (
+                       <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 space-y-3 relative group">
+                          {isEditing && <button onClick={() => setFormData({...formData, scope_of_work: formData.scope_of_work.filter((_:any, idx:number) => idx !== i)})} className="absolute top-2 right-2 text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash size={12}/></button>}
+                          <input readOnly={!isEditing} placeholder="Work Description" value={s.work_description} onChange={e => {
+                            const newSow = [...formData.scope_of_work]; newSow[i].work_description = e.target.value; setFormData({...formData, scope_of_work: newSow})
+                          }} className="w-full bg-slate-900 border border-white/10 rounded px-3 py-1.5 text-xs text-white" />
+                          <div className="grid grid-cols-2 gap-2">
+                             <input readOnly={!isEditing} placeholder="Frequency" value={s.frequency} onChange={e => {
+                               const newSow = [...formData.scope_of_work]; newSow[i].frequency = e.target.value; setFormData({...formData, scope_of_work: newSow})
+                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                             <input readOnly={!isEditing} placeholder="Response" value={s.response} onChange={e => {
+                               const newSow = [...formData.scope_of_work]; newSow[i].response = e.target.value; setFormData({...formData, scope_of_work: newSow})
+                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white" />
+                             <input readOnly={!isEditing} placeholder="Objective Description" value={s.objective_description} onChange={e => {
+                               const newSow = [...formData.scope_of_work]; newSow[i].objective_description = e.target.value; setFormData({...formData, scope_of_work: newSow})
+                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white col-span-2" />
+                             <select disabled={!isEditing} value={s.importance} onChange={e => {
+                               const newSow = [...formData.scope_of_work]; newSow[i].importance = e.target.value; setFormData({...formData, scope_of_work: newSow})
+                             }} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] text-white">
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                             </select>
+                          </div>
+                       </div>
+                    ))}
+                    {(!formData.scope_of_work || formData.scope_of_work.length === 0) && (
+                       <p className="text-[9px] text-slate-600 text-center font-bold uppercase py-10">No scope items defined</p>
+                    )}
+                 </div>
+              </section>
+
+              <section>
+                 <SectionHeader icon={RefreshCcw} title="Evolution & Changes" color="text-blue-400" />
+                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">What changed from previous contract</label>
+                 <textarea readOnly={!isEditing} value={formData.previous_contract_changes} onChange={e => setFormData({...formData, previous_contract_changes: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[100px]" placeholder="Record key structural or commercial changes..." />
+              </section>
+           </div>
+        </div>
+
+        <div className="flex space-x-3 pt-10 mt-auto">
+          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Close</button>
+          {isEditing && (
+            <button onClick={() => onSave(formData)} className="flex-[2] py-4 bg-emerald-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+              {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
+              Save Contract Changes
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

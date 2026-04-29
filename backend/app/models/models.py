@@ -431,7 +431,7 @@ class Vendor(Base, BaseMixin):
     name = Column(String, index=True)
     primary_email = Column(String)
     primary_phone = Column(String)
-    country = Column(String)
+    country = Column(String, default="South Korea")
     
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
@@ -443,6 +443,7 @@ class VendorPersonnel(Base, BaseMixin):
     __tablename__ = "vendor_personnel"
     vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
     name = Column(String, index=True)
+    name_original = Column(String) # Added original name
     position = Column(String)
     team = Column(String)
     company_email = Column(String)
@@ -450,8 +451,8 @@ class VendorPersonnel(Base, BaseMixin):
     phone = Column(String)
     
     # Nested lists of dicts
-    accounts = Column(JSON, default=list) # [{name, type, created_date, status}]
-    pcs = Column(JSON, default=list) # [{name, type, created_date, status}]
+    accounts = Column(JSON, default=list) # [{type, username, purpose_description}]
+    pcs = Column(JSON, default=list) # [{name, type, purpose_description}]
     
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
@@ -467,10 +468,12 @@ class VendorContract(Base, BaseMixin):
     expiry_date = Column(DateTime)
     
     # Details
-    covered_assets = Column(JSON, default=list) # [{device_id, support_type}]
-    scope_of_work = Column(JSON, default=list) # [{deliverable, when, response_time, objective}]
-    schedule = Column(JSON, default=dict) # {work_schedule, holiday_policy}
+    covered_systems = Column(JSON, default=list) # List of system names
+    covered_assets = Column(JSON, default=list) # List of device IDs
+    scope_of_work = Column(JSON, default=list) # [{work_description, frequency, response, objective_description, importance}]
+    schedule = Column(JSON, default=dict) # {work_schedule, oncall_method, holiday_policy}
     document_link = Column(String)
+    previous_contract_changes = Column(Text) # What changed from the previous contract
     
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
