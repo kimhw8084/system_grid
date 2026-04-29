@@ -9,8 +9,8 @@ import { errorManager, useErrors } from "./stores/errorStore"
 import { ErrorConsole } from "./components/shared/ErrorConsole"
 
 import Dashboard from "./components/Dashboard"
-import AssetGrid from "./components/AssetGrid"
-import AssetTemp from "./components/AssetTemp"
+import AssetGrid_Legacy from "./components/AssetGrid_Legacy"
+import Assets from "./components/Assets"
 import NetworkFabric from "./components/NetworkFabric"
 import Intelligence from "./components/Intelligence"
 import AuditLogs from "./components/AuditLogs"
@@ -541,7 +541,7 @@ function MainLayout() {
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/racks" element={<RackTemp />} />
-              <Route path="/asset" element={<AssetTemp />} />
+              <Route path="/asset" element={<Assets />} />
               <Route path="/services" element={<ServiceRegistry />} />
               <Route path="/external" element={<External />} />
               <Route path="/network" element={<NetworkFabric />} />

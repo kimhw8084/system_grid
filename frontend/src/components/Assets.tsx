@@ -882,7 +882,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
       {/* Right Report Content */}
       <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
-          <div className="p-12 space-y-12">
+          <div className="p-10 space-y-10">
             {/* Report Header */}
             <div className="flex items-start justify-between">
               <div className="space-y-6">
@@ -1111,7 +1111,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
   )
 }
 
-export default function AssetTemp() {
+export default function Assets() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   
@@ -1187,6 +1187,11 @@ export default function AssetTemp() {
   const { data: allConnections } = useQuery({ 
     queryKey: ['connections-map-all'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+  })
+
+  const { data: allRelationships } = useQuery({
+    queryKey: ['all-relationships'],
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json())
   })
 
   const mutation = useMutation({
@@ -1709,6 +1714,7 @@ export default function AssetTemp() {
            <AssetMap 
              assets={inventoryAssets} 
              connections={allConnections || []}
+             relationships={allRelationships || []}
              systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
            />
         </div>
@@ -3229,202 +3235,364 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
   )
 }
 
-function AssetMap({ assets, connections, systemsList }: any) {
+function AssetMap({ assets, connections, relationships, systemsList }: any) {
   const fgRef = React.useRef<any>();
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
+  const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([])
   const [depth, setDepth] = useState(1)
   const [selectedNode, setSelectedNode] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showLegend, setShowLegend] = useState(true)
+
+  const hasFilter = selectedSystems.length > 0 || selectedAssetIds.length > 0 || searchTerm.length >= 2
 
   const graphData = useMemo(() => {
-    // 1. Build initial nodes from selected systems or search
-    let rootNodes = assets.filter((a: any) => 
-      (selectedSystems.length === 0 || selectedSystems.includes(a.system)) &&
-      (!searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    if (!hasFilter) return { nodes: [], links: [] }
+
+    const nodesMap = new Map<number, any>()
+    const linksMap = new Map<string, any>()
+
+    // 1. Initial nodes from filters
+    const rootNodes = assets.filter((a: any) => 
+      (selectedSystems.includes(a.system)) ||
+      (selectedAssetIds.includes(a.id)) ||
+      (searchTerm.length >= 2 && a.name.toLowerCase().includes(searchTerm.toLowerCase()))
     )
 
-    const nodes = new Map<number, any>()
-    const links: any[] = []
-    const processedNodes = new Set<number>()
-
-    const addConnections = (currentNodeIds: number[], currentDepth: number) => {
+    const addNodesAndLinks = (currentNodes: any[], currentDepth: number) => {
       if (currentDepth > depth) return
       
-      const nextNodeIds: number[] = []
+      const nextBatch: any[] = []
       
-      connections.forEach((conn: any) => {
-        if (currentNodeIds.includes(conn.source_device_id) || currentNodeIds.includes(conn.target_device_id)) {
-          const srcId = conn.source_device_id
-          const dstId = conn.target_device_id
-          
-          const src = assets.find((a: any) => a.id === srcId)
-          const dst = assets.find((a: any) => a.id === dstId)
-          
-          if (src && dst) {
-            if (!nodes.has(srcId)) nodes.set(srcId, { ...src, id: srcId, label: src.name })
-            if (!nodes.has(dstId)) nodes.set(dstId, { ...dst, id: dstId, label: dst.name })
-            
-            links.push({ source: srcId, target: dstId, type: conn.connection_type })
-            
-            if (!processedNodes.has(srcId)) nextNodeIds.push(srcId)
-            if (!processedNodes.has(dstId)) nextNodeIds.push(dstId)
-          }
+      currentNodes.forEach(node => {
+        if (!nodesMap.has(node.id)) {
+          nodesMap.set(node.id, { ...node, label: node.name })
         }
+
+        // Process Physical Connections
+        connections?.forEach((c: any) => {
+          if (c.source_device_id === node.id || c.target_device_id === node.id) {
+            const peerId = c.source_device_id === node.id ? c.target_device_id : c.source_device_id
+            const peer = assets.find((a: any) => a.id === peerId)
+            if (peer) {
+              const linkKey = `net-${Math.min(node.id, peerId)}-${Math.max(node.id, peerId)}`
+              if (!linksMap.has(linkKey)) {
+                linksMap.set(linkKey, { 
+                  source: c.source_device_id, 
+                  target: c.target_device_id, 
+                  type: 'network',
+                  label: c.link_type || 'Ethernet'
+                })
+              }
+              if (!nodesMap.has(peerId)) {
+                const peerData = { ...peer, label: peer.name }
+                nodesMap.set(peerId, peerData)
+                nextBatch.push(peerData)
+              }
+            }
+          }
+        })
+
+        // Process Logical Relationships
+        relationships?.forEach((r: any) => {
+          if (r.source_device_id === node.id || r.target_device_id === node.id) {
+            const peerId = r.source_device_id === node.id ? r.target_device_id : r.source_device_id
+            const peer = assets.find((a: any) => a.id === peerId)
+            if (peer) {
+              const linkKey = `rel-${r.id}`
+              if (!linksMap.has(linkKey)) {
+                linksMap.set(linkKey, { 
+                  source: r.source_device_id, 
+                  target: r.target_device_id, 
+                  type: 'dependency',
+                  label: r.relationship_type
+                })
+              }
+              if (!nodesMap.has(peerId)) {
+                const peerData = { ...peer, label: peer.name }
+                nodesMap.set(peerId, peerData)
+                nextBatch.push(peerData)
+              }
+            }
+          }
+        })
       })
-      
-      currentNodeIds.forEach(id => processedNodes.add(id))
-      if (nextNodeIds.length > 0) addConnections(nextNodeIds, currentDepth + 1)
+
+      if (nextBatch.length > 0) addNodesAndLinks(nextBatch, currentDepth + 1)
     }
 
-    if (rootNodes.length > 0) {
-      rootNodes.forEach((a: any) => nodes.set(a.id, { ...a, id: a.id, label: a.name }))
-      addConnections(rootNodes.map((a: any) => a.id), 1)
-    }
+    addNodesAndLinks(rootNodes, 0)
 
     return {
-      nodes: Array.from(nodes.values()),
-      links: links
+      nodes: Array.from(nodesMap.values()),
+      links: Array.from(linksMap.values())
     }
-  }, [assets, connections, selectedSystems, depth, searchTerm])
+  }, [assets, connections, relationships, selectedSystems, selectedAssetIds, depth, searchTerm, hasFilter])
 
   useEffect(() => {
-    if (fgRef.current) {
-      fgRef.current.d3Force('link').distance(200);
-      fgRef.current.d3Force('charge').strength(-600);
+    if (fgRef.current && hasFilter) {
+      fgRef.current.d3Force('link').distance(150);
+      fgRef.current.d3Force('charge').strength(-400);
     }
-  }, [graphData]);
+  }, [graphData, hasFilter]);
 
   return (
-    <div className="h-full flex flex-col relative">
-      {/* Controls Overlay */}
-      <div className="absolute top-6 left-6 z-10 w-80 space-y-4 pointer-events-none">
-         <div className="glass-panel p-6 rounded-lg border border-white/10 shadow-2xl pointer-events-auto space-y-6 bg-slate-900/50 backdrop-blur-md">
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-               <div className="flex items-center gap-3">
-                  <Share2 size={18} className="text-indigo-400" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Map Controller</h3>
-               </div>
-               <div className="px-2 py-0.5 rounded bg-indigo-600/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">{graphData.nodes.length} NODES</div>
-            </div>
+    <div className="h-full flex flex-col relative bg-[#020617]">
+      {!hasFilter ? (
+        <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
+           <div className="relative">
+              <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full animate-pulse" />
+              <div className="relative bg-slate-900/50 border border-white/10 p-12 rounded-[40px] backdrop-blur-3xl flex flex-col items-center text-center space-y-6 shadow-2xl">
+                 <div className="w-24 h-24 bg-indigo-600/20 rounded-3xl flex items-center justify-center border border-indigo-500/30 text-indigo-400 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
+                    <Share2 size={48} className="animate-pulse" />
+                 </div>
+                 <div className="space-y-2">
+                    <h2 className="text-4xl font-black uppercase tracking-tighter text-white italic italic">Vector <span className="text-indigo-500">Topology</span></h2>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Infrastructure Connectivity Matrix</p>
+                 </div>
+                 <div className="max-w-md p-6 bg-black/40 rounded-2xl border border-white/5">
+                    <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
+                       Map rendering is restricted to active search parameters. Please select a system or search for an asset to initiate topological crawl.
+                    </p>
+                 </div>
+                 <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                    {systemsList.slice(0, 10).map((sys: string) => (
+                       <button
+                         key={sys}
+                         onClick={() => setSelectedSystems([sys])}
+                         className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all tracking-widest"
+                       >
+                          {sys}
+                       </button>
+                    ))}
+                 </div>
+              </div>
+           </div>
+        </div>
+      ) : (
+        <>
+          <div className="absolute top-8 left-8 z-10 w-80 space-y-4 pointer-events-none">
+             <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl pointer-events-auto space-y-6 bg-slate-900/80 backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                   <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                         <Share2 size={16} />
+                      </div>
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Vector Topology</h3>
+                   </div>
+                   <div className="px-2 py-0.5 rounded bg-indigo-600/20 border border-indigo-500/30 text-[8px] font-black text-indigo-400 uppercase tracking-widest">{graphData.nodes.length} NODES</div>
+                </div>
 
-            <div className="space-y-4">
-               <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Primary Systems</label>
-                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                     {systemsList.map((sys: string) => (
-                        <button
-                           key={sys}
-                           onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
-                           className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
-                        >
-                           {sys}
-                        </button>
-                     ))}
-                  </div>
-               </div>
+                <div className="space-y-5">
+                   <div>
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2 px-1">Logical Systems</label>
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                         {systemsList.map((sys: string) => (
+                            <button
+                               key={sys}
+                               onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
+                               className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+                            >
+                               {sys}
+                            </button>
+                         ))}
+                      </div>
+                   </div>
 
-               <div>
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">Propagation Depth: {depth}</label>
-                  <input 
-                    type="range" min="1" max="5" step="1" 
-                    value={depth} onChange={e => setDepth(Number(e.target.value))}
-                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                  <div className="flex justify-between text-[8px] font-bold text-slate-600 uppercase mt-1">
-                     <span>Direct</span>
-                     <span>Extended</span>
-                  </div>
-               </div>
+                   <div>
+                      <div className="flex items-center justify-between mb-2 px-1">
+                         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Crawl Depth</label>
+                         <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">{depth} HOPS</span>
+                      </div>
+                      <input 
+                        type="range" min="0" max="3" step="1" 
+                        value={depth} onChange={e => setDepth(Number(e.target.value))}
+                        className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                      />
+                      <div className="flex justify-between text-[7px] font-black text-slate-600 uppercase mt-1.5 px-0.5">
+                         <span>Source</span>
+                         <span>Discovery</span>
+                         <span>Global</span>
+                         <span>Matrix</span>
+                      </div>
+                   </div>
 
-               <div className="relative">
-                  <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                  <input 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)}
-                    placeholder="FOCUS SEARCH..." 
-                    className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest" 
-                  />
-               </div>
-            </div>
-         </div>
+                   <div className="relative">
+                      <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
+                      <input 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)}
+                        placeholder="FOCUS SEARCH..." 
+                        className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-3 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest transition-all" 
+                      />
+                   </div>
+                </div>
 
-         {selectedNode && (
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-lg border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
-               <div className="flex items-start justify-between">
-                  <div>
-                     <p className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">{selectedNode.system}</p>
-                     <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none">{selectedNode.name}</h4>
-                  </div>
-                  <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
-               </div>
-               <div className="grid grid-cols-2 gap-3">
-                  <div className="p-2 rounded bg-white/5 border border-white/5">
-                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
-                     <p className="text-[9px] font-black text-emerald-400 uppercase">{selectedNode.status}</p>
-                  </div>
-                  <div className="p-2 rounded bg-white/5 border border-white/5">
-                     <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Environment</p>
-                     <p className="text-[9px] font-black text-amber-500 uppercase">{selectedNode.environment}</p>
-                  </div>
-               </div>
-               <div className="pt-2">
-                  <button className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[9px] font-black uppercase tracking-widest transition-all">Deep Inspection</button>
-               </div>
-            </motion.div>
-         )}
-      </div>
+                <div className="pt-2">
+                   <button 
+                     onClick={() => { setSelectedSystems([]); setSearchTerm(''); setSelectedAssetIds([]); }}
+                     className="w-full py-3 bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-all rounded-xl"
+                   >
+                      Reset Workspace
+                   </button>
+                </div>
+             </div>
 
-      <div className="flex-1 w-full h-full">
-         <ForceGraph2D
-           ref={fgRef}
-           graphData={graphData}
-           nodeLabel="label"
-           nodeColor={n => n.system === 'External' ? '#f43f5e' : n.environment === 'Production' ? '#6366f1' : '#10b981'}
-           nodeRelSize={6}
-           onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
-           nodeCanvasObject={(node: any, ctx, globalScale) => {
-             const label = (node.label || node.name || 'UNKNOWN').toUpperCase();
-             const fontSize = 11/globalScale;
-             // Use italic 900 for "Vector Topologies" standard
-             ctx.font = `italic 900 ${fontSize}px Inter`;
-             const textWidth = ctx.measureText(label).width;
-             const padding = fontSize * 0.4;
-             const bckgDimensions = [textWidth + padding, fontSize + padding/2];
+             <AnimatePresence>
+               {selectedNode && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="glass-panel p-6 rounded-2xl border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
+                     <div className="flex items-start justify-between">
+                        <div>
+                           <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">{selectedNode.system}</span>
+                              <span className="w-1 h-1 rounded-full bg-white/10" />
+                              <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.1em]">{selectedNode.type}</span>
+                           </div>
+                           <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none italic">{selectedNode.name}</h4>
+                        </div>
+                        <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white p-1 hover:bg-white/5 rounded-lg transition-all"><X size={14}/></button>
+                     </div>
+                     <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
+                           <p className={`text-[9px] font-black uppercase ${selectedNode.status === 'Active' ? 'text-emerald-400' : 'text-amber-500'}`}>{selectedNode.status}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Environment</p>
+                           <p className="text-[9px] font-black text-indigo-400 uppercase">{selectedNode.environment}</p>
+                        </div>
+                     </div>
+                     <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                        <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Primary Network IP</p>
+                        <p className="text-[10px] font-mono font-black text-white">{selectedNode.primary_ip || 'DHCP_ASSIGNED'}</p>
+                     </div>
+                  </motion.div>
+               )}
+             </AnimatePresence>
+          </div>
 
-             ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
-             ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y + 10, bckgDimensions[0], bckgDimensions[1]);
+          <div className="flex-1 w-full h-full relative">
+             <ForceGraph2D
+               ref={fgRef}
+               graphData={graphData}
+               nodeRelSize={6}
+               onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
+               nodeCanvasObject={(node: any, ctx, globalScale) => {
+                 const label = (node.name || 'UNKNOWN').toUpperCase();
+                 const fontSize = 11/globalScale;
+                 ctx.font = `italic 900 ${fontSize}px Inter`;
+                 
+                 // Node Color Logic
+                 const color = node.type === 'Physical' ? '#10b981' : 
+                               node.type === 'Virtual' ? '#3b82f6' :
+                               node.type === 'Switch' ? '#f43f5e' :
+                               node.type === 'Firewall' ? '#f59e0b' :
+                               node.type === 'Storage' ? '#8b5cf6' : '#64748b';
 
-             ctx.textAlign = 'center';
-             ctx.textBaseline = 'top';
-             ctx.fillStyle = node.system === 'External' ? '#f43f5e' : node.environment === 'Production' ? '#6366f1' : '#10b981';
-             ctx.fillText(label, node.x, node.y + 10 + padding/4);
+                 // Background label bubble
+                 const textWidth = ctx.measureText(label).width;
+                 const padding = fontSize * 0.4;
+                 const bckgDimensions = [textWidth + padding, fontSize + padding/2];
 
-             // Draw node point with glow
-             ctx.shadowColor = node.color;
-             ctx.shadowBlur = 10 / globalScale;
-             ctx.beginPath();
-             ctx.arc(node.x, node.y, 5, 0, 2 * Math.PI, false);
-             ctx.fillStyle = node.system === 'External' ? '#f43f5e' : node.environment === 'Production' ? '#6366f1' : '#10b981';
-             ctx.fill();
-             ctx.shadowBlur = 0;
-           }}
-           linkColor={() => 'rgba(255, 255, 255, 0.1)'}
-           linkDirectionalArrowLength={3.5}
-           linkDirectionalArrowRelPos={1}
-           linkCurvature={0.25}
-           onNodeClick={node => setSelectedNode(node)}
-           backgroundColor="#020617"
-         />
-      </div>
+                 ctx.fillStyle = 'rgba(2, 6, 23, 0.95)';
+                 ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y + 10, bckgDimensions[0], bckgDimensions[1]);
 
-      <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-         <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 bg-slate-900/50 backdrop-blur-md pointer-events-auto">
-            <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
-            <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
-            <div className="h-px bg-white/5 mx-1" />
-            <button onClick={() => fgRef.current?.zoomToFit(400, 40)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
-         </div>
-      </div>
+                 ctx.textAlign = 'center';
+                 ctx.textBaseline = 'top';
+                 ctx.fillStyle = '#f8fafc';
+                 ctx.fillText(label, node.x, node.y + 10 + padding/4);
+
+                 // Draw Node Point
+                 ctx.shadowColor = color;
+                 ctx.shadowBlur = 15 / globalScale;
+                 ctx.beginPath();
+                 ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI, false);
+                 ctx.fillStyle = color;
+                 ctx.fill();
+                 
+                 // Ring for center/selected
+                 if (selectedNode?.id === node.id) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2 / globalScale;
+                    ctx.stroke();
+                 }
+                 ctx.shadowBlur = 0;
+               }}
+               linkColor={l => (l as any).type === 'network' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.3)'}
+               linkWidth={l => (l as any).type === 'network' ? 1 : 2}
+               linkDirectionalParticles={l => (l as any).type === 'network' ? 4 : 0}
+               linkDirectionalParticleWidth={2}
+               linkDirectionalParticleSpeed={0.005}
+               linkDirectionalParticleColor={() => '#10b981'}
+               linkCurvature={0}
+               onNodeClick={node => setSelectedNode(node)}
+               backgroundColor="#020617"
+             />
+          </div>
+
+          {/* Legend Overlay */}
+          <AnimatePresence>
+             {showLegend && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }} 
+                  animate={{ opacity: 1, x: 0 }} 
+                  exit={{ opacity: 0, x: 20 }}
+                  className="absolute bottom-8 left-8 z-10 glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl pointer-events-auto"
+                >
+                   <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                      <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vector Legend</h4>
+                      <button onClick={() => setShowLegend(false)} className="text-slate-600 hover:text-white transition-colors"><X size={14}/></button>
+                   </div>
+                   <div className="space-y-4">
+                      <div className="flex flex-col gap-2">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-0.5 bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Dependency Vector</span>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-0.5 bg-emerald-500/30 flex items-center justify-center">
+                               <div className="w-1 h-1 rounded-full bg-emerald-400" />
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">Network Fabric</span>
+                         </div>
+                      </div>
+                      <div className="h-px bg-white/5" />
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                         {[
+                            { label: 'Physical', color: 'bg-emerald-500' },
+                            { label: 'Virtual', color: 'bg-blue-500' },
+                            { label: 'Switch', color: 'bg-rose-500' },
+                            { label: 'Firewall', color: 'bg-orange-500' },
+                            { label: 'Storage', color: 'bg-purple-500' },
+                            { label: 'Other', color: 'bg-slate-500' }
+                         ].map(type => (
+                            <div key={type.label} className="flex items-center gap-2">
+                               <div className={`w-2 h-2 rounded-full ${type.color}`} />
+                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{type.label}</span>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+                </motion.div>
+             )}
+          </AnimatePresence>
+
+          <div className="absolute bottom-8 right-8 flex flex-col gap-3">
+             <div className="glass-panel p-2 rounded-xl border border-white/10 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-xl pointer-events-auto shadow-2xl">
+                <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom In"><ZoomIn size={18}/></button>
+                <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom Out"><ZoomOut size={18}/></button>
+                <div className="h-px bg-white/5 mx-1" />
+                <button onClick={() => fgRef.current?.zoomToFit(400, 40)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Reset View"><Maximize2 size={18}/></button>
+             </div>
+             <button 
+               onClick={() => setShowLegend(!showLegend)} 
+               className={`p-3 rounded-xl border transition-all shadow-2xl backdrop-blur-xl pointer-events-auto ${showLegend ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/80 border-white/10 text-slate-500 hover:text-white'}`}
+             >
+                <Layers size={18}/>
+             </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

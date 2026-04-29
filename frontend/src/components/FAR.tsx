@@ -174,7 +174,7 @@ export default function FAR() {
   const [incidentListModal, setIncidentListModal] = useState<{show: boolean, rcas: any[]}>({ show: false, rcas: [] })
   const [selectedRcaDetail, setSelectedRcaDetail] = useState<any>(null)
 
-  // Column Picker & Style Lab State (Mirrored from AssetGrid)
+  // Column Picker & Style Lab State (Mirrored from Assets)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
