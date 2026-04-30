@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers, Activity, Sliders, Clipboard, FileText, Check } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers, Activity, Sliders, Clipboard, FileText, Check, MoreVertical } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
@@ -23,7 +23,21 @@ export default function NetworkFabric() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
   const [showConnectModal, setShowConnectModal] = useState(false)
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [viewingLink, setViewingLink] = useState<any>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (showBulkMenu && !target.closest('.bulk-menu-container')) {
+        setShowBulkMenu(false)
+      }
+    }
+    if (showBulkMenu) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showBulkMenu])
   const [editingLink, setEditingLink] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [showConfig, setShowConfig] = useState(false)
@@ -324,6 +338,40 @@ export default function NetworkFabric() {
              <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Fabric Config">
                 <Settings size={16} />
              </button>
+          </div>
+
+          <div className="relative group bulk-menu-container">
+            <button 
+              onClick={() => setShowBulkMenu(!showBulkMenu)} 
+              disabled={selectedIds.length === 0}
+              className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}
+            >
+              <MoreVertical size={18}/>
+            </button>
+            <AnimatePresence>
+              {showBulkMenu && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
+                   <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Links Selected</p>
+                   <button 
+                     onClick={() => {
+                       setConfirmModal({ 
+                         isOpen: true, 
+                         title: 'Bulk Sever Links', 
+                         message: `Sever ${selectedIds.length} physical connections permanently?`, 
+                         onConfirm: () => {
+                           selectedIds.forEach(id => deleteMutation.mutate(id))
+                           setSelectedIds([])
+                           setShowBulkMenu(false)
+                         } 
+                       })
+                     }} 
+                     className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all"
+                   >
+                     Bulk Sever Links
+                   </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <button 
