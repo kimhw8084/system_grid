@@ -141,6 +141,7 @@ export default function Vendor() {
       field: "name", 
       headerName: "Vendor Name", 
       flex: 1, 
+      minWidth: 150,
       pinned: 'left', 
       filter: true, 
       cellClass: 'font-bold uppercase tracking-tight',
@@ -151,12 +152,98 @@ export default function Vendor() {
     { 
       field: "country", 
       headerName: "Country", 
-      width: 150, 
+      width: 120, 
       filter: true, 
       cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("country")
+    },
+    { 
+      field: "primary_email", 
+      headerName: "Primary Email", 
+      width: 180, 
+      filter: true, 
+      cellClass: 'font-mono text-blue-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value || '---',
+      hide: hiddenColumns.includes("primary_email")
+    },
+    { 
+      field: "primary_phone", 
+      headerName: "Primary Phone", 
+      width: 150, 
+      filter: true, 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value || '---',
+      hide: hiddenColumns.includes("primary_phone")
+    },
+    { 
+      field: "primary_personnel_name", 
+      headerName: "Primary Personnel", 
+      width: 180, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value || '---',
+      hide: hiddenColumns.includes("primary_personnel_name")
+    },
+    { 
+      field: "active_contract", 
+      headerName: "Active Contract", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${p.value ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'}`}>
+          {p.value ? 'Active' : 'No Active'}
+        </span>
+      ),
+      hide: hiddenColumns.includes("active_contract")
+    },
+    { 
+      field: "contract_count", 
+      headerName: "Total Contracts", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center font-black',
+      headerClass: 'text-center',
+      hide: hiddenColumns.includes("contract_count")
+    },
+    { 
+      field: "first_contract_date", 
+      headerName: "First Contract", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
+      hide: hiddenColumns.includes("first_contract_date")
+    },
+    { 
+      field: "earliest_expiry_date", 
+      headerName: "Earliest Expiry", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        if (!p.value) return '---';
+        const date = new Date(p.value);
+        const isExpired = date < new Date();
+        return <span className={isExpired ? 'text-rose-500' : 'text-emerald-500'}>{date.toLocaleDateString()}</span>;
+      },
+      hide: hiddenColumns.includes("earliest_expiry_date")
+    },
+    { 
+      field: "personnel_count", 
+      headerName: "Total Personnel", 
+      width: 130, 
+      filter: true, 
+      cellClass: 'text-center font-black',
+      headerClass: 'text-center',
+      hide: hiddenColumns.includes("personnel_count")
     },
     {
       field: "actions",
@@ -178,6 +265,28 @@ export default function Vendor() {
       suppressHide: true
     }
   ], [setActiveDetails, deleteMutation, fontSize, hiddenColumns]) as any
+
+  const processedVendors = useMemo(() => {
+    if (!vendors) return [];
+    return vendors.map((v: any) => {
+      const contracts = v.contracts || [];
+      const personnel = v.personnel || [];
+      const activeContracts = contracts.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > new Date());
+      
+      const startDates = contracts.map((c: any) => c.effective_date).filter(Boolean).map((d: any) => new Date(d).getTime());
+      const expiryDates = contracts.map((c: any) => c.expiry_date).filter(Boolean).map((d: any) => new Date(d).getTime());
+      
+      return {
+        ...v,
+        primary_personnel_name: personnel.find((p: any) => p.id === v.primary_personnel_id)?.name || null,
+        active_contract: activeContracts.length > 0,
+        contract_count: contracts.length,
+        first_contract_date: startDates.length > 0 ? new Date(Math.min(...startDates)).toISOString() : null,
+        earliest_expiry_date: expiryDates.length > 0 ? new Date(Math.min(...expiryDates)).toISOString() : null,
+        personnel_count: personnel.length
+      };
+    });
+  }, [vendors]);
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -286,7 +395,7 @@ export default function Vendor() {
         )}
         <AgGridReact 
           ref={gridRef}
-          rowData={vendors || []} 
+          rowData={processedVendors || []} 
           columnDefs={columnDefs} 
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
@@ -741,17 +850,84 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                        <div key={c.id} className="bg-white/5 border border-white/5 rounded-lg p-6 group hover:bg-white/10 transition-all cursor-pointer" onClick={() => setActiveContractDetails(c)}>
                           <div className="flex items-center justify-between">
                              <div className="flex items-center space-x-6">
-                                <div className="w-12 h-12 bg-black/40 rounded-lg flex items-center justify-center text-blue-400 border border-white/5 group-hover:border-blue-500/30 transition-all">
+                                <div className="w-12 h-12 bg-black/40 rounded-lg flex items-center justify-center text-blue-400 border border-white/5 group-hover:border-blue-500/30 transition-all shrink-0">
                                    <FileText size={20} />
                                 </div>
-                                <div>
-                                   <h4 className="text-sm font-bold text-white uppercase tracking-tight">{c.title}</h4>
-                                   <div className="flex items-center space-x-3 mt-1 text-[9px] font-bold uppercase tracking-widest">
-                                      <span className="text-slate-500">REF: {c.contract_id || '---'}</span>
-                                      <span className="text-slate-700">|</span>
-                                      <span className={new Date(c.expiry_date) < new Date() ? 'text-rose-500' : 'text-emerald-500'}>
-                                        {c.expiry_date ? `EXP: ${new Date(c.expiry_date).toLocaleDateString()}` : 'OPEN-ENDED'}
+                                <div className="space-y-2">
+                                   <div className="flex items-center gap-3">
+                                      <h4 className="text-sm font-bold text-white uppercase tracking-tight">{c.title}</h4>
+                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                        c.status === 'Completed' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 
+                                        c.status === 'In Review' ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30' : 
+                                        'bg-slate-800 text-slate-500 border border-white/5'
+                                      }`}>
+                                        {c.status || 'Drafted'}
                                       </span>
+                                   </div>
+                                   
+                                   <div className="flex items-center space-x-6">
+                                      <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest">
+                                         <div className="flex flex-col">
+                                            <span className="text-slate-500 mb-1">Effective</span>
+                                            <span className="text-white">{c.effective_date ? new Date(c.effective_date).toLocaleDateString() : '---'}</span>
+                                         </div>
+                                         <div className="flex flex-col border-l border-white/10 pl-4">
+                                            <span className="text-slate-500 mb-1">Expiring</span>
+                                            <span className={new Date(c.expiry_date) < new Date() ? 'text-rose-500' : 'text-emerald-500'}>
+                                              {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'OPEN-ENDED'}
+                                            </span>
+                                         </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest border-l border-white/10 pl-6">
+                                         <div className="flex flex-col">
+                                            <span className="text-slate-500 mb-1">Systems</span>
+                                            <div className="flex items-center gap-1.5">
+                                               {c.covered_systems?.slice(0, 1).map((s: string) => (
+                                                 <span key={s} className="text-indigo-400">{s}</span>
+                                               ))}
+                                               {c.covered_systems?.length > 1 && (
+                                                 <div className="relative group/tip">
+                                                    <span className="text-slate-500 cursor-help hover:text-white transition-colors">+{c.covered_systems.length - 1}</span>
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
+                                                       <div className="flex flex-wrap gap-1">
+                                                          {c.covered_systems.slice(1).map((s: string) => (
+                                                            <span key={s} className="px-1.5 py-0.5 bg-white/5 rounded text-[8px] text-indigo-400 border border-white/5">{s}</span>
+                                                          ))}
+                                                       </div>
+                                                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+                                                    </div>
+                                                 </div>
+                                               )}
+                                               {(!c.covered_systems || c.covered_systems.length === 0) && <span className="text-slate-700">None</span>}
+                                            </div>
+                                         </div>
+                                         <div className="flex flex-col border-l border-white/10 pl-4">
+                                            <span className="text-slate-500 mb-1">Assets</span>
+                                            <div className="flex items-center gap-1.5">
+                                               <span className="text-amber-400">{c.covered_assets?.length || 0}</span>
+                                               {c.covered_assets?.length > 0 && (
+                                                 <div className="relative group/tip">
+                                                    <Plus size={10} className="text-slate-500 cursor-help hover:text-white transition-colors" />
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
+                                                       <div className="flex flex-col gap-1">
+                                                          {c.covered_assets.map((assetId: number) => {
+                                                            const asset = devices?.find((d: any) => d.id === assetId);
+                                                            return (
+                                                              <div key={assetId} className="flex items-center justify-between text-[8px] font-bold uppercase tracking-tight border-b border-white/5 pb-1">
+                                                                <span className="text-white truncate max-w-[100px]">{asset?.name || `ID: ${assetId}`}</span>
+                                                                <span className="text-slate-500 text-[7px]">{asset?.system}</span>
+                                                              </div>
+                                                            );
+                                                          })}
+                                                       </div>
+                                                       <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+                                                    </div>
+                                                 </div>
+                                               )}
+                                            </div>
+                                         </div>
+                                      </div>
                                    </div>
                                 </div>
                              </div>
@@ -883,6 +1059,12 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const [selectedPcIndex, setSelectedPcIndex] = useState<number | null>(null)
   const [isEditingPc, setIsEditingPc] = useState(false)
   
+  const isNew = !item.id;
+
+  const updateField = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }))
+  }
+
   const { data: deviceTypes } = useQuery({ 
     queryKey: ['settings', 'VendorDeviceType'], 
     queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorDeviceType')).json() 
@@ -937,11 +1119,11 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center gap-6">
             <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Info</h2>
-            {!isEditing ? (
+            {!isEditing && !isNew ? (
                <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Personnel</button>
             ) : (
                <div className="flex items-center gap-2">
-                 <button onClick={() => { setFormData({...item}); setIsEditing(false); setIsEditingAcc(false); setIsEditingPc(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                 <button onClick={onClose} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
                  <button onClick={handleSave} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
                     {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Save size={12} />} 
                     Save Changes
