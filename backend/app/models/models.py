@@ -430,12 +430,16 @@ class Vendor(Base, BaseMixin):
     __tablename__ = "vendors"
     name = Column(String, index=True)
     country = Column(String, default="South Korea")
+    primary_email = Column(String)
+    primary_phone = Column(String)
+    primary_personnel_id = Column(Integer, ForeignKey("vendor_personnel.id", ondelete="SET NULL"), nullable=True)
     
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
     
-    personnel = relationship("VendorPersonnel", back_populates="vendor_ref", cascade="all, delete-orphan")
+    personnel = relationship("VendorPersonnel", back_populates="vendor_ref", cascade="all, delete-orphan", foreign_keys="[VendorPersonnel.vendor_id]")
     contracts = relationship("VendorContract", back_populates="vendor_ref", cascade="all, delete-orphan")
+    primary_personnel = relationship("VendorPersonnel", foreign_keys=[primary_personnel_id], post_update=True)
 
 class VendorPersonnel(Base, BaseMixin):
     __tablename__ = "vendor_personnel"
@@ -455,13 +459,14 @@ class VendorPersonnel(Base, BaseMixin):
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
     
-    vendor_ref = relationship("Vendor", back_populates="personnel")
+    vendor_ref = relationship("Vendor", back_populates="personnel", foreign_keys=[vendor_id])
 
 class VendorContract(Base, BaseMixin):
     __tablename__ = "vendor_contracts"
     vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
     title = Column(String, index=True)
     contract_id = Column(String, index=True)
+    status = Column(String, default="Drafted") # Drafted, In Review, Completed, Cancelled, Expired
     effective_date = Column(DateTime)
     expiry_date = Column(DateTime)
     

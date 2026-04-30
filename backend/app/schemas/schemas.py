@@ -495,6 +495,7 @@ class VendorPersonnelResponse(VendorPersonnelBase, BaseSchema):
 class VendorContractBase(BaseModel):
     title: str
     contract_id: Optional[str] = None
+    status: Optional[str] = "Drafted"
     effective_date: Optional[datetime] = None
     expiry_date: Optional[datetime] = None
     covered_systems: Optional[List[str]] = []
@@ -514,6 +515,9 @@ class VendorContractResponse(VendorContractBase, BaseSchema):
 class VendorBase(BaseModel):
     name: str
     country: Optional[str] = "South Korea"
+    primary_email: Optional[str] = None
+    primary_phone: Optional[str] = None
+    primary_personnel_id: Optional[int] = None
     metadata_json: Optional[Dict[str, Any]] = {}
 
 class VendorCreate(VendorBase): pass

@@ -346,9 +346,8 @@ export default function Vendor() {
         onClose={() => setShowConfig(false)} 
         title="Vendor Matrix Config"
         sections={[
-            { title: "Service Categories", category: "VendorCategory", icon: Layers },
-            { title: "Relationship Status", category: "Status", icon: RefreshCcw },
-            { title: "Country List", category: "VendorCountry", icon: Flag }
+            { title: "Country List", category: "VendorCountry", icon: Flag },
+            { title: "Device Type", category: "VendorDeviceType", icon: Monitor }
         ]}
       />
 
@@ -478,6 +477,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
   const [activeTab, setActiveTab] = useState('Overview')
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ ...vendor })
+  const [hasChanges, setHasChanges] = useState(false)
   const [showPersonnelModal, setShowPersonnelModal] = useState<any>(null)
   const [showContractModal, setShowContractModal] = useState<any>(null)
   const [activeContractDetails, setActiveContractDetails] = useState<any>(null)
@@ -486,8 +486,14 @@ function VendorDetails({ vendor, devices, onClose }: any) {
   React.useEffect(() => {
     if (!isEditing) {
       setFormData({ ...vendor })
+      setHasChanges(false)
     }
   }, [vendor, isEditing])
+
+  const updateField = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value })
+    setHasChanges(true)
+  }
 
   const { data: systems } = useQuery({ 
     queryKey: ['settings', 'LogicalSystem'], 
@@ -514,6 +520,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] })
       setIsEditing(false)
+      setHasChanges(false)
       toast.success('Vendor Profile Updated')
     }
   })
@@ -597,17 +604,19 @@ function VendorDetails({ vendor, devices, onClose }: any) {
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#020617]/40">
             {activeTab === 'Overview' && (
-              <div className="space-y-8 max-w-3xl">
+              <div className="space-y-8 max-w-4xl">
                 <div className="flex items-center justify-between">
                    <SectionHeader icon={Info} title="Vendor Profile Overview" />
                    {!isEditing ? (
                      <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Profile</button>
                    ) : (
                      <div className="flex items-center space-x-2">
-                        <button onClick={() => { setFormData({...vendor}); setIsEditing(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
-                        <button onClick={() => vendorMutation.mutate(formData)} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
-                          <Save size={12} /> Save Changes
-                        </button>
+                        <button onClick={() => { setFormData({...vendor}); setIsEditing(false); setHasChanges(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                        {hasChanges && (
+                          <button onClick={() => vendorMutation.mutate(formData)} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+                            <Save size={12} /> Save Changes
+                          </button>
+                        )}
                      </div>
                    )}
                 </div>
@@ -617,7 +626,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                       <div>
                          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Vendor Name</label>
                          {isEditing ? (
-                           <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                           <input value={formData.name} onChange={e => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
                          ) : (
                            <p className="text-sm font-bold text-white uppercase">{vendor.name}</p>
                          )}
@@ -627,7 +636,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                          {isEditing ? (
                            <select 
                             value={formData.country || 'South Korea'} 
-                            onChange={e => setFormData({...formData, country: e.target.value})} 
+                            onChange={e => updateField('country', e.target.value)} 
                             className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]"
                            >
                             {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -635,6 +644,83 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                          ) : (
                            <p className="text-sm font-bold text-white uppercase">{vendor.country}</p>
                          )}
+                      </div>
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Personnel</label>
+                         {isEditing ? (
+                           <select 
+                            value={formData.primary_personnel_id || ''} 
+                            onChange={e => updateField('primary_personnel_id', e.target.value ? Number(e.target.value) : null)} 
+                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]"
+                           >
+                            <option value="">Select Personnel...</option>
+                            {vendor.personnel?.map((p: any) => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.position})</option>
+                            ))}
+                           </select>
+                         ) : (
+                           <p className="text-sm font-bold text-white uppercase">
+                            {vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.name || '---'}
+                           </p>
+                         )}
+                      </div>
+                   </div>
+                   <div className="space-y-6">
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Email</label>
+                         {isEditing ? (
+                           <input value={formData.primary_email || ''} onChange={e => updateField('primary_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white font-mono" />
+                         ) : (
+                           <p className="text-sm font-bold text-blue-400 font-mono">{vendor.primary_email || '---'}</p>
+                         )}
+                      </div>
+                      <div>
+                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Phone</label>
+                         {isEditing ? (
+                           <input value={formData.primary_phone || ''} onChange={e => updateField('primary_phone', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                         ) : (
+                           <p className="text-sm font-bold text-white">{vendor.primary_phone || '---'}</p>
+                         )}
+                      </div>
+                   </div>
+                </div>
+
+                <div className="pt-10 mt-10 border-t border-white/5">
+                   <SectionHeader icon={LayoutGrid} title="Entity Summary Dashboard" />
+                   <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                        <div className="flex items-center gap-3 text-blue-400">
+                          <User size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Personnel</span>
+                        </div>
+                        <p className="text-3xl font-black text-white">{vendor.personnel?.length || 0}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase">Assigned Members</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                        <div className="flex items-center gap-3 text-amber-400">
+                          <FileText size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Contracts</span>
+                        </div>
+                        <p className="text-3xl font-black text-white">{vendor.contracts?.length || 0}</p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase">Total SLAs</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                        <div className="flex items-center gap-3 text-emerald-400">
+                          <Check size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Active</span>
+                        </div>
+                        <p className="text-3xl font-black text-white">
+                          {vendor.contracts?.filter((c:any) => !c.expiry_date || new Date(c.expiry_date) > new Date()).length || 0}
+                        </p>
+                        <p className="text-[8px] font-bold text-slate-500 uppercase">Valid Contracts</p>
+                      </div>
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2 text-slate-500 opacity-50">
+                        <div className="flex items-center gap-3">
+                          <Activity size={20} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Insights</span>
+                        </div>
+                        <p className="text-3xl font-black italic">---</p>
+                        <p className="text-[8px] font-bold uppercase tracking-tighter">Future Metrics</p>
                       </div>
                    </div>
                 </div>
@@ -797,6 +883,21 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const [selectedPcIndex, setSelectedPcIndex] = useState<number | null>(null)
   const [isEditingPc, setIsEditingPc] = useState(false)
   
+  const { data: deviceTypes } = useQuery({ 
+    queryKey: ['settings', 'VendorDeviceType'], 
+    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorDeviceType')).json() 
+  })
+
+  const deviceTypeOptions = useMemo(() => {
+    if (deviceTypes && deviceTypes.length > 0) return deviceTypes;
+    return [
+      { label: 'PC', value: 'PC' },
+      { label: 'VDI', value: 'VDI' },
+      { label: 'Laptop', value: 'Laptop' },
+      { label: 'Workstation', value: 'Workstation' }
+    ]
+  }, [deviceTypes])
+  
   const addAccount = () => {
     const newAcc = { type: 'LDAP', username: '', purpose_description: '' };
     const accs = [...(formData.accounts || []), newAcc]
@@ -834,20 +935,25 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1200px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><User size={24} /> Personnel Info</h2>
             {!isEditing ? (
                <button onClick={() => setIsEditing(true)} className="px-4 py-1.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">Edit Personnel</button>
             ) : (
                <div className="flex items-center gap-2">
                  <button onClick={() => { setFormData({...item}); setIsEditing(false); setIsEditingAcc(false); setIsEditingPc(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                 <button onClick={handleSave} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+                    {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Save size={12} />} 
+                    Save Changes
+                 </button>
                </div>
             )}
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="mt-8 space-y-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar mt-8 pr-4">
+          <div className="space-y-10">
           {/* Identity Info - Full Row */}
           <section className="space-y-6">
             <SectionHeader icon={User} title="Identity Info" />
@@ -855,7 +961,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Name (English)</label>
                 {isEditing ? (
-                  <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.name} onChange={e => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.name || '---'}</p>
                 )}
@@ -863,7 +969,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Name (Original)</label>
                 {isEditing ? (
-                  <input value={formData.name_original} onChange={e => setFormData({...formData, name_original: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.name_original} onChange={e => updateField('name_original', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.name_original || '---'}</p>
                 )}
@@ -871,7 +977,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Position</label>
                 {isEditing ? (
-                  <input value={formData.position} onChange={e => setFormData({...formData, position: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.position} onChange={e => updateField('position', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.position || '---'}</p>
                 )}
@@ -879,7 +985,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Team</label>
                 {isEditing ? (
-                  <input value={formData.team} onChange={e => setFormData({...formData, team: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.team} onChange={e => updateField('team', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.team || '---'}</p>
                 )}
@@ -887,7 +993,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div className="col-span-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Email (Company)</label>
                 {isEditing ? (
-                  <input value={formData.company_email} onChange={e => setFormData({...formData, company_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.company_email} onChange={e => updateField('company_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-blue-400 font-mono py-2 tracking-tight">{formData.company_email || '---'}</p>
                 )}
@@ -895,7 +1001,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div className="col-span-1">
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Email (Internal)</label>
                 {isEditing ? (
-                  <input value={formData.internal_email} onChange={e => setFormData({...formData, internal_email: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.internal_email} onChange={e => updateField('internal_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-emerald-400 font-mono py-2 tracking-tight">{formData.internal_email || '---'}</p>
                 )}
@@ -903,11 +1009,12 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Phone</label>
                 {isEditing ? (
-                  <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                  <input value={formData.phone} onChange={e => updateField('phone', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                 ) : (
                   <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.phone || '---'}</p>
                 )}
               </div>
+
             </div>
           </section>
 
@@ -1045,11 +1152,12 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                                    <div>
                                       <label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Device Type</label>
                                       {isEditingPc ? (
-                                         <select value={formData.pcs[selectedPcIndex].type} onChange={e => updatePcItem(selectedPcIndex, 'type', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white [color-scheme:dark]">
-                                            <option value="PC">PC</option>
-                                            <option value="VDI">VDI</option>
-                                            <option value="Laptop">Laptop</option>
-                                            <option value="Workstation">Workstation</option>
+                                         <select 
+                                            value={formData.pcs[selectedPcIndex].type} 
+                                            onChange={e => updatePcItem(selectedPcIndex, 'type', e.target.value)} 
+                                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white [color-scheme:dark]"
+                                         >
+                                            {deviceTypeOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
                                          </select>
                                       ) : (
                                          <p className="text-[10px] font-bold text-indigo-400 uppercase">{formData.pcs[selectedPcIndex].type || '---'}</p>
@@ -1076,14 +1184,6 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
           </div>
         </div>
 
-        <div className="flex space-x-3 pt-12 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
-          {isEditing && (
-            <button onClick={handleSave} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-              {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-              Save Personnel Info
-            </button>
-          )}
         </div>
       </motion.div>
     </div>
@@ -1091,7 +1191,9 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
 }
 
 function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
-  const [formData, setFormData] = useState({ ...item })
+  const [formData, setFormData] = useState({ ...item, status: item.status || 'Drafted' })
+
+  const statusOptions = ['Drafted', 'In Review', 'Completed', 'Cancelled', 'Expired']
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
@@ -1109,6 +1211,16 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
            <div>
              <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Contract ID</label>
              <input value={formData.contract_id} onChange={e => setFormData({...formData, contract_id: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+           </div>
+           <div>
+             <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Status</label>
+             <select 
+                value={formData.status} 
+                onChange={e => setFormData({...formData, status: e.target.value})} 
+                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark]"
+             >
+                {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+             </select>
            </div>
            <div>
              <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Doc Link</label>
@@ -1145,6 +1257,8 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
   const [isInfraCollapsed, setIsInfraCollapsed] = useState(true)
   const [selectedSowIndex, setSelectedSowIndex] = useState<number | null>(null)
   const [isEditingSow, setIsEditingSow] = useState(false)
+
+  const statusOptions = ['Drafted', 'In Review', 'Completed', 'Cancelled', 'Expired']
 
   // Filter systems to only those present in devices
   const usedSystems = useMemo(() => {
@@ -1224,13 +1338,20 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
              ) : (
                <div className="flex items-center gap-2">
                  <button onClick={() => { setFormData({...item}); setIsEditing(false); setHasChanges(false); setIsEditingSow(false); }} className="px-4 py-1.5 bg-white/5 text-slate-400 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:text-white transition-all">Cancel</button>
+                 {hasChanges && (
+                    <button onClick={handleSave} className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+                        {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Save size={12} />} 
+                        Save Changes
+                    </button>
+                 )}
                </div>
              )}
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
         </div>
 
-        <div className="mt-8 space-y-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar mt-8 pr-4">
+          <div className="space-y-10">
            {/* Row 1: Admin & Policy */}
            <div className="grid grid-cols-2 gap-10">
               <section className="space-y-6">
@@ -1250,6 +1371,20 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                          <input value={formData.contract_id} onChange={e => updateField('contract_id', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                        ) : (
                          <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.contract_id || '---'}</p>
+                       )}
+                    </div>
+                    <div>
+                       <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1 tracking-widest">Status</label>
+                       {isEditing ? (
+                         <select 
+                            value={formData.status || 'Drafted'} 
+                            onChange={e => updateField('status', e.target.value)} 
+                            className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all"
+                         >
+                            {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                         </select>
+                       ) : (
+                         <p className="text-sm font-bold text-white uppercase py-2 tracking-tight">{formData.status || 'Drafted'}</p>
                        )}
                     </div>
                     <div>
@@ -1507,14 +1642,6 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
            </section>
         </div>
 
-        <div className="flex space-x-3 pt-12 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Close Portal</button>
-          {isEditing && hasChanges && (
-            <button onClick={handleSave} className="flex-[2] py-4 bg-emerald-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-              {isSaving ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} 
-              Commit Changes
-            </button>
-          )}
         </div>
       </motion.div>
     </div>

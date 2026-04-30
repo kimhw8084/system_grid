@@ -233,11 +233,16 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     elif opt.category == "ServiceType":
         res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
         if res.scalars().first(): in_use = True
+    elif opt.category == "VendorDeviceType":
+        # Check in VendorPersonnel pcs JSON
+        from sqlalchemy import func
+        res = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.pcs.contains([{"type": opt.value}])))
+        if res.scalars().first(): in_use = True
         
     if in_use:
         raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
         
-    db.delete(opt)
+    await db.execute(delete(models.SettingOption).where(models.SettingOption.id == opt_id))
     await db.commit()
     return {"status": "success"}
 
@@ -562,6 +567,24 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         for cat, val, desc in defaults:
             db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
             
+        # Add Vendor specific enums
+        vendor_defaults = [
+            ("VendorDeviceType", "PC", "Personal Computer"),
+            ("VendorDeviceType", "VDI", "Virtual Desktop Infrastructure"),
+            ("VendorDeviceType", "Laptop", "Portable Computer"),
+            ("VendorDeviceType", "Workstation", "High-performance Computer"),
+            ("VendorCountry", "South Korea", "Republic of Korea"),
+            ("VendorCountry", "USA", "United States of America"),
+            ("VendorCountry", "Taiwan", "Taiwan"),
+            ("VendorCountry", "Germany", "Germany"),
+            ("VendorCountry", "Japan", "Japan"),
+        ]
+        for cat, val, desc in vendor_defaults:
+            # Check if exists first to be safe
+            res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
+            if not res.scalar_one_or_none():
+                db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+
         service_types = [
             ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
             ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
