@@ -487,12 +487,13 @@ class VendorContract(Base, BaseMixin):
 
 class KnowledgeEntry(Base, BaseMixin):
     __tablename__ = "knowledge_entries"
-    category = Column(String, index=True) # Q&A, Manual, Instruction, FAQ, Best Practice, BKM
+    category = Column(String, index=True) # Q&A, Manual, BKM
     title = Column(String, index=True)
-    content = Column(Text) # Markdown or Rich Text
+    content = Column(Text) # Markdown or Rich Text (Mainly for simple entries)
     
-    # Structured BKM (Best Known Method) Data
-    # For BKM: { purpose, prerequisites: [], flowchart_data, steps: [], tips: [], troubleshooting: [], next_steps: [] }
+    # Structured Data (BKM or System Manual)
+    # BKM Schema: { purpose, prerequisites: [], workflow_diagram, steps: [], tips: [], troubleshooting: [], next_steps: [] }
+    # Manual Schema: { business_value: {}, overview: {}, performance: {}, operation: {} }
     content_json = Column(JSON, default=dict) 
     
     # Q&A specific fields
@@ -505,8 +506,35 @@ class KnowledgeEntry(Base, BaseMixin):
     impacted_systems = Column(JSON, default=list) # List of system names
     linked_device_ids = Column(JSON, default=list) # Multi-select assets
     
+    status = Column(String, default="Published") # Draft, Published, Archived
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
+
+    qa_threads = relationship("KnowledgeQA", back_populates="knowledge", cascade="all, delete-orphan")
+
+class KnowledgeQA(Base, BaseMixin):
+    __tablename__ = "knowledge_qa"
+    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="CASCADE"))
+    parent_qa_id = Column(Integer, ForeignKey("knowledge_qa.id", ondelete="CASCADE"), nullable=True)
+    
+    content = Column(Text)
+    author = Column(String)
+    author_team = Column(String)
+    target_audience = Column(String) # Internal, HQ, Dept, Vendor, etc.
+    
+    # If it's an answer to a question
+    is_answer = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)
+    
+    # Metadata for the "timeline" feel
+    entry_type = Column(String, default="Question") # Question, Answer, Follow-up, Observation
+    
+    timestamp = Column(DateTime, server_default=func.now())
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict) # For images, links, etc.
+    
+    knowledge = relationship("KnowledgeEntry", back_populates="qa_threads")
+    replies = relationship("KnowledgeQA", backref=backref("parent", remote_side="KnowledgeQA.id"), cascade="all, delete-orphan")
 
 # --- NEW FAR (FAILURE ANALYSIS & RESOLUTION) MODULE ---
 

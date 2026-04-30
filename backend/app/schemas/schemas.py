@@ -525,3 +525,42 @@ class VendorResponse(VendorBase, BaseSchema):
     is_deleted: bool = False
     personnel: List[VendorPersonnelResponse] = []
     contracts: List[VendorContractResponse] = []
+
+# --- KNOWLEDGE BASE SCHEMAS ---
+
+class KnowledgeQABase(BaseModel):
+    parent_qa_id: Optional[int] = None
+    content: str
+    author: Optional[str] = "Anonymous"
+    author_team: Optional[str] = None
+    target_audience: Optional[str] = "Internal"
+    is_answer: bool = False
+    is_verified: bool = False
+    entry_type: str = "Question"
+    metadata_json: Optional[Dict[str, Any]] = {}
+
+class KnowledgeQACreate(KnowledgeQABase):
+    knowledge_id: int
+
+class KnowledgeQAResponse(KnowledgeQABase, BaseSchema):
+    knowledge_id: int
+    replies: List["KnowledgeQAResponse"] = []
+
+class KnowledgeEntryBase(BaseModel):
+    category: str # Q&A, Manual, BKM
+    title: str
+    content: Optional[str] = None
+    content_json: Optional[Dict[str, Any]] = {}
+    question_context: Optional[str] = None
+    is_answered: bool = False
+    verified_by: Optional[str] = None
+    tags: Optional[List[str]] = []
+    impacted_systems: Optional[List[str]] = []
+    linked_device_ids: Optional[List[int]] = []
+    status: str = "Published"
+    metadata_json: Optional[Dict[str, Any]] = {}
+
+class KnowledgeEntryCreate(KnowledgeEntryBase): pass
+class KnowledgeEntryResponse(KnowledgeEntryBase, BaseSchema):
+    is_deleted: bool = False
+    qa_threads: List[KnowledgeQAResponse] = []
