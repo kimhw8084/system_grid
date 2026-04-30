@@ -189,18 +189,13 @@ export default function Vendor() {
       hide: hiddenColumns.includes("primary_personnel_name")
     },
     { 
-      field: "active_contract", 
-      headerName: "Active Contract", 
-      width: 130, 
+      field: "active_contract_count", 
+      headerName: "Active Contracts", 
+      width: 140, 
       filter: true, 
-      cellClass: 'text-center',
+      cellClass: 'text-center font-black text-emerald-400',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${p.value ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-600/20 text-rose-400 border border-rose-500/30'}`}>
-          {p.value ? 'Active' : 'No Active'}
-        </span>
-      ),
-      hide: hiddenColumns.includes("active_contract")
+      hide: hiddenColumns.includes("active_contract_count")
     },
     { 
       field: "contract_count", 
@@ -271,7 +266,13 @@ export default function Vendor() {
     return vendors.map((v: any) => {
       const contracts = v.contracts || [];
       const personnel = v.personnel || [];
-      const activeContracts = contracts.filter((c: any) => !c.expiry_date || new Date(c.expiry_date) > new Date());
+      const now = new Date();
+      const activeContracts = contracts.filter((c: any) => {
+        const start = c.effective_date ? new Date(c.effective_date) : null;
+        const end = c.expiry_date ? new Date(c.expiry_date) : null;
+        const isDateValid = (!start || start <= now) && (!end || end >= now);
+        return isDateValid && c.status === 'Completed';
+      });
       
       const startDates = contracts.map((c: any) => c.effective_date).filter(Boolean).map((d: any) => new Date(d).getTime());
       const expiryDates = contracts.map((c: any) => c.expiry_date).filter(Boolean).map((d: any) => new Date(d).getTime());
@@ -279,7 +280,7 @@ export default function Vendor() {
       return {
         ...v,
         primary_personnel_name: personnel.find((p: any) => p.id === v.primary_personnel_id)?.name || null,
-        active_contract: activeContracts.length > 0,
+        active_contract_count: activeContracts.length,
         contract_count: contracts.length,
         first_contract_date: startDates.length > 0 ? new Date(Math.min(...startDates)).toISOString() : null,
         earliest_expiry_date: expiryDates.length > 0 ? new Date(Math.min(...expiryDates)).toISOString() : null,
@@ -590,6 +591,8 @@ function VendorDetails({ vendor, devices, onClose }: any) {
   const [showPersonnelModal, setShowPersonnelModal] = useState<any>(null)
   const [showContractModal, setShowContractModal] = useState<any>(null)
   const [activeContractDetails, setActiveContractDetails] = useState<any>(null)
+  const [confirmingContractId, setConfirmingContractId] = useState<number | null>(null)
+  const [confirmingPersonnelId, setConfirmingPersonnelId] = useState<number | null>(null)
 
   // Sync formData when vendor prop changes externally
   React.useEffect(() => {
@@ -819,7 +822,13 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                           <span className="text-[10px] font-black uppercase tracking-widest">Active</span>
                         </div>
                         <p className="text-3xl font-black text-white">
-                          {vendor.contracts?.filter((c:any) => !c.expiry_date || new Date(c.expiry_date) > new Date()).length || 0}
+                          {vendor.contracts?.filter((c:any) => {
+                            const now = new Date();
+                            const start = c.effective_date ? new Date(c.effective_date) : null;
+                            const end = c.expiry_date ? new Date(c.expiry_date) : null;
+                            const isDateValid = (!start || start <= now) && (!end || end >= now);
+                            return isDateValid && c.status === 'Completed';
+                          }).length || 0}
                         </p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Valid Contracts</p>
                       </div>
@@ -932,7 +941,29 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                 </div>
                              </div>
                              <div className="flex items-center space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); deleteContractMutation.mutate(c.id); }} className="p-2 text-slate-600 hover:text-rose-400 transition-all"><Trash2 size={16}/></button>
+                                {confirmingContractId === c.id ? (
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      deleteContractMutation.mutate(c.id); 
+                                      setConfirmingContractId(null);
+                                    }} 
+                                    className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-bold uppercase tracking-widest animate-pulse"
+                                  >
+                                    Confirm?
+                                  </button>
+                                ) : (
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setConfirmingContractId(c.id); 
+                                      setTimeout(() => setConfirmingContractId(null), 3000);
+                                    }} 
+                                    className="p-2 text-slate-600 hover:text-rose-400 transition-all"
+                                  >
+                                    <Trash2 size={16}/>
+                                  </button>
+                                )}
                                 <ArrowRight size={16} className="text-slate-600 group-hover:text-blue-400 transition-all" />
                              </div>
                           </div>
@@ -972,7 +1003,27 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                         </div>
                         <div className="flex items-center space-x-2">
                           <button onClick={() => setShowPersonnelModal(p)} className="p-2 text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={16}/></button>
-                          <button onClick={() => deletePersonnelMutation.mutate(p.id)} className="p-2 text-slate-500 hover:text-rose-400 transition-all"><Trash2 size={16}/></button>
+                          {confirmingPersonnelId === p.id ? (
+                            <button 
+                              onClick={() => { 
+                                deletePersonnelMutation.mutate(p.id); 
+                                setConfirmingPersonnelId(null);
+                              }} 
+                              className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-bold uppercase tracking-widest animate-pulse"
+                            >
+                              Confirm?
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => { 
+                                setConfirmingPersonnelId(p.id); 
+                                setTimeout(() => setConfirmingPersonnelId(null), 3000);
+                              }} 
+                              className="p-2 text-slate-500 hover:text-rose-400 transition-all"
+                            >
+                              <Trash2 size={16}/>
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-8">

@@ -176,7 +176,10 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     model = models.Vendor if target == "vendor" else models.VendorContract
     
     if action == "delete":
-        await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=True))
+        if target == "contract":
+            await db.execute(delete(model).where(model.id.in_(ids)))
+        else:
+            await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=True))
     elif action == "restore":
         await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=False))
     elif action == "purge":
