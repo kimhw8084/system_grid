@@ -102,8 +102,11 @@ async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
         }
 
 @router.get("/options")
-async def get_options(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.SettingOption))
+async def get_options(category: str = None, db: AsyncSession = Depends(get_db)):
+    query = select(models.SettingOption)
+    if category:
+        query = query.filter(models.SettingOption.category == category)
+    result = await db.execute(query.order_by(models.SettingOption.label))
     return result.scalars().all()
 
 @router.post("/options")
@@ -119,6 +122,7 @@ async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/options/{opt_id}")
 async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import func
     result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
     opt = result.scalar_one_or_none()
     if not opt: raise HTTPException(404, "Option not found")
@@ -140,6 +144,11 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
             await db.execute(update(models.Device).where(models.Device.type == old_value).values(type=new_value))
         elif opt.category == "LogicalSystem":
             await db.execute(update(models.Device).where(models.Device.system == old_value).values(system=new_value))
+            # Note: updating covered_systems in VendorContract is complex because it's a JSON array. 
+            # We'll skip complex JSON path updates for now and let the user re-select if needed, 
+            # or handle it via a specialized script if critical.
+        elif opt.category == "VendorCountry":
+            await db.execute(update(models.Vendor).where(models.Vendor.country == old_value).values(country=new_value))
     
     opt.value = new_value
     opt.label = new_label
@@ -195,6 +204,16 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         if res.scalars().first(): in_use = True
     elif opt.category == "LogicalSystem":
         res = await db.execute(select(models.Device).filter(models.Device.system == opt.value))
+        if res.scalars().first(): in_use = True
+        # Check Vendor Contracts (covered_systems is a JSON list)
+        if not in_use:
+            from sqlalchemy import func
+            # Check if opt.value exists in the covered_systems JSON array
+            # Using contains([val]) for SQLAlchemy JSON compatibility
+            res = await db.execute(select(models.VendorContract).filter(models.VendorContract.covered_systems.contains([opt.value])))
+            if res.scalars().first(): in_use = True
+    elif opt.category == "VendorCountry":
+        res = await db.execute(select(models.Vendor).filter(models.Vendor.country == opt.value))
         if res.scalars().first(): in_use = True
     elif opt.category == "Manufacturer":
         res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))

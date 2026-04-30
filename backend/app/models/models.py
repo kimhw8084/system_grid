@@ -429,8 +429,6 @@ class AuditLog(Base):
 class Vendor(Base, BaseMixin):
     __tablename__ = "vendors"
     name = Column(String, index=True)
-    primary_email = Column(String)
-    primary_phone = Column(String)
     country = Column(String, default="South Korea")
     
     is_deleted = Column(Boolean, default=False)

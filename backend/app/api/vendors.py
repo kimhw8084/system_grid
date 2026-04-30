@@ -157,8 +157,13 @@ async def update_contract(contract_id: int, data: dict, db: AsyncSession = Depen
     for k, v in clean_data.items():
         setattr(contract, k, v)
     
-    await db.commit()
-    return contract
+    try:
+        await db.commit()
+        await db.refresh(contract)
+        return contract
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(400, detail=str(e))
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):

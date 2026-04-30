@@ -482,6 +482,13 @@ function VendorDetails({ vendor, devices, onClose }: any) {
   const [showContractModal, setShowContractModal] = useState<any>(null)
   const [activeContractDetails, setActiveContractDetails] = useState<any>(null)
 
+  // Sync formData when vendor prop changes externally
+  React.useEffect(() => {
+    if (!isEditing) {
+      setFormData({ ...vendor })
+    }
+  }, [vendor, isEditing])
+
   const { data: systems } = useQuery({ 
     queryKey: ['settings', 'LogicalSystem'], 
     queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json() 
@@ -534,10 +541,10 @@ function VendorDetails({ vendor, devices, onClose }: any) {
 
   const contractMutation = useMutation({
     mutationFn: async (data: any) => {
-      const url = data.id ? `/api/v1/vendors/contracts/${data.id}` : `/api/v1/vendors/contracts/`
-      const method = data.id ? 'PUT' : 'POST'
-      if (!data.vendor_id) data.vendor_id = vendor.id
-      return (await apiFetch(url, { method, body: JSON.stringify(data) })).json()
+      const payload = { ...data, vendor_id: vendor.id }
+      const url = payload.id ? `/api/v1/vendors/contracts/${payload.id}` : `/api/v1/vendors/contracts/`
+      const method = payload.id ? 'PUT' : 'POST'
+      return (await apiFetch(url, { method, body: JSON.stringify(payload) })).json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] })

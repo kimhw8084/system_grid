@@ -210,8 +210,6 @@ def seed():
         for name, code, country in v_configs:
             v = Vendor(
                 name=name, 
-                primary_email=f"global-support@{name.lower().replace(' ', '')}.com",
-                primary_phone=fake.phone_number(),
                 country=country,
                 metadata_json={"tier": random.choice(["Platinum", "Gold", "Strategic"])}
             )
