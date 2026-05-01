@@ -112,44 +112,113 @@ const LogicBlockNode = ({ data, selected }: any) => {
   const subType = data.subType ? SUB_PROCESS_TYPES.find(t => t.id === data.subType) : null;
   const activeColor = subType ? subType.color : mainType.color;
   const ActiveIcon = subType ? subType.icon : mainType.icon;
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [showFullImage, setShowFullImage] = React.useState(false);
 
   return (
-    <div className={`glass-panel min-w-[240px] rounded-xl border-2 transition-all duration-300 shadow-2xl overflow-hidden group ${selected ? 'ring-2 ring-white/20' : ''}`} style={{ borderColor: `${activeColor}40`, backgroundColor: `${activeColor}08` }}>
-      <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
+    <div className={`glass-panel min-w-[280px] rounded-xl border-2 transition-all duration-300 shadow-2xl overflow-hidden group ${selected ? 'ring-2 ring-white/20' : ''}`} style={{ borderColor: `${activeColor}40`, backgroundColor: `${activeColor}08` }}>
+      <div className="flex items-center justify-between px-3 py-2 bg-white/5 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <div className="p-1 rounded text-white" style={{ backgroundColor: activeColor }}>
-            <ActiveIcon size={10}/>
+          <div className="p-1.5 rounded text-white" style={{ backgroundColor: activeColor }}>
+            <ActiveIcon size={12}/>
           </div>
-          <span className="text-[9px] font-black uppercase tracking-widest text-white/80">
-            {subType ? subType.label : mainType.label}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">
+              {subType ? subType.label : mainType.label}
+            </span>
+            <span className="text-[7px] font-bold text-slate-500 uppercase tracking-tight">Step #{data.id.split('-').pop()}</span>
+          </div>
         </div>
-        {selected && (
-          <button onClick={() => data.onDelete(data.id)} className="text-rose-500 hover:bg-rose-500/10 rounded p-1 opacity-0 group-hover:opacity-100">
-            <Trash2 size={10}/>
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {selected && (
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (isDeleting) {
+                  data.onDelete(data.id);
+                } else {
+                  setIsDeleting(true);
+                  setTimeout(() => setIsDeleting(false), 3000);
+                }
+              }} 
+              className={`rounded px-2 py-1 transition-all flex items-center gap-1 ${isDeleting ? 'bg-rose-600 text-white' : 'text-rose-500 hover:bg-rose-500/10'}`}
+            >
+              <Trash2 size={10}/>
+              {isDeleting && <span className="text-[8px] font-black uppercase">Confirm?</span>}
+            </button>
+          )}
+        </div>
       </div>
-      <div className="p-3 space-y-2">
-        {data.type === 'PROCESS' && !data.subType && (
-          <div className="flex items-center justify-center gap-2 py-2 border-b border-white/5 mb-2">
+      <div className="p-4 space-y-4">
+        {data.type === 'PROCESS' && (
+          <div className="flex items-center justify-between gap-2 p-1 bg-black/40 rounded-lg border border-white/5">
             {SUB_PROCESS_TYPES.map(st => (
               <button 
                 key={st.id} 
                 onClick={() => data.onChange(data.id, { subType: st.id })}
-                className="p-1.5 rounded bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+                className={`flex-1 p-2 rounded transition-all flex items-center justify-center ${data.subType === st.id ? 'bg-white/10 text-white shadow-inner' : 'text-slate-600 hover:text-white hover:bg-white/5'}`}
                 title={st.label}
               >
-                <st.icon size={12} />
+                <st.icon size={14} />
               </button>
             ))}
           </div>
         )}
-        <textarea value={data.label} onChange={e => data.onChange(data.id, { label: e.target.value })} onPaste={e => { const items = e.clipboardData.items; for (let i = 0; i < items.length; i++) { if (items[i].type.indexOf("image") !== -1) { const blob = items[i].getAsFile(); const reader = new FileReader(); reader.onload = (event) => data.onChange(data.id, { image: event.target?.result }); reader.readAsDataURL(blob!); } } }} className="w-full bg-transparent border-none text-[10px] font-bold text-white uppercase outline-none resize-none min-h-[30px]" placeholder="Logic step..." />
-        {data.image && <div className="relative group/img rounded border border-white/10 overflow-hidden"><img src={data.image} className="w-full max-h-[80px] object-contain"/><button onClick={() => data.onChange(data.id, { image: null })} className="absolute top-1 right-1 p-1 bg-black/60 rounded text-white opacity-0 group-hover/img:opacity-100"><X size={8}/></button></div>}
-        <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5"><div className="space-y-0.5"><p className="text-[6px] font-black text-slate-500 uppercase">Input</p><input value={data.input || ''} onChange={e => data.onChange(data.id, { input: e.target.value })} className="w-full bg-white/5 rounded px-1.5 py-0.5 text-[8px] text-slate-400 outline-none"/></div><div className="space-y-0.5"><p className="text-[6px] font-black text-slate-500 uppercase text-right">Output</p><input value={data.output || ''} onChange={e => data.onChange(data.id, { output: e.target.value })} className="w-full bg-white/5 rounded px-1.5 py-0.5 text-[8px] text-emerald-400 outline-none text-right"/></div></div>
+        
+        <div className="space-y-2">
+          <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1">Process Description</p>
+          <textarea 
+            value={data.label} 
+            onChange={e => data.onChange(data.id, { label: e.target.value })} 
+            onPaste={e => { 
+              const items = e.clipboardData.items; 
+              for (let i = 0; i < items.length; i++) { 
+                if (items[i].type.indexOf("image") !== -1) { 
+                  const blob = items[i].getAsFile(); 
+                  const reader = new FileReader(); 
+                  reader.onload = (event) => data.onChange(data.id, { image: event.target?.result }); 
+                  reader.readAsDataURL(blob!); 
+                } 
+              } 
+            }} 
+            className="w-full bg-black/40 border border-white/5 rounded-lg p-3 text-[11px] font-bold text-white uppercase outline-none focus:border-blue-500/50 resize-none min-h-[60px]" 
+            placeholder="Document logic flow..." 
+          />
+        </div>
+
+        {data.image && (
+          <div className="space-y-2">
+            <p className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1">Visual Reference</p>
+            <div className="relative group/img rounded-lg border border-white/10 overflow-hidden bg-black/60 aspect-video flex items-center justify-center">
+              <img src={data.image} className="max-w-full max-h-full object-contain cursor-zoom-in" onClick={() => setShowFullImage(true)}/>
+              <button onClick={() => data.onChange(data.id, { image: null })} className="absolute top-2 right-2 p-1.5 bg-black/80 rounded-lg text-rose-500 opacity-0 group-hover/img:opacity-100 hover:bg-rose-500 hover:text-white transition-all">
+                <X size={12}/>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+          <div className="space-y-1">
+            <p className="text-[7px] font-black text-blue-500 uppercase tracking-widest">State Input</p>
+            <input value={data.input || ''} onChange={e => data.onChange(data.id, { input: e.target.value })} className="w-full bg-black/40 border border-white/5 rounded-md px-2 py-1.5 text-[9px] font-bold text-slate-300 outline-none focus:border-blue-500/30" placeholder="NULL"/>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[7px] font-black text-emerald-500 uppercase tracking-widest text-right">Result Output</p>
+            <input value={data.output || ''} onChange={e => data.onChange(data.id, { output: e.target.value })} className="w-full bg-black/40 border border-white/5 rounded-md px-2 py-1.5 text-[9px] font-bold text-emerald-400 outline-none focus:border-emerald-500/30 text-right" placeholder="ACK"/>
+          </div>
+        </div>
       </div>
       <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-slate-900 !border-white/20"/><Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-slate-900 !border-white/20"/><Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-slate-900 !border-white/20"/><Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-slate-900 !border-white/20"/>
+      
+      <AnimatePresence>
+        {showFullImage && (
+          <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-10 cursor-zoom-out" onClick={() => setShowFullImage(false)}>
+            <motion.img initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} src={data.image} className="max-w-full max-h-full object-contain shadow-2xl"/>
+            <button className="absolute top-10 right-10 p-4 text-white hover:text-blue-400 transition-colors"><X size={32}/></button>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -165,6 +234,10 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   const [internalEdges, setInternalEdges] = useState<Edge[]>([]);
   const neighbors = useMemo(() => { if (!node || !edges) return { upstream: [], downstream: [] }; const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', source: e.source, protocol: e.data?.protocol || 'TCP' })); const downstream = edges.filter((e: any) => e.source === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', target: e.target, protocol: e.data?.protocol || 'TCP' })); return { upstream, downstream }; }, [node, edges]);
   const nodeServices = useMemo(() => (node?.data?.logical_services || []), [node]);
+  
+  const laneWidth = 450;
+  const laneBaseX = 400;
+
   useEffect(() => { 
     if (activeEdgeId) { 
       const flowData = logicManifest[activeEdgeId] || { nodes: [], edges: [], lanes: [] }; 
@@ -190,20 +263,35 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
       setInternalEdges([]); 
     } 
   }, [activeEdgeId, logicManifest]);
-  const laneWidth = 400;
-  const laneBaseX = 320;
 
   const onNodeDrag = useCallback((_: any, node: Node) => {
-    const laneIdx = Math.max(0, Math.floor((node.position.x - laneBaseX + (laneWidth / 2)) / laneWidth));
-    const snappedX = laneBaseX + (laneIdx * laneWidth) + (laneWidth - 240) / 2;
-    setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: snappedX, y: node.position.y }, data: { ...n.data, laneIdx } } : n));
+    const xRelative = node.position.x - laneBaseX;
+    const currentLaneIdx = node.data.laneIdx || 0;
+    
+    // Calculate potential new lane
+    const potentialLaneIdx = Math.max(0, Math.floor((xRelative + (laneWidth / 2)) / laneWidth));
+    
+    // Magnetic effect: Requires more effort to switch lanes
+    let targetLaneIdx = currentLaneIdx;
+    if (potentialLaneIdx !== currentLaneIdx) {
+      const threshold = laneWidth * 0.25; // 25% margin to prevent accidental jumps
+      const laneCenter = (potentialLaneIdx * laneWidth) + (laneWidth / 2);
+      const distFromCenter = Math.abs(xRelative + (280 / 2) - laneCenter);
+      
+      if (distFromCenter < threshold) {
+        targetLaneIdx = potentialLaneIdx;
+      }
+    }
+
+    const snappedX = laneBaseX + (targetLaneIdx * laneWidth) + (laneWidth - 280) / 2;
+    setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: snappedX, y: node.position.y }, data: { ...n.data, laneIdx: targetLaneIdx } } : n));
   }, [laneBaseX, laneWidth]);
 
   const onConnect = useCallback((params: Connection) => { const newEdge = { ...params, id: `l-edge-${Date.now()}`, type: 'logicLink', data: { label: '', onLabelChange: (id: string, label: string) => { setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); } } }; setInternalEdges((eds) => addEdge(newEdge, eds)); }, []);
   
   const addBlock = (type: string, laneIdx: number) => { 
-    const x = laneBaseX + (laneIdx * laneWidth) + (laneWidth - 240) / 2; 
-    const y = 150 + (internalNodes.filter(n => Math.abs(n.position.x - x) < 50).length * 150); 
+    const x = laneBaseX + (laneIdx * laneWidth) + (laneWidth - 280) / 2; 
+    const y = 150 + (internalNodes.filter(n => n.data.laneIdx === laneIdx).length * 200); 
     const newNode = { 
       id: `block-${Date.now()}`, 
       type: 'logicBlock', 
@@ -223,24 +311,68 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   const handleSaveWorkflow = () => { if (!activeEdgeId) return; setLogicManifest(prev => ({ ...prev, [activeEdgeId]: { nodes: internalNodes, edges: internalEdges, lanes: prev[activeEdgeId]?.lanes || [] } })); toast.success("Buffer Updated"); };
   const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), []);
   const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), []);
+  
+  const activeLanes = logicManifest[activeEdgeId]?.lanes || [];
+
   return (
-    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[#020408] flex overflow-hidden">
-      <div className="w-[300px] border-r border-white/5 bg-black/60 backdrop-blur-3xl flex flex-col z-30">
-        <div className="p-8 border-b border-white/5 space-y-4"><div className="flex items-center gap-3"><div className="p-2.5 bg-blue-600 rounded-lg text-white"><Cpu size={20}/></div><div><h3 className="text-xs font-black text-white uppercase tracking-tighter">Logic Core 3.0</h3></div></div></div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-10 custom-scrollbar">
-           <div className="space-y-4"><span className="text-[9px] font-black text-blue-500 uppercase tracking-widest px-2">Ingress</span>{neighbors.upstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-4 rounded-xl border transition-all text-left space-y-1 group ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400' : 'bg-white/5 border-white/5 hover:border-white/10'}`}><p className={`text-[10px] font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p><p className={`text-[8px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/60' : 'text-slate-500'}`}>{edge.label}</p></button>))}</div>
-           <div className="space-y-4"><span className="text-[9px] font-black text-rose-500 uppercase tracking-widest px-2">Egress</span>{neighbors.downstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-4 rounded-xl border transition-all text-left space-y-1 group ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400' : 'bg-white/5 border-white/5 hover:border-white/10'}`}><p className={`text-[10px] font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p><p className={`text-[8px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/60' : 'text-slate-500'}`}>{edge.label}</p></button>))}</div>
+    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[var(--bg-primary)] flex overflow-hidden">
+      <div className="w-[340px] border-r border-white/5 bg-black/60 backdrop-blur-3xl flex flex-col z-30 shadow-2xl">
+        <div className="p-8 border-b border-white/5 space-y-4"><div className="flex items-center gap-3"><div className="p-2.5 bg-blue-600 rounded-lg text-white"><Cpu size={20}/></div><div><h3 className="text-sm font-black text-white uppercase tracking-tighter italic">Logic Core 3.0</h3></div></div></div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-12 custom-scrollbar">
+           <div className="space-y-4">
+             <div className="flex items-center justify-between px-2">
+               <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Incoming Flows</span>
+               <span className="text-[8px] font-bold text-slate-700 uppercase">Input Signals</span>
+             </div>
+             {neighbors.upstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-5 rounded-2xl border transition-all text-left space-y-2 group ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-xl shadow-blue-500/20' : 'bg-white/5 border-white/5 hover:border-white/10'}`}><p className={`text-[12px] font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p><div className="flex items-center gap-2"><div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/10 text-blue-400'}`}>{edge.protocol}</div><p className={`text-[9px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/60' : 'text-slate-500'}`}>{edge.label}</p></div></button>))}
+           </div>
+           <div className="space-y-4">
+             <div className="flex items-center justify-between px-2">
+               <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest italic">Outgoing Flows</span>
+               <span className="text-[8px] font-bold text-slate-700 uppercase">Egress Actions</span>
+             </div>
+             {neighbors.downstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-5 rounded-2xl border transition-all text-left space-y-2 group ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-xl shadow-rose-500/20' : 'bg-white/5 border-white/5 hover:border-white/10'}`}><p className={`text-[12px] font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p><div className="flex items-center gap-2"><div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-rose-500/10 text-rose-400'}`}>{edge.protocol}</div><p className={`text-[9px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/60' : 'text-slate-500'}`}>{edge.label}</p></div></button>))}
+           </div>
         </div>
-        <div className="p-6 border-t border-white/5 bg-black/40 space-y-3"><button onClick={onClose} className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-lg">Discard</button><button onClick={() => { onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest rounded-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all">Commit Manifest</button></div>
+        <div className="p-8 border-t border-white/5 bg-black/40 space-y-3"><button onClick={onClose} className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">Abort Changes</button><button onClick={() => { onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all">Synchronize Manifest</button></div>
       </div>
       <div className="flex-1 flex flex-col bg-[#05070a] relative">
         {activeEdgeId ? (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="h-[100px] bg-black/80 backdrop-blur-2xl border-b border-white/5 flex items-center relative z-20 shadow-2xl">
-               <div className="w-[320px] h-full border-r border-white/5 bg-blue-600/5 flex flex-col items-center justify-center space-y-1"><p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em]">External</p><span className="text-xs font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Undefined'}</span></div>
-               <div className="flex-1 h-full flex divide-x divide-white/5 overflow-hidden">{(logicManifest[activeEdgeId]?.lanes || []).map((lane: string, idx: number) => (<div key={idx} className="flex-1 flex flex-col items-center justify-center bg-white/[0.01] group relative"><p className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1">Service</p><span className="text-[10px] font-black text-white uppercase tracking-tight">{lane}</span><button onClick={() => { const next = logicManifest[activeEdgeId].lanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500"><X size={12}/></button></div>))}<div className="w-[180px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/5 group"><select onChange={e => { if (!e.target.value) return; const current = logicManifest[activeEdgeId]?.lanes || []; if (current.includes(e.target.value)) return; setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: [...current, e.target.value] } })); e.target.value = ''; }} className="bg-transparent border-none text-[8px] font-black text-slate-500 uppercase tracking-widest outline-none cursor-pointer group-hover:text-blue-400 transition-colors"><option value="">+ Add Lane</option>{nodeServices.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></div></div>
+            <div className="h-[120px] bg-black/80 backdrop-blur-3xl border-b border-white/5 flex items-center relative z-20 shadow-2xl overflow-x-auto custom-scrollbar no-scrollbar">
+               <div className="min-w-[400px] h-full border-r border-white/10 bg-blue-600/5 flex flex-col items-center justify-center space-y-2 shrink-0">
+                 <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] italic">External Boundary</p>
+                 <span className="text-xl font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Undefined'}</span>
+               </div>
+               <div className="flex h-full divide-x divide-white/5">
+                 {activeLanes.map((lane: string, idx: number) => (
+                   <div key={idx} className="w-[450px] flex flex-col items-center justify-center bg-white/[0.01] group relative shrink-0">
+                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 italic">Service Lane</p>
+                     <span className="text-sm font-black text-white uppercase tracking-tight">{lane}</span>
+                     <div className="absolute bottom-3 flex gap-2">
+                        <button onClick={() => addBlock('PROCESS', idx + 1)} className="px-3 py-1 bg-blue-600/10 hover:bg-blue-600/30 text-blue-400 text-[8px] font-black uppercase rounded-md border border-blue-500/20 transition-all flex items-center gap-1.5"><Plus size={10}/> Entity</button>
+                        <button onClick={() => addBlock('CONDITION', idx + 1)} className="px-3 py-1 bg-amber-600/10 hover:bg-amber-600/30 text-amber-400 text-[8px] font-black uppercase rounded-md border border-amber-500/20 transition-all flex items-center gap-1.5"><Plus size={10}/> Logic</button>
+                     </div>
+                     <button onClick={() => { const next = activeLanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><X size={16}/></button>
+                   </div>
+                 ))}
+                 <div className="w-[200px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/5 group shrink-0">
+                   <select 
+                     onChange={e => { 
+                       if (!e.target.value) return; 
+                       if (activeLanes.includes(e.target.value)) return; 
+                       setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: [...activeLanes, e.target.value] } })); 
+                       e.target.value = ''; 
+                     }} 
+                     className="bg-transparent border-none text-[9px] font-black text-slate-500 uppercase tracking-widest outline-none cursor-pointer group-hover:text-blue-400 transition-colors"
+                   >
+                     <option value="">+ Add Service Lane</option>
+                     {nodeServices.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                   </select>
+                 </div>
+               </div>
             </div>
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               <ReactFlow 
                 nodes={internalNodes} 
                 edges={internalEdges} 
@@ -255,27 +387,24 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                 fitView 
                 className="bg-[#05070a]"
               >
-                <div className="absolute inset-0 flex pointer-events-none opacity-20">
-                  <div className="w-[320px] h-full border-r border-dashed border-white/10" />
-                  {(logicManifest[activeEdgeId]?.lanes || []).map((_: any, i: number) => (
-                    <div key={i} className="w-[400px] h-full border-r border-dashed border-white/10" />
+                <div className="absolute inset-0 flex pointer-events-none overflow-hidden">
+                  <div className="w-[400px] h-full border-r border-dashed border-white/10 bg-white/[0.01]" />
+                  {activeLanes.map((_: any, i: number) => (
+                    <div key={i} className="w-[450px] h-full border-r border-dashed border-white/10 flex flex-col">
+                       <div className="flex-1 bg-white/[0.005]" />
+                    </div>
                   ))}
                 </div>
                 <Background color="#1e293b" gap={20} size={1}/>
-                <Panel position="bottom-center" className="mb-8 flex gap-2">
-                  <div className="glass-panel p-2 rounded-xl border border-white/10 flex items-center space-x-1.5 bg-slate-900/60 backdrop-blur-3xl shadow-3xl">
-                    <button onClick={() => addBlock('PROCESS', 0)} className="px-4 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-blue-500/20 transition-all">
-                      <Plus size={14} /> Add Entity
-                    </button>
-                    <button onClick={() => addBlock('CONDITION', 0)} className="px-4 py-2 rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-amber-500/20 transition-all">
-                      <Plus size={14} /> Condition Entity
-                    </button>
+                <Panel position="top-right" className="m-4">
+                  <div className="glass-panel px-4 py-2 rounded-xl border border-white/10 bg-black/60 backdrop-blur-xl flex items-center gap-4">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Manifest: <span className="text-white italic">{activeEdgeId}</span></p>
                   </div>
                 </Panel>
               </ReactFlow>
             </div>
           </div>
-        ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:40px_40px]"><div className="p-16 rounded-full bg-slate-900/40 border border-white/5 shadow-2xl relative"><Workflow size={80} className="text-slate-800" /><div className="absolute inset-0 border-4 border-blue-500/10 rounded-full animate-ping" /></div><div className="text-center space-y-3"><h4 className="text-xl font-black text-slate-400 uppercase tracking-[0.5em]">Logic Core Offline</h4><p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-relaxed">Select a connection to initialize flow documentation.</p></div></div>)}
+        ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:40px_40px]"><div className="p-20 rounded-full bg-slate-900/40 border border-white/5 shadow-[0_0_100px_rgba(37,99,235,0.1)] relative"><Workflow size={100} className="text-slate-800" /><div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-ping" /></div><div className="text-center space-y-4"><h4 className="text-3xl font-black text-white italic uppercase tracking-[0.3em]">Logic Core <span className="text-blue-600">Standby</span></h4><p className="text-[12px] font-bold text-slate-500 uppercase tracking-[0.5em] leading-relaxed">Select a high-speed data flow to initialize documentation matrix</p></div></div>)}
       </div>
     </motion.div>
   );
@@ -345,7 +474,18 @@ function ArchDesignerInner() {
          <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0a0c14]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
             <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
             <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/60 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">{inventoryType === 'INTERNAL' ? (<section className="space-y-3"><div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div><div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { setNodes(nds => [...nds, { id: `device-${a.id}-${Date.now()}`, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); setHasUnsavedChanges(true); }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div></section>) : null}</div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">{inventoryType === 'INTERNAL' ? (<section className="space-y-3"><div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div><div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
+              const nodeId = `device-${a.id}`;
+              const exists = nodes.find(n => n.id === nodeId);
+              if (exists) {
+                toast.error(`${a.name || a.hostname} already in manifest`);
+                setNodes(nds => nds.map(n => ({ ...n, selected: n.id === nodeId })));
+                setTimeout(() => fitView({ nodes: [exists], duration: 800 }), 100);
+                return;
+              }
+              setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
+              setHasUnsavedChanges(true); 
+            }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div></section>) : null}</div>
             <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-black uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
          </motion.div>
        )}</AnimatePresence>
