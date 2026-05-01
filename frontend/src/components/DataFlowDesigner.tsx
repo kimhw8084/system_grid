@@ -30,7 +30,7 @@ import {
   ExternalLink, Filter, ArrowRight, Zap, Info, Maximize2, Minimize2, X, Share2, 
   Cpu, Trash2, MousePointer2, Workflow, Target, Layers, ArrowDownUp, FileText,
   AlertOctagon, Compass, Box, Terminal, ListTodo, ChevronRight, ChevronDown,
-  Diamond, StickyNote, GitMerge, MoreHorizontal, Settings, RefreshCw
+  Diamond, StickyNote, GitMerge, MoreHorizontal, Settings, RefreshCw, HelpCircle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
