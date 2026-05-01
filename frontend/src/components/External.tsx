@@ -571,12 +571,11 @@ export default function External() {
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>('active')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false })
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false, type: 'entity' })
 
   const { data: options } = useQuery({ 
     queryKey: ['settings-options'], 
@@ -588,6 +587,16 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
 
+  const { data: links, isLoading: linkLoading } = useQuery({ 
+    queryKey: ['external-links'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/links')).json()) 
+  })
+
+  const { data: devices } = useQuery({ 
+    queryKey: ['devices'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
+  })
+
   const entities = useMemo(() => {
     if (!allEntities) return []
     return allEntities.filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
@@ -597,12 +606,12 @@ export default function External() {
     if (gridRef.current?.api) {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
-  }, [fontSize, rowDensity, entities])
+  }, [fontSize, rowDensity, entities, links, activeTab])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
       gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_External_Registry_${new Date().toISOString().split('T')[0]}.csv`,
+        fileName: `SysGrid_External_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`,
         allColumns: false,
         onlySelected: false
       })
@@ -618,7 +627,7 @@ export default function External() {
       })
       if (csvData) {
         navigator.clipboard.writeText(csvData)
-          .then(() => toast.success("Entity subset copied to secure clipboard"))
+          .then(() => toast.success("Data copied to secure clipboard"))
           .catch(() => toast.error("Clipboard authorization failed"))
       }
     }
@@ -640,17 +649,33 @@ export default function External() {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const linkMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return (await apiFetch('/api/v1/intelligence/links', { method: 'POST', body: JSON.stringify(data) })).json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['external-links'] })
+      toast.success('Interconnect Established')
+      setShowLinkModal(false)
+    }
+  })
+
   const deleteMutation = useMutation({
-    mutationFn: async ({ id, purge }: { id: number, purge: boolean }) => {
-      const url = `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}`
+    mutationFn: async ({ id, purge, type }: { id: number, purge: boolean, type: 'entity' | 'link' }) => {
+      const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
       const res = await apiFetch(url, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      setConfirmModal({ isOpen: false, id: null, purge: false })
-      toast.success(variables.purge ? 'Entity Purged from Global Registry' : 'Entity Moved to Deleted Matrix')
+      if (variables.type === 'entity') {
+         queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+         toast.success(variables.purge ? 'Entity Purged from Global Registry' : 'Entity Moved to Deleted Matrix')
+      } else {
+         queryClient.invalidateQueries({ queryKey: ['external-links'] })
+         toast.success('Link Severed')
+      }
+      setConfirmModal({ isOpen: false, id: null, purge: false, type: 'entity' })
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -696,8 +721,8 @@ export default function External() {
       filter: 'agNumberColumnFilter',
     },
     { 
-      field: "name", 
-      headerName: "Name", 
+      field: activeTab === 'links' ? "external_entity_name" : "name", 
+      headerName: activeTab === 'links' ? "External Peer" : "Name", 
       pinned: 'left',
       filter: true,
       cellClass: 'text-left font-bold uppercase text-blue-400',
@@ -705,88 +730,125 @@ export default function External() {
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("name")
     },
-    { 
-      field: "type", 
-      headerName: "Type", 
-      width: 140, 
-      filter: true,
-      cellClass: 'text-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Equipment': 'text-indigo-400',
-          'Physical Server': 'text-blue-400',
-          'Virtual Server': 'text-sky-400',
-          'Switch': 'text-rose-400',
-          'Storage': 'text-amber-400',
-          'DB': 'text-emerald-400',
-          'API': 'text-fuchsia-400',
-          'Script': 'text-orange-400'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-      },
-      hide: hiddenColumns.includes("type")
-    },
-    { 
-      field: "owner_team", 
-      headerName: "Owner Team", 
-      width: 150, 
-      filter: true,
-      cellClass: 'text-center font-bold uppercase text-slate-400', 
-      headerClass: 'text-center', 
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, 
-      hide: hiddenColumns.includes("owner_team") 
-    },
-    { 
-      field: "status", 
-      headerName: "Status", 
-      width: 130, 
-      filter: true,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-          Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-          Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-          Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-          Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
-          Failed: 'text-rose-500 border-rose-600/40 bg-rose-600/20',
-          Provisioning: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
-          Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20'
-        }
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                {p.value || 'Planned'}
-              </span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("status")
-    },
-    { 
-      field: "environment", 
-      headerName: "Env", 
-      width: 100, 
-      filter: true,
-      cellClass: 'text-center font-bold text-slate-400 uppercase', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("environment")
-    },
-    {
-        field: "description",
-        headerName: "Description",
-        flex: 2,
-        filter: true,
-        cellClass: 'text-left font-bold text-slate-500  truncate',
-        headerClass: 'text-left',
-        cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-        hide: hiddenColumns.includes("description")
-    },
+    ...(activeTab === 'links' ? [
+       { 
+         field: "direction", 
+         headerName: "Flow", 
+         width: 100, 
+         cellClass: "text-center",
+         headerClass: "text-center",
+         cellRenderer: (p: any) => (
+           <div className="flex items-center justify-center h-full">
+             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
+               {p.value}
+             </div>
+           </div>
+         ),
+         hide: hiddenColumns.includes("direction")
+       },
+       { 
+         field: "device_name", 
+         headerName: "Internal Asset", 
+         width: 150, 
+         cellClass: "font-bold text-center uppercase tracking-tight", 
+         headerClass: 'text-center', 
+         cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+         hide: hiddenColumns.includes("device_name")
+       },
+       { 
+         field: "service_name", 
+         headerName: "Logical Service", 
+         width: 150, 
+         cellClass: "text-center uppercase text-slate-400 font-bold tracking-tight", 
+         headerClass: 'text-center', 
+         cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+         hide: hiddenColumns.includes("service_name")
+       },
+       { 
+         field: "purpose", 
+         headerName: "Interconnect Purpose", 
+         flex: 1.5, 
+         headerClass: 'text-left', 
+         cellClass: 'font-bold uppercase', 
+         cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+         hide: hiddenColumns.includes("purpose")
+       },
+       { field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("protocol") },
+       { field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("port") },
+    ] : [
+       { 
+         field: "type", 
+         headerName: "Type", 
+         width: 140, 
+         filter: true,
+         cellClass: 'text-center', 
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => {
+           const colors: any = {
+             'Equipment': 'text-indigo-400',
+             'Physical Server': 'text-blue-400',
+             'Virtual Server': 'text-sky-400',
+             'Switch': 'text-rose-400',
+             'Storage': 'text-amber-400',
+             'DB': 'text-emerald-400',
+             'API': 'text-fuchsia-400',
+             'Script': 'text-orange-400'
+           }
+           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
+         },
+         hide: hiddenColumns.includes("type")
+       },
+       { 
+         field: "owner_team", 
+         headerName: "Owner Team", 
+         width: 150, 
+         filter: true,
+         cellClass: 'text-center font-bold uppercase text-slate-400', 
+         headerClass: 'text-center', 
+         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, 
+         hide: hiddenColumns.includes("owner_team") 
+       },
+       { 
+         field: "status", 
+         headerName: "Status", 
+         width: 130, 
+         filter: true,
+         cellClass: 'text-center',
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => {
+           const colors: any = {
+             Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+             Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+             Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+             Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+             Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
+             Failed: 'text-rose-500 border-rose-600/40 bg-rose-600/20',
+             Provisioning: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
+             Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20'
+           }
+           return (
+             <div className="flex items-center justify-center h-full w-full">
+               <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+                 <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
+                   {p.value || 'Planned'}
+                 </span>
+               </div>
+             </div>
+           )
+         },
+         hide: hiddenColumns.includes("status")
+       },
+       { 
+         field: "environment", 
+         headerName: "Env", 
+         width: 100, 
+         filter: true,
+         cellClass: 'text-center font-bold text-slate-400 uppercase', 
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+         hide: hiddenColumns.includes("environment")
+       },
+    ]),
     { 
       headerName: "Action",
       width: 120,
@@ -798,17 +860,19 @@ export default function External() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>
+               {activeTab !== 'links' && <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>}
                {activeTab === 'active' ? (
                  <>
                    <button onClick={() => setActiveModal(p.data)} title="Edit" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false })} title="Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false, type: 'entity' })} title="Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                  </>
-               ) : (
+               ) : activeTab === 'deleted' ? (
                  <>
                    <button onClick={() => restoreMutation.mutate(p.data.id)} title="Restore" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><RefreshCcw size={14}/></button>
-                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: true })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: true, type: 'entity' })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                  </>
+               ) : (
+                 <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false, type: 'link' })} title="Sever Link" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                )}
            </div>
         </div>
@@ -826,16 +890,19 @@ export default function External() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight ">External</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Third-Party Asset Forensic</p>
+              <h1 className="text-2xl font-bold uppercase tracking-tight ">Partner IQ</h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Interconnect Intelligence</p>
            </div>
-           
+
            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
                 <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Active
+                    Registry
+                </button>
+                <button onClick={() => setActiveTab('links')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'links' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+                    Connectivity
                 </button>
                 <button onClick={() => setActiveTab('deleted')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Deleted
+                    Archive
                 </button>
            </div>
         </div>
@@ -871,7 +938,12 @@ export default function External() {
                 <Settings size={16} />
              </button>
           </div>
-          <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Admission</button>
+          <button 
+             onClick={() => activeTab === 'links' ? setShowLinkModal(true) : setActiveModal({})} 
+             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+          >
+            + {activeTab === 'links' ? 'Map Link' : 'Admission'}
+          </button>
         </div>
       </div>
 
@@ -889,7 +961,7 @@ export default function External() {
                      <Activity size={16} className="text-blue-400" />
                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
                   </div>
-                  
+
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
@@ -923,7 +995,7 @@ export default function External() {
       </AnimatePresence>
 
       <div className="flex-1 glass-panel rounded-lg border border-white/5 overflow-hidden ag-theme-alpine-dark relative">
-        {isLoading && (
+        {(isLoading || linkLoading) && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>
@@ -931,7 +1003,7 @@ export default function External() {
         )}
         <AgGridReact 
           ref={gridRef}
-          rowData={entities || []} 
+          rowData={activeTab === 'links' ? links : entities} 
           columnDefs={columnDefs as any} 
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
@@ -1000,6 +1072,15 @@ export default function External() {
             </motion.div>
           </div>
         )}
+        {showLinkModal && (
+           <LinkForm 
+              entities={allEntities?.filter((e: any) => !e.is_deleted)}
+              devices={devices}
+              onClose={() => setShowLinkModal(false)}
+              onSave={(data: any) => linkMutation.mutate(data)}
+              isPending={linkMutation.isPending}
+           />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1038,15 +1119,14 @@ export default function External() {
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null, purge: false })}
-        onConfirm={() => deleteMutation.mutate({ id: confirmModal.id, purge: confirmModal.purge })}
-        title={confirmModal.purge ? "Purge External Identity" : "Sever External Manifest"}
-        message={confirmModal.purge 
+        onClose={() => setConfirmModal({ isOpen: false, id: null, purge: false, type: 'entity' })}
+        onConfirm={() => deleteMutation.mutate({ id: confirmModal.id, purge: confirmModal.purge, type: confirmModal.type })}
+        title={confirmModal.type === 'link' ? "Sever Link" : confirmModal.purge ? "Purge External Identity" : "Sever External Manifest"}
+        message={confirmModal.type === 'link' ? "Sever this interconnect link?" : confirmModal.purge 
           ? "This will IRREVOCABLY purge the identity from the global registry. Proceed with final termination?" 
           : "This will move the authorized identity to the deleted matrix. All downstream forensics will be preserved. Proceed?"}
         variant="danger"
       />
-
       <ConfigRegistryModal
         isOpen={showConfig}
         onClose={() => setShowConfig(false)}
@@ -1074,6 +1154,154 @@ export default function External() {
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
+    </div>
+  )
+}
+
+function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
+  const [formData, setFormData] = useState({
+    external_entity_id: '', device_id: '', service_id: '', direction: 'Upstream', purpose: '', protocol: 'TCP', port: '',
+    credentials: { username: '', password: '', note: '' }
+  })
+
+  const { data: services } = useQuery({
+    queryKey: ['device-services', formData.device_id],
+    queryFn: async () => {
+      if (!formData.device_id) return []
+      return (await apiFetch(`/api/v1/logical-services/?device_id=${formData.device_id}`)).json()
+    },
+    enabled: !!formData.device_id
+  })
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[85vh] rounded-lg border border-indigo-500/20 overflow-hidden flex flex-col shadow-2xl">
+        <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
+           <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                 <div className="px-3 py-1 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-[9px] font-black text-indigo-400 uppercase tracking-widest">MAP_INTERCONNECT</div>
+                 <div className="px-3 py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest">DATA_FLOW_ESTABLISHMENT</div>
+              </div>
+              <h1 className="text-5xl font-black uppercase italic tracking-tighter text-white">ESTABLISH_LINK</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Mapping Topology Between Global & Local Matrix</p>
+           </div>
+           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
+           <div className="grid grid-cols-2 gap-10">
+              <div className="p-8 bg-indigo-600/5 border border-indigo-500/10 rounded-lg space-y-6">
+                 <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em] flex items-center gap-2"><Globe size={14}/> External Peer</h3>
+                 <StyledSelect 
+                    label="Target External Entity"
+                    value={formData.external_entity_id}
+                    onChange={e => setFormData({...formData, external_entity_id: e.target.value})}
+                    options={entities?.map((e: any) => ({ value: e.id, label: `${e.name} [${e.ip_address || 'No IP'}]` })) || []}
+                    placeholder="Select Remote System..."
+                 />
+                 <StyledSelect 
+                    label="Flow Direction"
+                    value={formData.direction}
+                    onChange={e => setFormData({...formData, direction: e.target.value})}
+                    options={[{value: 'Upstream', label: 'Upstream (Input)'}, {value: 'Downstream', label: 'Downstream (Output)'}]}
+                 />
+              </div>
+
+              <div className="p-8 bg-emerald-600/5 border border-emerald-500/10 rounded-lg space-y-6">
+                 <h3 className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.3em] flex items-center gap-2"><Cpu size={14}/> Internal Asset</h3>
+                 <StyledSelect 
+                    label="Internal Registry Asset"
+                    value={formData.device_id}
+                    onChange={e => setFormData({...formData, device_id: e.target.value, service_id: ''})}
+                    options={devices?.map((d: any) => ({ value: d.id, label: d.name })) || []}
+                    placeholder="Select Internal Asset..."
+                 />
+                 <StyledSelect 
+                    label="Logical Service (Optional)"
+                    value={formData.service_id}
+                    onChange={e => setFormData({...formData, service_id: e.target.value})}
+                    options={services?.map((s: any) => ({ value: s.id, label: s.name })) || []}
+                    placeholder={formData.device_id ? "Select Service..." : "Select Asset First..."}
+                 />
+              </div>
+           </div>
+
+           <div className="grid grid-cols-2 gap-10 border-t border-white/5 pt-10">
+              <div className="space-y-6">
+                 <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em]">Link Configuration</h3>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Interconnect Purpose</label>
+                    <input 
+                      value={formData.purpose} onChange={e => setFormData({...formData, purpose: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-black text-white outline-none focus:border-indigo-500 transition-all"
+                      placeholder="e.g., Daily DB Synchronization Feed"
+                    />
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Protocol</label>
+                       <input 
+                         value={formData.protocol} onChange={e => setFormData({...formData, protocol: e.target.value})}
+                         className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-mono font-black text-white outline-none focus:border-indigo-500 transition-all"
+                         placeholder="TCP / HTTPS / SFTP"
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Port</label>
+                       <input 
+                         value={formData.port} onChange={e => setFormData({...formData, port: e.target.value})}
+                         className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-mono font-black text-indigo-300 outline-none focus:border-indigo-500 transition-all"
+                         placeholder="443"
+                       />
+                    </div>
+                 </div>
+              </div>
+
+              <div className="p-8 bg-indigo-600/5 border border-indigo-500/10 rounded-lg space-y-6">
+                 <div className="flex items-center space-x-3 text-indigo-400 border-b border-indigo-500/10 pb-4">
+                   <Key size={16} />
+                   <h3 className="text-[10px] font-black uppercase tracking-widest">Connection Intelligence</h3>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <input 
+                      value={formData.credentials.username} onChange={e => setFormData({...formData, credentials: {...formData.credentials, username: e.target.value}})}
+                      className="w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[11px] font-black text-white outline-none focus:border-indigo-500 transition-all"
+                      placeholder="Username"
+                    />
+                    <input 
+                      type="password"
+                      value={formData.credentials.password} onChange={e => setFormData({...formData, credentials: {...formData.credentials, password: e.target.value}})}
+                      className="w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[11px] font-black text-white outline-none focus:border-indigo-500 transition-all"
+                      placeholder="Password"
+                    />
+                    <textarea 
+                      className="col-span-2 w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[10px] font-bold text-slate-400 outline-none focus:border-indigo-500 transition-all h-24 resize-none"
+                      placeholder="Security Notes / Store Reference..."
+                      value={formData.credentials.note}
+                      onChange={e => setFormData({...formData, credentials: {...formData.credentials, note: e.target.value}})}
+                    />
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        <div className="p-10 border-t border-white/5 bg-white/5 shrink-0 flex items-center space-x-4">
+           <button onClick={onClose} className="px-10 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-all">Abort</button>
+           <button 
+             onClick={() => onSave({
+               ...formData,
+               external_entity_id: parseInt(formData.external_entity_id),
+               device_id: parseInt(formData.device_id),
+               service_id: formData.service_id ? parseInt(formData.service_id) : null
+             })}
+             disabled={!formData.external_entity_id || !formData.device_id || isPending}
+             className="flex-1 py-5 bg-indigo-600 text-white rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
+           >
+              {isPending && <RefreshCcw size={16} className="animate-spin" />}
+              <span>Establish Interconnect Link</span>
+           </button>
+        </div>
+      </motion.div>
     </div>
   )
 }

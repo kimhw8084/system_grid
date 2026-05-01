@@ -672,8 +672,7 @@ function ArchDesignerInner() {
   const { data: savedFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await (await apiFetch('/api/v1/data-flows/')).json()) });
   const { data: assets } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) });
   const { data: logicalServices } = useQuery({ queryKey: ['logical-services'], queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) });
-  const { data: externalEntities } = useQuery({ queryKey: ['external-intelligence'], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/external')).json()) });
-
+  const { data: externalEntities } = useQuery({ queryKey: ['external-entities'], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json()) });
   const systems = useMemo(() => {
     if (!assets) return [];
     const s = new Set<string>();
