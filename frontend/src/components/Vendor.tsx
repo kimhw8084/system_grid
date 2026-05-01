@@ -193,7 +193,7 @@ export default function Vendor() {
       headerName: "Active Contracts", 
       width: 140, 
       filter: true, 
-      cellClass: 'text-center font-black text-emerald-400',
+      cellClass: 'text-center font-bold text-emerald-400',
       headerClass: 'text-center',
       hide: hiddenColumns.includes("active_contract_count")
     },
@@ -202,7 +202,7 @@ export default function Vendor() {
       headerName: "Total Contracts", 
       width: 130, 
       filter: true, 
-      cellClass: 'text-center font-black',
+      cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       hide: hiddenColumns.includes("contract_count")
     },
@@ -236,7 +236,7 @@ export default function Vendor() {
       headerName: "Total Personnel", 
       width: 130, 
       filter: true, 
-      cellClass: 'text-center font-black',
+      cellClass: 'text-center font-bold',
       headerClass: 'text-center',
       hide: hiddenColumns.includes("personnel_count")
     },

@@ -619,51 +619,71 @@ export default function Projects() {
   })
 
   const columnDefs = useMemo(() => [
-    { field: 'name', headerName: 'TITLE', minWidth: 200 },
-    { field: 'type', headerName: 'TYPE', valueFormatter: (p: any) => p.value?.toUpperCase() },
     { 
-      field: 'status', 
+      headerName: "", 
+      width: 50,
+      minWidth: 50,
+      maxWidth: 50,
+      checkboxSelection: true, 
+      headerCheckboxSelection: true, 
+      pinned: 'left' as const, 
+      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      suppressSizeToFit: true,
+      resizable: false,
+      sortable: false,
+      filter: false,
+    },
+    { field: 'name', headerName: 'TITLE', minWidth: 200, cellClass: 'font-bold uppercase text-white' },
+    { field: 'type', headerName: 'TYPE', valueFormatter: (p: any) => p.value?.toUpperCase(), cellClass: 'font-bold text-slate-400' },
+    {
+      field: 'status',
       headerName: 'STATUS',
       valueFormatter: (p: any) => p.value?.toUpperCase(),
+      cellClass: 'font-bold',
       cellClassRules: {
         'text-emerald-400': (p: any) => p.value === 'Completed' || p.value === 'In Progress',
         'text-amber-400': (p: any) => p.value === 'Paused' || p.value === 'Planning',
         'text-rose-400': (p: any) => p.value === 'Blocked' || p.value === 'Cancelled'
       }
     },
-    { 
-      field: 'priority', 
+    {
+      field: 'priority',
       headerName: 'PRIORITY',
       valueFormatter: (p: any) => p.value?.toUpperCase(),
+      cellClass: 'font-bold',
       cellClassRules: {
-        'text-rose-500 font-bold': (p: any) => p.value === 'Highest',
+        'text-rose-500': (p: any) => p.value === 'Highest',
         'text-amber-500': (p: any) => p.value === 'High',
         'text-blue-400': (p: any) => p.value === 'Medium',
         'text-slate-500': (p: any) => p.value === 'Low'
       }
     },
-    { field: 'owner', headerName: 'OWNER(S)' },
+    { field: 'owner', headerName: 'OWNER(S)', cellClass: 'font-bold text-slate-300' },
     {
       field: 'target_systems',
       headerName: 'SYSTEM SCOPE',
-      cellRenderer: SystemScopeRenderer
+      cellRenderer: SystemScopeRenderer,
+      cellClass: 'font-bold'
     },
     {
       headerName: 'TASKS',
-      valueGetter: (p: any) => p.data.tasks?.length || 0
+      valueGetter: (p: any) => p.data.tasks?.length || 0,
+      cellClass: 'font-bold text-center'
     },
-    { 
+    {
       field: 'created_at',
       headerName: 'CREATED',
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : ''
+      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '',
+      cellClass: 'font-bold text-slate-500'
     },
-    { 
-      field: 'updated_at', 
+    {
+      field: 'updated_at',
       headerName: 'MODIFIED',
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : ''
+      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '',
+      cellClass: 'font-bold text-slate-500'
     }
   ], [projects])
-
   const selectedProject = useMemo(() => projects?.find((p: any) => p.id === selectedProjectId), [projects, selectedProjectId])
 
   const mutation = useMutation({

@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, 
   Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity, 
   Sliders, Settings, Check, User, Mail, Phone, Tag, Info, AlertCircle, Briefcase, 
-  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff
+  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff, Key
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -576,7 +576,8 @@ export default function External() {
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false, type: 'entity' })
-
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const { data: options } = useQuery({ 
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
