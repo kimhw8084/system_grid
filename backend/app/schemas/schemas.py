@@ -89,6 +89,7 @@ class DeviceBase(BaseModel):
     metadata_json: Optional[Dict[str, Any]] = None
     is_reservation: Optional[bool] = False
     reservation_info: Optional[Dict[str, Any]] = None
+    logic_json: Optional[List[Dict[str, Any]]] = []
 
 class DeviceCreate(DeviceBase): pass
 
@@ -187,6 +188,7 @@ class LogicalServiceBase(BaseModel):
     environment: Optional[str] = "Production"
     config_json: Optional[Dict[str, Any]] = None
     custom_attributes: Optional[Dict[str, Any]] = None
+    logic_json: Optional[List[Dict[str, Any]]] = []
     purchase_type: Optional[str] = "One-time"
     purchase_date: Optional[str] = None
     expiry_date: Optional[str] = None

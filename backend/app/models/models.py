@@ -93,6 +93,7 @@ class Device(Base, BaseMixin):
     is_reservation = Column(Boolean, default=False)
     reservation_info = Column(JSON, default=dict) # {est_arrival: "YYYY-MM", requester: "Name"}
     is_deleted = Column(Boolean, default=False)
+    logic_json = Column(JSON, default=list) # [{id, name, upstream_ids: [], controller: "", steps: [], state: "", downstream_ids: []}]
     
     locations = relationship("DeviceLocation", back_populates="device", cascade="all, delete-orphan")
     components = relationship("HardwareComponent", back_populates="device", cascade="all, delete-orphan")
@@ -132,6 +133,7 @@ class LogicalService(Base, BaseMixin):
     
     # Smart Expandability: Unlimited custom key-values
     custom_attributes = Column(JSON, default=dict)
+    logic_json = Column(JSON, default=list)
     is_deleted = Column(Boolean, default=False)
     
     device = relationship("Device", back_populates="logical_services")
@@ -372,6 +374,7 @@ class DataFlow(Base, BaseMixin):
     nodes_json = Column(JSON, default=list)
     edges_json = Column(JSON, default=list)
     viewport_json = Column(JSON, default=dict)
+    traces_json = Column(JSON, default=list) # [{id, name, steps: [{node_id, edge_id}]}]
     is_template = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
 

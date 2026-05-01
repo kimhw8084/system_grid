@@ -17,6 +17,7 @@ def format_flow(flow: models.DataFlow):
         "nodes": flow.nodes_json,
         "edges": flow.edges_json,
         "viewport": flow.viewport_json,
+        "traces": flow.traces_json,
         "is_template": flow.is_template,
         "is_deleted": flow.is_deleted,
         "created_at": flow.created_at.isoformat() if flow.created_at else None,
@@ -45,6 +46,7 @@ async def create_flow(data: dict, db: AsyncSession = Depends(get_db)):
         nodes_json=data.get("nodes", []),
         edges_json=data.get("edges", []),
         viewport_json=data.get("viewport", {}),
+        traces_json=data.get("traces", []),
         is_template=data.get("is_template", False)
     )
     db.add(flow)
@@ -72,6 +74,7 @@ async def update_flow(flow_id: int, data: dict, db: AsyncSession = Depends(get_d
     if "nodes" in data: flow.nodes_json = data["nodes"]
     if "edges" in data: flow.edges_json = data["edges"]
     if "viewport" in data: flow.viewport_json = data["viewport"]
+    if "traces" in data: flow.traces_json = data["traces"]
     if "is_deleted" in data: flow.is_deleted = data["is_deleted"]
     
     await db.commit()
