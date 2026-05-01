@@ -23,11 +23,39 @@ async def seed_complex_architecture():
         # 1. Create Core Infrastructure Devices
         print("Seeding cluster devices...")
         devices = [
-            models.Device(name="LB-PROD-01", type="Virtual", system="EDGE-NETWORK", status="Active", environment="Production", primary_ip="10.0.1.5", serial_number="LB-SN-01", asset_tag="LB-AT-01"),
+            models.Device(
+                name="LB-PROD-01", type="Virtual", system="EDGE-NETWORK", status="Active", environment="Production", primary_ip="10.0.1.5", serial_number="LB-SN-01", asset_tag="LB-AT-01",
+                logic_json=[{
+                    "id": "logic-lb-1", "name": "EDGE_INGRESS", "upstream_ids": [], "controller": "NGINX_LISTENER_443",
+                    "steps": ["SSL Termination", "Health Check Validation", "Upstream Selection"],
+                    "state": "Session Table (Redis)", "downstream_ids": ["WEB-PROD-CLUSTER-01", "WEB-PROD-CLUSTER-02"]
+                }]
+            ),
             models.Device(name="LB-PROD-02", type="Virtual", system="EDGE-NETWORK", status="Active", environment="Production", primary_ip="10.0.1.6", serial_number="LB-SN-02", asset_tag="LB-AT-02"),
-            models.Device(name="WEB-PROD-CLUSTER-01", type="Physical", system="ERP-FRONTEND", status="Active", environment="Production", primary_ip="10.0.2.10", serial_number="WEB-SN-01", asset_tag="WEB-AT-01"),
+            models.Device(
+                name="WEB-PROD-CLUSTER-01", type="Physical", system="ERP-FRONTEND", status="Active", environment="Production", primary_ip="10.0.2.10", serial_number="WEB-SN-01", asset_tag="WEB-AT-01",
+                logic_json=[
+                    {
+                        "id": "logic-web-init", "name": "TRANSACTION_INIT", "upstream_ids": ["LB-PROD-01"], "controller": "API_V1_ENDPOINT",
+                        "steps": ["Request Parsing", "Auth Token Check"],
+                        "state": "Local Buffer", "downstream_ids": ["APP-AUTH-SRV"]
+                    },
+                    {
+                        "id": "logic-web-final", "name": "TRANSACTION_COMMIT", "upstream_ids": ["APP-AUTH-SRV"], "controller": "CALLBACK_HANDLER",
+                        "steps": ["Payload Enrichment", "Database Write"],
+                        "state": "Transaction Log", "downstream_ids": ["DB-SQL-PRIMARY"]
+                    }
+                ]
+            ),
             models.Device(name="WEB-PROD-CLUSTER-02", type="Physical", system="ERP-FRONTEND", status="Active", environment="Production", primary_ip="10.0.2.11", serial_number="WEB-SN-02", asset_tag="WEB-AT-02"),
-            models.Device(name="APP-AUTH-SRV", type="Virtual", system="IDENTITY-CORE", status="Active", environment="Production", primary_ip="10.0.5.50", serial_number="AUTH-SN-01", asset_tag="AUTH-AT-01"),
+            models.Device(
+                name="APP-AUTH-SRV", type="Virtual", system="IDENTITY-CORE", status="Active", environment="Production", primary_ip="10.0.5.50", serial_number="AUTH-SN-01", asset_tag="AUTH-AT-01",
+                logic_json=[{
+                    "id": "logic-auth-check", "name": "AUTH_VAL", "upstream_ids": ["WEB-PROD-CLUSTER-01"], "controller": "KEYCLOAK_ADAPTER",
+                    "steps": ["JWT Decoding", "Signature Validation", "ACL Check"],
+                    "state": "Token Cache", "downstream_ids": ["WEB-PROD-CLUSTER-01"]
+                }]
+            ),
             models.Device(name="DB-SQL-PRIMARY", type="Physical", system="ERP-DATA", status="Active", environment="Production", primary_ip="10.0.10.100", serial_number="DB-SN-01", asset_tag="DB-AT-01"),
             models.Device(name="DB-SQL-REPLICA", type="Physical", system="ERP-DATA", status="Active", environment="Production", primary_ip="10.0.10.101", serial_number="DB-SN-02", asset_tag="DB-AT-02"),
         ]
@@ -126,6 +154,19 @@ async def seed_complex_architecture():
                 { "id": "e-web1-stripe", "source": "node-web-1", "target": "node-stripe", "type": "labeled", "data": { "label": "PAYMENT API", "type": "DATA" }, "animated": True },
                 { "id": "e-auth-auth0", "source": "node-auth", "target": "node-auth0", "type": "labeled", "data": { "label": "OIDC FLOW", "type": "AUTH" }, "animated": True },
                 { "id": "e-web-auth", "source": "node-web-1", "target": "node-auth", "type": "labeled", "data": { "label": "AUTH VALIDATION", "type": "AUTH" }, "animated": True },
+            ],
+            traces_json=[
+                {
+                    "id": "trace-global-auth",
+                    "name": "Global Auth Flow (A->B->C->A->D)",
+                    "steps": [
+                        { "node_id": "node-lb-1", "edge_id": "e-lb-web1" },
+                        { "node_id": "node-web-1", "edge_id": "e-web-auth" },
+                        { "node_id": "node-auth", "edge_id": "e-web-auth" }, # Handshake back
+                        { "node_id": "node-web-1", "edge_id": "e-web1-db" },
+                        { "node_id": "node-db-p", "edge_id": None }
+                    ]
+                }
             ],
             viewport_json={}
         )
