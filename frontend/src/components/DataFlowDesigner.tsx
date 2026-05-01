@@ -15,6 +15,7 @@ import ReactFlow, {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+  getBezierPath,
   MiniMap,
   Node,
   Edge,
@@ -188,22 +189,18 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   const allEdges = getEdges();
   const sameSourceTargetEdges = allEdges.filter(e => e.source === source && e.target === target);
   const edgeIndex = sameSourceTargetEdges.findIndex(e => e.id === id);
-  const offset = sameSourceTargetEdges.length > 1 ? (edgeIndex - (sameSourceTargetEdges.length - 1) / 2) * 25 : 0;
-
-  // Adjust source/target points for offset
-  const adjSourceX = sourcePosition === Position.Left || sourcePosition === Position.Right ? sourceX : sourceX + offset;
-  const adjSourceY = sourcePosition === Position.Top || sourcePosition === Position.Bottom ? sourceY : sourceY + offset;
-  const adjTargetX = targetPosition === Position.Left || targetPosition === Position.Right ? targetX : targetX + offset;
-  const adjTargetY = targetPosition === Position.Top || targetPosition === Position.Bottom ? targetY : targetY + offset;
-
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ 
-    sourceX: adjSourceX, 
-    sourceY: adjSourceY, 
+  
+  // Use Bezier path with varying curvature for overlapping edges
+  // This ensures they all start and end at the exact same dot but diverge in the middle
+  const curvature = 0.5 + (edgeIndex * 0.2); 
+  const [edgePath, labelX, labelY] = getBezierPath({ 
+    sourceX, 
+    sourceY, 
     sourcePosition, 
-    targetX: adjTargetX, 
-    targetY: adjTargetY, 
-    targetPosition, 
-    borderRadius: 20 
+    targetX, 
+    targetY, 
+    targetPosition,
+    curvature
   });
   
   const currentType = FLOW_TYPES.find(t => t.id === (data?.type || 'DATA')) || FLOW_TYPES[0];
@@ -212,11 +209,25 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
     <>
       <BaseEdge 
         path={edgePath} markerEnd={markerEnd} 
-        style={{ ...style, stroke: data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color), strokeWidth: selected ? 4 : (data?.isImpacted ? 3 : 2), strokeDasharray: Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none', opacity: selected || data?.isImpacted ? 1 : 0.6 }} 
+        style={{ 
+          ...style, 
+          stroke: data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color), 
+          strokeWidth: selected ? 4 : (data?.isImpacted ? 3 : 2), 
+          strokeDasharray: Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none', 
+          opacity: selected || data?.isImpacted ? 1 : 0.6 
+        }} 
       />
       <EdgeLabelRenderer>
-        <div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }} className="nodrag nopan flex flex-col items-center group">
-          <motion.div whileHover={{ scale: 1.05 }} className={`px-3 py-1.5 rounded-md border-2 transition-all duration-200 flex items-center space-x-3 cursor-pointer ${selected ? 'bg-slate-900 border-white shadow-xl z-50 scale-110' : 'bg-slate-950/90 border-white/10 shadow-lg'}`} style={{ borderColor: selected ? '#ffffff' : (data?.isImpacted ? '#f43f5e' : `${data?.color || currentType.color}80`) }}>
+        <div 
+          style={{ 
+            position: 'absolute', 
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, 
+            pointerEvents: 'all',
+            zIndex: 1002 // Ensure labels are above everything
+          }} 
+          className="nodrag nopan flex flex-col items-center group"
+        >
+          <motion.div whileHover={{ scale: 1.05 }} className={`px-3 py-1.5 rounded-md border-2 transition-all duration-200 flex items-center space-x-3 cursor-pointer ${selected ? 'bg-slate-900 border-white shadow-xl scale-110' : 'bg-slate-950/90 border-white/10 shadow-lg'}`} style={{ borderColor: selected ? '#ffffff' : (data?.isImpacted ? '#f43f5e' : `${data?.color || currentType.color}80`) }}>
              {data?.step && <span className="text-[8px] font-bold text-white bg-blue-600 w-4 h-4 flex items-center justify-center rounded-full border border-white/20 mr-0.5">{data.step}</span>}
              <div className={`w-1.5 h-1.5 rounded-full ${data?.isImpacted ? 'bg-rose-500 animate-ping' : ''}`} style={{ backgroundColor: data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color) }} />
              <div className="flex flex-col">
@@ -776,9 +787,9 @@ function ArchDesignerInner() {
   const displayEdges = useMemo(() => {
     return edges.map(e => ({
       ...e,
-      data: { ...e.data, isImpacted: impactAnalysis.edgeIds.has(e.id) }
+      data: { ...e.data, isImpacted: impactAnalysis.edgeIds.has(e.id) && dependencyRiskEnabled }
     }));
-  }, [edges, impactAnalysis]);
+  }, [edges, impactAnalysis, dependencyRiskEnabled]);
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => {

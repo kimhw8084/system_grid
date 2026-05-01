@@ -240,3 +240,16 @@ select option[value=""] {
   color: var(--text-muted) !important;
   font-style: italic !important;
 }
+
+/* ReactFlow Layering Overrides */
+.react-flow__edges {
+  z-index: 1001 !important;
+}
+
+.react-flow__nodes {
+  z-index: 1000 !important;
+}
+
+.react-flow__edge-label-renderer {
+  z-index: 1002 !important;
+}
