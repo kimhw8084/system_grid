@@ -58,7 +58,7 @@ const ARCH_CATEGORIES = ['System', 'Service', 'Application', 'Network', 'Securit
 // --- Custom Nodes ---
 
 const DeviceNode = ({ data, selected }: any) => {
-  const isImpacted = data.isImpacted;
+  const isImpacted = data.isImpacted && data.dependencyRiskEnabled;
   const services = data.logical_services || [];
   
   return (
@@ -70,7 +70,7 @@ const DeviceNode = ({ data, selected }: any) => {
             </div>
             <div className="min-w-0">
                <p className="text-[12px] font-bold uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p>
-               <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address || '0.0.0.0'}</p>
+               <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address && data.ip_address !== '0.0.0.0' ? data.ip_address : ''}</p>
             </div>
          </div>
          {isImpacted && <AlertTriangle size={14} className="text-rose-500 animate-pulse" />}
@@ -79,10 +79,27 @@ const DeviceNode = ({ data, selected }: any) => {
       <div className="p-4 space-y-4">
          <div className="space-y-2">
             <div className="flex items-center justify-between text-[8px] font-bold uppercase text-slate-500 tracking-widest px-1">
-               <span>Hosted Services</span>
-               <span>{services.length} Entities</span>
+               <span>Entity Interfaces</span>
+               <span>{services.length + 1} Points</span>
             </div>
+            
             <div className="space-y-1">
+               {/* Unidentified Connection Card */}
+               <div className="relative flex items-center justify-between px-3 py-2 rounded-md bg-white/5 border border-dashed border-white/20 group hover:border-blue-500/40 transition-all">
+                  <Handle 
+                    type="target" position={Position.Left} id="unidentified-target" 
+                    className="!left-[-15px] w-2 h-2 !bg-blue-400 border-none !opacity-0 group-hover:!opacity-100 transition-opacity" 
+                  />
+                  <div className="flex items-center space-x-2 truncate">
+                     <HelpCircle size={10} className="text-slate-400" />
+                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate">Unidentified Entry/Exit</span>
+                  </div>
+                  <Handle 
+                    type="source" position={Position.Right} id="unidentified-source" 
+                    className="!right-[-15px] w-2 h-2 !bg-blue-400 border-none !opacity-0 group-hover:!opacity-100 transition-opacity" 
+                  />
+               </div>
+
                {services.map((s: any) => (
                   <div key={s.id} className="relative flex items-center justify-between px-3 py-2 rounded-md bg-emerald-500/5 border border-emerald-500/10 group hover:border-emerald-500/40 transition-all">
                      <Handle 
@@ -99,17 +116,9 @@ const DeviceNode = ({ data, selected }: any) => {
                      />
                   </div>
                ))}
-               {services.length === 0 && (
-                  <div className="py-2 text-center border border-dashed border-white/5 rounded-md">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">No Services Linked</span>
-                  </div>
-               )}
             </div>
          </div>
       </div>
-
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-blue-500 border-2 border-slate-900 !left-[-6px]" />
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-blue-500 border-2 border-slate-900 !right-[-6px]" />
     </div>
   )
 }
@@ -172,9 +181,31 @@ const NoteNode = ({ data, selected }: any) => (
   </div>
 )
 
-const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected }: any) => {
-  const { setEdges } = useReactFlow();
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 20 });
+const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected, source, target }: any) => {
+  const { getEdges } = useReactFlow();
+  
+  // Prevent overlap for multiple edges between same nodes
+  const allEdges = getEdges();
+  const sameSourceTargetEdges = allEdges.filter(e => e.source === source && e.target === target);
+  const edgeIndex = sameSourceTargetEdges.findIndex(e => e.id === id);
+  const offset = sameSourceTargetEdges.length > 1 ? (edgeIndex - (sameSourceTargetEdges.length - 1) / 2) * 25 : 0;
+
+  // Adjust source/target points for offset
+  const adjSourceX = sourcePosition === Position.Left || sourcePosition === Position.Right ? sourceX : sourceX + offset;
+  const adjSourceY = sourcePosition === Position.Top || sourcePosition === Position.Bottom ? sourceY : sourceY + offset;
+  const adjTargetX = targetPosition === Position.Left || targetPosition === Position.Right ? targetX : targetX + offset;
+  const adjTargetY = targetPosition === Position.Top || targetPosition === Position.Bottom ? targetY : targetY + offset;
+
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ 
+    sourceX: adjSourceX, 
+    sourceY: adjSourceY, 
+    sourcePosition, 
+    targetX: adjTargetX, 
+    targetY: adjTargetY, 
+    targetPosition, 
+    borderRadius: 20 
+  });
+  
   const currentType = FLOW_TYPES.find(t => t.id === (data?.type || 'DATA')) || FLOW_TYPES[0];
 
   return (
@@ -478,11 +509,11 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
                   <div className="space-y-4">
                      <div className="flex items-center justify-between px-1">
                         <h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2"><Database size={14}/> Node Service Registry</h4>
-                        <span className="text-[8px] font-bold text-slate-600 uppercase">Available: {availableServices?.length || 0}</span>
+                        <span className="text-[8px] font-bold text-slate-600 uppercase">Available: {selectedNode.data.all_available_services?.length || 0}</span>
                      </div>
                      
                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                        {availableServices?.filter((s: any) => !selectedNode.data.logical_services?.find((ls: any) => ls.id === s.id)).map((s: any) => (
+                        {selectedNode.data.all_available_services?.filter((s: any) => !selectedNode.data.logical_services?.find((ls: any) => ls.id === s.id)).map((s: any) => (
                            <button 
                              key={s.id} 
                              onClick={() => onAddServiceToNode(selectedNode.id, s)}
@@ -495,6 +526,9 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
                               <Plus size={14} className="text-slate-600 group-hover:text-emerald-500" />
                            </button>
                         ))}
+                        {(selectedNode.data.all_available_services?.length === 0 || !selectedNode.data.all_available_services) && (
+                           <p className="text-center py-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest border border-dashed border-white/5 rounded-lg">No Services Defined in Core</p>
+                        )}
                      </div>
                   </div>
                )}
@@ -613,7 +647,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
 // --- Main Designer ---
 
 function ArchDesignerInner() {
-  const { fitView, zoomTo } = useReactFlow();
+  const { fitView, zoomTo, zoomIn, zoomOut } = useReactFlow();
   const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -621,9 +655,11 @@ function ArchDesignerInner() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(true);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false);
+  const [dependencyRiskEnabled, setDependencyRiskEnabled] = useState(false);
 
   // Inventory filtering state
   const [inventorySearch, setInventorySearch] = useState('');
@@ -689,7 +725,7 @@ function ArchDesignerInner() {
       ...activeFlow,
       nodes,
       edges,
-      viewport: {} // ReactFlow viewport handled automatically or can be saved here
+      viewport: {} 
     };
     saveMutation.mutate(data);
   };
@@ -734,9 +770,9 @@ function ArchDesignerInner() {
   const displayNodes = useMemo(() => {
     return nodes.map(n => ({
       ...n,
-      data: { ...n.data, isImpacted: impactAnalysis.nodeIds.has(n.id) }
+      data: { ...n.data, isImpacted: impactAnalysis.nodeIds.has(n.id), dependencyRiskEnabled }
     }));
-  }, [nodes, impactAnalysis]);
+  }, [nodes, impactAnalysis, dependencyRiskEnabled]);
 
   const displayEdges = useMemo(() => {
     return edges.map(e => ({
@@ -771,7 +807,12 @@ function ArchDesignerInner() {
         id: `${type}-${item.id}-${Date.now()}`,
         type,
         position: { x: 400 + Math.random() * 200, y: 100 + Math.random() * 200 },
-        data: { ...item, name: item.name || item.hostname, logical_services: item.logical_services || [] }
+        data: { 
+          ...item, 
+          name: item.name || item.hostname, 
+          logical_services: [],
+          all_available_services: item.logical_services || []
+        }
      };
      setNodes(nds => [...nds, newNode]);
      setHasUnsavedChanges(true);
@@ -835,11 +876,9 @@ function ArchDesignerInner() {
     const gapX = 150;
     const gapY = 100;
 
-    // Use a simple DAG-based layout approach (finding levels)
     const levels: Record<string, number> = {};
     const queue: string[] = [];
     
-    // Nodes with no incoming edges are level 0
     nodes.forEach(n => {
       const incoming = edges.filter(e => e.target === n.id);
       if (incoming.length === 0) {
@@ -848,7 +887,6 @@ function ArchDesignerInner() {
       }
     });
 
-    // If there are cycles or all nodes have incoming edges, just put them at level 0
     if (queue.length === 0 && nodes.length > 0) {
       nodes.forEach(n => { levels[n.id] = 0; queue.push(n.id); });
     }
@@ -1015,19 +1053,23 @@ function ArchDesignerInner() {
           )}
        </AnimatePresence>
 
-       <div className="flex-1 relative h-full">
-          {!isSidebarOpen && (
-             <button onClick={() => setIsSidebarOpen(true)} className="absolute left-6 top-6 z-50 p-3 bg-blue-600 text-white rounded-lg shadow-xl hover:bg-blue-500 transition-all active:scale-95 border border-white/10">
-                <Box size={20} />
-             </button>
-          )}
+       {/* Inventory Toggle Button */}
+       {!isSidebarOpen && (
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-[60] py-8 px-1.5 bg-blue-600 text-white rounded-r-md shadow-2xl hover:bg-blue-500 transition-all border border-l-0 border-white/20 group"
+          >
+             <Box size={14} className="group-hover:scale-110 transition-transform" />
+          </button>
+       )}
 
+       <div className="flex-1 relative h-full">
           <ReactFlow
             nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onEdgeUpdate={onEdgeUpdate}
-            onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
-            onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
+            onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }}
+            onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }}
             onPaneClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
             nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[20, 20]}
             connectionMode={ConnectionMode.Loose}
@@ -1036,25 +1078,41 @@ function ArchDesignerInner() {
             <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
             
             <Panel position="top-left" className="flex flex-col space-y-4">
-               <div className="glass-panel p-3 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl">
-                  <button onClick={confirmExit} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all"><ChevronLeft size={20}/></button>
-                  <div className="flex flex-col min-w-[200px]">
-                     <span className="text-sm font-bold uppercase text-white tracking-widest truncate max-w-[240px]">{activeFlow?.name}</span>
-                     <span className="text-[8px] font-bold text-blue-500 uppercase tracking-widest mt-0.5">Architecture Matrix Mode</span>
+               <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl">
+                  <div className="flex flex-col min-w-[200px] px-3">
+                     <span className="text-xs font-black uppercase text-white tracking-widest truncate max-w-[240px]">{activeFlow?.name}</span>
+                     <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em] mt-0.5">Architecture Matrix Mode</span>
                   </div>
                   <div className="h-8 w-px bg-white/10" />
-                  <button onClick={() => setIsConfigModalOpen(true)} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white" title="Configure Manifest"><Settings size={20}/></button>
+                  
+                  <div className="flex items-center space-x-1 p-1">
+                    <button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white" title="Configure Manifest"><Settings size={18}/></button>
+                    <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all" title="Auto Layout"><GitMerge size={18} className="rotate-90"/></button>
+                    <button 
+                      onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} 
+                      className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                      title="Toggle Dependency Risk Visualization"
+                    >
+                      <AlertTriangle size={18}/>
+                      <span className="text-[8px] font-black uppercase tracking-widest pr-1">{dependencyRiskEnabled ? 'Risk ON' : 'Risk OFF'}</span>
+                    </button>
+                    <div className="w-px h-6 bg-white/10 mx-2" />
+                    <button onClick={confirmExit} className="px-4 py-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2" title="Exit to Dashboard">
+                      <span className="text-[8px] font-black uppercase tracking-widest">Exit</span>
+                      <ChevronLeft size={16}/>
+                    </button>
+                  </div>
+
                   {hasUnsavedChanges && (
-                    <div className="flex items-center space-x-3 px-3">
-                        <div className={`w-2 h-2 rounded-full bg-amber-500 animate-pulse`} />
-                        <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Unsaved Buffers</span>
+                    <div className="flex items-center space-x-2 px-3 animate-pulse">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">Unsaved</span>
                     </div>
                   )}
                </div>
             </Panel>
 
             <Panel position="bottom-center" className="mb-6 flex flex-col items-center gap-4">
-                {/* Designer Toolbar */}
                 <div className="glass-panel p-2 rounded-xl border border-white/10 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-3xl shadow-3xl">
                     <button onClick={() => addToolbarNode('condition')} className="p-3 text-amber-400 hover:bg-amber-400/10 rounded-lg transition-all flex flex-col items-center gap-1 group" title="Add Decision Diamond">
                       <Diamond size={20} />
@@ -1064,39 +1122,54 @@ function ArchDesignerInner() {
                       <StickyNote size={20} />
                       <span className="text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity">Note</span>
                     </button>
+                    
                     <div className="w-px h-8 bg-white/10 mx-2" />
-                    <button onClick={handleAutoLayout} className="p-3 text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all flex flex-col items-center gap-1 group" title="Horizontal Optimization">
-                      <GitMerge size={20} className="rotate-90" />
-                      <span className="text-[7px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity">Layout</span>
+                    
+                    <button onClick={() => zoomIn({ duration: 400 })} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Zoom In">
+                        <Plus size={18} />
                     </button>
-                </div>
-
-                <div className="glass-panel p-2 rounded-xl border border-white/5 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-3xl shadow-3xl">
-                    <Controls showInteractive={false} className="!relative !flex !m-0 !bg-transparent !border-none !shadow-none" />
-                    <div className="w-px h-6 bg-white/10 mx-2" />
-                    <button onClick={() => fitView({ duration: 800 })} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Reset View">
-                        <Maximize2 size={18} />
+                    <button onClick={() => zoomOut({ duration: 400 })} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Zoom Out">
+                        <Minimize2 size={18} />
                     </button>
                     <button onClick={() => zoomTo(1, { duration: 800 })} className="p-2.5 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="100% Zoom">
-                        <Minimize2 size={18} />
+                        <Maximize2 size={18} />
                     </button>
                 </div>
             </Panel>
           </ReactFlow>
        </div>
 
-       <MissionControl 
-          selectedNode={nodes.find(n => n.id === selectedNodeId)} 
-          selectedEdge={edges.find(e => e.id === selectedEdgeId)}
-          impactedNodes={impactedNodes}
-          onBack={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
-          onUpdateNode={updateNodeData}
-          onUpdateEdge={updateEdgeData}
-          onAddServiceToNode={addServiceToNode}
-          onDeleteNode={deleteNode}
-          onDeleteEdge={deleteEdge}
-          availableServices={logicalServices}
-       />
+       {/* Configuration Sidebar Trigger */}
+       {!isConfigSidebarOpen && (
+          <button 
+            onClick={() => setIsConfigSidebarOpen(true)} 
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-[60] py-8 px-1.5 bg-indigo-600 text-white rounded-l-md shadow-2xl hover:bg-indigo-500 transition-all border border-r-0 border-white/20 group"
+          >
+             <Zap size={14} className="group-hover:scale-110 transition-transform" />
+          </button>
+       )}
+
+       <AnimatePresence>
+          {isConfigSidebarOpen && (
+            <motion.div 
+               initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }}
+               className="h-full z-50 shadow-3xl"
+            >
+               <MissionControl 
+                  selectedNode={nodes.find(n => n.id === selectedNodeId)} 
+                  selectedEdge={edges.find(e => e.id === selectedEdgeId)}
+                  impactedNodes={impactedNodes}
+                  onBack={() => setIsConfigSidebarOpen(false)}
+                  onUpdateNode={updateNodeData}
+                  onUpdateEdge={updateEdgeData}
+                  onAddServiceToNode={addServiceToNode}
+                  onDeleteNode={deleteNode}
+                  onDeleteEdge={deleteEdge}
+                  availableServices={logicalServices}
+               />
+            </motion.div>
+          )}
+       </AnimatePresence>
 
        <ConfigModal 
          isOpen={isConfigModalOpen} 
