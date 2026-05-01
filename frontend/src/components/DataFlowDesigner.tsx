@@ -1110,18 +1110,9 @@ function ArchDesignerInner() {
          title="Unsaved Architectural Changes"
          message="You have unsaved buffers in the matrix. Exiting now will lose all uncommitted modifications. Proceed?"
          onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); }}
-         onCancel={() => setIsConfirmExitOpen(false)}
+         onClose={() => setIsConfirmExitOpen(false)}
        />
     </div>
-  )
-}
-
-
-export default function DataFlowDesigner() {
-  return (
-    <ReactFlowProvider>
-       <ArchDesignerInner />
-    </ReactFlowProvider>
   )
 }
 
