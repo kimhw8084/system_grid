@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
+import dagre from 'dagre'
 import { apiFetch } from '../api/apiClient'
 import { StatusPill } from './shared/StatusPill'
 import { StyledSelect } from './shared/StyledSelect'
@@ -202,17 +203,17 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   const sameSourceTargetEdges = allEdges.filter(e => e.source === source && e.target === target);
   const edgeIndex = sameSourceTargetEdges.findIndex(e => e.id === id);
   
-  // Use Bezier path with varying curvature for overlapping edges
-  // This ensures they all start and end at the exact same dot but diverge in the middle
-  const curvature = 0.5 + (edgeIndex * 0.2); 
-  const [edgePath, labelX, labelY] = getBezierPath({ 
+  // Use SmoothStep path for world-class architectural clarity
+  // We use the edgeIndex to slightly offset parallel lines to prevent total overlap
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ 
     sourceX, 
     sourceY, 
     sourcePosition, 
     targetX, 
     targetY, 
     targetPosition,
-    curvature
+    borderRadius: 20,
+    offset: 20 + (edgeIndex * 15) // Dynamic offset for parallel lines
   });
   
   const currentType = FLOW_TYPES.find(t => t.id === (data?.type || 'DATA')) || FLOW_TYPES[0];
@@ -227,7 +228,8 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
           stroke: isTraceActive ? '#f59e0b' : (data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color)), 
           strokeWidth: selected || isTraceActive ? 4 : (data?.isImpacted ? 3 : 2), 
           strokeDasharray: isTraceActive ? '5 5' : (Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none'), 
-          opacity: selected || data?.isImpacted || isTraceActive ? 1 : 0.6 
+          opacity: selected || data?.isImpacted || isTraceActive ? 1 : 0.6,
+          transition: 'stroke 0.3s, stroke-width 0.3s'
         }} 
       />
       <EdgeLabelRenderer>
@@ -673,7 +675,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
 
 // --- Mission Control Pane ---
 
-const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge }: any) => {
+const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge, setIsLogicExplorerOpen }: any) => {
    const [edgeForm, setEdgeForm] = useState<any>(selectedEdge?.data || {});
    const [nodeForm, setNodeForm] = useState<any>(selectedNode?.data || {});
 
@@ -1134,56 +1136,46 @@ function ArchDesignerInner() {
   };
 
   const handleAutoLayout = () => {
-    // Simple Horizontal Layout
-    const nodeWidth = 350;
-    const nodeHeight = 250;
-    const gapX = 150;
-    const gapY = 100;
-
-    const levels: Record<string, number> = {};
-    const queue: string[] = [];
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
     
-    nodes.forEach(n => {
-      const incoming = edges.filter(e => e.target === n.id);
-      if (incoming.length === 0) {
-        levels[n.id] = 0;
-        queue.push(n.id);
-      }
+    // Optimized node dimensions for dagre
+    const nodeWidth = 320;
+    const nodeHeight = 220;
+
+    dagreGraph.setGraph({ 
+      rankdir: 'LR', 
+      nodesep: 80, 
+      ranksep: 150, 
+      marginx: 50, 
+      marginy: 50 
     });
 
-    if (queue.length === 0 && nodes.length > 0) {
-      nodes.forEach(n => { levels[n.id] = 0; queue.push(n.id); });
-    }
+    nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    });
 
-    let head = 0;
-    while (head < queue.length) {
-      const currentId = queue[head++];
-      edges.filter(e => e.source === currentId).forEach(e => {
-        if (levels[e.target] === undefined || levels[e.target] < levels[currentId] + 1) {
-          levels[e.target] = levels[currentId] + 1;
-          if (!queue.includes(e.target)) queue.push(e.target);
-        }
-      });
-    }
+    edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
 
-    const levelCounts: Record<number, number> = {};
-    const newNodes = nodes.map(n => {
-      const level = levels[n.id] || 0;
-      const indexInLevel = levelCounts[level] || 0;
-      levelCounts[level] = indexInLevel + 1;
+    dagre.layout(dagreGraph);
+
+    const newNodes = nodes.map((node) => {
+      const nodeWithPosition = dagreGraph.node(node.id);
       return {
-        ...n,
+        ...node,
         position: {
-          x: 100 + level * (nodeWidth + gapX),
-          y: 100 + indexInLevel * (nodeHeight + gapY)
-        }
+          x: nodeWithPosition.x - nodeWidth / 2,
+          y: nodeWithPosition.y - nodeHeight / 2,
+        },
       };
     });
 
     setNodes(newNodes);
     setHasUnsavedChanges(true);
     setTimeout(() => fitView({ duration: 800 }), 100);
-    toast.success("Horizontal Matrix Optimized");
+    toast.success("Architectural Matrix Optimized via Dagre Core");
   };
 
   const handleEdit = (flow: any) => {
@@ -1449,6 +1441,7 @@ function ArchDesignerInner() {
                   onDeleteNode={deleteNode}
                   onDeleteEdge={deleteEdge}
                   availableServices={logicalServices}
+                  setIsLogicExplorerOpen={setIsLogicExplorerOpen}
                />
             </motion.div>
           )}
