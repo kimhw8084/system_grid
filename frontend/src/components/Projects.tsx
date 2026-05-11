@@ -1115,12 +1115,11 @@ export default function Projects() {
         }
         .ag-root-wrapper { border: none !important; border-radius: 8px !important; }
         .ag-header-cell-label { 
-            font-weight: 900 !important; 
+            font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: 10px !important; 
             justify-content: center !important; 
-            font-style: italic !important;
         }
         .ag-cell { 
             display: flex; 

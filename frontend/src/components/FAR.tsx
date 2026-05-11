@@ -833,11 +833,11 @@ export default function FAR() {
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #f43f5e;
           --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: 11px;
+          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: 11px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: 11px !important; }
+        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; }
+        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
         .ag-row-hover { background-color: rgba(244, 63, 94, 0.05) !important; }
         .ag-row-selected { background-color: rgba(244, 63, 94, 0.2) !important; }
       `}</style>
