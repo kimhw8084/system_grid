@@ -92,7 +92,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   const allEdges = getEdges();
   const sameSourceTargetEdges = allEdges.filter(e => e.source === source && e.target === target);
   const edgeIndex = sameSourceTargetEdges.findIndex(e => e.id === id);
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 20, offset: 20 + (edgeIndex * 15) });
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20, offset: 20 + (edgeIndex * 15) });
   const currentType = FLOW_TYPES.find(t => t.id === (data?.type || 'DATA')) || FLOW_TYPES[0];
   const isTraceActive = data?.isTraceActive;
   return (
@@ -106,7 +106,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 const nodeTypes = { device: DeviceNode, external: ExternalNode, service: ServiceNode, condition: ConditionNode, note: NoteNode };
 const edgeTypes = { labeled: LabeledEdge };
 
-// --- Logic Core Explorer 3.0 ---
+// --- Logic Core Explorer 4.0 (Overhauled Swimlanes) ---
 
 const LogicBlockNode = ({ id, data, selected }: any) => {
   const mainType = LOGIC_BLOCK_TYPES.find(t => t.id === data.type) || LOGIC_BLOCK_TYPES[0];
@@ -114,10 +114,9 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
   const activeColor = subType ? subType.color : mainType.color;
   const ActiveIcon = subType ? subType.icon : mainType.icon;
   const [isDeleting, setIsDeleting] = React.useState(false);
-  const [showFullImage, setShowFullImage] = React.useState(false);
 
   return (
-    <div className={`glass-panel min-w-[320px] rounded-xl border-2 transition-all duration-300 shadow-2xl overflow-hidden group ${selected ? 'ring-2 ring-white/20' : ''}`} style={{ borderColor: `${activeColor}40`, backgroundColor: '#0f172a' }}>
+    <div className={`glass-panel min-w-[320px] rounded-xl border-2 transition-all duration-300 shadow-2xl overflow-hidden group ${selected ? 'ring-2 ring-blue-500/40' : ''}`} style={{ borderColor: `${activeColor}60`, backgroundColor: '#0f172a' }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded text-white shadow-lg" style={{ backgroundColor: activeColor }}>
@@ -127,7 +126,7 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
             <span className="text-[11px] italic font-black uppercase tracking-[0.1em] text-white">
               {subType ? subType.label : mainType.label}
             </span>
-            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">Step #{id.split('-').pop()}</span>
+            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tight">Lane #{data.laneIdx}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -135,12 +134,7 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
             <button 
               onClick={(e) => { 
                 e.stopPropagation(); 
-                if (isDeleting) {
-                  data.onDelete(id);
-                } else {
-                  setIsDeleting(true);
-                  setTimeout(() => setIsDeleting(false), 3000);
-                }
+                if (isDeleting) { data.onDelete(id); } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000); }
               }} 
               className={`rounded-lg px-3 py-1.5 transition-all flex items-center gap-2 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-white/5 text-rose-500 hover:bg-rose-500/10'}`}
             >
@@ -171,33 +165,10 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
           <textarea 
             value={data.label} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
-            onPaste={e => { 
-              const items = e.clipboardData.items; 
-              for (let i = 0; i < items.length; i++) { 
-                if (items[i].type.indexOf("image") !== -1) { 
-                  const blob = items[i].getAsFile(); 
-                  const reader = new FileReader(); 
-                  reader.onload = (event) => data.onChange(id, { image: event.target?.result }); 
-                  reader.readAsDataURL(blob!); 
-                } 
-              } 
-            }} 
             className="w-full bg-black/60 border border-white/10 rounded-xl p-4 text-[12px] font-bold text-white uppercase outline-none focus:border-blue-500/50 resize-none min-h-[80px] transition-all" 
             placeholder="Describe technical logic..." 
           />
         </div>
-
-        {data.image && (
-          <div className="space-y-2">
-            <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Visual Trace</p>
-            <div className="relative group/img rounded-xl border border-white/10 overflow-hidden bg-black/80 aspect-video flex items-center justify-center shadow-2xl">
-              <img src={data.image} className="max-w-full max-h-full object-contain cursor-zoom-in" onClick={() => setShowFullImage(true)}/>
-              <button onClick={() => data.onChange(id, { image: null })} className="absolute top-3 right-3 p-2 bg-black/80 rounded-xl text-rose-500 opacity-0 group-hover/img:opacity-100 hover:bg-rose-500 hover:text-white transition-all shadow-2xl">
-                <X size={14}/>
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/10">
           <div className="space-y-1.5">
@@ -210,22 +181,32 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
           </div>
         </div>
       </div>
-      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-slate-900 !border-white/20"/><Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-slate-900 !border-white/20"/><Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-slate-900 !border-white/20"/><Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-slate-900 !border-white/20"/>
-      
-      <AnimatePresence>
-        {showFullImage && (
-          <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-10 cursor-zoom-out" onClick={() => setShowFullImage(false)}>
-            <motion.img initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} src={data.image} className="max-w-full max-h-full object-contain shadow-2xl"/>
-            <button className="absolute top-10 right-10 p-4 text-white hover:text-blue-400 transition-colors"><X size={32}/></button>
-          </div>
-        )}
-      </AnimatePresence>
+
+      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
+      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
+      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
+      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
     </div>
   )
 }
+
 const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected }: any) => {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 16 });
-  return (<><BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#475569', strokeWidth: 2 }} /><EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }} className="nodrag nopan"><input value={data?.label || ''} onChange={e => data.onLabelChange(id, e.target.value)} className={`bg-slate-900 border border-white/10 rounded px-2 py-1 text-[8px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-xl ${selected ? 'scale-110 border-blue-500' : ''}`} placeholder="ACTION..." /></div></EdgeLabelRenderer></>)
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16 });
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#475569', strokeWidth: 2 }} />
+      <EdgeLabelRenderer>
+        <div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }} className="nodrag nopan">
+          <input 
+            value={data?.label || ''} 
+            onChange={e => data.onLabelChange(id, e.target.value)} 
+            className={`bg-[#0f172a] border border-white/10 rounded px-2 py-1 text-[8px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-xl ${selected ? 'scale-110 border-blue-500' : ''}`} 
+            placeholder="FLOW..." 
+          />
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  )
 }
 
 const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServices }: any) => {
@@ -233,7 +214,14 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   const [logicManifest, setLogicManifest] = useState<any>(node?.data?.logic_json || {});
   const [internalNodes, setInternalNodes] = useState<Node[]>([]);
   const [internalEdges, setInternalEdges] = useState<Edge[]>([]);
-  const neighbors = useMemo(() => { if (!node || !edges) return { upstream: [], downstream: [] }; const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', source: e.source, protocol: e.data?.protocol || 'TCP' })); const downstream = edges.filter((e: any) => e.source === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', target: e.target, protocol: e.data?.protocol || 'TCP' })); return { upstream, downstream }; }, [node, edges]);
+  
+  const neighbors = useMemo(() => { 
+    if (!node || !edges) return { upstream: [], downstream: [] }; 
+    const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', source: e.source, protocol: e.data?.protocol || 'TCP' })); 
+    const downstream = edges.filter((e: any) => e.source === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', target: e.target, protocol: e.data?.protocol || 'TCP' })); 
+    return { upstream, downstream }; 
+  }, [node, edges]);
+
   const nodeServices = useMemo(() => (node?.data?.logical_services || []), [node]);
   
   const laneWidth = 450;
@@ -266,35 +254,28 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     } 
   }, [activeEdgeId, logicManifest]);
 
-  const onNodeDrag = useCallback((_: any, node: Node) => {
+  const onNodeDragStop = useCallback((_: any, node: Node) => {
     const x = node.position.x;
     let targetLaneIdx = 0;
-    
-    if (x < laneBaseX - (laneWidth/4)) {
-      targetLaneIdx = 0;
-    } else {
-      targetLaneIdx = Math.floor((x - laneBaseX + (laneWidth / 2)) / laneWidth) + 1;
-    }
+    if (x < laneBaseX - (laneWidth/4)) { targetLaneIdx = 0; } 
+    else { targetLaneIdx = Math.floor((x - laneBaseX + (laneWidth / 2)) / laneWidth) + 1; }
 
     let snappedX = 0;
-    if (targetLaneIdx === 0) {
-      snappedX = (laneBaseX - blockWidth) / 2;
-    } else {
-      snappedX = laneBaseX + ((targetLaneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2;
-    }
+    if (targetLaneIdx === 0) { snappedX = (laneBaseX - blockWidth) / 2; } 
+    else { snappedX = laneBaseX + ((targetLaneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2; }
 
     setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: snappedX, y: node.position.y }, data: { ...n.data, laneIdx: targetLaneIdx } } : n));
   }, [laneBaseX, laneWidth, blockWidth]);
 
-  const onConnect = useCallback((params: Connection) => { const newEdge = { ...params, id: `l-edge-${Date.now()}`, type: 'logicLink', data: { label: '', onLabelChange: (id: string, label: string) => { setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); } } }; setInternalEdges((eds) => addEdge(newEdge, eds)); }, []);
+  const onConnect = useCallback((params: Connection) => { 
+    const newEdge = { ...params, id: `l-edge-${Date.now()}`, type: 'logicLink', data: { label: '', onLabelChange: (id: string, label: string) => { setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); } } }; 
+    setInternalEdges((eds) => addEdge(newEdge, eds)); 
+  }, []);
   
   const addBlock = (type: string, laneIdx: number) => { 
     let x = 0;
-    if (laneIdx === 0) {
-      x = (laneBaseX - blockWidth) / 2;
-    } else {
-      x = laneBaseX + ((laneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2;
-    }
+    if (laneIdx === 0) { x = (laneBaseX - blockWidth) / 2; } 
+    else { x = laneBaseX + ((laneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2; }
     const y = 150 + (internalNodes.filter(n => n.data.laneIdx === laneIdx).length * 250); 
     const newNode = { 
       id: `block-${Date.now()}`, 
@@ -312,7 +293,8 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     }; 
     setInternalNodes(nds => [...nds, newNode]); 
   };
-  const handleSaveWorkflow = () => { if (!activeEdgeId) return; setLogicManifest(prev => ({ ...prev, [activeEdgeId]: { nodes: internalNodes, edges: internalEdges, lanes: prev[activeEdgeId]?.lanes || [] } })); };
+
+  const handleSaveWorkflow = () => { if (!activeEdgeId) return; setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { nodes: internalNodes, edges: internalEdges, lanes: prev[activeEdgeId]?.lanes || [] } })); };
   const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), []);
   const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), []);
   
@@ -391,7 +373,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                 onNodesChange={(c) => setInternalNodes(nds => applyNodeChanges(c, nds))} 
                 onEdgesChange={(c) => setInternalEdges(eds => applyEdgeChanges(c, eds))} 
                 onConnect={onConnect} 
-                onNodeDrag={onNodeDrag}
+                onNodeDragStop={onNodeDragStop}
                 nodeTypes={explorerNodeTypes} 
                 edgeTypes={explorerEdgeTypes} 
                 snapToGrid 
@@ -422,11 +404,64 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   );
 };
 
-const ConfigModal = ({ flow, isOpen, onClose, onSave }: any) => {
+const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
   const [formData, setFormData] = useState({ name: flow?.name || '', description: flow?.description || '', category: flow?.category || 'System', status: flow?.status || 'Up to date' });
   useEffect(() => { if (flow) setFormData({ name: flow.name || '', description: flow.description || '', category: flow.category || 'System', status: flow.status || 'Up to date' }); }, [flow]);
   if (!isOpen) return null;
-  return (<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6"><motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-2xl border border-white/10 bg-[#0f172a]/95"><div className="flex items-center justify-between border-b border-white/5 pb-6"><div className="flex items-center space-x-4"><div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30"><Settings size={22} /></div><div><h2 className="text-xl font-black uppercase text-white tracking-tighter leading-none">Manifest Settings</h2></div></div><button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={20}/></button></div><div className="mt-8 space-y-6"><div className="space-y-2"><label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Identity</label><input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div><div className="space-y-2"><label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose</label><textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-[var(--bg-primary)]/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" /></div><div className="grid grid-cols-2 gap-6"><div className="space-y-2"><label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Category</label><select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50">{ARCH_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div className="space-y-2"><label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Status</label><select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50">{ARCH_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div></div></div><div className="mt-8 flex gap-4"><button onClick={onClose} className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-slate-400 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancel</button><button onClick={() => { onSave(formData); onClose(); }} className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all">Apply Settings</button></div></motion.div></div>);
+  const handleSave = () => {
+    if (!formData.name || !formData.description || !formData.category || !formData.status) {
+      toast.error("All fields are required");
+      return;
+    }
+    onSave(formData);
+  };
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-2xl border border-white/10 bg-[#0f172a]/95">
+        <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+              <Settings size={22} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black uppercase text-white tracking-tighter leading-none">{isNew ? 'New Architecture' : 'Manifest Settings'}</h2>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white">
+            <X size={20}/>
+          </button>
+        </div>
+        <div className="mt-8 space-y-6">
+          <div className="space-y-2">
+            <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Name (Required)</label>
+            <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" placeholder="e.g. CORE-PAYMENT-INGRESS" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose (Required)</label>
+            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Category (Required)</label>
+              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+                {ARCH_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Status (Required)</label>
+              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+                {ARCH_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="pt-6 border-t border-white/5 flex gap-4">
+             <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-black uppercase text-[11px] tracking-widest rounded-xl transition-all">Cancel</button>
+             <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
 };
 
 const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
@@ -440,7 +475,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
 
   const columnDefs = useMemo(() => [
     { field: "id", headerName: "ID", width: 80, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center' },
-    { field: "name", headerName: "Manifest Identifier", flex: 1.5, cellClass: 'font-bold uppercase text-blue-400', filter: true },
+    { field: "name", headerName: "Architecture Identifier", flex: 1.5, cellClass: 'font-bold uppercase text-blue-400', filter: true },
     { field: "category", headerName: "Domain", width: 140, cellClass: 'text-center font-bold uppercase text-slate-400', headerClass: 'text-center' },
     { 
       field: "status", 
@@ -481,15 +516,14 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em] pl-1 mt-2">Core Registry & Governance</p>
           </div>
           <button onClick={onAdd} className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center space-x-3 transition-all shadow-xl active:scale-95">
-            <Plus size={20}/><span className="text-sm font-bold uppercase tracking-widest">New Manifest</span>
+            <Plus size={20}/><span className="text-sm font-bold uppercase tracking-widest">New Architecture</span>
           </button>
         </div>
-
         <div className="glass-panel rounded-lg border border-white/5 overflow-hidden shadow-2xl bg-[#0f172a]/40 backdrop-blur-3xl flex flex-col h-[600px]">
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="relative flex-1 max-w-xl">
               <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"/>
-              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search manifests..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-14 pr-6 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 shadow-inner"/>
+              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search architectures..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-14 pr-6 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 shadow-inner"/>
             </div>
             <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
               {['All', ...ARCH_STATUSES].map(s => (
@@ -499,7 +533,6 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
               ))}
             </div>
           </div>
-
           <div className="flex-1 ag-theme-alpine-dark">
             <AgGridReact
               rowData={filtered}
@@ -534,7 +567,52 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
    useEffect(() => { if (selectedEdge) setEdgeForm(selectedEdge.data || {}); }, [selectedEdge]); useEffect(() => { if (selectedNode) setNodeForm(selectedNode.data || {}); }, [selectedNode]);
    const handleEdgeChange = (f: string, v: any) => { const updated = { ...edgeForm, [f]: v }; setEdgeForm(updated); onUpdateEdge(selectedEdge.id, updated); };
    const handleNodeChange = (f: string, v: any) => { const updated = { ...nodeForm, [f]: v }; setNodeForm(updated); onUpdateNode(selectedNode.id, updated); };
-   return (<div className="w-[420px] glass-panel h-full border-l border-white/5 flex flex-col p-8 space-y-10 bg-[#0f172a]/95 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"><div className="flex items-center justify-between border-b border-white/5 pb-4"><h2 className="text-xl italic font-black uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2><button onClick={onBack} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={20}/></button></div>{selectedNode ? (<div className="space-y-8"><div className="p-6 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4 relative overflow-hidden group"><p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Primary Node Details</p>{['condition', 'note'].includes(selectedNode.type) ? (<div className="space-y-2 relative z-10"><input value={nodeForm.label || ''} onChange={e => handleNodeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500"/></div>) : (<><h3 className="text-2xl font-bold text-white uppercase tracking-tighter leading-none relative z-10">{selectedNode.data.name}</h3><div className="flex items-center space-x-3 relative z-10"><StatusPill value={selectedNode.data.status} /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{selectedNode.data.ip_address}</span></div></>)}</div>{selectedNode.type === 'device' && (<div className="space-y-4"><div className="flex items-center justify-between px-1"><h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2"><Database size={14}/> Node Service Registry</h4><span className="text-[8px] font-bold text-slate-600 uppercase">Available: {selectedNode.data.all_available_services?.length || 0}</span></div><div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">{selectedNode.data.all_available_services?.filter((s: any) => !selectedNode.data.logical_services?.find((ls: any) => ls.id === s.id)).map((s: any) => (<button key={s.id} onClick={() => onAddServiceToNode(selectedNode.id, s)} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-lg hover:border-emerald-500/30 hover:bg-emerald-500/5 group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 uppercase truncate">{s.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-emerald-500" /></button>))}</div></div>)}<div className="pt-6 space-y-3"><button onClick={() => setIsLogicExplorerOpen(true)} className="w-full py-4 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-lg font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 shadow-lg"><Cpu size={16}/> Logic Core Explorer</button><button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 rounded-lg font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3"><Trash2 size={16}/> Remove Entity</button></div></div>) : selectedEdge ? (<div className="space-y-8"><div className="p-6 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4"><p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Flow Specification</p><div className="space-y-2"><label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1">Flow Label</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500" /></div></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1">Protocol</label><select value={edgeForm.protocol || ''} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none"><option value="">Select...</option>{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div><div className="space-y-2"><label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1">Flow Step</label><select value={edgeForm.step || 1} onChange={e => handleEdgeChange('step', parseInt(e.target.value))} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(s => <option key={s} value={s}>Step {s}</option>)}</select></div></div><div className="grid grid-cols-2 gap-4"><div className="space-y-2"><label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1">Src Port</label><input value={edgeForm.source_port || ''} onChange={e => handleEdgeChange('source_port', e.target.value)} className="w-full bg-[var(--bg-primary)]/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 text-center" /></div><div className="space-y-2"><label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest ml-1">Dst Port</label><input value={edgeForm.target_port || ''} onChange={e => handleEdgeChange('target_port', e.target.value)} className="w-full bg-[var(--bg-primary)]/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 text-center" /></div></div><div className="pt-6"><button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-3 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-500/20 rounded-lg font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3"><Trash2 size={16}/> Remove Connection</button></div></div>) : (<div className="h-full flex flex-col items-center justify-center opacity-20 text-center space-y-6 pb-20"><div className="p-6 rounded-full bg-slate-800/50 border border-slate-700 shadow-inner"><Target size={60} /></div><p className="text-sm font-bold uppercase tracking-[0.3em] leading-relaxed">Select Architecture Element</p></div>)}</div>);
+   return (
+     <div className="w-[420px] glass-panel h-full border-l border-white/5 flex flex-col p-8 space-y-10 bg-[#0f172a]/95 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar shadow-[-20px_0_50px_rgba(0,0,0,0.5)]">
+       <div className="flex items-center justify-between border-b border-white/5 pb-4">
+         <h2 className="text-xl italic font-black uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2>
+         <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={20}/></button>
+       </div>
+       {selectedNode ? (
+         <div className="space-y-8">
+           <div className="p-6 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4 relative overflow-hidden group">
+             <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Primary Node Details</p>
+             {['condition', 'note'].includes(selectedNode.type) ? (
+               <div className="space-y-2 relative z-10"><input value={nodeForm.label || ''} onChange={e => handleNodeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
+             ) : (
+               <><h3 className="text-2xl font-bold text-white uppercase tracking-tighter leading-none relative z-10">{selectedNode.data.name}</h3><div className="flex items-center space-x-3 relative z-10"><StatusPill value={selectedNode.data.status} /><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{selectedNode.data.ip_address}</span></div></>
+             )}
+           </div>
+           {selectedNode.type === 'device' && (
+             <div className="space-y-4">
+               <div className="flex items-center justify-between px-1"><h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2"><Database size={14}/> Node Service Registry</h4><span className="text-[8px] font-bold text-slate-600 uppercase">Available: {selectedNode.data.all_available_services?.length || 0}</span></div>
+               <div className="grid grid-cols-2 gap-2">
+                 {(selectedNode.data.all_available_services || []).map((s: any) => (
+                   <button key={s.id} onClick={() => onAddServiceToNode(selectedNode.id, s)} className="p-3 bg-black/40 hover:bg-emerald-500/10 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400 hover:text-emerald-400 transition-all text-left uppercase truncate">{s.name}</button>
+                 ))}
+               </div>
+             </div>
+           )}
+           <div className="space-y-4">
+             <button onClick={() => setIsLogicExplorerOpen(true)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-blue-500/20 flex items-center justify-center gap-3"><Cpu size={16}/> Initialize Logic Core</button>
+             <button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Decommission Node</button>
+           </div>
+         </div>
+       ) : selectedEdge ? (
+         <div className="space-y-8">
+           <div className="p-6 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4">
+             <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Flow Vector Dynamics</p>
+             <div className="space-y-4">
+               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Flow Identifier</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
+               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Protocol / Schema</label><select value={edgeForm.protocol || 'HTTPS'} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Flow Classification</label><div className="grid grid-cols-2 gap-2">{FLOW_TYPES.map(t => <button key={t.id} onClick={() => handleEdgeChange('type', t.id)} className={`p-2 rounded-lg border text-[9px] font-black uppercase transition-all ${edgeForm.type === t.id ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-black/40 border-white/5 text-slate-500 hover:text-slate-300'}`}>{t.label}</button>)}</div></div>
+             </div>
+           </div>
+           <button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Sever Connection</button>
+         </div>
+       ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-30"><Layers size={60} className="text-slate-600"/><p className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] text-center px-10">Select a manifest entity to initialize control interface</p></div>)}
+     </div>
+   )
 }
 
 function ArchDesignerInner() {
@@ -552,8 +630,8 @@ function ArchDesignerInner() {
   const transactions = useMemo(() => activeFlow?.traces || [], [activeFlow]);
   const activeTransaction = useMemo(() => transactions.find((t: any) => t.id === activeTransactionId), [transactions, activeTransactionId]);
   const systems = useMemo(() => { if (!assets) return []; const s = new Set<string>(); assets.forEach((a: any) => { if (a.system) s.add(a.system); }); return Array.from(s).sort(); }, [assets]);
-  const filteredAssets = useMemo(() => (assets || []).filter((a: any) => { const matchSearch = (a.hostname || a.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (a.ip_address || '').includes(inventorySearch); const matchSystem = selectedSystem === 'All' || a.system === selectedSystem; return matchSearch && matchSystem && !a.is_deleted; }), [assets, inventorySearch, selectedSystem]);
-  const filteredExternal = useMemo(() => (assets || []).filter(e => e.name?.toLowerCase().includes(inventorySearch.toLowerCase())), [assets, inventorySearch]);
+  const filteredAssets = useMemo(() => (assets || []).filter((a: any) => { const matchSearch = (a.hostname || a.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (a.ip_address || '').includes(inventorySearch); const matchSystem = selectedSystem === 'All' || a.system === selectedSystem; return matchSearch && matchSystem && !a.is_deleted && !a.is_external; }), [assets, inventorySearch, selectedSystem]);
+  const filteredExternal = useMemo(() => (assets || []).filter(e => e.is_external && e.name?.toLowerCase().includes(inventorySearch.toLowerCase())), [assets, inventorySearch]);
   const saveMutation = useMutation({
     mutationFn: async (data: any) => { const isUpdate = !!data.id; const url = isUpdate ? `/api/v1/data-flows/${data.id}` : '/api/v1/data-flows'; const response = await apiFetch(url, { method: isUpdate ? 'PUT' : 'POST', body: JSON.stringify(data) }); return response.json(); },
     onSuccess: (savedFlow) => { setActiveFlow(savedFlow); setHasUnsavedChanges(false); queryClient.invalidateQueries({ queryKey: ['data-flows'] }); toast.success("Manifest Persistent in Core Registry"); },
@@ -572,26 +650,43 @@ function ArchDesignerInner() {
   const onConnect = useCallback((params: Connection) => { setEdges((eds) => addEdge({ ...params, id: `edge-${Date.now()}`, type: 'labeled', data: { type: 'DATA', label: 'NEW_FLOW', protocol: 'HTTPS', step: eds.length + 1 }, animated: true, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' } }, eds)); setHasUnsavedChanges(true); toast.success("Connection Established"); }, [setEdges]);
   const handleAutoLayout = () => { const dagreGraph = new dagre.graphlib.Graph(); dagreGraph.setDefaultEdgeLabel(() => ({})); dagreGraph.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 150, marginx: 50, marginy: 50 }); nodes.forEach((node) => dagreGraph.setNode(node.id, { width: 320, height: 220 })); edges.forEach((edge) => dagreGraph.setEdge(edge.source, edge.target)); dagre.layout(dagreGraph); setNodes(nodes.map((node) => { const pos = dagreGraph.node(node.id); return { ...node, position: { x: pos.x - 160, y: pos.y - 110 } }; })); setHasUnsavedChanges(true); setTimeout(() => fitView({ duration: 800, padding: 40 }), 100); toast.success("Layout Optimized"); };
   const handleEdit = (flow: any) => { setActiveFlow(flow); setNodes(flow.nodes || []); setEdges(flow.edges || []); setView('editor'); setHasUnsavedChanges(false); setTimeout(() => fitView({ padding: 40 }), 200); };
-  const handleNewManifest = () => { setActiveFlow({ name: 'NEW_MANIFEST', category: 'System', status: 'Planned' }); setNodes([]); setEdges([]); setView('editor'); setHasUnsavedChanges(false); setIsConfigModalOpen(true); };
-  if (view === 'dashboard') return <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewManifest} />
+  const handleNewArchitecture = () => { setActiveFlow({ name: '', description: '', category: 'System', status: 'Planned' }); setNodes([]); setEdges([]); setView('dashboard'); setIsConfigModalOpen(true); };
+  if (view === 'dashboard') return <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewArchitecture} />
   return (
     <div className="flex-1 relative flex h-full overflow-hidden bg-[#020617]">
+       {!isSidebarOpen && (
+         <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+           <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
+           <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em]">Inventory</span>
+         </button>
+       )}
        <AnimatePresence>{isSidebarOpen && (
          <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0f172a]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
             <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
             <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">{inventoryType === 'INTERNAL' ? (<section className="space-y-3"><div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div><div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
-              const nodeId = `device-${a.id}`;
-              const exists = nodes.find(n => n.id === nodeId);
-              if (exists) {
-                toast.error(`${a.name || a.hostname} already in manifest`);
-                setNodes(nds => nds.map(n => ({ ...n, selected: n.id === nodeId })));
-                setTimeout(() => fitView({ nodes: [exists], duration: 800, padding: 40 }), 100);
-                return;
-              }
-              setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
-              setHasUnsavedChanges(true); 
-            }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div></section>) : null}</div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+              {inventoryType === 'INTERNAL' ? (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
+                  <div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
+                    const nodeId = `device-${a.id}`;
+                    if (nodes.find(n => n.id === nodeId)) { toast.error("Asset already in manifest"); return; }
+                    setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
+                    setHasUnsavedChanges(true); 
+                  }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div>
+                </section>
+              ) : (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
+                  <div className="grid grid-cols-1 gap-1.5">{filteredExternal.map((e: any) => (<button key={e.id} onClick={() => { 
+                    const nodeId = `external-${e.id}`;
+                    if (nodes.find(n => n.id === nodeId)) { toast.error("Entity already in manifest"); return; }
+                    setNodes(nds => [...nds, { id: nodeId, type: 'external', position: { x: 400, y: 100 }, data: { ...e, name: e.name } }]); 
+                    setHasUnsavedChanges(true); 
+                  }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-indigo-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{e.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" /></button>))}</div>
+                </section>
+              )}
+            </div>
             <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-black uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
          </motion.div>
        )}</AnimatePresence>
@@ -601,8 +696,14 @@ function ArchDesignerInner() {
             <Panel position="top-left" className="p-4"><div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl"><div className="flex flex-col min-w-[180px] px-3"><span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center gap-2 px-2"><select value={activeTransactionId || ''} onChange={e => setActiveTransactionId(e.target.value || null)} className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-white tracking-widest outline-none appearance-none min-w-[140px]"><option value="">Static View</option>{transactions.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}</select></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center space-x-1 p-1"><button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white"><Settings size={18}/></button><button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all"><GitMerge size={18} className="rotate-90"/></button><button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`}><AlertTriangle size={18}/></button><button onClick={() => setView('dashboard')} className="px-4 py-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2"><ChevronLeft size={16}/><span>Back</span></button></div></div></Panel>
           </ReactFlow>
        </div>
+       {!isConfigSidebarOpen && (
+         <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+           <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
+           <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em] rotate-180">Configuration</span>
+         </button>
+       )}
        <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsLogicExplorerOpen={setIsLogicExplorerOpen}/></motion.div>)}</AnimatePresence>
-       <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { setActiveFlow({ ...activeFlow, ...data }); setHasUnsavedChanges(true); }} />
+       <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { setActiveFlow({ ...activeFlow, ...data }); if (view === 'dashboard') setView('editor'); setHasUnsavedChanges(true); setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
        <AnimatePresence>{isLogicExplorerOpen && (<LogicCoreExplorer node={nodes.find(n => n.id === selectedNodeId)} edges={edges} onClose={() => setIsLogicExplorerOpen(false)} onSave={(nodeId: string, updatedData: any) => updateNodeData(nodeId, updatedData)} assets={assets} logicalServices={logicalServices} />)}</AnimatePresence>
        <ConfirmationModal isOpen={isConfirmExitOpen} title="Unsaved Changes" message="Exit and lose modifications?" onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); }} onClose={() => setIsConfirmExitOpen(false)} />
     </div>
