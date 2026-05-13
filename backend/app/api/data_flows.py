@@ -78,6 +78,7 @@ async def update_flow(flow_id: int, data: dict, db: AsyncSession = Depends(get_d
     if "is_deleted" in data: flow.is_deleted = data["is_deleted"]
     
     await db.commit()
+    await db.refresh(flow)
     return format_flow(flow)
 
 @router.post("/{flow_id}/restore")
@@ -88,6 +89,7 @@ async def restore_flow(flow_id: int, db: AsyncSession = Depends(get_db)):
     
     flow.is_deleted = False
     await db.commit()
+    await db.refresh(flow)
     return format_flow(flow)
 
 @router.delete("/{flow_id}")
