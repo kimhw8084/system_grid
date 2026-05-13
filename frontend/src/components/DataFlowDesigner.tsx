@@ -92,7 +92,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   const allEdges = getEdges();
   const sameSourceTargetEdges = allEdges.filter(e => e.source === source && e.target === target);
   const edgeIndex = sameSourceTargetEdges.findIndex(e => e.id === id);
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, sourcePosition, targetPosition, borderRadius: 20, offset: 20 + (edgeIndex * 15) });
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 20, offset: 20 + (edgeIndex * 15) });
   const currentType = FLOW_TYPES.find(t => t.id === (data?.type || 'DATA')) || FLOW_TYPES[0];
   const isTraceActive = data?.isTraceActive;
   return (
@@ -191,7 +191,7 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
 }
 
 const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected }: any) => {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, sourcePosition, targetPosition, borderRadius: 16 });
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 16 });
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#475569', strokeWidth: 2 }} />
@@ -621,7 +621,7 @@ function ArchDesignerInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]); const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeFlow, setActiveFlow] = useState<any>(null); const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(true); const [isConfigModalOpen, setIsConfigModalOpen] = useState(false); const [isLogicExplorerOpen, setIsLogicExplorerOpen] = useState(false);
-  const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null); const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false); const [dependencyRiskEnabled, setDependencyRiskEnabled] = useState(false);
+  const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null); const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false); const [confirmExitIntent, setConfirmExitIntent] = useState<'dashboard' | null>(null); const [dependencyRiskEnabled, setDependencyRiskEnabled] = useState(false);
   const [inventorySearch, setInventorySearch] = useState(''); const [inventoryType, setInventoryType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL'); const [selectedSystem, setSelectedSystem] = useState<string | 'All'>('All');
   const queryClient = useQueryClient();
   const { data: savedFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await (await apiFetch('/api/v1/data-flows/')).json()) });
@@ -651,61 +651,68 @@ function ArchDesignerInner() {
   const handleAutoLayout = () => { const dagreGraph = new dagre.graphlib.Graph(); dagreGraph.setDefaultEdgeLabel(() => ({})); dagreGraph.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 150, marginx: 50, marginy: 50 }); nodes.forEach((node) => dagreGraph.setNode(node.id, { width: 320, height: 220 })); edges.forEach((edge) => dagreGraph.setEdge(edge.source, edge.target)); dagre.layout(dagreGraph); setNodes(nodes.map((node) => { const pos = dagreGraph.node(node.id); return { ...node, position: { x: pos.x - 160, y: pos.y - 110 } }; })); setHasUnsavedChanges(true); setTimeout(() => fitView({ duration: 800, padding: 40 }), 100); toast.success("Layout Optimized"); };
   const handleEdit = (flow: any) => { setActiveFlow(flow); setNodes(flow.nodes || []); setEdges(flow.edges || []); setView('editor'); setHasUnsavedChanges(false); setTimeout(() => fitView({ padding: 40 }), 200); };
   const handleNewArchitecture = () => { setActiveFlow({ name: '', description: '', category: 'System', status: 'Planned' }); setNodes([]); setEdges([]); setView('dashboard'); setIsConfigModalOpen(true); };
-  if (view === 'dashboard') return <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewArchitecture} />
+
   return (
     <div className="flex-1 relative flex h-full overflow-hidden bg-[#020617]">
-       {!isSidebarOpen && (
-         <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
-           <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
-           <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em]">Inventory</span>
-         </button>
-       )}
-       <AnimatePresence>{isSidebarOpen && (
-         <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0f172a]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
-            <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-              {inventoryType === 'INTERNAL' ? (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
-                  <div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
-                    const nodeId = `device-${a.id}`;
-                    if (nodes.find(n => n.id === nodeId)) { toast.error("Asset already in manifest"); return; }
-                    setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
-                    setHasUnsavedChanges(true); 
-                  }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div>
-                </section>
-              ) : (
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
-                  <div className="grid grid-cols-1 gap-1.5">{filteredExternal.map((e: any) => (<button key={e.id} onClick={() => { 
-                    const nodeId = `external-${e.id}`;
-                    if (nodes.find(n => n.id === nodeId)) { toast.error("Entity already in manifest"); return; }
-                    setNodes(nds => [...nds, { id: nodeId, type: 'external', position: { x: 400, y: 100 }, data: { ...e, name: e.name } }]); 
-                    setHasUnsavedChanges(true); 
-                  }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-indigo-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{e.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" /></button>))}</div>
-                </section>
-              )}
+       {view === 'dashboard' ? (
+         <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewArchitecture} />
+       ) : (
+         <>
+            {!isSidebarOpen && (
+              <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+                <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
+                <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em]">Inventory</span>
+              </button>
+            )}
+            <AnimatePresence>{isSidebarOpen && (
+              <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0f172a]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
+                 <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
+                 <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
+                 <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                   {inventoryType === 'INTERNAL' ? (
+                     <section className="space-y-3">
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
+                       <div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
+                         const nodeId = `device-${a.id}`;
+                         if (nodes.find(n => n.id === nodeId)) { toast.error("Asset already in manifest"); return; }
+                         setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
+                         setHasUnsavedChanges(true); 
+                       }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div>
+                     </section>
+                   ) : (
+                     <section className="space-y-3">
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
+                       <div className="grid grid-cols-1 gap-1.5">{filteredExternal.map((e: any) => (<button key={e.id} onClick={() => { 
+                         const nodeId = `external-${e.id}`;
+                         if (nodes.find(n => n.id === nodeId)) { toast.error("Entity already in manifest"); return; }
+                         setNodes(nds => [...nds, { id: nodeId, type: 'external', position: { x: 400, y: 100 }, data: { ...e, name: e.name } }]); 
+                         setHasUnsavedChanges(true); 
+                       }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-indigo-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{e.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" /></button>))}</div>
+                     </section>
+                   )}
+                 </div>
+                 <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-black uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
+              </motion.div>
+            )}</AnimatePresence>
+            <div className="flex-1 relative h-full">
+               <ReactFlow nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }} onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[20, 20]} connectionMode={ConnectionMode.Loose}>
+                 <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
+                 <Panel position="top-left" className="p-4"><div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl"><div className="flex flex-col min-w-[180px] px-3"><span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center gap-2 px-2"><select value={activeTransactionId || ''} onChange={e => setActiveTransactionId(e.target.value || null)} className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-white tracking-widest outline-none appearance-none min-w-[140px]"><option value="">Static View</option>{transactions.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}</select></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center space-x-1 p-1"><button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white"><Settings size={18}/></button><button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all"><GitMerge size={18} className="rotate-90"/></button><button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`}><AlertTriangle size={18}/></button><button onClick={() => setConfirmExitIntent('dashboard')} className="px-4 py-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2"><ChevronLeft size={16}/><span>Back</span></button></div></div></Panel>
+               </ReactFlow>
             </div>
-            <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-black uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
-         </motion.div>
-       )}</AnimatePresence>
-       <div className="flex-1 relative h-full">
-          <ReactFlow nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }} onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[20, 20]} connectionMode={ConnectionMode.Loose}>
-            <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
-            <Panel position="top-left" className="p-4"><div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl"><div className="flex flex-col min-w-[180px] px-3"><span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center gap-2 px-2"><select value={activeTransactionId || ''} onChange={e => setActiveTransactionId(e.target.value || null)} className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-white tracking-widest outline-none appearance-none min-w-[140px]"><option value="">Static View</option>{transactions.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}</select></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center space-x-1 p-1"><button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white"><Settings size={18}/></button><button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all"><GitMerge size={18} className="rotate-90"/></button><button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`}><AlertTriangle size={18}/></button><button onClick={() => setView('dashboard')} className="px-4 py-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2"><ChevronLeft size={16}/><span>Back</span></button></div></div></Panel>
-          </ReactFlow>
-       </div>
-       {!isConfigSidebarOpen && (
-         <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
-           <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
-           <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em] rotate-180">Configuration</span>
-         </button>
+            {!isConfigSidebarOpen && (
+              <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+                <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
+                <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em] rotate-180">Configuration</span>
+              </button>
+            )}
+            <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsLogicExplorerOpen={setIsLogicExplorerOpen}/></motion.div>)}</AnimatePresence>
+         </>
        )}
-       <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsLogicExplorerOpen={setIsLogicExplorerOpen}/></motion.div>)}</AnimatePresence>
+       
        <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { setActiveFlow({ ...activeFlow, ...data }); if (view === 'dashboard') setView('editor'); setHasUnsavedChanges(true); setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
        <AnimatePresence>{isLogicExplorerOpen && (<LogicCoreExplorer node={nodes.find(n => n.id === selectedNodeId)} edges={edges} onClose={() => setIsLogicExplorerOpen(false)} onSave={(nodeId: string, updatedData: any) => updateNodeData(nodeId, updatedData)} assets={assets} logicalServices={logicalServices} />)}</AnimatePresence>
-       <ConfirmationModal isOpen={isConfirmExitOpen} title="Unsaved Changes" message="Exit and lose modifications?" onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); }} onClose={() => setIsConfirmExitOpen(false)} />
+       <ConfirmationModal isOpen={isConfirmExitOpen || !!confirmExitIntent} title="Unsaved Changes" message="Exit and lose modifications?" onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} onClose={() => { setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} />
     </div>
   )
 }
