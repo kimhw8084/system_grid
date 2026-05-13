@@ -294,11 +294,40 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     setInternalNodes(nds => [...nds, newNode]); 
   };
 
-  const handleSaveWorkflow = () => { if (!activeEdgeId) return; setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { nodes: internalNodes, edges: internalEdges, lanes: prev[activeEdgeId]?.lanes || [] } })); };
+  const handleSaveWorkflow = useCallback(() => { 
+    if (!activeEdgeId) return; 
+    setLogicManifest((prev: any) => ({ 
+      ...prev, 
+      [activeEdgeId]: { 
+        ...(prev[activeEdgeId] || {}),
+        nodes: internalNodes, 
+        edges: internalEdges, 
+        lanes: prev[activeEdgeId]?.lanes || [] 
+      } 
+    })); 
+  }, [activeEdgeId, internalNodes, internalEdges]);
+
   const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), []);
   const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), []);
   
-  const activeLanes = logicManifest[activeEdgeId]?.lanes || [];
+  const activeLanes = useMemo(() => logicManifest[activeEdgeId]?.lanes || [], [logicManifest, activeEdgeId]);
+
+  const addLane = (laneName: string) => {
+    if (!activeEdgeId || activeLanes.includes(laneName)) return;
+    setLogicManifest((prev: any) => {
+      const current = prev[activeEdgeId] || { nodes: [], edges: [], lanes: [] };
+      // Sync current internal state first
+      return {
+        ...prev,
+        [activeEdgeId]: {
+          ...current,
+          nodes: internalNodes,
+          edges: internalEdges,
+          lanes: [...(current.lanes || []), laneName]
+        }
+      };
+    });
+  };
 
   return (
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
@@ -350,19 +379,33 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                      <button onClick={() => { const next = activeLanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><X size={20}/></button>
                    </div>
                  ))}
-                 <div className="w-[240px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/10 group shrink-0">
+                 <div className="w-[240px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/10 group shrink-0 p-4 space-y-4">
                    <select 
                      onChange={e => { 
                        if (!e.target.value) return; 
-                       if (activeLanes.includes(e.target.value)) return; 
-                       setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: [...activeLanes, e.target.value] } })); 
+                       addLane(e.target.value);
                        e.target.value = ''; 
                      }} 
-                     className="bg-transparent border-none text-[10px] font-black text-slate-500 uppercase tracking-widest outline-none cursor-pointer group-hover:text-blue-400 transition-colors"
+                     className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest outline-none cursor-pointer hover:text-blue-400 transition-colors"
                    >
-                     <option value="">+ Add Service Lane</option>
+                     <option value="">+ Map Service</option>
                      {nodeServices.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
                    </select>
+                   <div className="relative w-full">
+                     <input 
+                       onKeyDown={e => {
+                         if (e.key === 'Enter') {
+                           const val = (e.target as HTMLInputElement).value.trim();
+                           if (val) {
+                             addLane(val);
+                             (e.target as HTMLInputElement).value = '';
+                           }
+                         }
+                       }}
+                       placeholder="+ CUSTOM LANE..."
+                       className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest outline-none focus:border-blue-500/40"
+                     />
+                   </div>
                  </div>
                </div>
             </div>
@@ -626,15 +669,16 @@ function ArchDesignerInner() {
   const queryClient = useQueryClient();
   const { data: savedFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await (await apiFetch('/api/v1/data-flows/')).json()) });
   const { data: assets } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) });
+  const { data: externalEntities } = useQuery({ queryKey: ['external-entities', { include_deleted: false }], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json()) });
   const { data: logicalServices } = useQuery({ queryKey: ['logical-services'], queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) });
   const transactions = useMemo(() => activeFlow?.traces || [], [activeFlow]);
   const activeTransaction = useMemo(() => transactions.find((t: any) => t.id === activeTransactionId), [transactions, activeTransactionId]);
   const systems = useMemo(() => { if (!assets) return []; const s = new Set<string>(); assets.forEach((a: any) => { if (a.system) s.add(a.system); }); return Array.from(s).sort(); }, [assets]);
-  const filteredAssets = useMemo(() => (assets || []).filter((a: any) => { const matchSearch = (a.hostname || a.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (a.ip_address || '').includes(inventorySearch); const matchSystem = selectedSystem === 'All' || a.system === selectedSystem; return matchSearch && matchSystem && !a.is_deleted && !a.is_external; }), [assets, inventorySearch, selectedSystem]);
-  const filteredExternal = useMemo(() => (assets || []).filter(e => e.is_external && e.name?.toLowerCase().includes(inventorySearch.toLowerCase())), [assets, inventorySearch]);
+  const filteredAssets = useMemo(() => (assets || []).filter((a: any) => { const matchSearch = (a.hostname || a.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (a.ip_address || '').includes(inventorySearch); const matchSystem = selectedSystem === 'All' || a.system === selectedSystem; return matchSearch && matchSystem && !a.is_deleted; }), [assets, inventorySearch, selectedSystem]);
+  const filteredExternal = useMemo(() => (externalEntities || []).filter((e: any) => e.name?.toLowerCase().includes(inventorySearch.toLowerCase())), [externalEntities, inventorySearch]);
   const saveMutation = useMutation({
     mutationFn: async (data: any) => { const isUpdate = !!data.id; const url = isUpdate ? `/api/v1/data-flows/${data.id}` : '/api/v1/data-flows'; const response = await apiFetch(url, { method: isUpdate ? 'PUT' : 'POST', body: JSON.stringify(data) }); return response.json(); },
-    onSuccess: (savedFlow) => { setActiveFlow(savedFlow); setHasUnsavedChanges(false); queryClient.invalidateQueries({ queryKey: ['data-flows'] }); toast.success("Manifest Persistent in Core Registry"); },
+    onSuccess: (savedFlow) => { setActiveFlow(savedFlow); setHasUnsavedChanges(false); queryClient.invalidateQueries({ queryKey: ['data-flows'] }); toast.success("Manifest Persistent in Core Registry"); if (view === 'dashboard') setView('editor'); },
     onError: () => toast.error("Failure Syncing Manifest to Core")
   });
   const updateNodeData = (nodeId: string, updatedData: any) => { setNodes((nds) => nds.map((node) => node.id === nodeId ? { ...node, data: { ...node.data, ...updatedData } } : node)); setHasUnsavedChanges(true); };
@@ -710,7 +754,7 @@ function ArchDesignerInner() {
          </>
        )}
        
-       <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { setActiveFlow({ ...activeFlow, ...data }); if (view === 'dashboard') setView('editor'); setHasUnsavedChanges(true); setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
+       <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { if (!activeFlow?.id) { saveMutation.mutate({ ...data, nodes: [], edges: [] }); } else { setActiveFlow({ ...activeFlow, ...data }); setHasUnsavedChanges(true); } setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
        <AnimatePresence>{isLogicExplorerOpen && (<LogicCoreExplorer node={nodes.find(n => n.id === selectedNodeId)} edges={edges} onClose={() => setIsLogicExplorerOpen(false)} onSave={(nodeId: string, updatedData: any) => updateNodeData(nodeId, updatedData)} assets={assets} logicalServices={logicalServices} />)}</AnimatePresence>
        <ConfirmationModal isOpen={isConfirmExitOpen || !!confirmExitIntent} title="Unsaved Changes" message="Exit and lose modifications?" onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} onClose={() => { setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} />
     </div>

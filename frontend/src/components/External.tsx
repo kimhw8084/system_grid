@@ -584,7 +584,7 @@ export default function External() {
   })
 
   const { data: allEntities, isLoading } = useQuery({
-    queryKey: ['external-entities'],
+    queryKey: ['external-entities', { include_deleted: true }],
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
 
