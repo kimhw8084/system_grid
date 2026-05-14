@@ -49,18 +49,6 @@ const FLOW_TYPES = [
 ]
 const ARCH_STATUSES = ['Up to date', 'Deprecated', 'Planned', 'In Review']
 const ARCH_CATEGORIES = ['System', 'Service', 'Application', 'Network', 'Security']
-const LOGIC_BLOCK_TYPES = [
-  { id: 'PROCESS', label: 'Entity', color: '#3b82f6', icon: Box },
-  { id: 'CONDITION', label: 'Condition', color: '#f59e0b', icon: Diamond },
-]
-
-const SUB_PROCESS_TYPES = [
-  { id: 'CONTROLLER', label: 'Controller', color: '#f59e0b', icon: Zap },
-  { id: 'LOGIC', label: 'Business Logic', color: '#10b981', icon: Workflow },
-  { id: 'SECURITY', label: 'Security/Auth', color: '#6366f1', icon: ShieldCheck },
-  { id: 'PERSISTENCE', label: 'Persistence', color: '#3b82f6', icon: Database },
-  { id: 'EXTERNAL', label: 'External Call', color: '#f43f5e', icon: Share2 },
-]
 
 const DeviceNode = ({ data, selected }: any) => {
   const isImpacted = data.isImpacted && data.dependencyRiskEnabled;
@@ -120,107 +108,91 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 const nodeTypes = { device: DeviceNode, external: ExternalNode, service: ServiceNode, condition: ConditionNode, note: NoteNode };
 const edgeTypes = { labeled: LabeledEdge };
 
-// --- Service-Level Flow Engine (Rebuilt Asset-Centric Swimlanes) ---
+// --- Service-Level Flow Engine (Horizontal Functional Swimlanes) ---
+
+const SERVICE_LANES = [
+  { id: 'CLIENT', label: 'EXTERNAL / CLIENT', color: '#6366f1', icon: Globe },
+  { id: 'ENTRY', label: 'ENTRY / GATEWAY', color: '#f59e0b', icon: Zap },
+  { id: 'LOGIC', label: 'PROCESSING / LOGIC', color: '#10b981', icon: Workflow },
+  { id: 'DATA', label: 'PERSISTENCE / DATA', color: '#3b82f6', icon: Database },
+  { id: 'INTEGRATION', label: 'EGRESS / INTEGRATION', color: '#f43f5e', icon: Share2 },
+]
 
 const LogicBlockNode = ({ id, data, selected }: any) => {
-  const mainType = LOGIC_BLOCK_TYPES.find(t => t.id === data.type) || LOGIC_BLOCK_TYPES[0];
-  const subType = data.subType ? SUB_PROCESS_TYPES.find(t => t.id === data.subType) : null;
-  const activeColor = subType ? subType.color : mainType.color;
-  const ActiveIcon = subType ? subType.icon : mainType.icon;
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  const lane = SERVICE_LANES.find(l => l.id === data.laneId) || SERVICE_LANES[0]
+  const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={`glass-panel min-w-[320px] rounded-xl border-2 transition-all duration-300 shadow-2xl overflow-hidden group ${selected ? 'ring-2 ring-blue-500/40' : ''}`} style={{ borderColor: `${activeColor}60`, backgroundColor: '#0f172a' }}>
-      <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded text-white shadow-lg" style={{ backgroundColor: activeColor }}>
-            <ActiveIcon size={14}/>
+    <div className={`glass-panel min-w-[340px] rounded-[24px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${lane.color}40`, backgroundColor: '#0f172a' }}>
+      <div className="flex items-center justify-between px-6 py-4 bg-white/[0.03] border-b border-white/5">
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 rounded-xl text-white shadow-xl" style={{ backgroundColor: lane.color }}>
+            <lane.icon size={16}/>
           </div>
           <div className="flex flex-col">
-            <span className="text-[11px] italic font-black uppercase tracking-[0.1em] text-white">
-              {subType ? subType.label : mainType.label}
+            <span className="text-[12px] italic font-black uppercase tracking-tight text-white leading-none">
+              {data.label || 'Step Definition'}
             </span>
-            <span className="text-[8px] font-black text-blue-500/60 uppercase tracking-tighter">
-              {data.laneName || (data.laneIdx === 0 ? 'External' : `Server Lane ${data.laneIdx}`)}
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1.5">
+              {lane.label}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-[7px] font-black text-slate-500 uppercase">
-             ID: {id.split('-').pop()}
-          </div>
-          {selected && (
-            <button 
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                if (isDeleting) { data.onDelete(id); } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000); }
-              }} 
-              className={`rounded-lg px-3 py-1.5 transition-all flex items-center gap-2 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-white/5 text-rose-500 hover:bg-rose-500/10'}`}
-            >
-              <Trash2 size={12}/>
-              {isDeleting && <span className="text-[9px] font-black uppercase">Delete?</span>}
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="p-5 space-y-5">
-        {data.type === 'PROCESS' && (
-          <div className="flex items-center justify-between gap-2 p-1 bg-black/40 rounded-xl border border-white/5 shadow-inner">
-            {SUB_PROCESS_TYPES.map(st => (
-              <button 
-                key={st.id} 
-                onClick={() => data.onChange(id, { subType: st.id })}
-                className={`flex-1 p-2.5 rounded-lg transition-all flex items-center justify-center ${data.subType === st.id ? 'bg-white/10 text-white shadow-xl' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                title={st.label}
-              >
-                <st.icon size={16} />
-              </button>
-            ))}
-          </div>
+        {selected && (
+          <button 
+            onClick={(e) => { 
+              e.stopPropagation()
+              if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
+            }} 
+            className={`p-2 rounded-xl transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
+          >
+            <Trash2 size={16}/>
+          </button>
         )}
-        
-        <div className="space-y-2">
-          <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Flow Logic Definition</p>
+      </div>
+      <div className="p-6 space-y-6">
+        <div className="space-y-3">
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Technical Execution Logic</label>
           <textarea 
-            value={data.label} 
-            onChange={e => data.onChange(id, { label: e.target.value })} 
-            className="w-full bg-black/60 border border-white/10 rounded-xl p-4 text-[12px] font-bold text-white uppercase outline-none focus:border-blue-500/50 resize-none min-h-[80px] transition-all" 
-            placeholder="Describe technical execution flow..." 
+            value={data.description || ''} 
+            onChange={e => data.onChange(id, { description: e.target.value })} 
+            className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-[13px] font-bold text-slate-200 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[100px] transition-all placeholder:text-slate-700" 
+            placeholder="DEFINE LOGIC FLOW..." 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/10">
-          <div className="space-y-1.5">
-            <p className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em]">Parameter In</p>
-            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-slate-300 outline-none focus:border-blue-500/40 transition-all" placeholder="NULL"/>
+        <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
+          <div className="space-y-2">
+            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Input Payload</p>
+            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-slate-400 outline-none focus:border-blue-500/40 transition-all" placeholder="NULL"/>
           </div>
-          <div className="space-y-1.5">
-            <p className="text-[8px] font-black text-emerald-500 uppercase tracking-[0.2em] text-right">Parameter Out</p>
-            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-emerald-400 outline-none focus:border-emerald-500/40 text-right transition-all" placeholder="ACK"/>
+          <div className="space-y-2 text-right">
+            <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Response Output</p>
+            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-emerald-500/80 outline-none focus:border-emerald-500/40 text-right transition-all" placeholder="ACK"/>
           </div>
         </div>
       </div>
 
-      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
-      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
-      <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
-      <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-slate-900" />
+      <Handle type="target" position={Position.Left} className="!w-4 !h-4 !bg-blue-600 !border-slate-950 !translate-x-[-2px]" />
+      <Handle type="source" position={Position.Right} className="!w-4 !h-4 !bg-blue-600 !border-slate-950 !translate-x-[2px]" />
+      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-400 !border-slate-950" />
+      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-400 !border-slate-950" />
     </div>
   )
 }
 
 const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected }: any) => {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 16 });
+  const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#475569', strokeWidth: 2 }} />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#334155', strokeWidth: selected ? 4 : 2 }} />
       <EdgeLabelRenderer>
         <div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }} className="nodrag nopan">
           <input 
             value={data?.label || ''} 
             onChange={e => data.onLabelChange(id, e.target.value)} 
-            className={`bg-[#0f172a] border border-white/10 rounded px-2 py-1 text-[8px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-xl ${selected ? 'scale-110 border-blue-500' : ''}`} 
-            placeholder="FLOW..." 
+            className={`bg-[#0f172a] border border-white/10 rounded-lg px-3 py-1.5 text-[9px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
+            placeholder="FLOW VECTOR" 
           />
         </div>
       </EdgeLabelRenderer>
@@ -228,66 +200,55 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
   )
 }
 
-const ServiceLevelFlow = ({ node, onClose, onSave, edges, assets }: any) => {
-  const [activeEdgeId, setActiveEdgeId] = useState<string | null>(null);
-  const [logicManifest, setLogicManifest] = useState<any>(node?.data?.logic_json || {});
-  const [internalNodes, setInternalNodes] = useState<Node[]>([]);
-  const [internalEdges, setInternalEdges] = useState<Edge[]>([]);
+const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
+  const [activeEdgeId, setActiveEdgeId] = useState<string | null>(null)
+  const [logicManifest, setLogicManifest] = useState<any>(node?.data?.logic_json || {})
+  const [internalNodes, setInternalNodes] = useState<Node[]>([])
+  const [internalEdges, setInternalEdges] = useState<Edge[]>([])
   
-  const neighbors = useMemo(() => { 
-    if (!node || !edges) return { upstream: [], downstream: [] }; 
-    const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', source: e.source, protocol: e.data?.protocol || 'TCP' })); 
-    const downstream = edges.filter((e: any) => e.source === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Flow', target: e.target, protocol: e.data?.protocol || 'TCP' })); 
-    return { upstream, downstream }; 
-  }, [node, edges]);
+  const laneHeight = 350
+  const laneWidth = 4000
+  const blockHeight = 280
 
-  const laneWidth = 500;
-  const laneBaseX = 450;
-  const blockWidth = 340;
+  const neighbors = useMemo(() => { 
+    if (!node || !edges) return { upstream: [], downstream: [] } 
+    const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Inbound', source: e.source, protocol: e.data?.protocol || 'TCP' })) 
+    const downstream = edges.filter((e: any) => e.source === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Outbound', target: e.target, protocol: e.data?.protocol || 'TCP' })) 
+    return { upstream, downstream } 
+  }, [node, edges])
 
   useEffect(() => { 
     if (activeEdgeId) { 
-      const flowData = logicManifest[activeEdgeId] || { nodes: [], edges: [], lanes: [] }; 
-      const hydratedNodes = (flowData.nodes || []).map((n: any) => ({
+      const flowData = logicManifest[activeEdgeId] || { nodes: [], edges: [] } 
+      setInternalNodes((flowData.nodes || []).map((n: any) => ({
         ...n,
         data: {
           ...n.data,
           onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(node => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
           onDelete: (id: string) => { 
-            setInternalNodes(nds => nds.filter(node => node.id !== id)); 
-            setInternalEdges(eds => eds.filter(edge => edge.source !== id && edge.target !== id)); 
+            setInternalNodes(nds => nds.filter(node => node.id !== id))
+            setInternalEdges(eds => eds.filter(edge => edge.source !== id && edge.target !== id))
           }
         }
-      }));
-      const hydratedEdges = (flowData.edges || []).map((e: any) => ({
+      })))
+      setInternalEdges((flowData.edges || []).map((e: any) => ({
         ...e,
         data: {
           ...e.data,
           onLabelChange: (id: string, label: string) => setInternalEdges(eds => eds.map(edge => edge.id === id ? { ...edge, data: { ...edge.data, label } } : edge))
         }
-      }));
-      setInternalNodes(hydratedNodes); 
-      setInternalEdges(hydratedEdges); 
-    } else { 
-      setInternalNodes([]); 
-      setInternalEdges([]); 
+      })))
     } 
-  }, [activeEdgeId, logicManifest]);
+  }, [activeEdgeId, logicManifest])
 
-  const onNodeDragStop = useCallback((_: any, node: Node) => {
-    const x = node.position.x;
-    let targetLaneIdx = 0;
-    if (x < laneBaseX - (laneWidth/4)) { targetLaneIdx = 0; } 
-    else { targetLaneIdx = Math.floor((x - laneBaseX + (laneWidth / 2)) / laneWidth) + 1; }
+  const onNodeDragStop = useCallback((_: any, draggedNode: Node) => {
+    const y = draggedNode.position.y
+    const laneIdx = Math.max(0, Math.min(SERVICE_LANES.length - 1, Math.floor((y + (laneHeight / 2)) / laneHeight)))
+    const targetLane = SERVICE_LANES[laneIdx]
+    const snappedY = (laneIdx * laneHeight) + (laneHeight - blockHeight) / 2
 
-    const targetLaneName = targetLaneIdx === 0 ? 'External' : (logicManifest[activeEdgeId]?.lanes?.[targetLaneIdx - 1] || `Lane ${targetLaneIdx}`);
-
-    let snappedX = 0;
-    if (targetLaneIdx === 0) { snappedX = (laneBaseX - blockWidth) / 2; } 
-    else { snappedX = laneBaseX + ((targetLaneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2; }
-
-    setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: snappedX, y: node.position.y }, data: { ...n.data, laneIdx: targetLaneIdx, laneName: targetLaneName } } : n));
-  }, [laneBaseX, laneWidth, blockWidth, logicManifest, activeEdgeId]);
+    setInternalNodes(nds => nds.map(n => n.id === draggedNode.id ? { ...n, position: { x: n.position.x, y: snappedY }, data: { ...n.data, laneId: targetLane.id } } : n))
+  }, [])
 
   const onConnect = useCallback((params: Connection) => { 
     const newEdge = { 
@@ -296,137 +257,81 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges, assets }: any) => {
       type: 'logicLink', 
       data: { 
         label: '', 
-        onLabelChange: (id: string, label: string) => { 
-          setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); 
-        } 
+        onLabelChange: (id: string, label: string) => setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e))
       } 
-    }; 
-    setInternalEdges((eds) => addEdge(newEdge, eds)); 
-  }, []);
+    } 
+    setInternalEdges((eds) => addEdge(newEdge, eds)) 
+  }, [])
   
-  const addBlock = (type: string, laneIdx: number) => { 
-    let x = 0;
-    if (laneIdx === 0) { x = (laneBaseX - blockWidth) / 2; } 
-    else { x = laneBaseX + ((laneIdx - 1) * laneWidth) + (laneWidth - blockWidth) / 2; }
-    
-    const laneName = laneIdx === 0 ? 'External' : (logicManifest[activeEdgeId]?.lanes?.[laneIdx - 1] || `Lane ${laneIdx}`);
-    const laneNodes = internalNodes.filter(n => n.data.laneIdx === laneIdx);
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 50;
-    const y = maxY + (laneNodes.length > 0 ? 300 : 50);
+  const addStep = (laneId: string) => {
+    const laneIdx = SERVICE_LANES.findIndex(l => l.id === laneId)
+    const snappedY = (laneIdx * laneHeight) + (laneHeight - blockHeight) / 2
+    const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
+    const maxX = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.x)) : 100
+    const x = maxX + (laneNodes.length > 0 ? 450 : 0)
 
     const newNode = { 
-      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
+      id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
       type: 'logicBlock', 
-      position: { x, y }, 
+      position: { x, y: snappedY }, 
       data: { 
-        label: '', 
-        type, 
-        laneIdx,
-        laneName,
+        label: 'NEW STEP', 
+        laneId,
+        description: '',
         input: '', 
         output: '', 
         onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)), 
         onDelete: (id: string) => { 
-          setInternalNodes(nds => nds.filter(n => n.id !== id)); 
-          setInternalEdges(eds => eds.filter(e => e.source !== id && e.target !== id)); 
+          setInternalNodes(nds => nds.filter(n => n.id !== id))
+          setInternalEdges(eds => eds.filter(e => e.source !== id && e.target !== id))
         } 
       } 
-    }; 
-    setInternalNodes(nds => [...nds, newNode]); 
-  };
-
-  const handleSortLane = (laneIdx: number) => {
-    const laneNodes = internalNodes.filter(n => n.data.laneIdx === laneIdx).sort((a, b) => a.position.y - b.position.y);
-    setInternalNodes(nds => {
-      let currentY = 100;
-      const updatedNodes = [...nds];
-      laneNodes.forEach(ln => {
-        const idx = updatedNodes.findIndex(n => n.id === ln.id);
-        if (idx !== -1) {
-          updatedNodes[idx] = { ...updatedNodes[idx], position: { ...updatedNodes[idx].position, y: currentY } };
-          currentY += 300;
-        }
-      });
-      return updatedNodes;
-    });
-  };
-
-  const handleSaveWorkflow = useCallback(() => { 
-    if (!activeEdgeId) return; 
-    setLogicManifest((prev: any) => ({
-      ...prev, 
-      [activeEdgeId]: { 
-        ...(prev[activeEdgeId] || {}),
-        nodes: internalNodes, 
-        edges: internalEdges, 
-        lanes: prev[activeEdgeId]?.lanes || [] 
-      } 
-    })); 
-  }, [activeEdgeId, internalNodes, internalEdges]);
+    } 
+    setInternalNodes(nds => [...nds, newNode]) 
+  }
 
   useEffect(() => {
     if (activeEdgeId) {
-      const currentManifest = {
-        ...logicManifest,
-        [activeEdgeId]: {
-          ...(logicManifest[activeEdgeId] || {}),
-          nodes: internalNodes,
-          edges: internalEdges
-        }
-      };
-      onSave(node.id, { ...node.data, logic_json: currentManifest });
+      const currentManifest = { ...logicManifest, [activeEdgeId]: { nodes: internalNodes, edges: internalEdges } }
+      onSave(node.id, { ...node.data, logic_json: currentManifest })
     }
-  }, [internalNodes, internalEdges, activeEdgeId]);
+  }, [internalNodes, internalEdges, activeEdgeId])
 
-  const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), []);
-  const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), []);
-  
-  const activeLanes = useMemo(() => logicManifest[activeEdgeId]?.lanes || [], [logicManifest, activeEdgeId]);
-
-  const addLane = (laneName: string) => {
-    if (!activeEdgeId || activeLanes.includes(laneName)) return;
-    setLogicManifest((prev: any) => ({
-      ...prev,
-      [activeEdgeId]: {
-        ...(prev[activeEdgeId] || { nodes: [], edges: [], lanes: [] }),
-        lanes: [...(prev[activeEdgeId]?.lanes || []), laneName]
-      }
-    }));
-  };
+  const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), [])
+  const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), [])
 
   return (
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
-      <div className="w-[380px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
-        <div className="p-10 border-b border-white/5 space-y-4 bg-white/[0.02]">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20"><Cpu size={24}/></div>
+      <div className="w-[420px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-[40px_0_80px_rgba(0,0,0,0.8)]">
+        <div className="p-12 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-blue-600 rounded-[20px] text-white shadow-2xl shadow-blue-500/40"><Workflow size={28}/></div>
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">Service Flow</h3>
-              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Vertical Asset Swimlanes</p>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Service Flow</h3>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-3">Functional Swimlanes</p>
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
-               <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest">Inbound Vectors</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Flow Inputs</span>
+               <span className="text-[12px] italic font-black text-blue-500 uppercase tracking-widest">Inbound Vectors</span>
+               <span className="text-[9px] font-bold text-slate-600 uppercase">Input Flow</span>
              </div>
              <div className="space-y-3">
                {neighbors.upstream.map(edge => (
                  <button 
                   key={edge.id} 
-                  onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} 
-                  className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-2xl shadow-blue-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                  onClick={() => setActiveEdgeId(edge.id)} 
+                  className={`w-full p-8 rounded-[32px] border transition-all text-left space-y-4 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-2xl' : 'bg-white/5 border-white/5 hover:border-blue-500/30'}`}
                  >
-                   {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
                    <div className="flex items-center justify-between">
-                     <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Defined</span>}
+                     <p className={`text-lg italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <CheckCircle2 size={16} className="text-blue-400" />}
                    </div>
-                   <div className="flex items-center gap-2">
-                     <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div>
-                     <p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                   <div className="flex items-center gap-3">
+                     <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div>
+                     <p className={`text-[11px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p>
                    </div>
                  </button>
                ))}
@@ -434,96 +339,36 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges, assets }: any) => {
            </div>
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
-               <span className="text-[11px] italic font-black text-rose-500 uppercase tracking-widest">Outbound Vectors</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Egress Flow</span>
+               <span className="text-[12px] italic font-black text-rose-500 uppercase tracking-widest">Outbound Vectors</span>
+               <span className="text-[9px] font-bold text-slate-600 uppercase">Egress Flow</span>
              </div>
              <div className="space-y-3">
                {neighbors.downstream.map(edge => (
                  <button 
                   key={edge.id} 
-                  onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} 
-                  className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-2xl shadow-rose-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                  onClick={() => setActiveEdgeId(edge.id)} 
+                  className={`w-full p-8 rounded-[32px] border transition-all text-left space-y-4 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-2xl' : 'bg-white/5 border-white/5 hover:border-rose-500/30'}`}
                  >
-                   {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
                    <div className="flex items-center justify-between">
-                     <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Defined</span>}
+                     <p className={`text-lg italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <CheckCircle2 size={16} className="text-rose-400" />}
                    </div>
-                   <div className="flex items-center gap-2">
-                     <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-rose-400'}`}>{edge.protocol}</div>
-                     <p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                   <div className="flex items-center gap-3">
+                     <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-400'}`}>{edge.protocol}</div>
+                     <p className={`text-[11px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p>
                    </div>
                  </button>
                ))}
              </div>
            </div>
         </div>
-        <div className="p-10 border-t border-white/10 bg-black/40 space-y-4">
-          <button onClick={() => { handleSaveWorkflow(); onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Commit & Close</button>
+        <div className="p-12 border-t border-white/10 bg-black/40">
+          <button onClick={onClose} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[13px] font-black uppercase tracking-widest rounded-2xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Commit & Exit Registry</button>
         </div>
       </div>
       <div className="flex-1 flex flex-col bg-[#020617] relative">
         {activeEdgeId ? (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="h-[160px] bg-[#0f172a]/95 backdrop-blur-3xl border-b border-white/10 flex items-center relative z-20 shadow-2xl overflow-x-auto custom-scrollbar no-scrollbar">
-               <div className="min-w-[450px] h-full border-r border-white/10 bg-blue-600/[0.05] flex flex-col items-center justify-center space-y-4 shrink-0 relative group">
-                 <div className="flex items-center gap-2 text-blue-500">
-                    <Globe size={14}/>
-                    <p className="text-[11px] italic font-black uppercase tracking-[0.4em]">External</p>
-                 </div>
-                 <span className="text-2xl italic font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Endpoint'}</span>
-                 <div className="flex gap-2">
-                    <button onClick={() => addBlock('PROCESS', 0)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Entity</button>
-                    <button onClick={() => addBlock('CONDITION', 0)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Logic</button>
-                    <button onClick={() => handleSortLane(0)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Sort Column"><ArrowDownUp size={14}/></button>
-                 </div>
-               </div>
-               <div className="flex h-full divide-x divide-white/10">
-                 {activeLanes.map((lane: string, idx: number) => (
-                   <div key={idx} className="w-[500px] flex flex-col items-center justify-center bg-white/[0.02] group relative shrink-0 space-y-4">
-                     <div className="flex items-center gap-2 text-blue-400">
-                        <Server size={14}/>
-                        <p className="text-[11px] italic font-black uppercase tracking-[0.3em]">Server Lane</p>
-                     </div>
-                     <span className="text-xl italic font-black text-white uppercase tracking-tight">{lane}</span>
-                     <div className="flex gap-2">
-                        <button onClick={() => addBlock('PROCESS', idx + 1)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Action</button>
-                        <button onClick={() => addBlock('CONDITION', idx + 1)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Branch</button>
-                        <button onClick={() => handleSortLane(idx + 1)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Sort Column"><ArrowDownUp size={14}/></button>
-                     </div>
-                     <button onClick={() => { const next = activeLanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><X size={20}/></button>
-                   </div>
-                 ))}
-                 <div className="w-[300px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/10 group shrink-0 p-6 space-y-4">
-                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Add Server Lane</p>
-                   <select 
-                     onChange={e => { 
-                       if (!e.target.value) return; 
-                       addLane(e.target.value);
-                       e.target.value = ''; 
-                     }} 
-                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest outline-none cursor-pointer hover:border-blue-500/40 transition-all"
-                   >
-                     <option value="">+ Inventory Server</option>
-                     {(assets || []).map((a: any) => {
-                       const name = a.hostname || a.name;
-                       const isAdded = activeLanes.includes(name);
-                       return <option key={a.id} value={name} disabled={isAdded}>{name} {isAdded ? '(Added)' : ''}</option>;
-                     })}
-                   </select>
-                   <input 
-                     onKeyDown={e => {
-                       if (e.key === 'Enter') {
-                         const val = (e.target as HTMLInputElement).value.trim();
-                         if (val) { addLane(val); (e.target as HTMLInputElement).value = ''; }
-                       }
-                     }}
-                     placeholder="+ CUSTOM SERVER..."
-                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest outline-none focus:border-blue-500/50"
-                   />
-                 </div>
-               </div>
-            </div>
             <div className="flex-1 relative overflow-hidden bg-[#020617]">
               <ReactFlow 
                 nodes={internalNodes} 
@@ -537,35 +382,44 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges, assets }: any) => {
                 snapToGrid 
                 snapGrid={[20, 20]} 
                 fitView 
-                fitViewOptions={{ padding: 40 }}
-                className="bg-[#020617]"
+                fitViewOptions={{ padding: 100 }}
               >
-                <div className="absolute inset-0 flex pointer-events-none overflow-hidden">
-                  <div className="w-[450px] h-full border-r-2 border-dashed border-white/10 bg-blue-600/[0.02]" />
-                  {activeLanes.map((_: any, i: number) => (
-                    <div key={i} className={`w-[500px] h-full border-r-2 border-dashed border-white/10 ${i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-transparent'}`} />
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                  {SERVICE_LANES.map((lane, idx) => (
+                    <div key={lane.id} className={`w-full h-[350px] border-b-4 border-dashed border-white/5 flex flex-col p-12 relative ${idx % 2 === 0 ? 'bg-white/[0.01]' : 'bg-transparent'}`}>
+                       <div className="flex items-center gap-4 opacity-30">
+                          <lane.icon size={24} style={{ color: lane.color }}/>
+                          <h4 className="text-2xl italic font-black uppercase tracking-[0.5em] text-white">{lane.label}</h4>
+                       </div>
+                       <div className="absolute top-12 right-12 flex gap-4 pointer-events-auto">
+                          <button onClick={() => addStep(lane.id)} className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center gap-3">
+                             <Plus size={16}/> <span>Append Step</span>
+                          </button>
+                       </div>
+                    </div>
                   ))}
                 </div>
-                <Background color="#1e293b" gap={20} size={1} className="opacity-40"/>
+                <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
+                <Controls className="bg-slate-900 border-2 border-white/10 rounded-2xl overflow-hidden p-1 shadow-2xl" />
               </ReactFlow>
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center space-y-12 bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-40">
-            <div className="p-24 rounded-full bg-slate-900/40 border border-white/10 shadow-[0_0_150px_rgba(37,99,235,0.1)] relative">
-              <Workflow size={120} className="text-slate-800" />
-              <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-ping" />
+          <div className="flex-1 flex flex-col items-center justify-center space-y-12">
+            <div className="p-32 rounded-full bg-slate-900/40 border-2 border-dashed border-white/10 shadow-[0_0_150px_rgba(37,99,235,0.1)] relative">
+              <Workflow size={160} className="text-slate-800" />
+              <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full animate-ping" />
             </div>
-            <div className="text-center space-y-6">
-              <h4 className="text-4xl italic font-black text-white uppercase tracking-[0.4em]">Service Flow <span className="text-blue-600">Standby</span></h4>
-              <p className="text-[14px] font-bold text-slate-500 uppercase tracking-[0.6em] leading-relaxed">Select a flow vector to initialize asset-level documentation</p>
+            <div className="text-center space-y-8">
+              <h4 className="text-5xl italic font-black text-white uppercase tracking-[0.5em]">Service Flow <span className="text-blue-600">Idle</span></h4>
+              <p className="text-[16px] font-bold text-slate-500 uppercase tracking-[0.8em] leading-relaxed">Initialize vector documentation from sidebar</p>
             </div>
           </div>
         )}
       </div>
     </motion.div>
-  );
-};
+  )
+}
 
 const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
   const [formData, setFormData] = useState({ name: flow?.name || '', description: flow?.description || '', category: flow?.category || 'System', status: flow?.status || 'Up to date' });
