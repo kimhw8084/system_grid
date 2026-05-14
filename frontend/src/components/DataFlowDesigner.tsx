@@ -108,35 +108,32 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 const nodeTypes = { device: DeviceNode, external: ExternalNode, service: ServiceNode, condition: ConditionNode, note: NoteNode };
 const edgeTypes = { labeled: LabeledEdge };
 
-// --- Service-Level Flow Engine (Horizontal Functional Swimlanes) ---
+// --- Vertical Swimlane Flow Engine (Vertical Functional Lanes) ---
 
-const SERVICE_LANES = [
-  { id: 'CLIENT', label: 'EXTERNAL / CLIENT', color: '#6366f1', icon: Globe },
-  { id: 'ENTRY', label: 'ENTRY / GATEWAY', color: '#f59e0b', icon: Zap },
-  { id: 'LOGIC', label: 'PROCESSING / LOGIC', color: '#10b981', icon: Workflow },
-  { id: 'DATA', label: 'PERSISTENCE / DATA', color: '#3b82f6', icon: Database },
-  { id: 'INTEGRATION', label: 'EGRESS / INTEGRATION', color: '#f43f5e', icon: Share2 },
+const VERTICAL_LANES = [
+  { id: 'CLIENT', label: 'EXTERNAL / CLIENT', color: '#6366f1', icon: Globe, x: 0 },
+  { id: 'ENTRY', label: 'ENTRY / GATEWAY', color: '#f59e0b', icon: Zap, x: 450 },
+  { id: 'LOGIC', label: 'PROCESSING / LOGIC', color: '#10b981', icon: Workflow, x: 900 },
+  { id: 'DATA', label: 'PERSISTENCE / DATA', color: '#3b82f6', icon: Database, x: 1350 },
+  { id: 'INTEGRATION', label: 'EGRESS / INTEGRATION', color: '#f43f5e', icon: Share2, x: 1800 },
 ]
 
-const LogicBlockNode = ({ id, data, selected }: any) => {
-  const lane = SERVICE_LANES.find(l => l.id === data.laneId) || SERVICE_LANES[0]
+const LANE_WIDTH = 450;
+
+const ProcessNode = ({ id, data, selected }: any) => {
+  const lane = VERTICAL_LANES.find(l => l.id === data.laneId) || VERTICAL_LANES[0]
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={`glass-panel min-w-[340px] rounded-[24px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${lane.color}40`, backgroundColor: '#0f172a' }}>
-      <div className="flex items-center justify-between px-6 py-4 bg-white/[0.03] border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 rounded-xl text-white shadow-xl" style={{ backgroundColor: lane.color }}>
-            <lane.icon size={16}/>
+    <div className={`glass-panel min-w-[340px] rounded-[12px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${lane.color}40`, backgroundColor: '#0f172a' }}>
+      <div className="flex items-center justify-between px-6 py-3 bg-white/[0.03] border-b border-white/5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
+            <lane.icon size={14}/>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[12px] italic font-black uppercase tracking-tight text-white leading-none">
-              {data.label || 'Step Definition'}
-            </span>
-            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1.5">
-              {lane.label}
-            </span>
-          </div>
+          <span className="text-[11px] italic font-black uppercase tracking-tight text-white leading-none">
+            {data.label || 'Process Step'}
+          </span>
         </div>
         {selected && (
           <button 
@@ -144,39 +141,63 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
               e.stopPropagation()
               if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
             }} 
-            className={`p-2 rounded-xl transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
+            className={`p-1.5 rounded-lg transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
           >
-            <Trash2 size={16}/>
+            <Trash2 size={14}/>
           </button>
         )}
       </div>
-      <div className="p-6 space-y-6">
-        <div className="space-y-3">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Technical Execution Logic</label>
-          <textarea 
-            value={data.description || ''} 
-            onChange={e => data.onChange(id, { description: e.target.value })} 
-            className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-[13px] font-bold text-slate-200 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[100px] transition-all placeholder:text-slate-700" 
-            placeholder="DEFINE LOGIC FLOW..." 
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
-          <div className="space-y-2">
-            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Input Payload</p>
-            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-slate-400 outline-none focus:border-blue-500/40 transition-all" placeholder="NULL"/>
-          </div>
-          <div className="space-y-2 text-right">
-            <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Response Output</p>
-            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-emerald-500/80 outline-none focus:border-emerald-500/40 text-right transition-all" placeholder="ACK"/>
-          </div>
+      <div className="p-5 space-y-4">
+        <textarea 
+          value={data.description || ''} 
+          onChange={e => data.onChange(id, { description: e.target.value })} 
+          className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[80px] transition-all" 
+          placeholder="TECHNICAL EXECUTION..." 
+        />
+        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/5">
+          <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-black text-blue-400 outline-none focus:border-blue-500/40" placeholder="INPUT"/>
+          <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-black text-emerald-400 outline-none focus:border-emerald-500/40 text-right" placeholder="OUTPUT"/>
         </div>
       </div>
+      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-600 !border-slate-950" />
+      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-600 !border-slate-950" />
+      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-slate-700 !border-slate-950" />
+      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-slate-700 !border-slate-950" />
+    </div>
+  )
+}
 
-      <Handle type="target" position={Position.Left} className="!w-4 !h-4 !bg-blue-600 !border-slate-950 !translate-x-[-2px]" />
-      <Handle type="source" position={Position.Right} className="!w-4 !h-4 !bg-blue-600 !border-slate-950 !translate-x-[2px]" />
-      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-400 !border-slate-950" />
-      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-400 !border-slate-950" />
+const DiamondNode = ({ id, data, selected }: any) => {
+  const lane = VERTICAL_LANES.find(l => l.id === data.laneId) || VERTICAL_LANES[0]
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  return (
+    <div className="relative group p-10">
+      <div className={`w-32 h-32 rotate-45 border-2 flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${selected ? 'ring-4 ring-amber-500/20' : ''}`} style={{ borderColor: `${lane.color}80`, backgroundColor: '#0f172a' }}>
+        <div className="-rotate-45 flex flex-col items-center px-4 text-center">
+          <input 
+            value={data.label || ''} 
+            onChange={e => data.onChange(id, { label: e.target.value })} 
+            className="bg-transparent border-none text-[10px] italic font-black uppercase text-white text-center outline-none w-24 placeholder:text-slate-700"
+            placeholder="CONDITION"
+          />
+        </div>
+        <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ top: -6, left: '50%' }} />
+        <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ bottom: -6, left: '50%' }} />
+        <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ left: -6, top: '50%' }} />
+        <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ right: -6, top: '50%' }} />
+      </div>
+      {selected && (
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation()
+            if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
+          }} 
+          className={`absolute top-0 right-0 p-2 rounded-xl transition-all z-20 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-slate-900/80 hover:bg-rose-500/20 text-rose-500'}`}
+        >
+          <Trash2 size={14}/>
+        </button>
+      )}
     </div>
   )
 }
@@ -191,8 +212,8 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
           <input 
             value={data?.label || ''} 
             onChange={e => data.onLabelChange(id, e.target.value)} 
-            className={`bg-[#0f172a] border border-white/10 rounded-lg px-3 py-1.5 text-[9px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
-            placeholder="FLOW VECTOR" 
+            className={`bg-[#0f172a] border border-white/10 rounded-lg px-3 py-1 text-[9px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
+            placeholder="VECTOR" 
           />
         </div>
       </EdgeLabelRenderer>
@@ -206,10 +227,6 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
   const [internalNodes, setInternalNodes] = useState<Node[]>([])
   const [internalEdges, setInternalEdges] = useState<Edge[]>([])
   
-  const laneHeight = 350
-  const laneWidth = 4000
-  const blockHeight = 280
-
   const neighbors = useMemo(() => { 
     if (!node || !edges) return { upstream: [], downstream: [] } 
     const upstream = edges.filter((e: any) => e.target === node.id).map((e: any) => ({ id: e.id, label: e.data?.label || 'Inbound', source: e.source, protocol: e.data?.protocol || 'TCP' })) 
@@ -239,21 +256,19 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
         }
       })))
     } 
-  }, [activeEdgeId, logicManifest])
+  }, [activeEdgeId])
 
-  const onNodeDragStop = useCallback((_: any, draggedNode: Node) => {
-    const y = draggedNode.position.y
-    const laneIdx = Math.max(0, Math.min(SERVICE_LANES.length - 1, Math.floor((y + (laneHeight / 2)) / laneHeight)))
-    const targetLane = SERVICE_LANES[laneIdx]
-    const snappedY = (laneIdx * laneHeight) + (laneHeight - blockHeight) / 2
-
-    setInternalNodes(nds => nds.map(n => n.id === draggedNode.id ? { ...n, position: { x: n.position.x, y: snappedY }, data: { ...n.data, laneId: targetLane.id } } : n))
+  const onNodeDrag = useCallback((_: any, draggedNode: Node) => {
+    const lane = VERTICAL_LANES.find(l => l.id === draggedNode.data.laneId) || VERTICAL_LANES[0]
+    const centerX = lane.x + (LANE_WIDTH / 2) - 170 // adjust for node width
+    
+    setInternalNodes(nds => nds.map(n => n.id === draggedNode.id ? { ...n, position: { x: centerX, y: n.position.y } } : n))
   }, [])
 
   const onConnect = useCallback((params: Connection) => { 
     const newEdge = { 
       ...params, 
-      id: `l-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
+      id: `v-edge-${Date.now()}`, 
       type: 'logicLink', 
       data: { 
         label: '', 
@@ -263,19 +278,19 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
     setInternalEdges((eds) => addEdge(newEdge, eds)) 
   }, [])
   
-  const addStep = (laneId: string) => {
-    const laneIdx = SERVICE_LANES.findIndex(l => l.id === laneId)
-    const snappedY = (laneIdx * laneHeight) + (laneHeight - blockHeight) / 2
+  const addNode = (laneId: string, type: 'process' | 'diamond') => {
+    const lane = VERTICAL_LANES.find(l => l.id === laneId) || VERTICAL_LANES[0]
+    const centerX = lane.x + (LANE_WIDTH / 2) - (type === 'process' ? 170 : 64)
     const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
-    const maxX = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.x)) : 100
-    const x = maxX + (laneNodes.length > 0 ? 450 : 0)
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 100
+    const y = maxY + (laneNodes.length > 0 ? 250 : 0)
 
     const newNode = { 
-      id: `step-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
-      type: 'logicBlock', 
-      position: { x, y: snappedY }, 
+      id: `v-step-${Date.now()}`, 
+      type: type === 'process' ? 'logicProcess' : 'logicDiamond', 
+      position: { x: centerX, y }, 
       data: { 
-        label: 'NEW STEP', 
+        label: type === 'process' ? 'NEW PROCESS' : 'CONDITION?', 
         laneId,
         description: '',
         input: '', 
@@ -297,73 +312,61 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
     }
   }, [internalNodes, internalEdges, activeEdgeId])
 
-  const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), [])
+  const explorerNodeTypes = useMemo(() => ({ logicProcess: ProcessNode, logicDiamond: DiamondNode }), [])
   const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), [])
 
   return (
-    <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
-      <div className="w-[420px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-[40px_0_80px_rgba(0,0,0,0.8)]">
-        <div className="p-12 border-b border-white/5 bg-white/[0.02]">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-blue-600 rounded-[20px] text-white shadow-2xl shadow-blue-500/40"><Workflow size={28}/></div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
+      <div className="w-[420px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
+        <div className="p-10 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center gap-5">
+            <div className="p-3.5 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-500/30"><Workflow size={24}/></div>
             <div>
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic leading-none">Service Flow</h3>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] mt-3">Functional Swimlanes</p>
+              <h3 className="text-xl font-black text-white uppercase tracking-tight italic">Vertical Flow</h3>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Architecture Engine</p>
             </div>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
            <div className="space-y-6">
-             <div className="flex items-center justify-between px-2">
-               <span className="text-[12px] italic font-black text-blue-500 uppercase tracking-widest">Inbound Vectors</span>
-               <span className="text-[9px] font-bold text-slate-600 uppercase">Input Flow</span>
-             </div>
+             <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest px-2">Inbound Connections</span>
              <div className="space-y-3">
                {neighbors.upstream.map(edge => (
                  <button 
                   key={edge.id} 
                   onClick={() => setActiveEdgeId(edge.id)} 
-                  className={`w-full p-8 rounded-[32px] border transition-all text-left space-y-4 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-2xl' : 'bg-white/5 border-white/5 hover:border-blue-500/30'}`}
+                  className={`w-full p-6 rounded-3xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-xl' : 'bg-white/5 border-white/5 hover:border-blue-500/30'}`}
                  >
-                   <div className="flex items-center justify-between">
-                     <p className={`text-lg italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <CheckCircle2 size={16} className="text-blue-400" />}
-                   </div>
+                   <p className={`text-base italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
                    <div className="flex items-center gap-3">
-                     <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div>
-                     <p className={`text-[11px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                     <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</span>
+                     <p className={`text-[9px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p>
                    </div>
                  </button>
                ))}
              </div>
            </div>
            <div className="space-y-6">
-             <div className="flex items-center justify-between px-2">
-               <span className="text-[12px] italic font-black text-rose-500 uppercase tracking-widest">Outbound Vectors</span>
-               <span className="text-[9px] font-bold text-slate-600 uppercase">Egress Flow</span>
-             </div>
+             <span className="text-[11px] italic font-black text-rose-500 uppercase tracking-widest px-2">Outbound Connections</span>
              <div className="space-y-3">
                {neighbors.downstream.map(edge => (
                  <button 
                   key={edge.id} 
                   onClick={() => setActiveEdgeId(edge.id)} 
-                  className={`w-full p-8 rounded-[32px] border transition-all text-left space-y-4 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-2xl' : 'bg-white/5 border-white/5 hover:border-rose-500/30'}`}
+                  className={`w-full p-6 rounded-3xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-xl' : 'bg-white/5 border-white/5 hover:border-rose-500/30'}`}
                  >
-                   <div className="flex items-center justify-between">
-                     <p className={`text-lg italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <CheckCircle2 size={16} className="text-rose-400" />}
-                   </div>
+                   <p className={`text-base italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
                    <div className="flex items-center gap-3">
-                     <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-400'}`}>{edge.protocol}</div>
-                     <p className={`text-[11px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                     <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-400'}`}>{edge.protocol}</span>
+                     <p className={`text-[9px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p>
                    </div>
                  </button>
                ))}
              </div>
            </div>
         </div>
-        <div className="p-12 border-t border-white/10 bg-black/40">
-          <button onClick={onClose} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[13px] font-black uppercase tracking-widest rounded-2xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Commit & Exit Registry</button>
+        <div className="p-8 border-t border-white/10 bg-black/40">
+          <button onClick={onClose} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-xl transition-all active:scale-95">De-initialize Registry</button>
         </div>
       </div>
       <div className="flex-1 flex flex-col bg-[#020617] relative">
@@ -376,7 +379,7 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
                 onNodesChange={(c) => setInternalNodes(nds => applyNodeChanges(c, nds))} 
                 onEdgesChange={(c) => setInternalEdges(eds => applyEdgeChanges(c, eds))} 
                 onConnect={onConnect} 
-                onNodeDragStop={onNodeDragStop}
+                onNodeDrag={onNodeDrag}
                 nodeTypes={explorerNodeTypes} 
                 edgeTypes={explorerEdgeTypes} 
                 snapToGrid 
@@ -384,42 +387,42 @@ const ServiceLevelFlow = ({ node, onClose, onSave, edges }: any) => {
                 fitView 
                 fitViewOptions={{ padding: 100 }}
               >
-                <div className="absolute inset-0 flex flex-col pointer-events-none">
-                  {SERVICE_LANES.map((lane, idx) => (
-                    <div key={lane.id} className={`w-full h-[350px] border-b-4 border-dashed border-white/5 flex flex-col p-12 relative ${idx % 2 === 0 ? 'bg-white/[0.01]' : 'bg-transparent'}`}>
-                       <div className="flex items-center gap-4 opacity-30">
-                          <lane.icon size={24} style={{ color: lane.color }}/>
-                          <h4 className="text-2xl italic font-black uppercase tracking-[0.5em] text-white">{lane.label}</h4>
+                <div className="absolute inset-0 flex pointer-events-none">
+                  {VERTICAL_LANES.map((lane, idx) => (
+                    <div key={lane.id} className={`h-full border-r-4 border-dashed border-white/5 flex flex-col p-10 relative ${idx % 2 === 0 ? 'bg-white/[0.01]' : 'bg-transparent'}`} style={{ width: LANE_WIDTH }}>
+                       <div className="flex flex-col gap-3 opacity-20">
+                          <lane.icon size={28} style={{ color: lane.color }}/>
+                          <h4 className="text-3xl italic font-black uppercase tracking-[0.4em] text-white whitespace-nowrap">{lane.label}</h4>
                        </div>
-                       <div className="absolute top-12 right-12 flex gap-4 pointer-events-auto">
-                          <button onClick={() => addStep(lane.id)} className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center gap-3">
-                             <Plus size={16}/> <span>Append Step</span>
+                       <div className="mt-auto flex flex-col gap-3 pointer-events-auto pb-10">
+                          <button onClick={() => addNode(lane.id, 'process')} className="px-6 py-3 bg-white/5 hover:bg-blue-600/20 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center gap-3">
+                             <Plus size={14}/> <span>Add Process</span>
+                          </button>
+                          <button onClick={() => addNode(lane.id, 'diamond')} className="px-6 py-3 bg-white/5 hover:bg-amber-600/20 border border-white/10 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center gap-3">
+                             <Diamond size={14}/> <span>Add Condition</span>
                           </button>
                        </div>
                     </div>
                   ))}
                 </div>
                 <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
-                <Controls className="bg-slate-900 border-2 border-white/10 rounded-2xl overflow-hidden p-1 shadow-2xl" />
+                <Controls className="bg-slate-900 border-2 border-white/10 rounded-xl overflow-hidden p-1 shadow-2xl" />
               </ReactFlow>
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center space-y-12">
-            <div className="p-32 rounded-full bg-slate-900/40 border-2 border-dashed border-white/10 shadow-[0_0_150px_rgba(37,99,235,0.1)] relative">
-              <Workflow size={160} className="text-slate-800" />
-              <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full animate-ping" />
+          <div className="flex-1 flex flex-col items-center justify-center space-y-10">
+            <div className="p-24 rounded-full bg-slate-900/40 border-2 border-dashed border-white/10 relative">
+              <Workflow size={120} className="text-slate-800" />
             </div>
-            <div className="text-center space-y-8">
-              <h4 className="text-5xl italic font-black text-white uppercase tracking-[0.5em]">Service Flow <span className="text-blue-600">Idle</span></h4>
-              <p className="text-[16px] font-bold text-slate-500 uppercase tracking-[0.8em] leading-relaxed">Initialize vector documentation from sidebar</p>
-            </div>
+            <h4 className="text-4xl italic font-black text-white uppercase tracking-[0.5em]">Flow <span className="text-blue-600">Standby</span></h4>
           </div>
         )}
       </div>
     </motion.div>
   )
 }
+
 
 const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
   const [formData, setFormData] = useState({ name: flow?.name || '', description: flow?.description || '', category: flow?.category || 'System', status: flow?.status || 'Up to date' });
