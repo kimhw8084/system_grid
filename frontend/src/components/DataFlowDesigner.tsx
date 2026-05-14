@@ -25,6 +25,20 @@ import { StatusPill } from './shared/StatusPill'
 import { StyledSelect } from './shared/StyledSelect'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 
+// Suppress ResizeObserver loop errors which are common in ReactFlow/ForceGraph during layout shifts
+if (typeof window !== 'undefined') {
+  const resizeObserverErr = window.onerror;
+  window.onerror = (message, source, lineno, colno, error) => {
+    if (typeof message === 'string' && message.includes('ResizeObserver loop completed')) {
+      return true;
+    }
+    if (resizeObserverErr) {
+      return resizeObserverErr(message, source, lineno, colno, error);
+    }
+    return false;
+  };
+}
+
 const PROTOCOLS = ['HTTPS', 'HTTP', 'SSH', 'FTP', 'SFTP', 'Samba', 'NFS', 'gRPC', 'AMQP', 'MQTT', 'SQL', 'NoSQL', 'Custom']
 const FLOW_TYPES = [
   { id: 'DATA', label: 'Data Flow', color: '#3b82f6', dash: false },
@@ -106,7 +120,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 const nodeTypes = { device: DeviceNode, external: ExternalNode, service: ServiceNode, condition: ConditionNode, note: NoteNode };
 const edgeTypes = { labeled: LabeledEdge };
 
-// --- Logic Core Explorer 4.0 (Overhauled Swimlanes) ---
+// --- Service-Level Flow Engine (Rebuilt Asset-Centric Swimlanes) ---
 
 const LogicBlockNode = ({ id, data, selected }: any) => {
   const mainType = LOGIC_BLOCK_TYPES.find(t => t.id === data.type) || LOGIC_BLOCK_TYPES[0];
@@ -127,7 +141,7 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
               {subType ? subType.label : mainType.label}
             </span>
             <span className="text-[8px] font-black text-blue-500/60 uppercase tracking-tighter">
-              {data.laneName || (data.laneIdx === 0 ? 'External' : `Column ${data.laneIdx}`)}
+              {data.laneName || (data.laneIdx === 0 ? 'External' : `Server Lane ${data.laneIdx}`)}
             </span>
           </div>
         </div>
@@ -166,12 +180,12 @@ const LogicBlockNode = ({ id, data, selected }: any) => {
         )}
         
         <div className="space-y-2">
-          <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Logic Definition</p>
+          <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Flow Logic Definition</p>
           <textarea 
             value={data.label} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
             className="w-full bg-black/60 border border-white/10 rounded-xl p-4 text-[12px] font-bold text-white uppercase outline-none focus:border-blue-500/50 resize-none min-h-[80px] transition-all" 
-            placeholder="Describe technical logic..." 
+            placeholder="Describe technical execution flow..." 
           />
         </div>
 
@@ -214,7 +228,7 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
   )
 }
 
-const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServices }: any) => {
+const ServiceLevelFlow = ({ node, onClose, onSave, edges, assets }: any) => {
   const [activeEdgeId, setActiveEdgeId] = useState<string | null>(null);
   const [logicManifest, setLogicManifest] = useState<any>(node?.data?.logic_json || {});
   const [internalNodes, setInternalNodes] = useState<Node[]>([]);
@@ -227,13 +241,10 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     return { upstream, downstream }; 
   }, [node, edges]);
 
-  const nodeServices = useMemo(() => (node?.data?.logical_services || []), [node]);
-  
   const laneWidth = 500;
   const laneBaseX = 450;
   const blockWidth = 340;
 
-  // Hydrate local state when active flow changes
   useEffect(() => { 
     if (activeEdgeId) { 
       const flowData = logicManifest[activeEdgeId] || { nodes: [], edges: [], lanes: [] }; 
@@ -300,8 +311,6 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     
     const laneName = laneIdx === 0 ? 'External' : (logicManifest[activeEdgeId]?.lanes?.[laneIdx - 1] || `Lane ${laneIdx}`);
     const laneNodes = internalNodes.filter(n => n.data.laneIdx === laneIdx);
-    
-    // Non-overlapping placement: find max Y and add 300px spacing
     const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 50;
     const y = maxY + (laneNodes.length > 0 ? 300 : 50);
 
@@ -344,21 +353,17 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
 
   const handleSaveWorkflow = useCallback(() => { 
     if (!activeEdgeId) return; 
-    setLogicManifest((prev: any) => {
-      const updatedManifest = { 
-        ...prev, 
-        [activeEdgeId]: { 
-          ...(prev[activeEdgeId] || {}),
-          nodes: internalNodes, 
-          edges: internalEdges, 
-          lanes: prev[activeEdgeId]?.lanes || [] 
-        } 
-      };
-      return updatedManifest;
-    }); 
+    setLogicManifest((prev: any) => ({
+      ...prev, 
+      [activeEdgeId]: { 
+        ...(prev[activeEdgeId] || {}),
+        nodes: internalNodes, 
+        edges: internalEdges, 
+        lanes: prev[activeEdgeId]?.lanes || [] 
+      } 
+    })); 
   }, [activeEdgeId, internalNodes, internalEdges]);
 
-  // Sync to parent whenever local state changes to prevent loss on close
   useEffect(() => {
     if (activeEdgeId) {
       const currentManifest = {
@@ -380,16 +385,13 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
 
   const addLane = (laneName: string) => {
     if (!activeEdgeId || activeLanes.includes(laneName)) return;
-    setLogicManifest((prev: any) => {
-      const current = prev[activeEdgeId] || { nodes: [], edges: [], lanes: [] };
-      return {
-        ...prev,
-        [activeEdgeId]: {
-          ...current,
-          lanes: [...(current.lanes || []), laneName]
-        }
-      };
-    });
+    setLogicManifest((prev: any) => ({
+      ...prev,
+      [activeEdgeId]: {
+        ...(prev[activeEdgeId] || { nodes: [], edges: [], lanes: [] }),
+        lanes: [...(prev[activeEdgeId]?.lanes || []), laneName]
+      }
+    }));
   };
 
   return (
@@ -399,16 +401,16 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20"><Cpu size={24}/></div>
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">Logic Core 5.0</h3>
-              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Vertical Swimlane Engine</p>
+              <h3 className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">Service Flow</h3>
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Vertical Asset Swimlanes</p>
             </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
-               <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest">Incoming Flows</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Inputs</span>
+               <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest">Inbound Vectors</span>
+               <span className="text-[8px] font-bold text-slate-600 uppercase">Flow Inputs</span>
              </div>
              <div className="space-y-3">
                {neighbors.upstream.map(edge => (
@@ -420,7 +422,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                    {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
                    <div className="flex items-center justify-between">
                      <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Documented</span>}
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Defined</span>}
                    </div>
                    <div className="flex items-center gap-2">
                      <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div>
@@ -432,8 +434,8 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
            </div>
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
-               <span className="text-[11px] italic font-black text-rose-500 uppercase tracking-widest">Outgoing Flows</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Egress</span>
+               <span className="text-[11px] italic font-black text-rose-500 uppercase tracking-widest">Outbound Vectors</span>
+               <span className="text-[8px] font-bold text-slate-600 uppercase">Egress Flow</span>
              </div>
              <div className="space-y-3">
                {neighbors.downstream.map(edge => (
@@ -445,7 +447,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                    {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
                    <div className="flex items-center justify-between">
                      <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
-                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Documented</span>}
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Defined</span>}
                    </div>
                    <div className="flex items-center gap-2">
                      <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-rose-400'}`}>{edge.protocol}</div>
@@ -457,7 +459,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
            </div>
         </div>
         <div className="p-10 border-t border-white/10 bg-black/40 space-y-4">
-          <button onClick={() => { handleSaveWorkflow(); onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Sync & Exit</button>
+          <button onClick={() => { handleSaveWorkflow(); onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Commit & Close</button>
         </div>
       </div>
       <div className="flex-1 flex flex-col bg-[#020617] relative">
@@ -469,7 +471,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                     <Globe size={14}/>
                     <p className="text-[11px] italic font-black uppercase tracking-[0.4em]">External</p>
                  </div>
-                 <span className="text-2xl italic font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Entity'}</span>
+                 <span className="text-2xl italic font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Endpoint'}</span>
                  <div className="flex gap-2">
                     <button onClick={() => addBlock('PROCESS', 0)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Entity</button>
                     <button onClick={() => addBlock('CONDITION', 0)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Logic</button>
@@ -479,21 +481,21 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                <div className="flex h-full divide-x divide-white/10">
                  {activeLanes.map((lane: string, idx: number) => (
                    <div key={idx} className="w-[500px] flex flex-col items-center justify-center bg-white/[0.02] group relative shrink-0 space-y-4">
-                     <div className="flex items-center gap-2 text-emerald-500">
-                        <Database size={14}/>
-                        <p className="text-[11px] italic font-black uppercase tracking-[0.3em]">Service Column</p>
+                     <div className="flex items-center gap-2 text-blue-400">
+                        <Server size={14}/>
+                        <p className="text-[11px] italic font-black uppercase tracking-[0.3em]">Server Lane</p>
                      </div>
                      <span className="text-xl italic font-black text-white uppercase tracking-tight">{lane}</span>
                      <div className="flex gap-2">
-                        <button onClick={() => addBlock('PROCESS', idx + 1)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Entity</button>
-                        <button onClick={() => addBlock('CONDITION', idx + 1)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Logic</button>
+                        <button onClick={() => addBlock('PROCESS', idx + 1)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Action</button>
+                        <button onClick={() => addBlock('CONDITION', idx + 1)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Branch</button>
                         <button onClick={() => handleSortLane(idx + 1)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Sort Column"><ArrowDownUp size={14}/></button>
                      </div>
                      <button onClick={() => { const next = activeLanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><X size={20}/></button>
                    </div>
                  ))}
                  <div className="w-[300px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/10 group shrink-0 p-6 space-y-4">
-                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">New Swimlane</p>
+                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Add Server Lane</p>
                    <select 
                      onChange={e => { 
                        if (!e.target.value) return; 
@@ -502,10 +504,11 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                      }} 
                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest outline-none cursor-pointer hover:border-blue-500/40 transition-all"
                    >
-                     <option value="">+ Service Lane</option>
-                     {nodeServices.map((s: any) => {
-                       const isAdded = activeLanes.includes(s.name);
-                       return <option key={s.id} value={s.name} disabled={isAdded}>{s.name} {isAdded ? '(Added)' : ''}</option>;
+                     <option value="">+ Inventory Server</option>
+                     {(assets || []).map((a: any) => {
+                       const name = a.hostname || a.name;
+                       const isAdded = activeLanes.includes(name);
+                       return <option key={a.id} value={name} disabled={isAdded}>{name} {isAdded ? '(Added)' : ''}</option>;
                      })}
                    </select>
                    <input 
@@ -515,7 +518,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                          if (val) { addLane(val); (e.target as HTMLInputElement).value = ''; }
                        }
                      }}
-                     placeholder="+ CUSTOM LANE..."
+                     placeholder="+ CUSTOM SERVER..."
                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest outline-none focus:border-blue-500/50"
                    />
                  </div>
@@ -544,14 +547,6 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                   ))}
                 </div>
                 <Background color="#1e293b" gap={20} size={1} className="opacity-40"/>
-                <Panel position="top-right" className="m-6">
-                  <div className="glass-panel px-6 py-3 rounded-2xl border border-white/10 bg-[#0f172a]/60 backdrop-blur-xl flex items-center gap-6 shadow-2xl">
-                    <div className="flex items-center gap-2">
-                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/>
-                       <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Active Matrix: <span className="text-white italic ml-2">{activeEdgeId}</span></p>
-                    </div>
-                  </div>
-                </Panel>
               </ReactFlow>
             </div>
           </div>
@@ -562,8 +557,8 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
               <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-ping" />
             </div>
             <div className="text-center space-y-6">
-              <h4 className="text-4xl italic font-black text-white uppercase tracking-[0.4em]">Logic Core <span className="text-blue-600">Standby</span></h4>
-              <p className="text-[14px] font-bold text-slate-500 uppercase tracking-[0.6em] leading-relaxed">Select a flow vector to initialize vertical documentation</p>
+              <h4 className="text-4xl italic font-black text-white uppercase tracking-[0.4em]">Service Flow <span className="text-blue-600">Standby</span></h4>
+              <p className="text-[14px] font-bold text-slate-500 uppercase tracking-[0.6em] leading-relaxed">Select a flow vector to initialize asset-level documentation</p>
             </div>
           </div>
         )}
@@ -730,7 +725,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
   );
 };
 
-const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge, setIsLogicExplorerOpen }: any) => {
+const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge, setIsServiceFlowOpen }: any) => {
    const [edgeForm, setEdgeForm] = useState<any>(selectedEdge?.data || {}); const [nodeForm, setNodeForm] = useState<any>(selectedNode?.data || {});
    useEffect(() => { if (selectedEdge) setEdgeForm(selectedEdge.data || {}); }, [selectedEdge]); useEffect(() => { if (selectedNode) setNodeForm(selectedNode.data || {}); }, [selectedNode]);
    const handleEdgeChange = (f: string, v: any) => { const updated = { ...edgeForm, [f]: v }; setEdgeForm(updated); onUpdateEdge(selectedEdge.id, updated); };
@@ -775,7 +770,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              </div>
            )}
            <div className="space-y-4">
-             <button onClick={() => setIsLogicExplorerOpen(true)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-blue-500/20 flex items-center justify-center gap-3"><Cpu size={16}/> Initialize Logic Core</button>
+             <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-blue-500/20 flex items-center justify-center gap-3"><Cpu size={16}/> Initialize Service Flow</button>
              <button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Decommission Node</button>
            </div>
          </div>
@@ -801,7 +796,7 @@ function ArchDesignerInner() {
   const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
   const [nodes, setNodes, onNodesChange] = useNodesState([]); const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeFlow, setActiveFlow] = useState<any>(null); const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(true); const [isConfigModalOpen, setIsConfigModalOpen] = useState(false); const [isLogicExplorerOpen, setIsLogicExplorerOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(true); const [isConfigModalOpen, setIsConfigModalOpen] = useState(false); const [isServiceFlowOpen, setIsServiceFlowOpen] = useState(false);
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null); const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false); const [confirmExitIntent, setConfirmExitIntent] = useState<'dashboard' | null>(null); const [dependencyRiskEnabled, setDependencyRiskEnabled] = useState(false);
   const [inventorySearch, setInventorySearch] = useState(''); const [inventoryType, setInventoryType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL'); const [selectedSystem, setSelectedSystem] = useState<string | 'All'>('All');
   const queryClient = useQueryClient();
@@ -963,12 +958,12 @@ function ArchDesignerInner() {
                 <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em] rotate-180">Configuration</span>
               </button>
             )}
-            <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsLogicExplorerOpen={setIsLogicExplorerOpen}/></motion.div>)}</AnimatePresence>
+            <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsServiceFlowOpen={setIsServiceFlowOpen}/></motion.div>)}</AnimatePresence>
          </>
        )}
        
        <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { if (!activeFlow?.id) { saveMutation.mutate({ ...data, nodes: [], edges: [] }); } else { setActiveFlow({ ...activeFlow, ...data }); setHasUnsavedChanges(true); } setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
-       <AnimatePresence>{isLogicExplorerOpen && (<LogicCoreExplorer node={nodes.find(n => n.id === selectedNodeId)} edges={edges} onClose={() => setIsLogicExplorerOpen(false)} onSave={(nodeId: string, updatedData: any) => updateNodeData(nodeId, updatedData)} assets={assets} logicalServices={logicalServices} />)}</AnimatePresence>
+       <AnimatePresence>{isServiceFlowOpen && (<ServiceLevelFlow node={nodes.find(n => n.id === selectedNodeId)} edges={edges} onClose={() => setIsServiceFlowOpen(false)} onSave={(nodeId: string, updatedData: any) => updateNodeData(nodeId, updatedData)} assets={assets} />)}</AnimatePresence>
        <ConfirmationModal isOpen={isConfirmExitOpen || !!confirmExitIntent} title="Unsaved Changes" message="Exit and lose modifications?" onConfirm={() => { setView('dashboard'); setHasUnsavedChanges(false); setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} onClose={() => { setIsConfirmExitOpen(false); setConfirmExitIntent(null); }} />
     </div>
   )
