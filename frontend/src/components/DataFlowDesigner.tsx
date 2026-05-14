@@ -233,6 +233,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   const laneBaseX = 450;
   const blockWidth = 340;
 
+  // Hydrate local state when active flow changes
   useEffect(() => { 
     if (activeEdgeId) { 
       const flowData = logicManifest[activeEdgeId] || { nodes: [], edges: [], lanes: [] }; 
@@ -241,7 +242,10 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
         data: {
           ...n.data,
           onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(node => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
-          onDelete: (id: string) => { setInternalNodes(nds => nds.filter(node => node.id !== id)); setInternalEdges(eds => eds.filter(edge => edge.source !== id && edge.target !== id)); }
+          onDelete: (id: string) => { 
+            setInternalNodes(nds => nds.filter(node => node.id !== id)); 
+            setInternalEdges(eds => eds.filter(edge => edge.source !== id && edge.target !== id)); 
+          }
         }
       }));
       const hydratedEdges = (flowData.edges || []).map((e: any) => ({
@@ -275,7 +279,17 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   }, [laneBaseX, laneWidth, blockWidth, logicManifest, activeEdgeId]);
 
   const onConnect = useCallback((params: Connection) => { 
-    const newEdge = { ...params, id: `l-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, type: 'logicLink', data: { label: '', onLabelChange: (id: string, label: string) => { setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); } } }; 
+    const newEdge = { 
+      ...params, 
+      id: `l-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
+      type: 'logicLink', 
+      data: { 
+        label: '', 
+        onLabelChange: (id: string, label: string) => { 
+          setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e)); 
+        } 
+      } 
+    }; 
     setInternalEdges((eds) => addEdge(newEdge, eds)); 
   }, []);
   
@@ -286,7 +300,9 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
     
     const laneName = laneIdx === 0 ? 'External' : (logicManifest[activeEdgeId]?.lanes?.[laneIdx - 1] || `Lane ${laneIdx}`);
     const laneNodes = internalNodes.filter(n => n.data.laneIdx === laneIdx);
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 100;
+    
+    // Non-overlapping placement: find max Y and add 300px spacing
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 50;
     const y = maxY + (laneNodes.length > 0 ? 300 : 50);
 
     const newNode = { 
@@ -301,7 +317,10 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
         input: '', 
         output: '', 
         onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)), 
-        onDelete: (id: string) => { setInternalNodes(nds => nds.filter(n => n.id !== id)); setInternalEdges(eds => eds.filter(e => e.source !== id && e.target !== id)); } 
+        onDelete: (id: string) => { 
+          setInternalNodes(nds => nds.filter(n => n.id !== id)); 
+          setInternalEdges(eds => eds.filter(e => e.source !== id && e.target !== id)); 
+        } 
       } 
     }; 
     setInternalNodes(nds => [...nds, newNode]); 
@@ -310,7 +329,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   const handleSortLane = (laneIdx: number) => {
     const laneNodes = internalNodes.filter(n => n.data.laneIdx === laneIdx).sort((a, b) => a.position.y - b.position.y);
     setInternalNodes(nds => {
-      let currentY = 150;
+      let currentY = 100;
       const updatedNodes = [...nds];
       laneNodes.forEach(ln => {
         const idx = updatedNodes.findIndex(n => n.id === ln.id);
@@ -325,16 +344,34 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
 
   const handleSaveWorkflow = useCallback(() => { 
     if (!activeEdgeId) return; 
-    setLogicManifest((prev: any) => ({ 
-      ...prev, 
-      [activeEdgeId]: { 
-        ...(prev[activeEdgeId] || {}),
-        nodes: internalNodes, 
-        edges: internalEdges, 
-        lanes: prev[activeEdgeId]?.lanes || [] 
-      } 
-    })); 
+    setLogicManifest((prev: any) => {
+      const updatedManifest = { 
+        ...prev, 
+        [activeEdgeId]: { 
+          ...(prev[activeEdgeId] || {}),
+          nodes: internalNodes, 
+          edges: internalEdges, 
+          lanes: prev[activeEdgeId]?.lanes || [] 
+        } 
+      };
+      return updatedManifest;
+    }); 
   }, [activeEdgeId, internalNodes, internalEdges]);
+
+  // Sync to parent whenever local state changes to prevent loss on close
+  useEffect(() => {
+    if (activeEdgeId) {
+      const currentManifest = {
+        ...logicManifest,
+        [activeEdgeId]: {
+          ...(logicManifest[activeEdgeId] || {}),
+          nodes: internalNodes,
+          edges: internalEdges
+        }
+      };
+      onSave(node.id, { ...node.data, logic_json: currentManifest });
+    }
+  }, [internalNodes, internalEdges, activeEdgeId]);
 
   const explorerNodeTypes = useMemo(() => ({ logicBlock: LogicBlockNode }), []);
   const explorerEdgeTypes = useMemo(() => ({ logicLink: LogicLinkEdge }), []);
@@ -349,8 +386,6 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
         ...prev,
         [activeEdgeId]: {
           ...current,
-          nodes: internalNodes,
-          edges: internalEdges,
           lanes: [...(current.lanes || []), laneName]
         }
       };
@@ -360,28 +395,70 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
   return (
     <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
       <div className="w-[380px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
-        <div className="p-10 border-b border-white/5 space-y-4 bg-white/[0.02]"><div className="flex items-center gap-4"><div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20"><Cpu size={24}/></div><div><h3 className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">Logic Core 4.0</h3><p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Core Workflow Engine</p></div></div></div>
+        <div className="p-10 border-b border-white/5 space-y-4 bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20"><Cpu size={24}/></div>
+            <div>
+              <h3 className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">Logic Core 5.0</h3>
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Vertical Swimlane Engine</p>
+            </div>
+          </div>
+        </div>
         <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar">
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
                <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest">Incoming Flows</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Input Boundary</span>
+               <span className="text-[8px] font-bold text-slate-600 uppercase">Inputs</span>
              </div>
              <div className="space-y-3">
-               {neighbors.upstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-2xl shadow-blue-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}>{activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}<p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p><div className="flex items-center gap-2"><div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div><p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p></div></button>))}
+               {neighbors.upstream.map(edge => (
+                 <button 
+                  key={edge.id} 
+                  onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} 
+                  className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-blue-600 border-blue-400 shadow-2xl shadow-blue-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                 >
+                   {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
+                   <div className="flex items-center justify-between">
+                     <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.source}</p>
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Documented</span>}
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400'}`}>{edge.protocol}</div>
+                     <p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-blue-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                   </div>
+                 </button>
+               ))}
              </div>
            </div>
            <div className="space-y-6">
              <div className="flex items-center justify-between px-2">
                <span className="text-[11px] italic font-black text-rose-500 uppercase tracking-widest">Outgoing Flows</span>
-               <span className="text-[8px] font-bold text-slate-600 uppercase">Egress Boundary</span>
+               <span className="text-[8px] font-bold text-slate-600 uppercase">Egress</span>
              </div>
              <div className="space-y-3">
-               {neighbors.downstream.map(edge => (<button key={edge.id} onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-2xl shadow-rose-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}>{activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}<p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p><div className="flex items-center gap-2"><div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-rose-400'}`}>{edge.protocol}</div><p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p></div></button>))}
+               {neighbors.downstream.map(edge => (
+                 <button 
+                  key={edge.id} 
+                  onClick={() => { handleSaveWorkflow(); setActiveEdgeId(edge.id); }} 
+                  className={`w-full p-6 rounded-2xl border transition-all text-left space-y-3 group relative overflow-hidden ${activeEdgeId === edge.id ? 'bg-rose-600 border-rose-400 shadow-2xl shadow-rose-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                 >
+                   {activeEdgeId === edge.id && <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent pointer-events-none" />}
+                   <div className="flex items-center justify-between">
+                     <p className={`text-[14px] italic font-black uppercase tracking-tight ${activeEdgeId === edge.id ? 'text-white' : 'text-slate-300'}`}>{edge.target}</p>
+                     {logicManifest[edge.id]?.nodes?.length > 0 && <span className="text-[8px] font-black bg-white/10 px-2 py-0.5 rounded text-white italic uppercase tracking-widest">Documented</span>}
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <div className={`px-2 py-1 rounded-md text-[9px] font-black uppercase ${activeEdgeId === edge.id ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-rose-400'}`}>{edge.protocol}</div>
+                     <p className={`text-[10px] font-bold uppercase tracking-widest ${activeEdgeId === edge.id ? 'text-rose-100/70' : 'text-slate-500'}`}>{edge.label}</p>
+                   </div>
+                 </button>
+               ))}
              </div>
            </div>
         </div>
-        <div className="p-10 border-t border-white/10 bg-black/40 space-y-4"><button onClick={onClose} className="w-full py-4 bg-white/5 hover:bg-white/10 text-slate-500 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all border border-white/5">Abort Changes</button><button onClick={() => { handleSaveWorkflow(); onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Synchronize Manifest</button></div>
+        <div className="p-10 border-t border-white/10 bg-black/40 space-y-4">
+          <button onClick={() => { handleSaveWorkflow(); onSave(node.id, { ...node.data, logic_json: logicManifest }); onClose(); }} className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border border-blue-400/30">Sync & Exit</button>
+        </div>
       </div>
       <div className="flex-1 flex flex-col bg-[#020617] relative">
         {activeEdgeId ? (
@@ -390,13 +467,13 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                <div className="min-w-[450px] h-full border-r border-white/10 bg-blue-600/[0.05] flex flex-col items-center justify-center space-y-4 shrink-0 relative group">
                  <div className="flex items-center gap-2 text-blue-500">
                     <Globe size={14}/>
-                    <p className="text-[11px] italic font-black uppercase tracking-[0.4em]">External Boundary</p>
+                    <p className="text-[11px] italic font-black uppercase tracking-[0.4em]">External</p>
                  </div>
-                 <span className="text-2xl italic font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Undefined'}</span>
+                 <span className="text-2xl italic font-black text-white uppercase tracking-tighter">{neighbors.upstream.find(e => e.id === activeEdgeId)?.source || neighbors.downstream.find(e => e.id === activeEdgeId)?.target || 'Entity'}</span>
                  <div className="flex gap-2">
                     <button onClick={() => addBlock('PROCESS', 0)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Entity</button>
                     <button onClick={() => addBlock('CONDITION', 0)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Logic</button>
-                    <button onClick={() => handleSortLane(0)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Align Lane"><ArrowDownUp size={14}/></button>
+                    <button onClick={() => handleSortLane(0)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Sort Column"><ArrowDownUp size={14}/></button>
                  </div>
                </div>
                <div className="flex h-full divide-x divide-white/10">
@@ -410,13 +487,13 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                      <div className="flex gap-2">
                         <button onClick={() => addBlock('PROCESS', idx + 1)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-blue-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Entity</button>
                         <button onClick={() => addBlock('CONDITION', idx + 1)} className="px-4 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white text-[9px] font-black uppercase rounded-lg border border-amber-500/20 transition-all flex items-center gap-2"><Plus size={12}/> Logic</button>
-                        <button onClick={() => handleSortLane(idx + 1)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Align Column"><ArrowDownUp size={14}/></button>
+                        <button onClick={() => handleSortLane(idx + 1)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all" title="Sort Column"><ArrowDownUp size={14}/></button>
                      </div>
                      <button onClick={() => { const next = activeLanes.filter((l: string) => l !== lane); setLogicManifest((prev: any) => ({ ...prev, [activeEdgeId]: { ...prev[activeEdgeId], lanes: next } })); }} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-rose-500 transition-all"><X size={20}/></button>
                    </div>
                  ))}
                  <div className="w-[300px] h-full flex flex-col items-center justify-center bg-black/40 border-l border-white/10 group shrink-0 p-6 space-y-4">
-                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Add Column</p>
+                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">New Swimlane</p>
                    <select 
                      onChange={e => { 
                        if (!e.target.value) return; 
@@ -425,24 +502,22 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                      }} 
                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest outline-none cursor-pointer hover:border-blue-500/40 transition-all"
                    >
-                     <option value="">+ Service Column</option>
-                     {nodeServices.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                     <option value="">+ Service Lane</option>
+                     {nodeServices.map((s: any) => {
+                       const isAdded = activeLanes.includes(s.name);
+                       return <option key={s.id} value={s.name} disabled={isAdded}>{s.name} {isAdded ? '(Added)' : ''}</option>;
+                     })}
                    </select>
-                   <div className="relative w-full">
-                     <input 
-                       onKeyDown={e => {
-                         if (e.key === 'Enter') {
-                           const val = (e.target as HTMLInputElement).value.trim();
-                           if (val) {
-                             addLane(val);
-                             (e.target as HTMLInputElement).value = '';
-                           }
-                         }
-                       }}
-                       placeholder="+ CUSTOM COLUMN..."
-                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest outline-none focus:border-blue-500/50"
-                     />
-                   </div>
+                   <input 
+                     onKeyDown={e => {
+                       if (e.key === 'Enter') {
+                         const val = (e.target as HTMLInputElement).value.trim();
+                         if (val) { addLane(val); (e.target as HTMLInputElement).value = ''; }
+                       }
+                     }}
+                     placeholder="+ CUSTOM LANE..."
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest outline-none focus:border-blue-500/50"
+                   />
                  </div>
                </div>
             </div>
@@ -459,6 +534,7 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                 snapToGrid 
                 snapGrid={[20, 20]} 
                 fitView 
+                fitViewOptions={{ padding: 40 }}
                 className="bg-[#020617]"
               >
                 <div className="absolute inset-0 flex pointer-events-none overflow-hidden">
@@ -472,14 +548,25 @@ const LogicCoreExplorer = ({ node, onClose, onSave, edges, assets, logicalServic
                   <div className="glass-panel px-6 py-3 rounded-2xl border border-white/10 bg-[#0f172a]/60 backdrop-blur-xl flex items-center gap-6 shadow-2xl">
                     <div className="flex items-center gap-2">
                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/>
-                       <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Active Document: <span className="text-white italic ml-2">{activeEdgeId}</span></p>
+                       <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Active Matrix: <span className="text-white italic ml-2">{activeEdgeId}</span></p>
                     </div>
                   </div>
                 </Panel>
               </ReactFlow>
             </div>
           </div>
-        ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-12 bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-40"><div className="p-24 rounded-full bg-slate-900/40 border border-white/10 shadow-[0_0_150px_rgba(37,99,235,0.1)] relative"><Workflow size={120} className="text-slate-800" /><div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-ping" /></div><div className="text-center space-y-6"><h4 className="text-4xl italic font-black text-white uppercase tracking-[0.4em]">Logic Core <span className="text-blue-600">Standby</span></h4><p className="text-[14px] font-bold text-slate-500 uppercase tracking-[0.6em] leading-relaxed">Select a data flow vector to initialize documentation matrix</p></div></div>)}
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-12 bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-40">
+            <div className="p-24 rounded-full bg-slate-900/40 border border-white/10 shadow-[0_0_150px_rgba(37,99,235,0.1)] relative">
+              <Workflow size={120} className="text-slate-800" />
+              <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full animate-ping" />
+            </div>
+            <div className="text-center space-y-6">
+              <h4 className="text-4xl italic font-black text-white uppercase tracking-[0.4em]">Logic Core <span className="text-blue-600">Standby</span></h4>
+              <p className="text-[14px] font-bold text-slate-500 uppercase tracking-[0.6em] leading-relaxed">Select a flow vector to initialize vertical documentation</p>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -668,9 +755,22 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              <div className="space-y-4">
                <div className="flex items-center justify-between px-1"><h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2"><Database size={14}/> Node Service Registry</h4><span className="text-[8px] font-bold text-slate-600 uppercase">Available: {selectedNode.data.all_available_services?.length || 0}</span></div>
                <div className="grid grid-cols-2 gap-2">
-                 {(selectedNode.data.all_available_services || []).map((s: any) => (
-                   <button key={s.id} onClick={() => onAddServiceToNode(selectedNode.id, s)} className="p-3 bg-black/40 hover:bg-emerald-500/10 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400 hover:text-emerald-400 transition-all text-left uppercase truncate">{s.name}</button>
-                 ))}
+                 {(selectedNode.data.all_available_services || []).map((s: any) => {
+                   const isAdded = selectedNode.data.logical_services?.some((ls: any) => ls.id === s.id);
+                   return (
+                     <button 
+                       key={s.id} 
+                       disabled={isAdded}
+                       onClick={() => onAddServiceToNode(selectedNode.id, s)} 
+                       className={`p-3 border rounded-lg text-[10px] font-bold transition-all text-left uppercase truncate ${isAdded ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 cursor-default' : 'bg-black/40 hover:bg-emerald-500/10 border-white/5 text-slate-400 hover:text-emerald-400'}`}
+                     >
+                       <div className="flex flex-col">
+                         <span>{s.name}</span>
+                         {isAdded && <span className="text-[7px] font-black uppercase italic mt-1">Already Added</span>}
+                       </div>
+                     </button>
+                   );
+                 })}
                </div>
              </div>
            )}
@@ -754,22 +854,76 @@ function ArchDesignerInner() {
                    {inventoryType === 'INTERNAL' ? (
                      <section className="space-y-3">
                        <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
-                       <div className="grid grid-cols-1 gap-1.5">{filteredAssets.slice(0, 50).map((a: any) => (<button key={a.id} onClick={() => { 
-                         const nodeId = `device-${a.id}`;
-                         if (nodes.find(n => n.id === nodeId)) { toast.error("Asset already in manifest"); return; }
-                         setNodes(nds => [...nds, { id: nodeId, type: 'device', position: { x: 400, y: 100 }, data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } }]); 
-                         setHasUnsavedChanges(true); 
-                       }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-blue-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{a.hostname || a.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" /></button>))}</div>
+                       <div className="grid grid-cols-1 gap-1.5">
+                         {filteredAssets.slice(0, 50).map((a: any) => {
+                           const isAdded = nodes.some(n => n.id === `device-${a.id}`);
+                           const svcCount = a.logical_services?.length || 0;
+                           return (
+                             <button 
+                               key={a.id} 
+                               disabled={isAdded}
+                               onClick={() => { 
+                                 const nodeId = `device-${a.id}`;
+                                 setNodes(nds => [...nds, { 
+                                   id: nodeId, 
+                                   type: 'device', 
+                                   position: { x: 400 + (nodes.length * 20), y: 100 + (nodes.length * 20) }, 
+                                   data: { ...a, name: a.name || a.hostname, logical_services: [], all_available_services: a.logical_services || [] } 
+                                 }]); 
+                                 setHasUnsavedChanges(true); 
+                               }} 
+                               className={`w-full flex items-center justify-between p-3 border rounded-lg group transition-all ${isAdded ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' : 'bg-white/5 hover:bg-blue-600/10 border-white/5'}`}
+                             >
+                               <div className="flex flex-col text-left truncate">
+                                 <span className={`text-[10px] font-bold uppercase truncate ${isAdded ? 'text-emerald-400' : 'text-slate-300 group-hover:text-white'}`}>
+                                   {a.hostname || a.name}
+                                 </span>
+                                 <div className="flex items-center gap-2 mt-1">
+                                   <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[7px] font-black uppercase">
+                                     {svcCount} {svcCount === 1 ? 'Service' : 'Services'}
+                                   </span>
+                                   {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase italic">Added</span>}
+                                 </div>
+                               </div>
+                               {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" />}
+                             </button>
+                           );
+                         })}
+                       </div>
                      </section>
                    ) : (
                      <section className="space-y-3">
                        <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
-                       <div className="grid grid-cols-1 gap-1.5">{filteredExternal.map((e: any) => (<button key={e.id} onClick={() => { 
-                         const nodeId = `external-${e.id}`;
-                         if (nodes.find(n => n.id === nodeId)) { toast.error("Entity already in manifest"); return; }
-                         setNodes(nds => [...nds, { id: nodeId, type: 'external', position: { x: 400, y: 100 }, data: { ...e, name: e.name } }]); 
-                         setHasUnsavedChanges(true); 
-                       }} className="w-full flex items-center justify-between p-3 bg-white/5 hover:bg-indigo-600/10 border border-white/5 rounded-lg group transition-all"><div className="flex flex-col text-left truncate"><span className="text-[10px] font-bold text-slate-300 group-hover:text-white uppercase truncate">{e.name}</span></div><Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" /></button>))}</div>
+                       <div className="grid grid-cols-1 gap-1.5">
+                         {filteredExternal.map((e: any) => {
+                           const isAdded = nodes.some(n => n.id === `external-${e.id}`);
+                           return (
+                             <button 
+                               key={e.id} 
+                               disabled={isAdded}
+                               onClick={() => { 
+                                 const nodeId = `external-${e.id}`;
+                                 setNodes(nds => [...nds, { 
+                                   id: nodeId, 
+                                   type: 'external', 
+                                   position: { x: 400 + (nodes.length * 20), y: 100 + (nodes.length * 20) }, 
+                                   data: { ...e, name: e.name } 
+                                 }]); 
+                                 setHasUnsavedChanges(true); 
+                               }} 
+                               className={`w-full flex items-center justify-between p-3 border rounded-lg group transition-all ${isAdded ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' : 'bg-white/5 hover:bg-indigo-600/10 border-white/5'}`}
+                             >
+                               <div className="flex flex-col text-left truncate">
+                                 <span className={`text-[10px] font-bold uppercase truncate ${isAdded ? 'text-emerald-400' : 'text-slate-300 group-hover:text-white'}`}>
+                                   {e.name}
+                                 </span>
+                                 {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase italic mt-1">Added</span>}
+                               </div>
+                               {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" />}
+                             </button>
+                           );
+                         })}
+                       </div>
                      </section>
                    )}
                  </div>
@@ -779,7 +933,28 @@ function ArchDesignerInner() {
             <div className="flex-1 relative h-full">
                <ReactFlow nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }} onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[20, 20]} connectionMode={ConnectionMode.Loose}>
                  <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
-                 <Panel position="top-left" className="p-4"><div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-4 bg-slate-900/60 backdrop-blur-2xl shadow-2xl"><div className="flex flex-col min-w-[180px] px-3"><span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center gap-2 px-2"><select value={activeTransactionId || ''} onChange={e => setActiveTransactionId(e.target.value || null)} className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[9px] font-black uppercase text-white tracking-widest outline-none appearance-none min-w-[140px]"><option value="">Static View</option>{transactions.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}</select></div><div className="h-8 w-px bg-white/10" /><div className="flex items-center space-x-1 p-1"><button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all hover:text-white"><Settings size={18}/></button><button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all"><GitMerge size={18} className="rotate-90"/></button><button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`}><AlertTriangle size={18}/></button><button onClick={() => setConfirmExitIntent('dashboard')} className="px-4 py-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2"><ChevronLeft size={16}/><span>Back</span></button></div></div></Panel>
+                 <Panel position="top-left" className="p-4">
+                   <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-2 bg-slate-900/60 backdrop-blur-2xl shadow-2xl">
+                     <div className="flex flex-col min-w-[180px] px-3">
+                       <span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span>
+                       <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em]">{activeFlow?.category}</span>
+                     </div>
+                     <div className="h-8 w-px bg-white/10" />
+                     <div className="flex items-center space-x-1 p-1">
+                       <button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-2">
+                         <Info size={16}/>
+                         <span className="text-[9px] font-black uppercase">Arch Info</span>
+                       </button>
+                       <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all" title="Auto Layout"><GitMerge size={18} className="rotate-90"/></button>
+                       <button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`} title="Impact Mode"><AlertTriangle size={18}/></button>
+                       <div className="h-6 w-px bg-white/10 mx-1" />
+                       <button onClick={() => setConfirmExitIntent('dashboard')} className="p-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2">
+                         <ChevronLeft size={16}/>
+                         <span className="text-[9px] font-black uppercase">Back</span>
+                       </button>
+                     </div>
+                   </div>
+                 </Panel>
                </ReactFlow>
             </div>
             {!isConfigSidebarOpen && (
