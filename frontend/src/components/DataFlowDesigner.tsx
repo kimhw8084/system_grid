@@ -111,21 +111,21 @@ const edgeTypes = { labeled: LabeledEdge };
 // --- Vertical Swimlane Flow Engine (Dynamic Participant Lanes) ---
 
 const ParticipantLaneHeader = ({ lane, onRemove, isPrimary }: any) => (
-  <div className="h-full border-r-4 border-dashed border-white/5 flex flex-col p-10 relative bg-white/[0.01]" style={{ width: 450 }}>
-    <div className="flex flex-col gap-4">
+  <div className="h-full border-r-2 border-dashed border-white/5 flex flex-col p-6 relative bg-white/[0.01] pointer-events-none" style={{ width: 350 }}>
+    <div className="flex flex-col gap-3 pointer-events-auto">
       <div className="flex items-center justify-between">
-        <div className="p-3.5 rounded-2xl text-white shadow-2xl" style={{ backgroundColor: lane.color }}>
-          {lane.type === 'service' ? <Database size={20}/> : <Server size={20}/>}
+        <div className="p-2.5 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
+          {lane.type === 'service' ? <Database size={16}/> : <Server size={16}/>}
         </div>
         {!isPrimary && (
-          <button onClick={() => onRemove(lane.id)} className="p-2 hover:bg-rose-500/10 text-slate-600 hover:text-rose-500 transition-all">
-            <X size={18}/>
+          <button onClick={() => onRemove(lane.id)} className="p-1.5 hover:bg-rose-500/10 text-slate-600 hover:text-rose-500 transition-all rounded-lg">
+            <X size={16}/>
           </button>
         )}
       </div>
       <div>
-        <h4 className="text-2xl italic font-black uppercase tracking-[0.2em] text-white leading-tight break-words">{lane.label}</h4>
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">{lane.subLabel}</p>
+        <h4 className="text-lg italic font-black uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
+        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
       </div>
     </div>
   </div>
@@ -136,16 +136,16 @@ const ProcessNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#3b82f6'
 
   return (
-    <div className={`glass-panel min-w-[340px] rounded-[16px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-8 ring-blue-500/10' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
-      <div className="flex items-center justify-between px-6 py-4 bg-white/[0.03] border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg text-white shadow-xl" style={{ backgroundColor: laneColor }}>
-            <Activity size={14}/>
+    <div className={`glass-panel min-w-[280px] rounded-[12px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
+      <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg text-white shadow-lg" style={{ backgroundColor: laneColor }}>
+            <Activity size={12}/>
           </div>
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })}
-            className="bg-transparent border-none text-[11px] italic font-black uppercase tracking-tight text-white leading-none outline-none w-48"
+            className="bg-transparent border-none text-[10px] italic font-black uppercase tracking-tight text-white leading-none outline-none w-36"
             placeholder="PROCESS STEP"
           />
         </div>
@@ -155,34 +155,34 @@ const ProcessNode = ({ id, data, selected }: any) => {
               e.stopPropagation()
               if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
             }} 
-            className={`p-1.5 rounded-lg transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
+            className={`p-1 rounded-lg transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
           >
-            <Trash2 size={14}/>
+            <Trash2 size={12}/>
           </button>
         )}
       </div>
-      <div className="p-6 space-y-5">
+      <div className="p-4 space-y-4">
         <textarea 
           value={data.description || ''} 
           onChange={e => data.onChange(id, { description: e.target.value })} 
-          className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-[11px] font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[90px] transition-all" 
+          className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[70px] transition-all" 
           placeholder="TECHNICAL EXECUTION..." 
         />
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/5">
           <div className="space-y-1">
-            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1">Payload Input</label>
-            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-black text-blue-400 outline-none focus:border-blue-500/40" placeholder="INPUT"/>
+            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1">Input</label>
+            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black text-blue-400 outline-none focus:border-blue-500/40" placeholder="INPUT"/>
           </div>
           <div className="space-y-1">
-            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1 text-right block mr-1">Response Output</label>
-            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-black text-emerald-400 outline-none focus:border-emerald-500/40 text-right" placeholder="OUTPUT"/>
+            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1 text-right block mr-1">Output</label>
+            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black text-emerald-400 outline-none focus:border-emerald-500/40 text-right" placeholder="OUTPUT"/>
           </div>
         </div>
       </div>
-      <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-blue-600 !border-slate-950" />
-      <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-blue-600 !border-slate-950" />
-      <Handle type="target" position={Position.Left} className="!w-2 !h-2 !bg-slate-700 !border-slate-950" />
-      <Handle type="source" position={Position.Right} className="!w-2 !h-2 !bg-slate-700 !border-slate-950" />
+      <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-blue-600 !border-slate-950" />
+      <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !bg-blue-600 !border-slate-950" />
+      <Handle type="target" position={Position.Left} className="!w-1.5 !h-1.5 !bg-slate-700 !border-slate-950" />
+      <Handle type="source" position={Position.Right} className="!w-1.5 !h-1.5 !bg-slate-700 !border-slate-950" />
     </div>
   )
 }
@@ -192,20 +192,20 @@ const DiamondNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#f59e0b'
 
   return (
-    <div className="relative group p-10">
-      <div className={`w-32 h-32 rotate-45 border-2 flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${selected ? 'ring-8 ring-amber-500/10' : ''}`} style={{ borderColor: `${laneColor}80`, backgroundColor: '#0f172a' }}>
-        <div className="-rotate-45 flex flex-col items-center px-4 text-center">
+    <div className="relative group p-6">
+      <div className={`w-24 h-24 rotate-45 border-2 flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${selected ? 'ring-4 ring-amber-500/20' : ''}`} style={{ borderColor: `${laneColor}80`, backgroundColor: '#0f172a' }}>
+        <div className="-rotate-45 flex flex-col items-center px-2 text-center">
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
-            className="bg-transparent border-none text-[10px] italic font-black uppercase text-white text-center outline-none w-24 placeholder:text-slate-700"
-            placeholder="CONDITION"
+            className="bg-transparent border-none text-[9px] italic font-black uppercase text-white text-center outline-none w-16 placeholder:text-slate-700"
+            placeholder="IF"
           />
         </div>
-        <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ top: -6, left: '50%' }} />
-        <Handle type="source" position={Position.Bottom} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ bottom: -6, left: '50%' }} />
-        <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ left: -6, top: '50%' }} />
-        <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ right: -6, top: '50%' }} />
+        <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ top: -5, left: '50%' }} />
+        <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ bottom: -5, left: '50%' }} />
+        <Handle type="target" position={Position.Left} className="!w-2.5 !h-2.5 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ left: -5, top: '50%' }} />
+        <Handle type="source" position={Position.Right} className="!w-2.5 !h-2.5 !bg-amber-500 !border-slate-950 !-rotate-45" style={{ right: -5, top: '50%' }} />
       </div>
       {selected && (
         <button 
@@ -213,9 +213,9 @@ const DiamondNode = ({ id, data, selected }: any) => {
             e.stopPropagation()
             if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
           }} 
-          className={`absolute top-0 right-0 p-2 rounded-xl transition-all z-20 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-slate-900/80 hover:bg-rose-500/20 text-rose-500'}`}
+          className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all z-20 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-slate-900/80 hover:bg-rose-500/20 text-rose-500'}`}
         >
-          <Trash2 size={14}/>
+          <Trash2 size={12}/>
         </button>
       )}
     </div>
@@ -226,14 +226,14 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
   const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#334155', strokeWidth: selected ? 4 : 2 }} />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: selected ? '#3b82f6' : '#334155', strokeWidth: selected ? 3 : 1.5 }} />
       <EdgeLabelRenderer>
         <div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all' }} className="nodrag nopan">
           <input 
             value={data?.label || ''} 
             onChange={e => data.onLabelChange(id, e.target.value)} 
-            className={`bg-[#0f172a] border border-white/10 rounded-lg px-3 py-1 text-[9px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
-            placeholder="VECTOR" 
+            className={`bg-[#0f172a] border border-white/10 rounded-lg px-2 py-0.5 text-[8px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
+            placeholder="FLOW" 
           />
         </div>
       </EdgeLabelRenderer>
@@ -255,7 +255,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     } else {
       const initialLanes = [
         { id: 'source-primary', label: sourceNode.data.name, subLabel: 'SOURCE ASSET', color: '#6366f1', type: 'asset', x: 0 },
-        { id: 'target-primary', label: targetNode.data.name, subLabel: 'DESTINATION ASSET', color: '#f43f5e', type: 'asset', x: 450 },
+        { id: 'target-primary', label: targetNode.data.name, subLabel: 'DESTINATION ASSET', color: '#f43f5e', type: 'asset', x: 350 },
       ]
       setLanes(initialLanes)
     }
@@ -287,7 +287,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const onNodeDrag = useCallback((_: any, draggedNode: Node) => {
     const lane = lanes.find(l => l.id === draggedNode.data.laneId)
     if (!lane) return
-    const centerX = (lanes.indexOf(lane) * 450) + 225 - (draggedNode.type === 'logicProcess' ? 170 : 64)
+    const centerX = (lanes.indexOf(lane) * 350) + 175 - (draggedNode.type === 'logicProcess' ? 140 : 48)
     setInternalNodes(nds => nds.map(n => n.id === draggedNode.id ? { ...n, position: { x: centerX, y: n.position.y } } : n))
   }, [lanes])
 
@@ -307,17 +307,17 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const addNode = (laneId: string, type: 'process' | 'diamond') => {
     const laneIdx = lanes.findIndex(l => l.id === laneId)
     const lane = lanes[laneIdx]
-    const centerX = (laneIdx * 450) + 225 - (type === 'process' ? 170 : 64)
+    const centerX = (laneIdx * 350) + 175 - (type === 'process' ? 140 : 48)
     const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 100
-    const y = maxY + (laneNodes.length > 0 ? 250 : 0)
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 180
+    const y = maxY + (laneNodes.length > 0 ? 200 : 0)
 
     const newNode = { 
       id: `v-step-${Date.now()}`, 
       type: type === 'process' ? 'logicProcess' : 'logicDiamond', 
       position: { x: centerX, y }, 
       data: { 
-        label: type === 'process' ? 'NEW PROCESS' : 'CONDITION?', 
+        label: type === 'process' ? 'NEW STEP' : 'IF', 
         laneId,
         laneColor: lane.color,
         description: '',
@@ -376,55 +376,55 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
-      <div className="w-[420px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
-        <div className="p-10 border-b border-white/5 bg-white/[0.02]">
-          <div className="flex items-center gap-5">
-            <div className="p-3.5 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-500/30"><Workflow size={24}/></div>
+      <div className="w-[360px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
+        <div className="p-8 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-600 rounded-lg text-white shadow-xl shadow-blue-500/30"><Workflow size={20}/></div>
             <div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tight italic">Service Logic</h3>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2">Participant Orchestrator</p>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight italic">Service Logic</h3>
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1">Participant Orchestrator</p>
             </div>
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+          <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-              <span className="text-[11px] italic font-black text-blue-500 uppercase tracking-widest">Available Participants</span>
-              <span className="text-[8px] font-bold text-slate-600 uppercase">Registry Count: {availableServices.length}</span>
+              <span className="text-[10px] italic font-black text-blue-500 uppercase tracking-widest">Available Participants</span>
+              <span className="text-[8px] font-bold text-slate-600 uppercase">Registry: {availableServices.length}</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {availableServices.map((svc: any) => (
                 <button 
                   key={svc.id} 
                   onClick={() => addLane(svc)} 
-                  className="w-full p-6 rounded-3xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all text-left group"
+                  className="w-full p-4 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all text-left group"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-base italic font-black uppercase tracking-tight text-slate-300 group-hover:text-white transition-colors">{svc.name}</p>
-                    <Plus size={18} className="text-slate-600 group-hover:text-blue-500"/>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm italic font-black uppercase tracking-tight text-slate-300 group-hover:text-white transition-colors truncate">{svc.name}</p>
+                    <Plus size={14} className="text-slate-600 group-hover:text-blue-500"/>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${svc.device_id === sourceNode.data.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase ${svc.device_id === sourceNode.data.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                       {svc.device_id === sourceNode.data.id ? 'SOURCE' : 'TARGET'}
                     </span>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{svc.service_type || 'Generic Service'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 truncate">{svc.service_type || 'Generic Service'}</p>
                   </div>
                 </button>
               ))}
               {availableServices.length === 0 && (
-                <div className="p-10 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center space-y-4">
-                  <Layers size={32} className="text-slate-700"/>
-                  <p className="text-[10px] font-black uppercase text-slate-600 tracking-widest">All services mapped to lanes</p>
+                <div className="p-8 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center space-y-3">
+                  <Layers size={24} className="text-slate-700"/>
+                  <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">All services mapped</p>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="p-8 border-t border-white/10 bg-black/40 space-y-4">
-          <button onClick={handleSaveFlow} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white text-[12px] font-black uppercase tracking-widest rounded-xl shadow-xl transition-all active:scale-95">Commit Participant Map</button>
-          <button onClick={onClose} className="w-full py-4 bg-white/5 hover:bg-white/10 text-slate-400 text-[12px] font-black uppercase tracking-widest rounded-xl transition-all">Close Orchestrator</button>
+        <div className="p-6 border-t border-white/10 bg-black/40 space-y-3">
+          <button onClick={handleSaveFlow} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest rounded-lg shadow-xl transition-all active:scale-95">Sync Workflow</button>
+          <button onClick={onClose} className="w-full py-3.5 bg-white/5 hover:bg-white/10 text-slate-400 text-[11px] font-black uppercase tracking-widest rounded-lg transition-all">Exit Builder</button>
         </div>
       </div>
 
@@ -446,25 +446,25 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           >
             <div className="absolute inset-0 flex pointer-events-none">
               {lanes.map((lane, idx) => (
-                <div key={lane.id} className="relative h-full flex flex-col" style={{ width: 450 }}>
+                <div key={lane.id} className="relative h-full flex flex-col pointer-events-none" style={{ width: 350 }}>
                    <ParticipantLaneHeader 
                     lane={lane} 
                     isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} 
                     onRemove={removeLane}
                    />
-                   <div className="mt-auto flex flex-col gap-3 pointer-events-auto p-10 pb-16">
-                      <button onClick={() => addNode(lane.id, 'process')} className="px-6 py-4 bg-white/5 hover:bg-blue-600/20 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-3">
-                         <Plus size={16}/> <span>Add Logic</span>
+                   <div className="absolute top-48 left-0 right-0 px-8 flex flex-col gap-2 pointer-events-auto z-50">
+                      <button onClick={() => addNode(lane.id, 'process')} className="w-full py-2.5 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md">
+                         <Plus size={14}/> <span>Add Logic</span>
                       </button>
-                      <button onClick={() => addNode(lane.id, 'diamond')} className="px-6 py-4 bg-white/5 hover:bg-amber-600/20 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-3">
-                         <Diamond size={16}/> <span>Add Condition</span>
+                      <button onClick={() => addNode(lane.id, 'diamond')} className="w-full py-2.5 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md">
+                         <Diamond size={14}/> <span>Add Condition</span>
                       </button>
                    </div>
                 </div>
               ))}
             </div>
             <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
-            <Controls className="bg-slate-900 border-2 border-white/10 rounded-xl overflow-hidden p-1 shadow-2xl" />
+            <Controls className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
           </ReactFlow>
         </div>
       </div>
@@ -492,10 +492,10 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
   };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-2xl border border-white/10 bg-[#0f172a]/95">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-lg border border-white/10 bg-[#0f172a]/95">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+            <div className="p-3 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
               <Settings size={22} />
             </div>
             <div>
@@ -509,29 +509,29 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
         <div className="mt-8 space-y-6">
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Name (Required)</label>
-            <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" placeholder="e.g. CORE-PAYMENT-INGRESS" />
+            <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" placeholder="e.g. CORE-PAYMENT-INGRESS" />
           </div>
           <div className="space-y-2">
             <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose (Required)</label>
-            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
+            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Category (Required)</label>
-              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Status (Required)</label>
-              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
           <div className="pt-6 border-t border-white/5 flex gap-4">
-             <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-black uppercase text-[11px] tracking-widest rounded-xl transition-all">Cancel</button>
-             <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
+             <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-black uppercase text-[11px] tracking-widest rounded-lg transition-all">Cancel</button>
+             <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
           </div>
         </div>
       </motion.div>
@@ -696,7 +696,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              </div>
            </div>
            <div className="space-y-4">
-             <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[11px] tracking-widest rounded-xl transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"><Workflow size={16}/> Service Logic Builder</button>
+             <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"><Workflow size={16}/> Service Logic Builder</button>
              <button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Sever Connection</button>
            </div>
          </div>
@@ -749,6 +749,30 @@ function ArchDesignerInner() {
          <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewArchitecture} />
        ) : (
          <>
+            {/* Standardized Centered Top Bar */}
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+              <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-2xl shadow-2xl pointer-events-auto">
+                <div className="flex flex-col min-w-[180px] px-4">
+                  <span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name || 'Untitled Architecture'}</span>
+                  <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em]">{activeFlow?.category || 'General'}</span>
+                </div>
+                <div className="h-8 w-px bg-white/10" />
+                <div className="flex items-center space-x-1.5 p-1">
+                  <button onClick={() => setIsConfigModalOpen(true)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-2">
+                    <Info size={14}/>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Arch Info</span>
+                  </button>
+                  <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all border border-white/5" title="Auto Layout"><GitMerge size={16} className="rotate-90"/></button>
+                  <button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 border ${dependencyRiskEnabled ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`} title="Impact Mode"><AlertTriangle size={16}/></button>
+                  <div className="h-6 w-px bg-white/10 mx-1" />
+                  <button onClick={() => setConfirmExitIntent('dashboard')} className="px-4 py-2 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2 border border-white/5">
+                    <ChevronLeft size={14}/>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Back</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {!isSidebarOpen && (
               <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
@@ -842,28 +866,6 @@ function ArchDesignerInner() {
             <div className="flex-1 relative h-full">
                <ReactFlow nodes={displayNodes} edges={displayEdges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }} onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }} nodeTypes={nodeTypes} edgeTypes={edgeTypes} fitView snapToGrid snapGrid={[20, 20]} connectionMode={ConnectionMode.Loose}>
                  <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
-                 <Panel position="top-left" className="p-4">
-                   <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-2 bg-slate-900/60 backdrop-blur-2xl shadow-2xl">
-                     <div className="flex flex-col min-w-[180px] px-3">
-                       <span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name}</span>
-                       <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em]">{activeFlow?.category}</span>
-                     </div>
-                     <div className="h-8 w-px bg-white/10" />
-                     <div className="flex items-center space-x-1 p-1">
-                       <button onClick={() => setIsConfigModalOpen(true)} className="p-2.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-2">
-                         <Info size={16}/>
-                         <span className="text-[9px] font-black uppercase">Arch Info</span>
-                       </button>
-                       <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all" title="Auto Layout"><GitMerge size={18} className="rotate-90"/></button>
-                       <button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 ${dependencyRiskEnabled ? 'bg-rose-500 text-white' : 'bg-white/5 text-slate-400'}`} title="Impact Mode"><AlertTriangle size={18}/></button>
-                       <div className="h-6 w-px bg-white/10 mx-1" />
-                       <button onClick={() => setConfirmExitIntent('dashboard')} className="p-2.5 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2">
-                         <ChevronLeft size={16}/>
-                         <span className="text-[9px] font-black uppercase">Back</span>
-                       </button>
-                     </div>
-                   </div>
-                 </Panel>
                </ReactFlow>
             </div>
             {!isConfigSidebarOpen && (
