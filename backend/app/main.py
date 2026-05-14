@@ -122,10 +122,33 @@ async def _auto_seed():
 
 from .core.config import settings
 
+async def run_migrations():
+    import subprocess
+    import os
+    import sys
+    print("AUTO-BOOT: Checking for pending database migrations...")
+    try:
+        # Determine the backend directory (where alembic.ini is)
+        backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # Run alembic upgrade head using sys.executable to ensure same venv
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend_dir,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            print(f"AUTO-BOOT: Migration failed: {result.stderr}")
+        else:
+            print("AUTO-BOOT: Database schema is up to date.")
+    except Exception as e:
+        print(f"AUTO-BOOT: Error running migrations: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Ensure migrations are applied first
+    await run_migrations()
+    # Seed data if necessary
     await _auto_seed()
     yield
 
@@ -174,16 +197,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    # Capture full traceback
+    # Capture full traceback for server-side logging
     tb = traceback.format_exc()
-    print(f"ERROR: {str(exc)}\n{tb}") # Still log to terminal
+    # Implement structured logging (stdout) as requested by directive
+    print(f"--- INTERNAL SERVER ERROR ---\nPath: {request.url.path}\nError: {str(exc)}\n{tb}\n----------------------------")
     
+    # Do not expose raw stack traces to the client as per direction.md
     return JSONResponse(
         status_code=500,
         content={
-            "detail": str(exc),
-            "traceback": tb,
-            "path": request.url.path
+            "detail": "Internal Server Error. Please consult system logs.",
+            "path": request.url.path,
+            "error_type": exc.__class__.__name__
         }
     )
 
