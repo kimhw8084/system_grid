@@ -3,7 +3,7 @@ import ReactFlow, {
   addEdge, Background, Controls, Panel, useNodesState, useEdgesState, Handle, Position, MarkerType, 
   Connection, ReactFlowProvider, useReactFlow, BaseEdge, EdgeLabelRenderer, getSmoothStepPath, 
   getBezierPath, MiniMap, Node, Edge, applyNodeChanges, applyEdgeChanges, reconnectEdge, 
-  ConnectionMode, NodeChange, EdgeChange
+  ConnectionMode, NodeChange, EdgeChange, useViewport
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { AgGridReact } from 'ag-grid-react'
@@ -111,22 +111,20 @@ const edgeTypes = { labeled: LabeledEdge };
 // --- Vertical Swimlane Flow Engine (Dynamic Participant Lanes) ---
 
 const ParticipantLaneHeader = ({ lane, onRemove, isPrimary }: any) => (
-  <div className="h-full border-r-2 border-dashed border-white/5 flex flex-col p-6 relative bg-white/[0.01] pointer-events-none" style={{ width: 350 }}>
-    <div className="flex flex-col gap-3 pointer-events-auto">
-      <div className="flex items-center justify-between">
-        <div className="p-2.5 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
-          {lane.type === 'service' ? <Database size={16}/> : <Server size={16}/>}
-        </div>
-        {!isPrimary && (
-          <button onClick={() => onRemove(lane.id)} className="p-1.5 hover:bg-rose-500/10 text-slate-600 hover:text-rose-500 transition-all rounded-lg">
-            <X size={16}/>
-          </button>
-        )}
+  <div className="flex flex-col gap-3 pointer-events-auto">
+    <div className="flex items-center justify-between">
+      <div className="p-2.5 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
+        {lane.type === 'service' ? <Database size={16}/> : <Server size={16}/>}
       </div>
-      <div>
-        <h4 className="text-lg italic font-black uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
-        <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
-      </div>
+      {!isPrimary && (
+        <button onClick={() => onRemove(lane.id)} className="p-1.5 hover:bg-rose-500/10 text-slate-600 hover:text-rose-500 transition-all rounded-lg">
+          <X size={16}/>
+        </button>
+      )}
+    </div>
+    <div>
+      <h4 className="text-lg font-black uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
+      <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
     </div>
   </div>
 )
@@ -136,7 +134,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#3b82f6'
 
   return (
-    <div className={`glass-panel min-w-[280px] rounded-[12px] border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
+    <div className={`glass-panel min-w-[280px] rounded-lg border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg text-white shadow-lg" style={{ backgroundColor: laneColor }}>
@@ -145,7 +143,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })}
-            className="bg-transparent border-none text-[10px] italic font-black uppercase tracking-tight text-white leading-none outline-none w-36"
+            className="bg-transparent border-none text-[10px] font-black uppercase tracking-tight text-white leading-none outline-none w-36"
             placeholder="PROCESS STEP"
           />
         </div>
@@ -198,7 +196,7 @@ const DiamondNode = ({ id, data, selected }: any) => {
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
-            className="bg-transparent border-none text-[9px] italic font-black uppercase text-white text-center outline-none w-16 placeholder:text-slate-700"
+            className="bg-transparent border-none text-[9px] font-black uppercase text-white text-center outline-none w-16 placeholder:text-slate-700"
             placeholder="IF"
           />
         </div>
@@ -243,6 +241,8 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
 
 const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }: any) => {
   const { fitView } = useReactFlow()
+  if (!edge || !sourceNode || !targetNode) return null
+
   const logicManifest = useMemo(() => edge?.data?.logic_json || {}, [edge])
   const [internalNodes, setInternalNodes] = useNodesState([])
   const [internalEdges, setInternalEdges] = useEdgesState([])
@@ -284,11 +284,12 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     })))
   }, [logicManifest])
 
-  const onNodeDrag = useCallback((_: any, draggedNode: Node) => {
-    const lane = lanes.find(l => l.id === draggedNode.data.laneId)
-    if (!lane) return
-    const centerX = (lanes.indexOf(lane) * 350) + 175 - (draggedNode.type === 'logicProcess' ? 140 : 48)
-    setInternalNodes(nds => nds.map(n => n.id === draggedNode.id ? { ...n, position: { x: centerX, y: n.position.y } } : n))
+  const onNodeDrag = useCallback((_: any, node: Node) => {
+    const laneIdx = lanes.findIndex(l => l.id === node.data.laneId)
+    if (laneIdx === -1) return
+    const nodeWidth = node.type === 'logicProcess' ? 280 : 96
+    const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
+    setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: centerX, y: n.position.y } } : n))
   }, [lanes])
 
   const onConnect = useCallback((params: Connection) => { 
@@ -307,9 +308,10 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const addNode = (laneId: string, type: 'process' | 'diamond') => {
     const laneIdx = lanes.findIndex(l => l.id === laneId)
     const lane = lanes[laneIdx]
-    const centerX = (laneIdx * 350) + 175 - (type === 'process' ? 140 : 48)
+    const nodeWidth = type === 'process' ? 280 : 96
+    const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
     const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 180
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 400
     const y = maxY + (laneNodes.length > 0 ? 200 : 0)
 
     const newNode = { 
@@ -348,8 +350,8 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
 
   const removeLane = (laneId: string) => {
     setLanes(lanes.filter(l => l.id !== laneId))
-    setInternalNodes(internalNodes.filter(n => n.data.laneId !== laneId))
-    setInternalEdges(internalEdges.filter(e => {
+    setInternalNodes(nds => nds.filter(n => n.data.laneId !== laneId))
+    setInternalEdges(eds => eds.filter(e => {
       const sourceNode = internalNodes.find(n => n.id === e.source)
       const targetNode = internalNodes.find(n => n.id === e.target)
       return sourceNode?.data?.laneId !== laneId && targetNode?.data?.laneId !== laneId
@@ -374,6 +376,29 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     return [...sourceServices, ...targetServices].filter(s => !lanes.some(l => l.serviceId === s.id))
   }, [sourceNode, targetNode, lanes])
 
+  const LanesLayer = () => {
+    const { x, y, zoom } = useViewport()
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ transform: `translate(${x}px, ${y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
+        {lanes.map((lane, idx) => (
+          <div key={lane.id} className="absolute top-0 bottom-0 border-r border-white/5 bg-white/[0.01]" style={{ left: idx * 350, width: 350, height: 10000 }}>
+             <div className="p-8 pt-12">
+                <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
+                <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
+                   <button onClick={() => addNode(lane.id, 'process')} className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl">
+                      <Plus size={16}/> <span>Add Logic</span>
+                   </button>
+                   <button onClick={() => addNode(lane.id, 'diamond')} className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl">
+                      <Diamond size={16}/> <span>Add Condition</span>
+                   </button>
+                </div>
+             </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-[#020617] flex overflow-hidden">
       <div className="w-[360px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
@@ -381,7 +406,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 rounded-lg text-white shadow-xl shadow-blue-500/30"><Workflow size={20}/></div>
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight italic">Service Logic</h3>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight">Service Logic</h3>
               <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1">Participant Orchestrator</p>
             </div>
           </div>
@@ -390,7 +415,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
         <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2">
-              <span className="text-[10px] italic font-black text-blue-500 uppercase tracking-widest">Available Participants</span>
+              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Available Participants</span>
               <span className="text-[8px] font-bold text-slate-600 uppercase">Registry: {availableServices.length}</span>
             </div>
             <div className="space-y-2">
@@ -401,7 +426,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                   className="w-full p-4 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 hover:border-blue-500/30 transition-all text-left group"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm italic font-black uppercase tracking-tight text-slate-300 group-hover:text-white transition-colors truncate">{svc.name}</p>
+                    <p className="text-sm font-bold uppercase tracking-tight text-slate-300 group-hover:text-white transition-colors truncate">{svc.name}</p>
                     <Plus size={14} className="text-slate-600 group-hover:text-blue-500"/>
                   </div>
                   <div className="flex items-center gap-3">
@@ -413,9 +438,9 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                 </button>
               ))}
               {availableServices.length === 0 && (
-                <div className="p-8 border-2 border-dashed border-white/5 rounded-3xl flex flex-col items-center justify-center text-center space-y-3">
+                <div className="p-8 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-center space-y-3">
                   <Layers size={24} className="text-slate-700"/>
-                  <p className="text-[8px] font-black uppercase text-slate-600 tracking-widest">All services mapped</p>
+                  <p className="text-[8px] font-bold uppercase text-slate-600 tracking-widest">All services mapped</p>
                 </div>
               )}
             </div>
@@ -444,25 +469,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
             fitView 
             fitViewOptions={{ padding: 100 }}
           >
-            <div className="absolute inset-0 flex pointer-events-none">
-              {lanes.map((lane, idx) => (
-                <div key={lane.id} className="relative h-full flex flex-col pointer-events-none" style={{ width: 350 }}>
-                   <ParticipantLaneHeader 
-                    lane={lane} 
-                    isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} 
-                    onRemove={removeLane}
-                   />
-                   <div className="absolute top-48 left-0 right-0 px-8 flex flex-col gap-2 pointer-events-auto z-50">
-                      <button onClick={() => addNode(lane.id, 'process')} className="w-full py-2.5 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md">
-                         <Plus size={14}/> <span>Add Logic</span>
-                      </button>
-                      <button onClick={() => addNode(lane.id, 'diamond')} className="w-full py-2.5 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md">
-                         <Diamond size={14}/> <span>Add Condition</span>
-                      </button>
-                   </div>
-                </div>
-              ))}
-            </div>
+            <LanesLayer />
             <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
             <Controls className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
           </ReactFlow>
@@ -880,7 +887,7 @@ function ArchDesignerInner() {
        
        <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { if (!activeFlow?.id) { saveMutation.mutate({ ...data, nodes: [], edges: [] }); } else { setActiveFlow({ ...activeFlow, ...data }); setHasUnsavedChanges(true); } setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
        <AnimatePresence>
-         {isServiceFlowOpen && selectedEdgeId && (
+         {isServiceFlowOpen && selectedEdgeId && edges.find(e => e.id === selectedEdgeId) && (
            <ServiceLevelFlow 
              edge={edges.find(e => e.id === selectedEdgeId)} 
              sourceNode={nodes.find(n => n.id === (edges.find(e => e.id === selectedEdgeId)?.source))}
