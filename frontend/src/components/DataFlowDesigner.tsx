@@ -377,25 +377,32 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   }, [sourceNode, targetNode, lanes])
 
   const LanesLayer = () => {
-    const { x, y, zoom } = useViewport()
     return (
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-visible" style={{ transform: `translate(${x}px, ${y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
-        {lanes.map((lane, idx) => (
-          <div key={lane.id} className="absolute top-0 bottom-0 border-r border-white/5 bg-white/[0.01]" style={{ left: idx * 350, width: 350, height: 10000 }}>
-             <div className="p-8 pt-12 nodrag nopan">
-                <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
-                <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
-                   <button onClick={() => addNode(lane.id, 'process')} className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl">
-                      <Plus size={16}/> <span>Add Logic</span>
-                   </button>
-                   <button onClick={() => addNode(lane.id, 'diamond')} className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl">
-                      <Diamond size={16}/> <span>Add Condition</span>
-                   </button>
-                </div>
-             </div>
-          </div>
-        ))}
-      </div>
+      <Panel position="top-left" className="w-full h-full pointer-events-none !m-0 p-0">
+        <div className="flex h-full">
+          {lanes.map((lane, idx) => (
+            <div key={lane.id} className="relative border-r border-white/5 bg-white/[0.01]" style={{ width: 350, minWidth: 350 }}>
+               <div className="p-8 pt-12">
+                  <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
+                  <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'process'); }} 
+                       className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl"
+                     >
+                        <Plus size={16}/> <span>Add Logic</span>
+                     </button>
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'diamond'); }} 
+                       className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl"
+                     >
+                        <Diamond size={16}/> <span>Add Condition</span>
+                     </button>
+                  </div>
+               </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
     )
   }
 
@@ -465,13 +472,23 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
             nodeTypes={explorerNodeTypes} 
             edgeTypes={explorerEdgeTypes} 
             snapToGrid 
-            snapGrid={[20, 20]} 
-            fitView 
-            fitViewOptions={{ padding: 100 }}
+            snapGrid={[20, 20]}
+            panOnDrag={false}
+            zoomOnScroll={false}
+            zoomOnPinch={false}
+            zoomOnDoubleClick={false}
+            preventScrolling={false}
+            selectionOnDrag={false}
+            nodesDraggable={true}
+            nodesConnectable={true}
+            elementsSelectable={true}
+            minZoom={1}
+            maxZoom={1}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           >
             <LanesLayer />
             <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
-            <Controls className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
+            <Controls showZoom={false} showInteractive={false} className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
           </ReactFlow>
         </div>
       </div>
