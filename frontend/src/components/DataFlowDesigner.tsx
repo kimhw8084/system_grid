@@ -62,7 +62,7 @@ const DeviceNode = ({ data, selected }: any) => {
         </div>
       )}
       <div className={`px-4 py-3 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/20' : 'bg-white/5'}`}>
-         <div className="flex items-center space-x-3"><div className={`p-2 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : 'bg-blue-600/20 text-blue-400'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[12px] italic font-black uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p><p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address}</p></div></div>
+         <div className="flex items-center space-x-3"><div className={`p-2 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : 'bg-blue-600/20 text-blue-400'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[12px] font-black uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p><p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address}</p></div></div>
       </div>
       <div className="p-4 space-y-4">
          <div className="space-y-1">
@@ -84,10 +84,10 @@ const DeviceNode = ({ data, selected }: any) => {
   )
 }
 
-const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-4 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-3 w-full shadow-xl ${selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-slate-900/60'}`}><div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[11px] italic font-black uppercase text-emerald-400 truncate tracking-tight">{data.name}</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-500 border-none !right-[-4px]" /></div>)
-const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[260px] rounded-lg border-2 transition-all duration-300 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/20 bg-slate-900/40'}`}><div className="flex items-center space-x-4"><div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400"><Globe size={20}/></div><div className="min-w-0"><p className="text-[12px] italic font-black uppercase text-indigo-400 truncate tracking-tight">{data.name}</p></div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-500 border-none !right-[-4px]" /></div>)
-const ConditionNode = ({ data, selected }: any) => (<div className={`w-20 h-20 rotate-45 border-2 flex items-center justify-center transition-all ${selected ? 'border-amber-500 bg-amber-500/20' : 'border-amber-500/40 bg-slate-900/60'}`}><div className="-rotate-45 flex flex-col items-center"><Diamond size={16} className="text-amber-500 mb-1"/><span className="text-[8px] italic font-black uppercase text-white">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-1px]" /></div>)
-const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-4 min-w-[200px] rounded-lg border-2 transition-all duration-300 ${selected ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-slate-900/60'}`}><div className="flex items-center gap-2 text-blue-400 mb-2"><StickyNote size={12}/><span className="text-[8px] italic font-black uppercase tracking-widest">Note</span></div><p className="text-[10px] text-slate-300 font-bold">{data.label}</p></div>)
+const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-4 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-3 w-full shadow-xl ${selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-slate-900/60'}`}><div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase text-emerald-400 truncate tracking-tight">{data.name}</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-500 border-none !right-[-4px]" /></div>)
+const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[260px] rounded-lg border-2 transition-all duration-300 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/20 bg-slate-900/40'}`}><div className="flex items-center space-x-4"><div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400"><Globe size={20}/></div><div className="min-w-0"><p className="text-[12px] font-black uppercase text-indigo-400 truncate tracking-tight">{data.name}</p></div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-500 border-none !right-[-4px]" /></div>)
+const ConditionNode = ({ data, selected }: any) => (<div className={`w-20 h-20 rotate-45 border-2 flex items-center justify-center transition-all ${selected ? 'border-amber-500 bg-amber-500/20' : 'border-amber-500/40 bg-slate-900/60'}`}><div className="-rotate-45 flex flex-col items-center"><Diamond size={16} className="text-amber-500 mb-1"/><span className="text-[8px] font-black uppercase text-white">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-1px]" /></div>)
+const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-4 min-w-[200px] rounded-lg border-2 transition-all duration-300 ${selected ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-slate-900/60'}`}><div className="flex items-center gap-2 text-blue-400 mb-2"><StickyNote size={12}/><span className="text-[8px] font-black uppercase tracking-widest">Note</span></div><p className="text-[10px] text-slate-300 font-bold">{data.label}</p></div>)
 
 const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected, source, target }: any) => {
   const { getEdges } = useReactFlow();
@@ -100,7 +100,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: isTraceActive ? '#f59e0b' : (data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color)), strokeWidth: selected || isTraceActive ? 4 : (data?.isImpacted ? 3 : 2), strokeDasharray: isTraceActive ? '5 5' : (Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none'), opacity: selected || data?.isImpacted || isTraceActive ? 1 : 0.6, transition: 'stroke 0.3s' }} />
-      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-2 py-1 rounded border transition-all flex items-center space-x-2 ${selected ? 'bg-slate-900 border-white' : 'bg-slate-950/90 border-white/10'} ${isTraceActive ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}><div className={`w-1 h-1 rounded-full ${isTraceActive ? 'bg-amber-500' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] italic font-black uppercase tracking-widest ${isTraceActive ? 'text-amber-400' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
+      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-2 py-1 rounded border transition-all flex items-center space-x-2 ${selected ? 'bg-slate-900 border-white' : 'bg-slate-950/90 border-white/10'} ${isTraceActive ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}><div className={`w-1 h-1 rounded-full ${isTraceActive ? 'bg-amber-500' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] font-black uppercase tracking-widest ${isTraceActive ? 'text-amber-400' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
     </>
   );
 };
@@ -230,7 +230,7 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
           <input 
             value={data?.label || ''} 
             onChange={e => data.onLabelChange(id, e.target.value)} 
-            className={`bg-[#0f172a] border border-white/10 rounded-lg px-2 py-0.5 text-[8px] italic font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
+            className={`bg-[#0f172a] border border-white/10 rounded-lg px-2 py-0.5 text-[8px] font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
             placeholder="FLOW" 
           />
         </div>
@@ -379,10 +379,10 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const LanesLayer = () => {
     const { x, y, zoom } = useViewport()
     return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ transform: `translate(${x}px, ${y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
+      <div className="absolute inset-0 pointer-events-none z-0 overflow-visible" style={{ transform: `translate(${x}px, ${y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
         {lanes.map((lane, idx) => (
           <div key={lane.id} className="absolute top-0 bottom-0 border-r border-white/5 bg-white/[0.01]" style={{ left: idx * 350, width: 350, height: 10000 }}>
-             <div className="p-8 pt-12">
+             <div className="p-8 pt-12 nodrag nopan">
                 <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
                 <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
                    <button onClick={() => addNode(lane.id, 'process')} className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl">
@@ -652,7 +652,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
    return (
      <div className="w-[420px] glass-panel h-full border-l border-white/5 flex flex-col p-8 space-y-10 bg-[#0f172a]/95 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar shadow-[-20px_0_50px_rgba(0,0,0,0.5)]">
        <div className="flex items-center justify-between border-b border-white/5 pb-4">
-         <h2 className="text-xl italic font-black uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2>
+         <h2 className="text-xl font-black uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2>
          <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={20}/></button>
        </div>
        {selectedNode ? (
@@ -680,7 +680,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
                      >
                        <div className="flex flex-col">
                          <span>{s.name}</span>
-                         {isAdded && <span className="text-[7px] font-black uppercase italic mt-1">Already Added</span>}
+                         {isAdded && <span className="text-[7px] font-black uppercase mt-1">Already Added</span>}
                        </div>
                      </button>
                    );
@@ -822,7 +822,7 @@ function ArchDesignerInner() {
                                    <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[7px] font-black uppercase">
                                      {svcCount} {svcCount === 1 ? 'Service' : 'Services'}
                                    </span>
-                                   {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase italic">Added</span>}
+                                   {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase">Added</span>}
                                  </div>
                                </div>
                                {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" />}
@@ -857,7 +857,7 @@ function ArchDesignerInner() {
                                  <span className={`text-[10px] font-bold uppercase truncate ${isAdded ? 'text-emerald-400' : 'text-slate-300 group-hover:text-white'}`}>
                                    {e.name}
                                  </span>
-                                 {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase italic mt-1">Added</span>}
+                                 {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase mt-1">Added</span>}
                                </div>
                                {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" />}
                              </button>
