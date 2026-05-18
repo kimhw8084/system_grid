@@ -902,6 +902,7 @@ class Operator(Base, BaseMixin):
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     custom_permissions = Column(JSON, default=dict) # Override role permissions
     registration_status = Column(String, default="Pending")
+    is_admin = Column(Boolean, default=False)
     
     role = relationship("Role", back_populates="operators")
 

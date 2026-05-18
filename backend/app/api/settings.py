@@ -23,7 +23,8 @@ async def get_user_settings(db: AsyncSession = Depends(get_db)):
 async def get_user_profile(db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id()
     # Attempt to find the operator by username
-    res = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    from sqlalchemy.orm import selectinload
+    res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)).filter(models.Operator.username == user_id))
     operator = res.scalar_one_or_none()
     
     if not operator:
@@ -34,9 +35,16 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
             "full_name": user_id.replace("_", " ").title(),
             "role": "Unknown",
             "department": "Sector-01",
-            "is_external": True
+            "is_external": True,
+            "is_admin": True, # Default to admin for synthetic profiles for now? Or False? 
+            "permissions": {} 
         }
     
+    # Merge permissions: role permissions + custom overrides
+    permissions = (operator.role.permissions if operator.role else {}).copy()
+    if operator.custom_permissions:
+        permissions.update(operator.custom_permissions)
+
     return {
         "id": operator.id,
         "username": operator.username,
@@ -44,7 +52,9 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
         "email": operator.email,
         "department": operator.department,
         "team": operator.team,
-        "role": operator.role.name if operator.role else "No Role"
+        "role": operator.role.name if operator.role else "No Role",
+        "is_admin": operator.is_admin,
+        "permissions": permissions
     }
 
 @router.get("/user/env-vars")
@@ -416,6 +426,45 @@ async def get_operators(db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
     res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)))
     return res.scalars().all()
+
+@router.post("/operators")
+async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
+    # Simple create or update logic for manual addition
+    external_id = str(data.get("external_id"))
+    res = await db.execute(select(models.Operator).filter(models.Operator.external_id == external_id))
+    op = res.scalar_one_or_none()
+    
+    if op:
+        for key, value in data.items():
+            if hasattr(op, key):
+                setattr(op, key, value)
+    else:
+        op = models.Operator(**data)
+        db.add(op)
+    
+    await db.commit()
+    await db.refresh(op)
+    return op
+
+@router.patch("/operators/{op_id}")
+async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
+    op = res.scalar_one_or_none()
+    if not op: raise HTTPException(404, "Operator not found")
+    
+    for key, value in data.items():
+        if hasattr(op, key):
+            setattr(op, key, value)
+            
+    await db.commit()
+    await db.refresh(op)
+    return op
+
+@router.delete("/operators/{op_id}")
+async def delete_operator(op_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(models.Operator).where(models.Operator.id == op_id))
+    await db.commit()
+    return {"status": "success"}
 
 @router.get("/roles")
 async def get_roles(db: AsyncSession = Depends(get_db)):

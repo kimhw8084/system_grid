@@ -337,12 +337,57 @@ result_df = get_user_pool()`)
   }
 
   const viewGroups = [
-    { name: "Infrastructure", views: ["dashboard", "assets", "racks", "network"] },
-    { name: "Services", views: ["registry", "flows", "intelligence"] },
-    { name: "Operations", views: ["maintenance", "monitoring"] },
-    { name: "Reliability", views: ["rca", "far"] },
-    { name: "Administration", views: ["knowledge", "audit", "projects", "settings"] }
+    { name: "Infrastructure", views: ["projects", "racks", "assets", "network", "architecture"] },
+    { name: "Operations", views: ["services", "external", "research", "monitoring"] },
+    { name: "Reliability", views: ["far", "vendors", "knowledge", "logs"] }
   ]
+
+  const operatorMutation = useMutation({
+    mutationFn: async (op: any) => {
+      const res = await apiFetch("/api/v1/settings/operators", {
+        method: "POST",
+        body: JSON.stringify(op)
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operators'] })
+      toast.success("Operator security profile updated")
+    }
+  })
+
+  const deleteOperatorMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operators'] })
+      toast.success("Operator revoked from system")
+    }
+  })
+
+  const [newOpId, setNewOpId] = useState("")
+
+  const handleAddOperator = () => {
+    if (!newOpId) return;
+    operatorMutation.mutate({ 
+      external_id: newOpId, 
+      username: newOpId.toLowerCase(), 
+      full_name: newOpId,
+      department: "Sector-01",
+      registration_status: "Verified",
+      is_admin: false,
+      custom_permissions: {}
+    });
+    setNewOpId("");
+  }
+
+  const togglePermission = (op: any, view: string) => {
+    const current = op.custom_permissions?.[view] ?? 0;
+    const next = (current + 1) % 4;
+    const newPerms = { ...(op.custom_permissions || {}), [view]: next };
+    operatorMutation.mutate({ ...op, custom_permissions: newPerms });
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6 max-w-7xl mx-auto px-4 overflow-hidden relative">
@@ -558,10 +603,18 @@ result_df = get_user_pool()`)
                         <div className="flex items-center gap-4">
                              <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                                <input placeholder="Filter Operators..." className="bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] focus:border-blue-500/50 outline-none w-64 transition-all" />
+                                <input placeholder="Filter Operators..." className="bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] focus:border-blue-500/50 outline-none w-48 transition-all" />
                              </div>
-                             <div className="flex gap-1">
-                                <button className="p-2 text-slate-500 hover:text-white transition-all bg-white/5 rounded-lg"><Filter size={14} /></button>
+                             <div className="h-6 w-px bg-white/10 mx-2" />
+                             <div className="flex items-center gap-2">
+                                <UserPlus size={14} className="text-blue-500" />
+                                <input 
+                                    value={newOpId} onChange={e => setNewOpId(e.target.value)}
+                                    placeholder="Enter User ID to Add..." 
+                                    onKeyDown={e => e.key === 'Enter' && handleAddOperator()}
+                                    className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-400 focus:border-blue-500 outline-none w-48 transition-all" 
+                                />
+                                <button onClick={handleAddOperator} className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"><Plus size={14} /></button>
                              </div>
                         </div>
                         <div className="flex items-center gap-6">
@@ -581,11 +634,11 @@ result_df = get_user_pool()`)
                             <thead>
                                 <tr className="bg-black/10">
                                     <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Identity</th>
-                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Org Context</th>
+                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Admin</th>
                                     {viewGroups.map(g => (
                                         <th key={g.name} className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)] text-center bg-blue-500/2">{g.name} Matrix</th>
                                     ))}
-                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Role</th>
+                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -596,35 +649,35 @@ result_df = get_user_pool()`)
                                                 <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-400 font-black text-[10px]">{op.username?.slice(0,2).toUpperCase()}</div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-[var(--text-primary)] uppercase leading-none">{op.full_name}</p>
-                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic">ID: {op.external_id} // {op.username}</p>
+                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic">ID: {op.external_id}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] font-black text-slate-300 uppercase leading-none">{op.department}</span>
-                                                <span className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{op.team || "N/A"}</span>
-                                            </div>
+                                            <ToggleSwitch 
+                                                checked={op.is_admin} 
+                                                onChange={(e: any) => operatorMutation.mutate({ ...op, is_admin: e.target.checked })} 
+                                            />
                                         </td>
                                         {viewGroups.map(g => (
                                             <td key={g.name} className="p-4 bg-blue-500/1">
                                                 <div className="flex items-center justify-center gap-1">
                                                     {g.views.map(v => (
                                                         <ViewPermissionIcon 
-                                                            key={v} level={op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? 0}
-                                                            onClick={() => toast.success(`Toggle permission for ${v}`)}
+                                                            key={v} level={op.is_admin ? 3 : (op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? 0)}
+                                                            onClick={() => !op.is_admin && togglePermission(op, v)}
                                                         />
                                                     ))}
                                                 </div>
                                             </td>
                                         ))}
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-widest">
-                                                    {op.role?.name || "No Role Assigned"}
-                                                </div>
-                                                <button className="p-2 text-slate-600 hover:text-white opacity-0 group-hover:opacity-100 transition-all"><MoreHorizontal size={14} /></button>
-                                            </div>
+                                        <td className="p-4 text-center">
+                                            <button 
+                                                onClick={() => { if(confirm('Revoke this operator access?')) deleteOperatorMutation.mutate(op.id) }}
+                                                className="p-2 text-rose-500/30 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

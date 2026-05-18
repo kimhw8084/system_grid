@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check, ShieldAlert } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch, subscribeToLatency } from "./api/apiClient"
 import { errorManager, useErrors } from "./stores/errorStore"
@@ -133,14 +133,55 @@ const NavTab = ({ icon: Icon, label, path, active }: any) => (
   </Link>
 )
 
-const SidebarItem = ({ icon: Icon, label, path, active, isOpen }: any) => (
-  <Link to={path} className={`w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-300 relative ${active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
-    <Icon size={18} className={!isOpen && active ? "text-white" : ""} />
-    {isOpen && <span className="font-bold text-[11px] uppercase tracking-wider">{label}</span>}
-    {active && isOpen && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
-    {active && !isOpen && <motion.div layoutId="active-pill-dot" className="absolute right-2 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#3b82f6]" />}
-  </Link>
-)
+const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled }: any) => {
+  const content = (
+    <div className={`w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
+      <Icon size={18} className={!isOpen && active ? "text-white" : ""} />
+      {isOpen && <span className="font-bold text-[11px] uppercase tracking-wider">{label}</span>}
+      {active && isOpen && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
+      {active && !isOpen && <motion.div layoutId="active-pill-dot" className="absolute right-2 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#3b82f6]" />}
+    </div>
+  );
+
+  if (disabled) return content;
+  return <Link to={path}>{content}</Link>;
+}
+
+const ProtectedRoute = ({ children, view, userProfile }: any) => {
+  const is_admin = userProfile?.is_admin;
+  const permissions = userProfile?.permissions || {};
+  const hasRead = is_admin || (permissions[view] >= 1);
+
+  if (userProfile && !hasRead) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mb-8 border border-rose-500/20 shadow-[0_0_40px_rgba(244,63,94,0.15)] relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ShieldAlert size={40} className="text-rose-500 relative z-10" />
+        </div>
+        
+        <h1 className="text-5xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none mb-2">Access <span className="text-rose-500">Denied</span></h1>
+        <p className="text-slate-500 text-[10px] mt-4 uppercase font-black tracking-[0.2em] max-w-md leading-relaxed border-t border-white/5 pt-6">
+          Your current security clearance (ID: {userProfile.id}) does not permit viewing the <span className="text-blue-500 font-black">{view.toUpperCase()}</span> matrix.
+        </p>
+        
+        <div className="flex flex-col items-center gap-6 mt-12">
+           <Link 
+              to="/" 
+              className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+           >
+              <LayoutDashboard size={16} /> Return to Neutral Zone
+           </Link>
+           <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              Contact Sector-01 Systems Administrator for elevated privileges.
+           </p>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+};
 
 const PatchNotesModal = ({ onClose }: any) => {
   const [expandedIndex, setExpandedIndex] = useState(0)
@@ -430,19 +471,19 @@ function MainLayout() {
         )}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Search} label="Research" path="/research" active={location.pathname === "/research"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.projects >= 1)} />
+          <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.racks >= 1)} />
+          <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.assets >= 1)} />
+          <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.services >= 1)} />
+          <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.external >= 1)} />
+          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.network >= 1)} />
+          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.architecture >= 1)} />
+          <SidebarItem icon={Search} label="Research" path="/research" active={location.pathname === "/research"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.research >= 1)} />
+          <SidebarItem icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.far >= 1)} />
+          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.monitoring >= 1)} />
+          <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.vendors >= 1)} />
+          <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.knowledge >= 1)} />
+          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.logs >= 1)} />
         </nav>
         
         {/* User Profile Section */}
@@ -538,20 +579,20 @@ function MainLayout() {
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/racks" element={<RackTemp />} />
-              <Route path="/asset" element={<Assets />} />
-              <Route path="/services" element={<ServiceRegistry />} />
-              <Route path="/external" element={<External />} />
-              <Route path="/network" element={<NetworkFabric />} />
-              <Route path="/architecture" element={<DataFlowDesigner />} />
-              <Route path="/research" element={<Research />} />
-              <Route path="/far" element={<FAR />} />
-              <Route path="/monitoring" element={<MonitoringGrid />} />
-              <Route path="/vendors" element={<Vendor />} />
-              <Route path="/knowledge" element={<Knowledge />} />
-              <Route path="/logs" element={<AuditLogs />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/projects" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
+              <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><RackTemp /></ProtectedRoute>} />
+              <Route path="/asset" element={<ProtectedRoute view="assets" userProfile={userProfile}><Assets /></ProtectedRoute>} />
+              <Route path="/services" element={<ProtectedRoute view="services" userProfile={userProfile}><ServiceRegistry /></ProtectedRoute>} />
+              <Route path="/external" element={<ProtectedRoute view="external" userProfile={userProfile}><External /></ProtectedRoute>} />
+              <Route path="/network" element={<ProtectedRoute view="network" userProfile={userProfile}><NetworkFabric /></ProtectedRoute>} />
+              <Route path="/architecture" element={<ProtectedRoute view="architecture" userProfile={userProfile}><DataFlowDesigner /></ProtectedRoute>} />
+              <Route path="/research" element={<ProtectedRoute view="research" userProfile={userProfile}><Research /></ProtectedRoute>} />
+              <Route path="/far" element={<ProtectedRoute view="far" userProfile={userProfile}><FAR /></ProtectedRoute>} />
+              <Route path="/monitoring" element={<ProtectedRoute view="monitoring" userProfile={userProfile}><MonitoringGrid /></ProtectedRoute>} />
+              <Route path="/vendors" element={<ProtectedRoute view="vendors" userProfile={userProfile}><Vendor /></ProtectedRoute>} />
+              <Route path="/knowledge" element={<ProtectedRoute view="knowledge" userProfile={userProfile}><Knowledge /></ProtectedRoute>} />
+              <Route path="/logs" element={<ProtectedRoute view="logs" userProfile={userProfile}><AuditLogs /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute view="settings" userProfile={userProfile}><SettingsPage /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>

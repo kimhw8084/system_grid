@@ -564,3 +564,40 @@ class KnowledgeEntryCreate(KnowledgeEntryBase): pass
 class KnowledgeEntryResponse(KnowledgeEntryBase, BaseSchema):
     is_deleted: bool = False
     qa_threads: List[KnowledgeQAResponse] = []
+
+# --- USER MANAGEMENT SCHEMAS ---
+
+class RoleBase(BaseModel):
+    name: str
+    permissions: Dict[str, Any] = {} # { "projects": "read", ... }
+
+class RoleCreate(RoleBase): pass
+class RoleResponse(RoleBase, BaseSchema): pass
+
+class OperatorBase(BaseModel):
+    external_id: str
+    username: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    team: Optional[str] = None
+    role_id: Optional[int] = None
+    custom_permissions: Dict[str, Any] = {} 
+    registration_status: Optional[str] = "Pending"
+    is_admin: bool = False
+
+class OperatorCreate(OperatorBase): pass
+class OperatorUpdate(BaseModel):
+    external_id: Optional[str] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    department: Optional[str] = None
+    team: Optional[str] = None
+    role_id: Optional[int] = None
+    custom_permissions: Optional[Dict[str, Any]] = None
+    registration_status: Optional[str] = None
+    is_admin: Optional[bool] = None
+
+class OperatorResponse(OperatorBase, BaseSchema):
+    role: Optional[RoleResponse] = None
