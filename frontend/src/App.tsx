@@ -456,8 +456,8 @@ function MainLayout() {
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col min-w-0">
-                   <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">{userProfile?.username || 'Operator'}</span>
-                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">{userProfile?.department || 'Sector-01'}</span>
+                   <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">{userProfile?.full_name || userProfile?.username || 'Operator'}</span>
+                   <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">ID: {userProfile?.id || userProfile?.username || '0000'}</span>
                 </div>
               )}
            </button>

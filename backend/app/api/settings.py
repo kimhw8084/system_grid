@@ -29,10 +29,11 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
     if not operator:
         # Return a synthetic profile if not found in DB
         return {
+            "id": user_id,
             "username": user_id,
             "full_name": user_id.replace("_", " ").title(),
             "role": "Unknown",
-            "department": "Infrastructure",
+            "department": "Sector-01",
             "is_external": True
         }
     
@@ -48,14 +49,29 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
 
 @router.get("/user/env-vars")
 async def get_user_env_vars():
-    # Return user-specific environment context (mostly UI session flags)
+    # Return user-specific environment context (Mostly OS-level forensics)
     user_id = get_current_user_id()
-    return {
-        "USER_ID": user_id,
-        "SESSION_TYPE": "PROXIED" if os.environ.get("HTTP_X_FORWARDED_FOR") else "DIRECT",
-        "DEBUG_MODE": os.environ.get("VITE_UI_DEBUG_LOGGING", "false").lower() == "true",
-        "WORKSPACE_ROOT": os.getcwd()
-    }
+    
+    # Sensitive patterns to redact
+    redact_patterns = ["KEY", "SECRET", "PASSWORD", "TOKEN", "AUTH", "CREDENTIAL"]
+    
+    env_data = {}
+    for key, value in os.environ.items():
+        # Check if the key is sensitive
+        is_sensitive = any(pattern in key.upper() for pattern in redact_patterns)
+        
+        if is_sensitive:
+            env_data[key] = "********"
+        else:
+            env_data[key] = value
+            
+    # Add some calculated fields
+    env_data["USER_ID"] = user_id
+    env_data["SESSION_TYPE"] = "PROXIED" if os.environ.get("HTTP_X_FORWARDED_FOR") else "DIRECT"
+    env_data["DEBUG_MODE"] = str(os.environ.get("VITE_UI_DEBUG_LOGGING", "false").lower() == "true")
+    env_data["WORKSPACE_ROOT"] = os.getcwd()
+    
+    return env_data
 
 @router.post("/user/settings")
 @router.patch("/user/settings")
