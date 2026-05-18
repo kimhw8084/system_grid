@@ -110,11 +110,17 @@ const edgeTypes = { labeled: LabeledEdge };
 
 // --- Vertical Swimlane Flow Engine (Dynamic Participant Lanes) ---
 
-const ParticipantLaneHeader = ({ lane, onRemove, isPrimary }: any) => (
-  <div className="flex flex-col gap-3 pointer-events-auto">
+const ParticipantLaneHeader = ({ lane, onRemove, isPrimary, onAddNode }: any) => (
+  <div className="flex flex-col gap-4 pointer-events-auto">
     <div className="flex items-center justify-between">
-      <div className="p-2.5 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
-        {lane.type === 'service' ? <Database size={16}/> : <Server size={16}/>}
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 rounded-lg text-white shadow-xl" style={{ backgroundColor: lane.color }}>
+          {lane.type === 'service' ? <Database size={16}/> : <Server size={16}/>}
+        </div>
+        <div>
+          <h4 className="text-lg font-bold uppercase tracking-[0.15em] text-white leading-tight break-words max-w-[200px]">{lane.label}</h4>
+          <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
+        </div>
       </div>
       {!isPrimary && (
         <button onClick={() => onRemove(lane.id)} className="p-1.5 hover:bg-rose-500/10 text-slate-600 hover:text-rose-500 transition-all rounded-lg">
@@ -122,9 +128,20 @@ const ParticipantLaneHeader = ({ lane, onRemove, isPrimary }: any) => (
         </button>
       )}
     </div>
-    <div>
-      <h4 className="text-lg font-bold uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
-      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
+    
+    <div className="flex items-center gap-2">
+      <button 
+        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'process'); }} 
+        className="flex-1 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/20 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg"
+      >
+        <Plus size={12}/> <span>Logic</span>
+      </button>
+      <button 
+        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'diamond'); }} 
+        className="flex-1 py-2 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/20 rounded-lg text-[8px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg"
+      >
+        <Diamond size={12}/> <span>Cond</span>
+      </button>
     </div>
   </div>
 )
@@ -134,7 +151,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#3b82f6'
 
   return (
-    <div className={`glass-panel min-w-[280px] rounded-lg border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
+    <div className={`glass-panel w-[300px] rounded-lg border-2 transition-all duration-300 shadow-2xl overflow-hidden ${selected ? 'ring-4 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}40`, backgroundColor: '#0f172a' }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg text-white shadow-lg" style={{ backgroundColor: laneColor }}>
@@ -191,12 +208,12 @@ const DiamondNode = ({ id, data, selected }: any) => {
 
   return (
     <div className="relative group p-6">
-      <div className={`w-24 h-24 rotate-45 border-2 flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${selected ? 'ring-4 ring-amber-500/20' : ''}`} style={{ borderColor: `${laneColor}80`, backgroundColor: '#0f172a' }}>
+      <div className={`w-28 h-28 rotate-45 border-2 flex items-center justify-center transition-all duration-300 shadow-2xl relative z-10 ${selected ? 'ring-4 ring-amber-500/20' : ''}`} style={{ borderColor: `${laneColor}80`, backgroundColor: '#0f172a' }}>
         <div className="-rotate-45 flex flex-col items-center px-2 text-center">
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
-            className="bg-transparent border-none text-[9px] font-bold uppercase text-white text-center outline-none w-16 placeholder:text-slate-700 nodrag"
+            className="bg-transparent border-none text-[9px] font-bold uppercase text-white text-center outline-none w-20 placeholder:text-slate-700 nodrag"
             placeholder="IF"
           />
         </div>
@@ -290,9 +307,9 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
       return nextNodes.map(node => {
         const laneIdx = lanes.findIndex(l => l.id === node.data.laneId);
         if (laneIdx === -1) return node;
-        const nodeWidth = node.type === 'logicProcess' ? 280 : 96;
+        const nodeWidth = node.type === 'logicProcess' ? 300 : 160; // 160 includes padding for Diamond
         const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2);
-        if (node.position.x !== centerX) {
+        if (Math.abs(node.position.x - centerX) > 0.1) {
           return { ...node, position: { ...node.position, x: centerX } };
         }
         return node;
@@ -320,11 +337,12 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const addNode = (laneId: string, type: 'process' | 'diamond') => {
     const laneIdx = lanes.findIndex(l => l.id === laneId)
     const lane = lanes[laneIdx]
-    const nodeWidth = type === 'process' ? 280 : 96
+    const nodeWidth = type === 'process' ? 300 : 160
     const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
     const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 200
-    const y = maxY + (laneNodes.length > 0 ? 200 : 0)
+    const minY = 350 // Start below header
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : minY - 200
+    const y = maxY + 200
 
     const newNode = { 
       id: `v-step-${Date.now()}`, 
@@ -395,21 +413,12 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           {lanes.map((lane, idx) => (
             <div key={lane.id} className="relative border-r border-white/5 bg-white/[0.01] pointer-events-none" style={{ width: 350, minWidth: 350 }}>
                <div className="p-8 pt-12 pointer-events-none">
-                  <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
-                  <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'process'); }} 
-                       className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl nodrag"
-                     >
-                        <Plus size={16}/> <span>Add Logic</span>
-                     </button>
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'diamond'); }} 
-                       className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl nodrag"
-                     >
-                        <Diamond size={16}/> <span>Add Condition</span>
-                     </button>
-                  </div>
+                  <ParticipantLaneHeader 
+                    lane={lane} 
+                    isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} 
+                    onRemove={removeLane} 
+                    onAddNode={addNode}
+                  />
                </div>
             </div>
           ))}
@@ -496,6 +505,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
             minZoom={1}
             maxZoom={1}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            connectionMode={ConnectionMode.Loose}
           >
             <LanesLayer />
             <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
