@@ -58,11 +58,11 @@ const DeviceNode = ({ data, selected }: any) => {
     <div className={`glass-panel min-w-[300px] rounded-lg border-2 transition-all duration-300 overflow-hidden relative shadow-2xl ${selected ? 'border-blue-500 bg-blue-500/10' : isImpacted ? 'border-rose-500 bg-rose-500/10' : 'border-white/10 bg-slate-900/60'}`}>
       {visits.length > 0 && (
         <div className="absolute -top-3 -left-3 flex -space-x-1 z-50">
-          {visits.map((v: number) => <div key={v} className="w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-950 flex items-center justify-center text-[10px] font-black text-white shadow-xl animate-bounce" style={{ animationDelay: `${v * 0.1}s` }}>{v}</div>)}
+          {visits.map((v: number) => <div key={v} className="w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xl animate-bounce" style={{ animationDelay: `${v * 0.1}s` }}>{v}</div>)}
         </div>
       )}
       <div className={`px-4 py-3 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/20' : 'bg-white/5'}`}>
-         <div className="flex items-center space-x-3"><div className={`p-2 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : 'bg-blue-600/20 text-blue-400'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[12px] font-black uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p><p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address}</p></div></div>
+         <div className="flex items-center space-x-3"><div className={`p-2 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : 'bg-blue-600/20 text-blue-400'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[12px] font-bold uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p><p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address}</p></div></div>
       </div>
       <div className="p-4 space-y-4">
          <div className="space-y-1">
@@ -84,10 +84,10 @@ const DeviceNode = ({ data, selected }: any) => {
   )
 }
 
-const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-4 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-3 w-full shadow-xl ${selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-slate-900/60'}`}><div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[11px] font-black uppercase text-emerald-400 truncate tracking-tight">{data.name}</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-500 border-none !right-[-4px]" /></div>)
-const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[260px] rounded-lg border-2 transition-all duration-300 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/20 bg-slate-900/40'}`}><div className="flex items-center space-x-4"><div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400"><Globe size={20}/></div><div className="min-w-0"><p className="text-[12px] font-black uppercase text-indigo-400 truncate tracking-tight">{data.name}</p></div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-500 border-none !right-[-4px]" /></div>)
-const ConditionNode = ({ data, selected }: any) => (<div className={`w-20 h-20 rotate-45 border-2 flex items-center justify-center transition-all ${selected ? 'border-amber-500 bg-amber-500/20' : 'border-amber-500/40 bg-slate-900/60'}`}><div className="-rotate-45 flex flex-col items-center"><Diamond size={16} className="text-amber-500 mb-1"/><span className="text-[8px] font-black uppercase text-white">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-1px]" /></div>)
-const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-4 min-w-[200px] rounded-lg border-2 transition-all duration-300 ${selected ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-slate-900/60'}`}><div className="flex items-center gap-2 text-blue-400 mb-2"><StickyNote size={12}/><span className="text-[8px] font-black uppercase tracking-widest">Note</span></div><p className="text-[10px] text-slate-300 font-bold">{data.label}</p></div>)
+const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-4 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-3 w-full shadow-xl ${selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-slate-900/60'}`}><div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase text-emerald-400 truncate tracking-tight">{data.name}</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-500 border-none !right-[-4px]" /></div>)
+const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[260px] rounded-lg border-2 transition-all duration-300 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/20 bg-slate-900/40'}`}><div className="flex items-center space-x-4"><div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400"><Globe size={20}/></div><div className="min-w-0"><p className="text-[12px] font-bold uppercase text-indigo-400 truncate tracking-tight">{data.name}</p></div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-500 border-none !right-[-4px]" /></div>)
+const ConditionNode = ({ data, selected }: any) => (<div className={`w-20 h-20 rotate-45 border-2 flex items-center justify-center transition-all ${selected ? 'border-amber-500 bg-amber-500/20' : 'border-amber-500/40 bg-slate-900/60'}`}><div className="-rotate-45 flex flex-col items-center"><Diamond size={16} className="text-amber-500 mb-1"/><span className="text-[8px] font-bold uppercase text-white">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-1px]" /></div>)
+const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-4 min-w-[200px] rounded-lg border-2 transition-all duration-300 ${selected ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-slate-900/60'}`}><div className="flex items-center gap-2 text-blue-400 mb-2"><StickyNote size={12}/><span className="text-[8px] font-bold uppercase tracking-widest">Note</span></div><p className="text-[10px] text-slate-300 font-bold">{data.label}</p></div>)
 
 const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected, source, target }: any) => {
   const { getEdges } = useReactFlow();
@@ -100,7 +100,7 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: isTraceActive ? '#f59e0b' : (data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color)), strokeWidth: selected || isTraceActive ? 4 : (data?.isImpacted ? 3 : 2), strokeDasharray: isTraceActive ? '5 5' : (Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none'), opacity: selected || data?.isImpacted || isTraceActive ? 1 : 0.6, transition: 'stroke 0.3s' }} />
-      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-2 py-1 rounded border transition-all flex items-center space-x-2 ${selected ? 'bg-slate-900 border-white' : 'bg-slate-950/90 border-white/10'} ${isTraceActive ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}><div className={`w-1 h-1 rounded-full ${isTraceActive ? 'bg-amber-500' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] font-black uppercase tracking-widest ${isTraceActive ? 'text-amber-400' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
+      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-2 py-1 rounded border transition-all flex items-center space-x-2 ${selected ? 'bg-slate-900 border-white' : 'bg-slate-950/90 border-white/10'} ${isTraceActive ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}><div className={`w-1 h-1 rounded-full ${isTraceActive ? 'bg-amber-500' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] font-bold uppercase tracking-widest ${isTraceActive ? 'text-amber-400' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
     </>
   );
 };
@@ -123,8 +123,8 @@ const ParticipantLaneHeader = ({ lane, onRemove, isPrimary }: any) => (
       )}
     </div>
     <div>
-      <h4 className="text-lg font-black uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
-      <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
+      <h4 className="text-lg font-bold uppercase tracking-[0.15em] text-white leading-tight break-words">{lane.label}</h4>
+      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{lane.subLabel}</p>
     </div>
   </div>
 )
@@ -143,7 +143,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })}
-            className="bg-transparent border-none text-[10px] font-black uppercase tracking-tight text-white leading-none outline-none w-36"
+            className="bg-transparent border-none text-[10px] font-bold uppercase tracking-tight text-white leading-none outline-none w-36 nodrag"
             placeholder="PROCESS STEP"
           />
         </div>
@@ -153,7 +153,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
               e.stopPropagation()
               if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
             }} 
-            className={`p-1 rounded-lg transition-all ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
+            className={`p-1 rounded-lg transition-all nodrag ${isDeleting ? 'bg-rose-600 text-white' : 'hover:bg-rose-500/10 text-rose-500'}`}
           >
             <Trash2 size={12}/>
           </button>
@@ -163,17 +163,17 @@ const ProcessNode = ({ id, data, selected }: any) => {
         <textarea 
           value={data.description || ''} 
           onChange={e => data.onChange(id, { description: e.target.value })} 
-          className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[70px] transition-all" 
+          className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 resize-none min-h-[70px] transition-all nodrag" 
           placeholder="TECHNICAL EXECUTION..." 
         />
         <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/5">
           <div className="space-y-1">
-            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1">Input</label>
-            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black text-blue-400 outline-none focus:border-blue-500/40" placeholder="INPUT"/>
+            <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest ml-1">Input</label>
+            <input value={data.input || ''} onChange={e => data.onChange(id, { input: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-bold text-blue-400 outline-none focus:border-blue-500/40 nodrag" placeholder="INPUT"/>
           </div>
           <div className="space-y-1">
-            <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest ml-1 text-right block mr-1">Output</label>
-            <input value={data.output || ''} onChange={e => data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-black text-emerald-400 outline-none focus:border-emerald-500/40 text-right" placeholder="OUTPUT"/>
+            <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest ml-1 text-right block mr-1">Output</label>
+            <input value={data.output || ''} onChange={e => data.outputChange ? data.outputChange(id, e.target.value) : data.onChange(id, { output: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[8px] font-bold text-emerald-400 outline-none focus:border-emerald-500/40 text-right nodrag" placeholder="OUTPUT"/>
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ const DiamondNode = ({ id, data, selected }: any) => {
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })} 
-            className="bg-transparent border-none text-[9px] font-black uppercase text-white text-center outline-none w-16 placeholder:text-slate-700"
+            className="bg-transparent border-none text-[9px] font-bold uppercase text-white text-center outline-none w-16 placeholder:text-slate-700 nodrag"
             placeholder="IF"
           />
         </div>
@@ -211,7 +211,7 @@ const DiamondNode = ({ id, data, selected }: any) => {
             e.stopPropagation()
             if (isDeleting) { data.onDelete(id) } else { setIsDeleting(true); setTimeout(() => setIsDeleting(false), 3000) }
           }} 
-          className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all z-20 ${isDeleting ? 'bg-rose-600 text-white' : 'bg-slate-900/80 hover:bg-rose-500/20 text-rose-500'}`}
+          className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all z-20 nodrag ${isDeleting ? 'bg-rose-600 text-white' : 'bg-slate-900/80 hover:bg-rose-500/20 text-rose-500'}`}
         >
           <Trash2 size={12}/>
         </button>
@@ -230,7 +230,7 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
           <input 
             value={data?.label || ''} 
             onChange={e => data.onLabelChange(id, e.target.value)} 
-            className={`bg-[#0f172a] border border-white/10 rounded-lg px-2 py-0.5 text-[8px] font-black text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
+            className={`bg-[#0f172a] border border-white/10 rounded-lg px-2 py-0.5 text-[8px] font-bold text-white uppercase outline-none focus:border-blue-500 shadow-2xl transition-all nodrag ${selected ? 'scale-110 border-blue-500 bg-blue-600/10' : ''}`} 
             placeholder="FLOW" 
           />
         </div>
@@ -240,7 +240,7 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
 }
 
 const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }: any) => {
-  const { fitView } = useReactFlow()
+  const { setViewport } = useReactFlow()
   if (!edge || !sourceNode || !targetNode) return null
 
   const logicManifest = useMemo(() => edge?.data?.logic_json || {}, [edge])
@@ -284,13 +284,25 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     })))
   }, [logicManifest])
 
-  const onNodeDrag = useCallback((_: any, node: Node) => {
-    const laneIdx = lanes.findIndex(l => l.id === node.data.laneId)
-    if (laneIdx === -1) return
-    const nodeWidth = node.type === 'logicProcess' ? 280 : 96
-    const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
-    setInternalNodes(nds => nds.map(n => n.id === node.id ? { ...n, position: { x: centerX, y: n.position.y } } : n))
-  }, [lanes])
+  const onNodesChangeInternal = useCallback((changes: NodeChange[]) => {
+    setInternalNodes((nds) => {
+      const nextNodes = applyNodeChanges(changes, nds);
+      return nextNodes.map(node => {
+        const laneIdx = lanes.findIndex(l => l.id === node.data.laneId);
+        if (laneIdx === -1) return node;
+        const nodeWidth = node.type === 'logicProcess' ? 280 : 96;
+        const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2);
+        if (node.position.x !== centerX) {
+          return { ...node, position: { ...node.position, x: centerX } };
+        }
+        return node;
+      });
+    });
+  }, [lanes, setInternalNodes]);
+
+  const onEdgesChangeInternal = useCallback((changes: EdgeChange[]) => {
+    setInternalEdges((eds) => applyEdgeChanges(changes, eds));
+  }, [setInternalEdges]);
 
   const onConnect = useCallback((params: Connection) => { 
     const newEdge = { 
@@ -311,7 +323,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     const nodeWidth = type === 'process' ? 280 : 96
     const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
     const laneNodes = internalNodes.filter(n => n.data.laneId === laneId)
-    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 400
+    const maxY = laneNodes.length > 0 ? Math.max(...laneNodes.map(n => n.position.y)) : 200
     const y = maxY + (laneNodes.length > 0 ? 200 : 0)
 
     const newNode = { 
@@ -379,21 +391,21 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   const LanesLayer = () => {
     return (
       <Panel position="top-left" className="w-full h-full pointer-events-none !m-0 p-0">
-        <div className="flex h-full">
+        <div className="flex h-full pointer-events-none">
           {lanes.map((lane, idx) => (
-            <div key={lane.id} className="relative border-r border-white/5 bg-white/[0.01]" style={{ width: 350, minWidth: 350 }}>
-               <div className="p-8 pt-12">
+            <div key={lane.id} className="relative border-r border-white/5 bg-white/[0.01] pointer-events-none" style={{ width: 350, minWidth: 350 }}>
+               <div className="p-8 pt-12 pointer-events-none">
                   <ParticipantLaneHeader lane={lane} isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} onRemove={removeLane} />
                   <div className="mt-12 flex flex-col gap-3 pointer-events-auto">
                      <button 
                        onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'process'); }} 
-                       className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl"
+                       className="w-full py-3 bg-slate-900/60 hover:bg-blue-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl nodrag"
                      >
                         <Plus size={16}/> <span>Add Logic</span>
                      </button>
                      <button 
                        onClick={(e) => { e.stopPropagation(); addNode(lane.id, 'diamond'); }} 
-                       className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl"
+                       className="w-full py-3 bg-slate-900/60 hover:bg-amber-600/20 border border-white/10 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-amber-400 transition-all flex items-center justify-center gap-2 backdrop-blur-md shadow-xl nodrag"
                      >
                         <Diamond size={16}/> <span>Add Condition</span>
                      </button>
@@ -413,8 +425,8 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-600 rounded-lg text-white shadow-xl shadow-blue-500/30"><Workflow size={20}/></div>
             <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight">Service Logic</h3>
-              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.4em] mt-1">Participant Orchestrator</p>
+              <h3 className="text-lg font-bold text-white uppercase tracking-tight">Service Logic</h3>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-1">Participant Orchestrator</p>
             </div>
           </div>
         </div>
@@ -437,7 +449,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                     <Plus size={14} className="text-slate-600 group-hover:text-blue-500"/>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase ${svc.device_id === sourceNode.data.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[7px] font-bold uppercase ${svc.device_id === sourceNode.data.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
                       {svc.device_id === sourceNode.data.id ? 'SOURCE' : 'TARGET'}
                     </span>
                     <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 truncate">{svc.service_type || 'Generic Service'}</p>
@@ -455,8 +467,8 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
         </div>
 
         <div className="p-6 border-t border-white/10 bg-black/40 space-y-3">
-          <button onClick={handleSaveFlow} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-widest rounded-lg shadow-xl transition-all active:scale-95">Sync Workflow</button>
-          <button onClick={onClose} className="w-full py-3.5 bg-white/5 hover:bg-white/10 text-slate-400 text-[11px] font-black uppercase tracking-widest rounded-lg transition-all">Exit Builder</button>
+          <button onClick={handleSaveFlow} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold uppercase tracking-widest rounded-lg shadow-xl transition-all active:scale-95">Sync Workflow</button>
+          <button onClick={onClose} className="w-full py-3.5 bg-white/5 hover:bg-white/10 text-slate-400 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-all">Exit Builder</button>
         </div>
       </div>
 
@@ -465,10 +477,9 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           <ReactFlow 
             nodes={internalNodes} 
             edges={internalEdges} 
-            onNodesChange={(c) => setInternalNodes(nds => applyNodeChanges(c, nds))} 
-            onEdgesChange={(c) => setInternalEdges(eds => applyEdgeChanges(c, eds))} 
+            onNodesChange={onNodesChangeInternal} 
+            onEdgesChange={onEdgesChangeInternal} 
             onConnect={onConnect} 
-            onNodeDrag={onNodeDrag}
             nodeTypes={explorerNodeTypes} 
             edgeTypes={explorerEdgeTypes} 
             snapToGrid 
@@ -488,7 +499,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           >
             <LanesLayer />
             <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
-            <Controls showZoom={false} showInteractive={false} className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
+            <Controls showZoom={false} showInteractive={false} showFitView={false} className="bg-slate-900 border-2 border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
           </ReactFlow>
         </div>
       </div>
@@ -523,7 +534,7 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
               <Settings size={22} />
             </div>
             <div>
-              <h2 className="text-xl font-black uppercase text-white tracking-tighter leading-none">{isNew ? 'New Architecture' : 'Manifest Settings'}</h2>
+              <h2 className="text-xl font-bold uppercase text-white tracking-tighter leading-none">{isNew ? 'New Architecture' : 'Manifest Settings'}</h2>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white">
@@ -532,30 +543,30 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
         </div>
         <div className="mt-8 space-y-6">
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Name (Required)</label>
+            <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Name (Required)</label>
             <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" placeholder="e.g. CORE-PAYMENT-INGRESS" />
           </div>
           <div className="space-y-2">
-            <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose (Required)</label>
+            <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose (Required)</label>
             <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Category (Required)</label>
+              <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Category (Required)</label>
               <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] ml-1">Status (Required)</label>
+              <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Status (Required)</label>
               <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
           </div>
           <div className="pt-6 border-t border-white/5 flex gap-4">
-             <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-black uppercase text-[11px] tracking-widest rounded-lg transition-all">Cancel</button>
-             <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
+             <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-bold uppercase text-[11px] tracking-widest rounded-lg transition-all">Cancel</button>
+             <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
           </div>
         </div>
       </motion.div>
@@ -582,7 +593,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
       width: 160,
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <div className={`px-3 py-1 rounded-md border text-[10px] font-black uppercase tracking-widest ${
+          <div className={`px-3 py-1 rounded-md border text-[10px] font-bold uppercase tracking-widest ${
             p.value === 'Up to date' ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400' : 
             p.value === 'Deprecated' ? 'bg-rose-500/10 border-rose-500/40 text-rose-400' : 
             'bg-blue-500/10 border-blue-500/40 text-blue-400'
@@ -595,7 +606,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
       width: 140,
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
-          <button onClick={() => onEdit(p.data)} className="flex items-center space-x-2 px-4 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all text-[10px] font-black uppercase">
+          <button onClick={() => onEdit(p.data)} className="flex items-center space-x-2 px-4 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all text-[10px] font-bold uppercase">
             <Edit3 size={12}/> <span>Initialize</span>
           </button>
         </div>
@@ -669,7 +680,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
    return (
      <div className="w-[420px] glass-panel h-full border-l border-white/5 flex flex-col p-8 space-y-10 bg-[#0f172a]/95 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar shadow-[-20px_0_50px_rgba(0,0,0,0.5)]">
        <div className="flex items-center justify-between border-b border-white/5 pb-4">
-         <h2 className="text-xl font-black uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2>
+         <h2 className="text-xl font-bold uppercase text-white tracking-tight flex items-center gap-3"><Zap size={22} className="text-blue-500"/> Configuration</h2>
          <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={20}/></button>
        </div>
        {selectedNode ? (
@@ -697,7 +708,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
                      >
                        <div className="flex flex-col">
                          <span>{s.name}</span>
-                         {isAdded && <span className="text-[7px] font-black uppercase mt-1">Already Added</span>}
+                         {isAdded && <span className="text-[7px] font-bold uppercase mt-1">Already Added</span>}
                        </div>
                      </button>
                    );
@@ -706,7 +717,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              </div>
            )}
            <div className="space-y-4">
-             <button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Decommission Node</button>
+             <button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Decommission Node</button>
            </div>
          </div>
        ) : selectedEdge ? (
@@ -714,17 +725,17 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
            <div className="p-6 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4">
              <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Flow Vector Dynamics</p>
              <div className="space-y-4">
-               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Flow Identifier</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
-               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Protocol / Schema</label><select value={edgeForm.protocol || 'HTTPS'} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-               <div className="space-y-2"><label className="text-[8px] font-black uppercase text-slate-500 tracking-widest ml-1">Flow Classification</label><div className="grid grid-cols-2 gap-2">{FLOW_TYPES.map(t => <button key={t.id} onClick={() => handleEdgeChange('type', t.id)} className={`p-2 rounded-lg border text-[9px] font-black uppercase transition-all ${edgeForm.type === t.id ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-black/40 border-white/5 text-slate-500 hover:text-slate-300'}`}>{t.label}</button>)}</div></div>
+               <div className="space-y-2"><label className="text-[8px] font-bold uppercase text-slate-500 tracking-widest ml-1">Flow Identifier</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
+               <div className="space-y-2"><label className="text-[8px] font-bold uppercase text-slate-500 tracking-widest ml-1">Protocol / Schema</label><select value={edgeForm.protocol || 'HTTPS'} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+               <div className="space-y-2"><label className="text-[8px] font-bold uppercase text-slate-500 tracking-widest ml-1">Flow Classification</label><div className="grid grid-cols-2 gap-2">{FLOW_TYPES.map(t => <button key={t.id} onClick={() => handleEdgeChange('type', t.id)} className={`p-2 rounded-lg border text-[9px] font-bold uppercase transition-all ${edgeForm.type === t.id ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-black/40 border-white/5 text-slate-500 hover:text-slate-300'}`}>{t.label}</button>)}</div></div>
              </div>
            </div>
            <div className="space-y-4">
-             <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"><Workflow size={16}/> Service Logic Builder</button>
-             <button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Sever Connection</button>
+             <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"><Workflow size={16}/> Service Logic Builder</button>
+             <button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all border border-rose-500/20 flex items-center justify-center gap-2"><Trash2 size={14}/> Sever Connection</button>
            </div>
          </div>
-       ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-30"><Layers size={60} className="text-slate-600"/><p className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] text-center px-10">Select a manifest entity to initialize control interface</p></div>)}
+       ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-6 opacity-30"><Layers size={60} className="text-slate-600"/><p className="text-[10px] font-bold uppercase text-slate-500 tracking-[0.3em] text-center px-10">Select a manifest entity to initialize control interface</p></div>)}
      </div>
    )
 }
@@ -777,21 +788,21 @@ function ArchDesignerInner() {
             <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
               <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-2xl shadow-2xl pointer-events-auto">
                 <div className="flex flex-col min-w-[180px] px-4">
-                  <span className="text-xs font-black uppercase text-white tracking-widest truncate">{activeFlow?.name || 'Untitled Architecture'}</span>
+                  <span className="text-xs font-bold uppercase text-white tracking-widest truncate">{activeFlow?.name || 'Untitled Architecture'}</span>
                   <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em]">{activeFlow?.category || 'General'}</span>
                 </div>
                 <div className="h-8 w-px bg-white/10" />
                 <div className="flex items-center space-x-1.5 p-1">
                   <button onClick={() => setIsConfigModalOpen(true)} className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-2">
                     <Info size={14}/>
-                    <span className="text-[9px] font-black uppercase tracking-widest">Arch Info</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">Arch Info</span>
                   </button>
                   <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all border border-white/5" title="Auto Layout"><GitMerge size={16} className="rotate-90"/></button>
                   <button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 border ${dependencyRiskEnabled ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`} title="Impact Mode"><AlertTriangle size={16}/></button>
                   <div className="h-6 w-px bg-white/10 mx-1" />
                   <button onClick={() => setConfirmExitIntent('dashboard')} className="px-4 py-2 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2 border border-white/5">
                     <ChevronLeft size={14}/>
-                    <span className="text-[9px] font-black uppercase tracking-widest">Back</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">Back</span>
                   </button>
                 </div>
               </div>
@@ -800,17 +811,17 @@ function ArchDesignerInner() {
             {!isSidebarOpen && (
               <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
-                <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em]">Inventory</span>
+                <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em]">Inventory</span>
               </button>
             )}
             <AnimatePresence>{isSidebarOpen && (
               <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0f172a]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
                  <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
-                 <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
+                 <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
                  <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                    {inventoryType === 'INTERNAL' ? (
                      <section className="space-y-3">
-                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
                        <div className="grid grid-cols-1 gap-1.5">
                          {filteredAssets.slice(0, 50).map((a: any) => {
                            const isAdded = nodes.some(n => n.id === `device-${a.id}`);
@@ -836,10 +847,10 @@ function ArchDesignerInner() {
                                    {a.hostname || a.name}
                                  </span>
                                  <div className="flex items-center gap-2 mt-1">
-                                   <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[7px] font-black uppercase">
+                                   <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[7px] font-bold uppercase">
                                      {svcCount} {svcCount === 1 ? 'Service' : 'Services'}
                                    </span>
-                                   {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase">Added</span>}
+                                   {isAdded && <span className="text-[7px] font-bold text-emerald-500 uppercase">Added</span>}
                                  </div>
                                </div>
                                {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-blue-500 ml-2" />}
@@ -850,7 +861,7 @@ function ArchDesignerInner() {
                      </section>
                    ) : (
                      <section className="space-y-3">
-                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-black text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
                        <div className="grid grid-cols-1 gap-1.5">
                          {filteredExternal.map((e: any) => {
                            const isAdded = nodes.some(n => n.id === `external-${e.id}`);
@@ -874,7 +885,7 @@ function ArchDesignerInner() {
                                  <span className={`text-[10px] font-bold uppercase truncate ${isAdded ? 'text-emerald-400' : 'text-slate-300 group-hover:text-white'}`}>
                                    {e.name}
                                  </span>
-                                 {isAdded && <span className="text-[7px] font-black text-emerald-500 uppercase mt-1">Added</span>}
+                                 {isAdded && <span className="text-[7px] font-bold text-emerald-500 uppercase mt-1">Added</span>}
                                </div>
                                {isAdded ? <CheckCircle2 size={14} className="text-emerald-500 ml-2" /> : <Plus size={14} className="text-slate-600 group-hover:text-indigo-500 ml-2" />}
                              </button>
@@ -884,7 +895,7 @@ function ArchDesignerInner() {
                      </section>
                    )}
                  </div>
-                 <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-black uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
+                 <div className="p-6 border-t border-white/5 bg-black/20"><button onClick={handleSave} disabled={saveMutation.isPending || !hasUnsavedChanges} className={`w-full py-4 rounded-lg flex items-center justify-center space-x-3 shadow-xl transition-all font-bold uppercase text-xs tracking-widest ${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>{saveMutation.isPending ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}<span>Commit Changes</span></button></div>
               </motion.div>
             )}</AnimatePresence>
             <div className="flex-1 relative h-full">
@@ -895,7 +906,7 @@ function ArchDesignerInner() {
             {!isConfigSidebarOpen && (
               <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
-                <span className="[writing-mode:vertical-lr] text-[8px] font-black uppercase tracking-[0.3em] rotate-180">Configuration</span>
+                <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em] rotate-180">Configuration</span>
               </button>
             )}
             <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsServiceFlowOpen={setIsServiceFlowOpen}/></motion.div>)}</AnimatePresence>

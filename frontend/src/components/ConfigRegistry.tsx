@@ -27,6 +27,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
     },
     onSuccess: () => { 
         queryClient.invalidateQueries({ queryKey: ["settings-options"] }); 
+        queryClient.invalidateQueries({ queryKey: ["settings"] }); 
         setNewValue(""); 
         toast.success(`Added ${newValue}`) 
     },
@@ -47,6 +48,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
     },
     onSuccess: () => { 
         queryClient.invalidateQueries({ queryKey: ["settings-options"] }); 
+        queryClient.invalidateQueries({ queryKey: ["settings"] }); 
         setEditingId(null); 
         toast.success("Option Updated") 
     },
@@ -62,7 +64,11 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
         }
         return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); toast.success("Option Removed") },
+    onSuccess: () => { 
+        queryClient.invalidateQueries({ queryKey: ["settings-options"] }); 
+        queryClient.invalidateQueries({ queryKey: ["settings"] }); 
+        toast.success("Option Removed") 
+    },
     onError: (e: any) => toast.error(e.message)
   })
 
@@ -75,12 +81,12 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
             </div>
             <div className="flex items-center space-x-3">
                 <Icon size={18} className={isExpanded ? 'text-blue-400' : 'text-slate-500'} />
-                <h3 className={`text-[11px] font-black uppercase tracking-[0.2em] ${isExpanded ? 'text-white' : 'text-slate-400'}`}>{title}</h3>
+                <h3 className={`text-[11px] font-bold uppercase tracking-[0.2em] ${isExpanded ? 'text-white' : 'text-slate-400'}`}>{title}</h3>
             </div>
          </div>
          <div className="flex items-center space-x-6">
             <div className="px-3 py-1 rounded-full bg-black/40 border border-white/10 flex items-center space-x-2">
-                <span className="text-[10px] font-black text-blue-400">{options?.length || 0}</span>
+                <span className="text-[10px] font-bold text-blue-400">{options?.length || 0}</span>
                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Entries</span>
             </div>
             <button 
@@ -114,8 +120,8 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                             ) : (
                                 <>
                                     <div className="flex items-center space-x-3 overflow-hidden">
-                                        <span className="text-[9px] font-black text-slate-600">{index + 1}</span>
-                                        <span className="text-[11px] font-black text-slate-200 uppercase truncate tracking-tight">{opt.label}</span>
+                                        <span className="text-[9px] font-bold text-slate-600">{index + 1}</span>
+                                        <span className="text-[11px] font-bold text-slate-200 uppercase truncate tracking-tight">{opt.label}</span>
                                     </div>
                                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
                                         <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); setEditMetadata(opt.metadata_keys?.join(', ') || ""); }} className="p-1.5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded-lg transition-all">
@@ -132,15 +138,15 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                             <div className="mt-2 pl-6 border-l border-white/5">
                                 {editingId === opt.id ? (
                                     <div className="space-y-1">
-                                        <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Metadata Keys (CSV)</label>
+                                        <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Metadata Keys (CSV)</label>
                                         <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname..." className="w-full bg-black/40 border border-white/5 rounded px-2 py-1 text-[9px] outline-none focus:border-blue-500/30 text-white" />
                                     </div>
                                 ) : (
                                     <div className="flex flex-wrap gap-1">
                                         {opt.metadata_keys?.map((k: string) => (
-                                            <span key={k} className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-[4px] text-[7px] font-black uppercase tracking-tighter">{k}</span>
+                                            <span key={k} className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-[4px] text-[7px] font-bold uppercase tracking-tighter">{k}</span>
                                         ))}
-                                        {(!opt.metadata_keys || opt.metadata_keys.length === 0) && <span className="text-[7px] text-slate-600 italic font-bold uppercase tracking-widest">No keys</span>}
+                                        {(!opt.metadata_keys || opt.metadata_keys.length === 0) && <span className="text-[7px] text-slate-600 font-bold uppercase tracking-widest">No keys</span>}
                                     </div>
                                 )}
                             </div>
@@ -150,7 +156,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                     {options?.length === 0 && (
                         <div className="col-span-full py-12 text-center flex flex-col items-center justify-center space-y-3 opacity-30">
                             <Settings size={32} className="text-slate-500" />
-                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">No entries configured for this domain</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">No entries configured for this domain</p>
                         </div>
                     )}
                 </div>
@@ -160,7 +166,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                     value={newValue} 
                     onChange={e => setNewValue(e.target.value)} 
                     placeholder={`Define new ${title} entry...`} 
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[11px] outline-none focus:border-blue-500 transition-all font-black text-white uppercase pr-12 shadow-inner"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[11px] outline-none focus:border-blue-500 transition-all font-bold text-white uppercase pr-12 shadow-inner"
                     onKeyDown={e => e.key === 'Enter' && newValue && addMutation.mutate()}
                     />
                     <button onClick={() => newValue && addMutation.mutate()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-500 transition-all active:scale-90">
@@ -195,7 +201,7 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                             <div className="flex items-center space-x-6">
                                 <div className="p-4 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Layout size={28} /></div>
                                 <div>
-                                    <h2 className="text-2xl font-black uppercase text-white tracking-tighter italic">{title || 'Registry Configuration'}</h2>
+                                    <h2 className="text-2xl font-bold uppercase text-white tracking-tighter">{title || 'Registry Configuration'}</h2>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Global System Parameters & Enumerations</p>
                                 </div>
                             </div>
@@ -217,7 +223,7 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                         </div>
 
                         <div className="p-6 bg-white/2 border-t border-white/5 text-center">
-                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.4em]">SysGrid Core Configuration Node // v3.0.0</p>
+                            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.4em]">SysGrid Core Configuration Node // v3.0.0</p>
                         </div>
                     </motion.div>
                 </div>

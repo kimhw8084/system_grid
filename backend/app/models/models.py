@@ -433,8 +433,6 @@ class Vendor(Base, BaseMixin):
     __tablename__ = "vendors"
     name = Column(String, index=True)
     country = Column(String, default="South Korea")
-    primary_email = Column(String)
-    primary_phone = Column(String)
     primary_personnel_id = Column(Integer, ForeignKey("vendor_personnel.id", ondelete="SET NULL"), nullable=True)
     
     is_deleted = Column(Boolean, default=False)

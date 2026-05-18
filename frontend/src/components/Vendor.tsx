@@ -160,25 +160,6 @@ export default function Vendor() {
       hide: hiddenColumns.includes("country")
     },
     { 
-      field: "primary_email", 
-      headerName: "Primary Email", 
-      width: 180, 
-      filter: true, 
-      cellClass: 'font-mono text-blue-400',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || '---',
-      hide: hiddenColumns.includes("primary_email")
-    },
-    { 
-      field: "primary_phone", 
-      headerName: "Primary Phone", 
-      width: 150, 
-      filter: true, 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value || '---',
-      hide: hiddenColumns.includes("primary_phone")
-    },
-    { 
       field: "primary_personnel_name", 
       headerName: "Primary Personnel", 
       width: 180, 
@@ -187,6 +168,25 @@ export default function Vendor() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value || '---',
       hide: hiddenColumns.includes("primary_personnel_name")
+    },
+    { 
+      field: "primary_personnel_email", 
+      headerName: "Email (Primary)", 
+      width: 180, 
+      filter: true, 
+      cellClass: 'font-mono text-blue-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value || '---',
+      hide: hiddenColumns.includes("primary_personnel_email")
+    },
+    { 
+      field: "primary_personnel_phone", 
+      headerName: "Phone (Primary)", 
+      width: 150, 
+      filter: true, 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value || '---',
+      hide: hiddenColumns.includes("primary_personnel_phone")
     },
     { 
       field: "active_contract_count", 
@@ -266,6 +266,7 @@ export default function Vendor() {
     return vendors.map((v: any) => {
       const contracts = v.contracts || [];
       const personnel = v.personnel || [];
+      const primary = personnel.find((p: any) => p.id === v.primary_personnel_id);
       const now = new Date();
       const activeContracts = contracts.filter((c: any) => {
         const start = c.effective_date ? new Date(c.effective_date) : null;
@@ -279,7 +280,9 @@ export default function Vendor() {
       
       return {
         ...v,
-        primary_personnel_name: personnel.find((p: any) => p.id === v.primary_personnel_id)?.name || null,
+        primary_personnel_name: primary?.name || null,
+        primary_personnel_email: primary?.company_email || null,
+        primary_personnel_phone: primary?.phone || null,
         active_contract_count: activeContracts.length,
         contract_count: contracts.length,
         first_contract_date: startDates.length > 0 ? new Date(Math.min(...startDates)).toISOString() : null,
@@ -771,28 +774,28 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                             ))}
                            </select>
                          ) : (
-                           <p className="text-sm font-bold text-white uppercase">
-                            {vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.name || '---'}
-                           </p>
+                           <div className="flex items-center space-x-3">
+                              <div className="p-2 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20 shadow-lg shadow-blue-500/10">
+                                <User size={16}/>
+                              </div>
+                              <div>
+                                 <p className="text-sm font-bold text-white uppercase tracking-tight">
+                                  {vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.name || 'UNASSIGNED'}
+                                 </p>
+                                 <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                  {vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.position || '---'}
+                                 </p>
+                              </div>
+                           </div>
                          )}
                       </div>
                    </div>
                    <div className="space-y-6">
-                      <div>
-                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Email</label>
-                         {isEditing ? (
-                           <input value={formData.primary_email || ''} onChange={e => updateField('primary_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white font-mono" />
-                         ) : (
-                           <p className="text-sm font-bold text-blue-400 font-mono">{vendor.primary_email || '---'}</p>
-                         )}
+                      <div className="pt-2">
+                         <InfoCard label="Direct Email" icon={Mail} value={vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.company_email} />
                       </div>
                       <div>
-                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Primary Phone</label>
-                         {isEditing ? (
-                           <input value={formData.primary_phone || ''} onChange={e => updateField('primary_phone', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
-                         ) : (
-                           <p className="text-sm font-bold text-white">{vendor.primary_phone || '---'}</p>
-                         )}
+                         <InfoCard label="Contact Phone" icon={Phone} value={vendor.personnel?.find((p:any) => p.id === vendor.primary_personnel_id)?.phone} />
                       </div>
                    </div>
                 </div>
@@ -803,25 +806,25 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                       <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
                         <div className="flex items-center gap-3 text-blue-400">
                           <User size={20} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Personnel</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Personnel</span>
                         </div>
-                        <p className="text-3xl font-black text-white">{vendor.personnel?.length || 0}</p>
+                        <p className="text-3xl font-bold text-white">{vendor.personnel?.length || 0}</p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Assigned Members</p>
                       </div>
                       <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
                         <div className="flex items-center gap-3 text-amber-400">
                           <FileText size={20} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Contracts</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Contracts</span>
                         </div>
-                        <p className="text-3xl font-black text-white">{vendor.contracts?.length || 0}</p>
+                        <p className="text-3xl font-bold text-white">{vendor.contracts?.length || 0}</p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Total SLAs</p>
                       </div>
                       <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
                         <div className="flex items-center gap-3 text-emerald-400">
                           <Check size={20} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Active</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Active</span>
                         </div>
-                        <p className="text-3xl font-black text-white">
+                        <p className="text-3xl font-bold text-white">
                           {vendor.contracts?.filter((c:any) => {
                             const now = new Date();
                             const start = c.effective_date ? new Date(c.effective_date) : null;
@@ -835,9 +838,9 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                       <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2 text-slate-500 opacity-50">
                         <div className="flex items-center gap-3">
                           <Activity size={20} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Insights</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Insights</span>
                         </div>
-                        <p className="text-3xl font-black italic">---</p>
+                        <p className="text-3xl font-bold">---</p>
                         <p className="text-[8px] font-bold uppercase tracking-tighter">Future Metrics</p>
                       </div>
                    </div>
@@ -1318,7 +1321,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                                    {isEditingAcc ? (
                                       <textarea value={formData.accounts[selectedAccIndex].purpose_description} onChange={e => updateAccItem(selectedAccIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
                                    ) : (
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase italic leading-relaxed">{formData.accounts[selectedAccIndex].purpose_description || 'No description provided'}</p>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">{formData.accounts[selectedAccIndex].purpose_description || 'No description provided'}</p>
                                    )}
                                 </div>
                              </div>
@@ -1402,7 +1405,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
                                    {isEditingPc ? (
                                       <textarea value={formData.pcs[selectedPcIndex].purpose_description} onChange={e => updatePcItem(selectedPcIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
                                    ) : (
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase italic leading-relaxed">{formData.pcs[selectedPcIndex].purpose_description || 'No description provided'}</p>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed">{formData.pcs[selectedPcIndex].purpose_description || 'No description provided'}</p>
                                    )}
                                 </div>
                              </div>
@@ -1629,7 +1632,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                            <a href={formData.document_link} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-400 py-2 tracking-tight hover:underline flex items-center gap-2">
                              <ExternalLink size={12} /> View Document
                            </a>
-                         ) : <p className="text-sm font-bold text-slate-500 py-2 tracking-tight italic">No link provided</p>
+                         ) : <p className="text-sm font-bold text-slate-500 py-2 tracking-tight">No link provided</p>
                        )}
                     </div>
                     <div>
@@ -1838,7 +1841,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                                         </>
                                       ) : (
                                         <div className="flex items-center justify-between w-full p-4 bg-black/20 rounded-lg border border-white/5">
-                                          <p className="text-xs font-bold text-slate-400 uppercase tracking-tight italic">{formData.scope_of_work[selectedSowIndex].objective_description || 'No objective defined'}</p>
+                                          <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">{formData.scope_of_work[selectedSowIndex].objective_description || 'No objective defined'}</p>
                                           <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${
                                             formData.scope_of_work[selectedSowIndex].importance === 'Critical' ? 'bg-rose-600 text-white' : 
                                             formData.scope_of_work[selectedSowIndex].importance === 'High' ? 'bg-amber-600 text-white' : 

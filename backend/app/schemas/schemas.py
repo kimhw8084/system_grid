@@ -517,8 +517,6 @@ class VendorContractResponse(VendorContractBase, BaseSchema):
 class VendorBase(BaseModel):
     name: str
     country: Optional[str] = "South Korea"
-    primary_email: Optional[str] = None
-    primary_phone: Optional[str] = None
     primary_personnel_id: Optional[int] = None
     metadata_json: Optional[Dict[str, Any]] = {}
 

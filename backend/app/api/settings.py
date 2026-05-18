@@ -215,6 +215,13 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     elif opt.category == "VendorCountry":
         res = await db.execute(select(models.Vendor).filter(models.Vendor.country == opt.value))
         if res.scalars().first(): in_use = True
+    elif opt.category == "VendorDeviceType":
+        # Check in VendorPersonnel pcs JSON
+        res = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.pcs.contains([{"type": opt.value}])))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "LinkPurpose":
+        res = await db.execute(select(models.PortConnection).filter(models.PortConnection.link_type == opt.value))
+        if res.scalars().first(): in_use = True
     elif opt.category == "Manufacturer":
         res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))
         if res.scalars().first(): in_use = True
