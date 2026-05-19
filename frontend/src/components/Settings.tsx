@@ -96,16 +96,25 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     const colors = ["text-slate-700", "text-blue-500", "text-amber-500", "text-emerald-500"];
     const labels = ["No Access", "Read Only", "Add Only", "Full Control"];
     const Icons = [ShieldAlert, Shield, ShieldCheck, ShieldCheck];
-    const Icon = Icons[level];
+    
+    let numericLevel = 0;
+    if (typeof level === 'number') numericLevel = level;
+    else if (level === 'read') numericLevel = 1;
+    else if (level === 'add') numericLevel = 2;
+    else if (level === 'edit' || level === 'manage') numericLevel = 3;
+    
+    numericLevel = Math.min(3, Math.max(0, Math.floor(numericLevel || 0)));
+    const Icon = Icons[numericLevel] || ShieldAlert;
+    const label = labels[numericLevel] || "No Access";
 
     return (
         <button 
             onClick={onClick}
             className={`flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/5 transition-all gap-1 group w-12`}
-            title={labels[level]}
+            title={label}
         >
-            <Icon size={14} className={`${colors[level]} group-hover:scale-110 transition-transform`} />
-            <span className={`text-[6px] font-black uppercase text-center leading-none ${colors[level]}`}>{labels[level].split(' ').join('\n')}</span>
+            <Icon size={14} className={`${colors[numericLevel]} group-hover:scale-110 transition-transform`} />
+            <span className={`text-[6px] font-black uppercase text-center leading-none ${colors[numericLevel]}`}>{label.split(' ').join('\n')}</span>
         </button>
     )
 }
@@ -383,7 +392,13 @@ result_df = get_user_pool()`)
   }
 
   const togglePermission = (op: any, view: string) => {
-    const current = op.custom_permissions?.[view] ?? 0;
+    const raw = op.custom_permissions?.[view] ?? op.role?.permissions?.[view] ?? op.role?.permissions?.['all'] ?? 0;
+    let current = 0;
+    if (typeof raw === 'number') current = raw;
+    else if (raw === 'read') current = 1;
+    else if (raw === 'add') current = 2;
+    else if (raw === 'edit' || raw === 'manage') current = 3;
+    
     const next = (current + 1) % 4;
     const newPerms = { ...(op.custom_permissions || {}), [view]: next };
     operatorMutation.mutate({ ...op, custom_permissions: newPerms });
@@ -664,7 +679,7 @@ result_df = get_user_pool()`)
                                                 <div className="flex items-center justify-center gap-1">
                                                     {g.views.map(v => (
                                                         <ViewPermissionIcon 
-                                                            key={v} level={op.is_admin ? 3 : (op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? 0)}
+                                                            key={v} level={op.is_admin ? 3 : (op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? op.role?.permissions?.['all'] ?? 0)}
                                                             onClick={() => !op.is_admin && togglePermission(op, v)}
                                                         />
                                                     ))}

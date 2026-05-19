@@ -133,6 +133,15 @@ const NavTab = ({ icon: Icon, label, path, active }: any) => (
   </Link>
 )
 
+const getPermLevel = (perms: any, view: string) => {
+  const val = perms?.[view] ?? perms?.['all'] ?? 0;
+  if (typeof val === 'number') return val;
+  if (val === 'read') return 1;
+  if (val === 'add') return 2;
+  if (val === 'edit' || val === 'manage') return 3;
+  return 0;
+};
+
 const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled }: any) => {
   const content = (
     <div className={`w-full flex items-center px-4 py-3 rounded-2xl transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
@@ -150,7 +159,7 @@ const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled }: any)
 const ProtectedRoute = ({ children, view, userProfile }: any) => {
   const is_admin = userProfile?.is_admin;
   const permissions = userProfile?.permissions || {};
-  const hasRead = is_admin || (permissions[view] >= 1);
+  const hasRead = is_admin || (getPermLevel(permissions, view) >= 1);
 
   if (userProfile && !hasRead) {
     return (
@@ -159,12 +168,12 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
           <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <ShieldAlert size={40} className="text-rose-500 relative z-10" />
         </div>
-        
+
         <h1 className="text-5xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none mb-2">Access <span className="text-rose-500">Denied</span></h1>
         <p className="text-slate-500 text-[10px] mt-4 uppercase font-black tracking-[0.2em] max-w-md leading-relaxed border-t border-white/5 pt-6">
           Your current security clearance (ID: {userProfile.id}) does not permit viewing the <span className="text-blue-500 font-black">{view.toUpperCase()}</span> matrix.
         </p>
-        
+
         <div className="flex flex-col items-center gap-6 mt-12">
            <Link 
               to="/" 
@@ -179,9 +188,9 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
       </div>
     );
   }
-
   return children;
-};
+}
+;
 
 const PatchNotesModal = ({ onClose }: any) => {
   const [expandedIndex, setExpandedIndex] = useState(0)
@@ -471,19 +480,19 @@ function MainLayout() {
         )}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.projects >= 1)} />
-          <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.racks >= 1)} />
-          <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.assets >= 1)} />
-          <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.services >= 1)} />
-          <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.external >= 1)} />
-          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.network >= 1)} />
-          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.architecture >= 1)} />
-          <SidebarItem icon={Search} label="Research" path="/research" active={location.pathname === "/research"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.research >= 1)} />
-          <SidebarItem icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.far >= 1)} />
-          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.monitoring >= 1)} />
-          <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.vendors >= 1)} />
-          <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.knowledge >= 1)} />
-          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && !(userProfile.permissions?.logs >= 1)} />
+          <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "projects") < 1} />
+          <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "racks") < 1} />
+          <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "assets") < 1} />
+          <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "services") < 1} />
+          <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "external") < 1} />
+          <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "network") < 1} />
+          <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "architecture") < 1} />
+          <SidebarItem icon={Search} label="Research" path="/research" active={location.pathname === "/research"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "research") < 1} />
+          <SidebarItem icon={AlertTriangle} label="FAR" path="/far" active={location.pathname === "/far"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "far") < 1} />
+          <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "monitoring") < 1} />
+          <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "vendors") < 1} />
+          <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "knowledge") < 1} />
+          <SidebarItem icon={Terminal} label="Logs" path="/logs" active={location.pathname === "/logs"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "logs") < 1} />
         </nav>
         
         {/* User Profile Section */}
