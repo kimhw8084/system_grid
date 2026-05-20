@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ForceGraph2D from 'react-force-graph-2d'
@@ -78,8 +79,6 @@ const SharedServiceModals = ({
     </>
   )
 }
-
-import { createPortal } from 'react-dom'
 
 const CopyButton = ({ value, label }: { value: string, label?: string }) => {
   const [copied, setCopied] = useState(false);
@@ -636,22 +635,6 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
     </div>
   )
 }
-
-const CopyButton = ({ value, label }: { value: string, label?: string }) => {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success(`${label || 'Value'} Copied`);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded transition-all text-slate-500 hover:text-blue-400">
-      {copied ? <Check size={10} /> : <Clipboard size={10} />}
-    </button>
-  );
-};
 
 const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: number, type: 'dependency' | 'network', devices: any[], onNodeClick?: (d: any) => void }) => {
   const fgRef = React.useRef<any>();
