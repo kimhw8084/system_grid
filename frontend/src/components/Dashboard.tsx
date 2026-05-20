@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { 
   LayoutDashboard, Server, Network, Activity, 
@@ -10,58 +10,94 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
-import { Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
-const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={{ delay, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-    className="group relative h-full cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03]"
-    onClick={onClick}
-  >
-    <div className={`absolute -right-4 -top-4 h-24 w-24 bg-gradient-to-br ${color} opacity-[0.03] blur-2xl group-hover:opacity-[0.1] transition-opacity`} />
-    
-    <div className="flex items-start justify-between">
-      <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 shadow-inner transition-transform group-hover:scale-110`}>
-        <Icon size={24} className="text-white" />
+const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => {
+  const navigate = useNavigate();
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+      className="group relative h-full cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03]"
+      onClick={onClick}
+    >
+      <div className={`absolute -right-4 -top-4 h-24 w-24 bg-gradient-to-br ${color} opacity-[0.03] blur-2xl group-hover:opacity-[0.1] transition-opacity`} />
+      
+      <div className="flex items-start justify-between">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 shadow-inner transition-transform group-hover:scale-110`}>
+          <Icon size={24} className="text-white" />
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
+          <h2 className="text-4xl font-black text-white tracking-tighter tabular-nums mt-1">{total}</h2>
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-4">
+        {metrics && Object.entries(metrics).slice(0, 3).map(([key, value]: any) => {
+          const totalForType = Object.values(value).reduce((a: number, b: any) => a + (typeof b === 'number' ? b : 0), 0);
+          return (
+            <div key={key} className="flex flex-col space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tighter">
+                <span className="text-slate-400 truncate pr-2">{key}</span>
+                <span className="text-white">{(totalForType as number)}</span>
+              </div>
+              <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-white/5">
+                 {Object.entries(value).map(([status, count]: any) => (
+                    <div 
+                      key={status} 
+                      title={`${status}: ${count}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const moduleMap: any = { 'Asset Registry': 'asset', 'Service Mesh': 'services', 'Network Fabric': 'network' };
+                        const path = moduleMap[title];
+                        if (path) navigate(`/${path}?status=${status}`);
+                      }}
+                      className={`h-full transition-all duration-300 cursor-pointer hover:brightness-125 ${
+                        status === 'Active' || status === 'Operational' || status === 'Existing' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                        status === 'Critical' || status === 'Down' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]' :
+                        status === 'Maintenance' || status === 'Warning' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' :
+                        'bg-blue-500'
+                      }`}
+                      style={{ width: `${((count as number) / (totalForType as number)) * 100}%` }}
+                    />
+                 ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
+const SiteClock = ({ site, delay }: any) => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="px-4 py-2 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:border-blue-500/20 transition-all"
+    >
+      <div className="flex flex-col">
+        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{site.name}</span>
+        <span className="text-[10px] font-bold text-slate-300 uppercase truncate max-w-[80px]">Local Time</span>
       </div>
       <div className="text-right">
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</p>
-        <h2 className="text-4xl font-black text-white tracking-tighter tabular-nums mt-1">{total}</h2>
+        <span className="text-sm font-black text-white tabular-nums group-hover:text-blue-400 transition-colors">
+          {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+        </span>
       </div>
-    </div>
-
-    <div className="mt-8 space-y-4">
-      {metrics && Object.entries(metrics).slice(0, 3).map(([key, value]: any) => {
-        const totalForType = Object.values(value).reduce((a: number, b: any) => a + (typeof b === 'number' ? b : 0), 0);
-        return (
-          <div key={key} className="flex flex-col space-y-1">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-tighter">
-              <span className="text-slate-400 truncate pr-2">{key}</span>
-              <span className="text-white">{(totalForType as number)}</span>
-            </div>
-            <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-white/5">
-               {Object.entries(value).map(([status, count]: any) => (
-                  <div 
-                    key={status} 
-                    title={`${status}: ${count}`}
-                    className={`h-full transition-all duration-500 ${
-                      status === 'Active' || status === 'Operational' || status === 'Existing' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
-                      status === 'Critical' || status === 'Down' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]' :
-                      status === 'Maintenance' || status === 'Warning' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' :
-                      'bg-blue-500'
-                    }`}
-                    style={{ width: `${((count as number) / (totalForType as number)) * 100}%` }}
-                  />
-               ))}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  </motion.div>
-)
+    </motion.div>
+  )
+}
 
 const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 }: any) => (
   <motion.div
@@ -129,10 +165,13 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
 )
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
+  const navigate = useNavigate();
+  const [globalSearch, setGlobalSearch] = useState('');
+  
   const { data: metrics, isLoading } = useQuery({ 
     queryKey: ['dashboard-metrics'], 
     queryFn: async () => (await apiFetch('/api/v1/dashboard/metrics')).json(),
-    refetchInterval: 30000
+    refetchInterval: 10000
   })
 
   if (isLoading) return (
@@ -150,8 +189,42 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     </div>
   )
 
+  const handleGlobalSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!globalSearch) return;
+    const term = globalSearch.toUpperCase();
+    if (term.startsWith('FAR')) navigate(`/far?id=${term.replace('FAR-', '')}`);
+    else if (term.startsWith('PROJ')) navigate(`/projects?search=${term}`);
+    else navigate(`/asset?search=${term}`);
+  };
+
   return (
     <div className="h-full w-full flex flex-col space-y-6 overflow-hidden pr-2">
+      {/* Global Alert Banner */}
+      <AnimatePresence>
+        {metrics?.critical_alerts?.length > 0 && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="shrink-0 overflow-hidden"
+          >
+            <div className="bg-rose-600 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-xl shadow-rose-600/20 border border-rose-500/50 mb-2">
+              <div className="flex items-center gap-4">
+                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center animate-pulse">
+                    <AlertTriangle size={18} />
+                 </div>
+                 <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Critical Infrastructure Alert</span>
+                    <p className="text-[11px] font-bold tracking-tight italic opacity-90">{metrics.critical_alerts[0].title} — {metrics.critical_alerts[0].impact}</p>
+                 </div>
+              </div>
+              <button onClick={() => navigate('/monitoring')} className="px-4 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Intercept Incident</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-6">
@@ -163,25 +236,44 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
            <div>
               <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">Command <span className="text-blue-500">Center</span></h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-[0.4em] font-black mt-1">Holistic Infrastructure Orchestration & Intelligence</p>
+              <div className="flex items-center gap-3 mt-1">
+                 <p className="text-[10px] text-slate-500 uppercase tracking-[0.4em] font-black">Holistic Infrastructure Orchestration</p>
+                 <div className="h-1 w-1 rounded-full bg-slate-700" />
+                 <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Stability Index:</span>
+                    <span className="text-[9px] font-black text-white tabular-nums tracking-widest">{metrics?.stability_score}%</span>
+                 </div>
+              </div>
            </div>
         </div>
         
+        <form onSubmit={handleGlobalSearch} className="flex-1 max-w-md mx-8">
+           <div className="relative group">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors" />
+              <input 
+                value={globalSearch}
+                onChange={e => setGlobalSearch(e.target.value)}
+                placeholder="GLOBAL ID SEARCH (ASSET, PROJ, FAR)..."
+                className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 focus:bg-white/[0.03] transition-all"
+              />
+           </div>
+        </form>
+
         <div className="flex items-center gap-8 bg-black/30 px-8 py-4 rounded-3xl border border-white/5 backdrop-blur-xl">
-           <div className="flex flex-col items-center">
+           <Link to="/asset" className="flex flex-col items-center hover:opacity-70 transition-opacity">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Nodes</span>
               <span className="text-xl font-black text-white tabular-nums">{metrics?.asset_overview.total || 0}</span>
-           </div>
+           </Link>
            <div className="w-px h-8 bg-white/10" />
-           <div className="flex flex-col items-center">
+           <Link to="/services" className="flex flex-col items-center hover:opacity-70 transition-opacity">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Services</span>
               <span className="text-xl font-black text-blue-400 tabular-nums">{metrics?.service_overview.total || 0}</span>
-           </div>
+           </Link>
            <div className="w-px h-8 bg-white/10" />
-           <div className="flex flex-col items-center">
+           <Link to="/network" className="flex flex-col items-center hover:opacity-70 transition-opacity">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Links</span>
               <span className="text-xl font-black text-emerald-400 tabular-nums">{metrics?.network_overview.total || 0}</span>
-           </div>
+           </Link>
         </div>
       </div>
 
@@ -240,76 +332,103 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         </div>
 
         {/* Second Level: Mid-Sized Detail Cards */}
-        <div className="grid grid-cols-3 gap-6">
-           <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-indigo-600/5 to-transparent flex flex-col justify-between group">
-              <div className="flex items-center justify-between mb-8">
+        <div className="grid grid-cols-4 gap-6">
+           {/* Activity Feed */}
+           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+              <div className="flex items-center justify-between mb-6">
                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-600/20 rounded-xl flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                       <ExternalLink size={20} />
+                    <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/20">
+                       <History size={16} />
                     </div>
-                    <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-white italic">External Entites</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Activity Stream</h3>
                  </div>
-                 <span className="text-4xl font-black text-white tabular-nums opacity-40 group-hover:opacity-100 transition-opacity">{metrics?.external_overview.total}</span>
+                 <Link to="/logs" className="p-1.5 rounded-md hover:bg-white/5 text-slate-500 hover:text-white transition-all"><ExternalLink size={12}/></Link>
               </div>
-              <div className="space-y-4">
-                 {Object.entries(metrics?.external_overview.breakdown || {}).slice(0, 3).map(([type, stats]: any) => (
-                    <div key={type} className="space-y-1">
-                       <div className="flex items-center justify-between text-[10px] font-bold uppercase">
-                          <span className="text-slate-500">{type}</span>
-                          <span className="text-slate-300">{(Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number)}</span>
+              <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
+                 {metrics?.recent.activity?.map((log: any) => (
+                    <div key={log.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
+                       <div className="flex items-center justify-between mb-1">
+                          <span className="text-[8px] font-black text-blue-400 uppercase">{log.user}</span>
+                          <span className="text-[7px] font-bold text-slate-600 uppercase">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                        </div>
-                       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                          <motion.div 
-                             initial={{ width: 0 }}
-                             animate={{ width: `${((Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number) / (metrics?.external_overview.total || 1)) * 100}%` }}
-                             className="h-full bg-indigo-500"
-                          />
-                       </div>
+                       <p className="text-[9px] font-bold text-slate-300 leading-tight truncate uppercase">{log.description || `${log.action} ${log.target}`}</p>
                     </div>
+                 ))}
+                 {(!metrics?.recent.activity || metrics?.recent.activity.length === 0) && (
+                    <div className="flex flex-col items-center justify-center h-full opacity-20">
+                       <ZapOff size={24} />
+                       <span className="text-[8px] font-black uppercase tracking-widest mt-2">Zero Signals</span>
+                    </div>
+                 )}
+              </div>
+           </div>
+
+           {/* Quick Actions */}
+           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+              <div className="flex items-center gap-3 mb-6">
+                 <div className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
+                    <Zap size={16} />
+                 </div>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Quick Vectors</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                 {[
+                   { label: 'Asset', icon: Server, path: '/asset' },
+                   { label: 'Project', icon: Briefcase, path: '/projects' },
+                   { label: 'Monitor', icon: Activity, path: '/monitoring' },
+                   { label: 'Knowledge', icon: BookOpen, path: '/knowledge' },
+                   { label: 'Failure', icon: AlertTriangle, path: '/far' },
+                   { label: 'Research', icon: Search, path: '/research' }
+                 ].map((act, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => navigate(act.path)}
+                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group/btn"
+                    >
+                       <act.icon size={16} className="text-slate-500 group-hover/btn:text-blue-400 transition-colors" />
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest group-hover/btn:text-white transition-colors">{act.label}</span>
+                    </button>
                  ))}
               </div>
            </div>
 
-           <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-emerald-600/5 to-transparent flex flex-col justify-between group">
-              <div className="flex items-center justify-between mb-8">
-                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-600/20 rounded-xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
-                       <Activity size={20} />
-                    </div>
-                    <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-white italic">Monitoring Platforms</h3>
+           {/* Site Clocks */}
+           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+              <div className="flex items-center gap-3 mb-6">
+                 <div className="p-2 rounded-lg bg-amber-600/20 text-amber-400 border border-amber-500/20">
+                    <Globe size={16} />
                  </div>
-                 <span className="text-4xl font-black text-white tabular-nums opacity-40 group-hover:opacity-100 transition-opacity">{metrics?.monitoring_overview.total}</span>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Regional Clocks</h3>
               </div>
-              <div className="flex flex-wrap gap-2">
-                 {Object.entries(metrics?.monitoring_overview.breakdown || {}).map(([platform, stats]: any) => (
-                    <div key={platform} className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-3">
-                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{platform}</span>
-                       <span className="text-sm font-black text-white italic">{(Object.values(stats).reduce((a: any, b: any) => a + b, 0) as number)}</span>
-                    </div>
+              <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
+                 {metrics?.rack_overview.sites?.map((site: any, i: number) => (
+                    <SiteClock key={site.id} site={site} delay={i * 0.1} />
                  ))}
+                 {(!metrics?.rack_overview.sites || metrics?.rack_overview.sites.length === 0) && (
+                    <div className="flex flex-col items-center justify-center h-full opacity-20">
+                       <MapPin size={24} />
+                       <span className="text-[8px] font-black uppercase tracking-widest mt-2">No Regional Data</span>
+                    </div>
+                 )}
               </div>
            </div>
 
-           <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent flex flex-col justify-between group">
+           {/* Performance/Stability Card */}
+           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent flex flex-col group h-[280px]">
               <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-[12px] font-black uppercase tracking-[0.3em] text-white italic">Infrastructure Pulse</h3>
-                 <Shield size={18} className="text-blue-500 animate-pulse" />
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Stability Metric</h3>
+                 <Shield size={16} className="text-blue-500 animate-pulse" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Regional Sites</p>
-                    <p className="text-2xl font-black text-white">{metrics?.rack_overview.total_sites}</p>
+              <div className="flex-1 flex flex-col justify-center items-center relative">
+                 <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                    <div className="w-40 h-40 border-8 border-blue-500 rounded-full animate-ping" />
                  </div>
-                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Racked Assets</p>
-                    <p className="text-2xl font-black text-emerald-400">{metrics?.rack_overview.total_racked_assets}</p>
-                 </div>
-                 <div className="col-span-2 p-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-between">
-                    <div>
-                       <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Global Stability</p>
-                       <p className="text-xl font-black text-white tracking-tighter mt-1 italic">99.98% NOMINAL</p>
-                    </div>
-                    <TrendingUp size={24} className="text-blue-400 opacity-30" />
+                 <h2 className="text-5xl font-black text-white italic tracking-tighter tabular-nums z-10">{metrics?.stability_score}%</h2>
+                 <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-2 z-10">Nominal State</p>
+                 
+                 <div className="w-full h-12 bg-white/5 mt-8 rounded-lg relative overflow-hidden">
+                    <div className="absolute inset-0 bg-blue-500/20" style={{ clipPath: 'polygon(0% 80%, 10% 70%, 20% 85%, 30% 60%, 40% 65%, 50% 40%, 60% 55%, 70% 30%, 80% 45%, 90% 20%, 100% 15%, 100% 100%, 0% 100%)' }} />
+                    <div className="absolute inset-0 border-b-2 border-blue-500/50" style={{ clipPath: 'polygon(0% 80%, 10% 70%, 20% 85%, 30% 60%, 40% 65%, 50% 40%, 60% 55%, 70% 30%, 80% 45%, 90% 20%, 100% 15%)' }} />
                  </div>
               </div>
            </div>

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, or_
+from sqlalchemy import select, delete, update, or_, func
 from datetime import datetime
 from typing import Optional
 from ..database import get_db
@@ -252,7 +252,11 @@ async def create_device(data: dict, db: AsyncSession = Depends(get_db)):
     for f in required:
         if not data.get(f): raise HTTPException(400, f"Field {f} is mandatory")
     
-    dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False))
+    # Case-insensitive duplicate check
+    dup_res = await db.execute(select(models.Device).filter(
+        func.lower(models.Device.name) == data["name"].lower(), 
+        models.Device.is_deleted == False
+    ))
     if dup_res.scalars().first():
         raise HTTPException(409, "DUPLICATE_HOSTNAME")
 
@@ -281,9 +285,13 @@ async def update_device(device_id: int, data: dict, db: AsyncSession = Depends(g
     db_device = result.scalar_one_or_none()
     if not db_device: raise HTTPException(404)
     
-    if 'name' in data and data['name'] != db_device.name:
-        # Check for duplicate name in ANOTHER active device
-        dup_res = await db.execute(select(models.Device).filter(models.Device.name == data["name"], models.Device.is_deleted == False, models.Device.id != device_id))
+    if 'name' in data and data['name'].lower() != db_device.name.lower():
+        # Check for duplicate name in ANOTHER active device (case-insensitive)
+        dup_res = await db.execute(select(models.Device).filter(
+            func.lower(models.Device.name) == data["name"].lower(), 
+            models.Device.is_deleted == False, 
+            models.Device.id != device_id
+        ))
         if dup_res.scalars().first():
             raise HTTPException(409, "DUPLICATE_HOSTNAME")
 

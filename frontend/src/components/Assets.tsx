@@ -81,6 +81,22 @@ const SharedServiceModals = ({
 
 import { createPortal } from 'react-dom'
 
+const CopyButton = ({ value, label }: { value: string, label?: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast.success(`${label || 'Value'} Copied`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded transition-all text-slate-500 hover:text-blue-400">
+      {copied ? <Check size={10} /> : <Clipboard size={10} />}
+    </button>
+  );
+};
+
 const SharedNetworkModals = ({
   activeEdit,
   setActiveEdit,
@@ -621,6 +637,22 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
+const CopyButton = ({ value, label }: { value: string, label?: string }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast.success(`${label || 'Value'} Copied`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded transition-all text-slate-500 hover:text-blue-400">
+      {copied ? <Check size={10} /> : <Clipboard size={10} />}
+    </button>
+  );
+};
+
 const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: number, type: 'dependency' | 'network', devices: any[], onNodeClick?: (d: any) => void }) => {
   const fgRef = React.useRef<any>();
   const [dimensions, setDimensions] = useState({ width: 500, height: 300 });
@@ -697,6 +729,8 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
     if (fgRef.current) {
       fgRef.current.d3Force('link').distance(150);
       fgRef.current.d3Force('charge').strength(-400);
+      // Stabilize the engine to prevent jitter on every detail-view open
+      fgRef.current.d3ReheatSimulation();
     }
   }, [graphData]);
 
@@ -713,14 +747,14 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
            height={dimensions.height}
            width={dimensions.width}
            nodeRelSize={4}
-           nodeColor={n => (n as any).isCenter ? '#60a5fa' : '#fbbf24'}
+           nodeColor={n => (n as any).isCenter ? '#3b82f6' : '#f59e0b'}
            linkColor={() => 'rgba(255, 255, 255, 0.1)'}
            linkDirectionalArrowLength={6}
            linkDirectionalArrowRelPos={1}
            linkDirectionalParticles={2}
            linkDirectionalParticleSpeed={0.005}
            onNodeClick={(node: any) => onNodeClick?.(node.fullData)}
-           onEngineStop={() => fgRef.current?.zoomToFit(400, 20)}
+           onEngineStop={() => fgRef.current?.zoomToFit(400, 40)}
            linkCanvasObjectMode={() => 'after'}
            linkCanvasObject={(link: any, ctx, globalScale) => {
               const MAX_FONT_SIZE = 8;
@@ -761,10 +795,10 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
              const fontSize = 10/globalScale;
              ctx.font = `italic 900 ${fontSize}px Inter`;
 
-             ctx.shadowColor = node.isCenter ? 'rgba(96, 165, 250, 0.6)' : 'rgba(251, 191, 36, 0.4)';
+             ctx.shadowColor = node.isCenter ? 'rgba(59, 130, 246, 0.6)' : 'rgba(245, 158, 11, 0.4)';
              ctx.shadowBlur = 12 / globalScale;
              
-             ctx.fillStyle = node.isCenter ? '#60a5fa' : '#fbbf24';
+             ctx.fillStyle = node.isCenter ? '#3b82f6' : '#f59e0b';
              ctx.beginPath(); 
              ctx.arc(node.x, node.y, node.isCenter ? 6 : 4, 0, 2 * Math.PI, false); 
              ctx.fill();
@@ -1167,31 +1201,39 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
     ]}
   ]
 
-  const renderHardwareRow = (category: string) => (
-    <tr key={category} className="hover:bg-white/[0.02] transition-colors group">
-      <td className="p-4 px-6 border-r border-white/5">
-        <div className="text-[10px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors">
-          {category}
-        </div>
-      </td>
-      {selectedAssets.map(asset => {
-        const hwList = (hardwareResults.data as any)?.[asset.id] || []
-        const comps = hwList.filter((h: any) => h.category === category)
-        return (
-          <td key={`${asset.id}-${category}`} className="p-4 px-6 border-l border-white/5">
-            <div className="space-y-1">
-              {comps.length > 0 ? comps.map((c: any, i: number) => (
-                <div key={i} className="text-[10px] leading-tight">
-                  <span className="text-white font-bold">{c.count}x</span> <span className="text-slate-300">{c.name}</span>
-                  <div className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">{c.specs}</div>
-                </div>
-              )) : <span className="text-slate-600 font-bold uppercase text-[9px]">None</span>}
-            </div>
-          </td>
-        )
-      })}
-    </tr>
-  )
+  const renderHardwareRow = (category: string) => {
+    const values = selectedAssets.map(asset => {
+      const hwList = (hardwareResults.data as any)?.[asset.id] || []
+      return JSON.stringify(hwList.filter((h: any) => h.category === category).map((h: any) => ({ n: h.name, c: h.count })))
+    })
+    const isMismatch = new Set(values).size > 1
+
+    return (
+      <tr key={category} className={`hover:bg-white/[0.02] transition-colors group ${isMismatch ? 'bg-rose-500/5' : ''}`}>
+        <td className="p-4 px-6 border-r border-white/5">
+          <div className={`text-[10px] font-bold uppercase tracking-tight group-hover:text-white transition-colors ${isMismatch ? 'text-rose-400 font-black' : 'text-slate-400'}`}>
+            {category}
+          </div>
+        </td>
+        {selectedAssets.map(asset => {
+          const hwList = (hardwareResults.data as any)?.[asset.id] || []
+          const comps = hwList.filter((h: any) => h.category === category)
+          return (
+            <td key={`${asset.id}-${category}`} className="p-4 px-6 border-l border-white/5">
+              <div className="space-y-1">
+                {comps.length > 0 ? comps.map((c: any, i: number) => (
+                  <div key={i} className="text-[10px] leading-tight">
+                    <span className="text-white font-bold">{c.count}x</span> <span className="text-slate-300">{c.name}</span>
+                    <div className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">{c.specs}</div>
+                  </div>
+                )) : <span className="text-slate-600 font-bold uppercase text-[9px]">None</span>}
+              </div>
+            </td>
+          )
+        })}
+      </tr>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#020617] p-8 animate-in fade-in duration-500 overflow-hidden">
@@ -1238,26 +1280,30 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                       {section.isHardware ? (
                         section.categories?.map(cat => renderHardwareRow(cat))
                       ) : (
-                        section.fields?.map(field => (
-                          <tr key={field.key} className="hover:bg-white/[0.02] transition-colors group">
-                              <td className="p-4 px-6 border-r border-white/5">
-                                <div className="text-[10px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors">
-                                    {field.label}
-                                </div>
-                              </td>
-                              {selectedAssets.map(asset => (
-                                <td key={`${asset.id}-${field.key}`} className="p-4 px-6 border-l border-white/5">
-                                    <div className={`text-[11px] font-bold ${field.key === 'status' ? (
-                                      asset.status === 'Active' ? 'text-emerald-400' : 
-                                      asset.status === 'Maintenance' ? 'text-amber-400' :
-                                      asset.status === 'Failed' ? 'text-rose-400' : 'text-slate-300'
-                                    ) : 'text-slate-300'}`}>
-                                      {field.format ? field.format(asset[field.key]) : (asset[field.key] || '-')}
-                                    </div>
+                        section.fields?.map(field => {
+                          const values = selectedAssets.map(a => a[field.key])
+                          const isMismatch = new Set(values).size > 1
+                          return (
+                            <tr key={field.key} className={`hover:bg-white/[0.02] transition-colors group ${isMismatch ? 'bg-rose-500/5' : ''}`}>
+                                <td className="p-4 px-6 border-r border-white/5">
+                                  <div className={`text-[10px] font-bold uppercase tracking-tight group-hover:text-white transition-colors ${isMismatch ? 'text-rose-400 font-black' : 'text-slate-400'}`}>
+                                      {field.label}
+                                  </div>
                                 </td>
-                              ))}
-                          </tr>
-                        ))
+                                {selectedAssets.map(asset => (
+                                  <td key={`${asset.id}-${field.key}`} className="p-4 px-6 border-l border-white/5">
+                                      <div className={`text-[11px] font-bold ${field.key === 'status' ? (
+                                        asset.status === 'Active' ? 'text-emerald-400' : 
+                                        asset.status === 'Maintenance' ? 'text-amber-400' :
+                                        asset.status === 'Failed' ? 'text-rose-400' : 'text-slate-300'
+                                      ) : isMismatch ? 'text-white' : 'text-slate-300'}`}>
+                                        {field.format ? field.format(asset[field.key]) : (asset[field.key] || '-')}
+                                      </div>
+                                  </td>
+                                ))}
+                            </tr>
+                          )
+                        })
                       )}
                    </React.Fragment>
                 ))}
@@ -1509,25 +1555,23 @@ export default function Assets() {
     { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-blue-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_name") },
     { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_version") },
     { 
-      field: "primary_ip", 
-      headerName: "Primary IP", 
-      width: 110,
-      minWidth: 110,
-      cellClass: 'text-center font-bold text-blue-400',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      field: "primary_ip", headerName: "Primary IP", width: 110, minWidth: 110, cellClass: 'text-center font-bold text-blue-400', headerClass: 'text-center', filter: 'agTextColumnFilter', 
+      cellRenderer: (p: any) => p.value ? (
+        <div className="flex items-center justify-center space-x-1">
+          <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+          <CopyButton value={p.value} label="IP" />
+        </div>
+      ) : <span className="text-slate-500 uppercase">N/A</span>,
       hide: hiddenColumns.includes("primary_ip")
     },
     { 
-      field: "management_ip", 
-      headerName: "Mgmt IP", 
-      width: 110,
-      minWidth: 110,
-      cellClass: 'text-center font-bold text-indigo-400',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      field: "management_ip", headerName: "Mgmt IP", width: 110, minWidth: 110, cellClass: 'text-center font-bold text-indigo-400', headerClass: 'text-center', filter: 'agTextColumnFilter', 
+      cellRenderer: (p: any) => p.value ? (
+        <div className="flex items-center justify-center space-x-1">
+          <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
+          <CopyButton value={p.value} label="IP" />
+        </div>
+      ) : <span className="text-slate-500 uppercase">N/A</span>,
       hide: hiddenColumns.includes("management_ip")
     },
     { 
@@ -1753,54 +1797,7 @@ export default function Assets() {
         )}
       </div>
 
-      {/* STYLE LABORATORY BAR */}
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* STYLE LABORATORY BAR REMOVED AND MOVED TO SIDEBAR */}
       {viewMode === 'grid' ? (
         <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (

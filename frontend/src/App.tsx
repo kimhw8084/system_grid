@@ -144,9 +144,9 @@ const getPermLevel = (perms: any, view: string) => {
 
 const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled, isSubItem }: any) => {
   const content = (
-    <div className={`w-full flex items-center ${isSubItem ? 'px-3 py-2' : 'px-4 py-3'} rounded-xl transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
-      <Icon size={isSubItem ? 14 : 18} className={!isOpen && active ? "text-white" : ""} />
-      {isOpen && <span className={`${isSubItem ? 'font-bold text-[10px]' : 'font-black text-[11px]'} uppercase tracking-wider`}>{label}</span>}
+    <div className={`w-full flex items-center ${isSubItem ? 'px-3 py-2.5' : 'px-4 py-3.5'} rounded-xl transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
+      <Icon size={isSubItem ? 16 : 20} className={!isOpen && active ? "text-white" : ""} />
+      {isOpen && <span className={`${isSubItem ? 'font-bold text-[11px]' : 'font-black text-[12px]'} uppercase tracking-wider`}>{label}</span>}
       {active && isOpen && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
       {active && !isOpen && <motion.div layoutId="active-pill-dot" className="absolute right-2 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#3b82f6]" />}
     </div>
@@ -165,12 +165,12 @@ const SidebarGroup = ({ label, children, isOpen, isSidebarOpen, defaultExpanded 
   if (!isSidebarOpen) return <div className="py-2 border-b border-white/5 last:border-0">{children}</div>;
 
   return (
-    <div className="mb-4">
+    <div className="mb-6">
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between px-4 py-2 text-slate-500 hover:text-slate-300 transition-colors group"
       >
-        <span className="text-[9px] font-black uppercase tracking-[0.2em]">{label}</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</span>
         <ChevronRight size={10} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
       </button>
       <AnimatePresence initial={false}>
@@ -513,7 +513,7 @@ function MainLayout() {
             </button>
           </div>
         )}
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar pt-4">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar mt-2">
           <SidebarGroup label="OPERATIONS" isSidebarOpen={isSidebarOpen}>
             <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} isSubItem />
             <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "projects") < 1} />
