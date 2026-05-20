@@ -2204,36 +2204,38 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
   const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
 
   const ports = useMemo(() => {
+    let basePorts = []
+
     // 1. Check for exact model template match
     const modelTemplate = templates?.find(t => t.value === device?.model || t.label === device?.model)
     if (modelTemplate?.metadata_keys?.length) {
-      return modelTemplate.metadata_keys.map((k: string) => {
+      basePorts = modelTemplate.metadata_keys.map((k: string) => {
         const [name, type, category] = k.split(':')
         return { name, type: type || 'RJ45', category: category || 'General' }
       })
-    }
-
-    // 2. Fall back to standard type layouts
-    const basePorts = []
-    if (isSwitch) {
-      for (let i = 1; i <= 48; i++) {
-        const name = i <= 24 ? `Gi1/0/${i}` : (i <= 44 ? `Gi1/0/${i}` : `Te1/1/${i-44}`)
-        basePorts.push({ name, type: i > 44 ? 'SFP+' : 'RJ45' })
-      }
-    } else if (isFirewall) {
-      for (let i = 0; i < 8; i++) {
-        basePorts.push({ name: `eth${i}`, type: 'RJ45' })
-      }
-      basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
     } else {
-      basePorts.push({ name: 'eth0', type: 'RJ45' })
-      basePorts.push({ name: 'eth1', type: 'RJ45' })
-      basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+      // 2. Fall back to standard type layouts if no template exists
+      if (isSwitch) {
+        for (let i = 1; i <= 48; i++) {
+          const name = i <= 24 ? `Gi1/0/${i}` : (i <= 44 ? `Gi1/0/${i}` : `Te1/1/${i-44}`)
+          basePorts.push({ name, type: i > 44 ? 'SFP+' : 'RJ45' })
+        }
+      } else if (isFirewall) {
+        for (let i = 0; i < 8; i++) {
+          basePorts.push({ name: `eth${i}`, type: 'RJ45' })
+        }
+        basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+      } else {
+        basePorts.push({ name: 'eth0', type: 'RJ45' })
+        basePorts.push({ name: 'eth1', type: 'RJ45' })
+        basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+      }
     }
 
+    // 3. Perform "Outer Join": Identify active ports from connections that aren't in basePorts
     const activePortNames = new Set(connections?.map(c =>
       c.source_device_id === device?.id ? c.source_port : c.target_port
-    ))
+    ).filter(Boolean))
 
     const extraPorts = Array.from(activePortNames)
       .filter(name => !basePorts.find(p => p.name === name))
