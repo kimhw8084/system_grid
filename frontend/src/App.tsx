@@ -492,7 +492,6 @@ function MainLayout() {
           <SidebarItem icon={Activity} label="Monitoring" path="/monitoring" active={location.pathname === "/monitoring"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "monitoring") < 1} />
           <SidebarItem icon={Globe} label="Vendors" path="/vendors" active={location.pathname === "/vendors"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "vendors") < 1} />
           <SidebarItem icon={BookOpen} label="Knowledge" path="/knowledge" active={location.pathname === "/knowledge"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "knowledge") < 1} />
-          <SidebarItem icon={Shield} label="Permission" path="/permission" active={location.pathname === "/permission"} isOpen={isSidebarOpen} disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "permission") < 1} />
         </nav>
         
         {/* User Profile Section */}

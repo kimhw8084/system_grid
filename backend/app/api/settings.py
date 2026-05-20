@@ -28,17 +28,25 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
     operator = res.scalar_one_or_none()
     
     if not operator:
-        # Return a synthetic profile if not found in DB
-        return {
-            "id": user_id,
-            "username": user_id,
-            "full_name": user_id.replace("_", " ").title(),
-            "role": "Unknown",
-            "department": "Sector-01",
-            "is_external": True,
-            "is_admin": True, # Default to admin for synthetic profiles for now? Or False? 
-            "permissions": {} 
-        }
+        # Auto-register new user with no permissions by default (except for haewon.kim)
+        is_haewon = user_id == "haewon.kim"
+        operator = models.Operator(
+            external_id=user_id,
+            username=user_id,
+            full_name=user_id.replace("_", " ").replace(".", " ").title(),
+            registration_status="Registered",
+            is_admin=is_haewon,
+            custom_permissions={"all": 3} if is_haewon else {}
+        )
+        db.add(operator)
+        await db.commit()
+        await db.refresh(operator)
+    elif user_id == "haewon.kim" and not operator.is_admin:
+        # Ensure haewon.kim always has admin/full access
+        operator.is_admin = True
+        operator.custom_permissions = {"all": 3}
+        await db.commit()
+        await db.refresh(operator)
     
     # Merge permissions: role permissions + custom overrides
     permissions = (operator.role.permissions if operator.role else {}).copy()
