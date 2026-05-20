@@ -93,9 +93,9 @@ const ToggleSwitch = ({ checked, onChange, disabled, activeColor = 'bg-blue-600'
 )
 
 const ViewPermissionIcon = ({ level, onClick }: any) => {
-    const colors = ["text-slate-700", "text-blue-500", "text-amber-500", "text-emerald-500"];
-    const labels = ["No Access", "Read Only", "Add Only", "Full Control"];
-    const Icons = [ShieldAlert, Shield, ShieldCheck, ShieldCheck];
+    const colors = ["text-slate-600", "text-blue-500", "text-amber-500", "text-emerald-500"];
+    const labels = ["NONE", "READ", "ADD", "FULL"];
+    const Icons = [ShieldAlert, Shield, ShieldCheck, Zap];
     
     let numericLevel = 0;
     if (typeof level === 'number') numericLevel = level;
@@ -105,16 +105,16 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     
     numericLevel = Math.min(3, Math.max(0, Math.floor(numericLevel || 0)));
     const Icon = Icons[numericLevel] || ShieldAlert;
-    const label = labels[numericLevel] || "No Access";
+    const label = labels[numericLevel] || "NONE";
 
     return (
         <button 
             onClick={onClick}
-            className={`flex flex-col items-center justify-center p-2 rounded-lg hover:bg-white/5 transition-all gap-1 group w-12`}
+            className={`flex flex-col items-center justify-center p-1.5 rounded-lg hover:bg-white/10 transition-all gap-1 group w-14 border border-transparent hover:border-white/10`}
             title={label}
         >
-            <Icon size={14} className={`${colors[numericLevel]} group-hover:scale-110 transition-transform`} />
-            <span className={`text-[6px] font-black uppercase text-center leading-none ${colors[numericLevel]}`}>{label.split(' ').join('\n')}</span>
+            <Icon size={16} className={`${colors[numericLevel]} group-hover:scale-110 transition-transform`} />
+            <span className={`text-[8px] font-black uppercase text-center leading-none tracking-tighter ${colors[numericLevel]}`}>{label}</span>
         </button>
     )
 }
@@ -345,34 +345,46 @@ result_df = get_user_pool()`)
     VITE_BACKEND_PORT: { details: "The port used by the UI proxy to reach the engine.", impact: "HIGH" }
   }
 
-  const viewGroups = [
-    { name: "Infrastructure", views: ["projects", "racks", "assets", "network", "architecture"] },
-    { name: "Operations", views: ["services", "external", "research", "monitoring"] },
-    { name: "Reliability", views: ["far", "vendors", "knowledge", "logs"] }
-  ]
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/settings/user/profile");
+      return res.json();
+    }
+  });
 
   const operatorMutation = useMutation({
     mutationFn: async (op: any) => {
-      const res = await apiFetch("/api/v1/settings/operators", {
-        method: "POST",
+      const isUpdate = !!op.id;
+      const url = isUpdate ? `/api/v1/settings/operators/${op.id}` : "/api/v1/settings/operators";
+      const res = await apiFetch(url, {
+        method: isUpdate ? "PATCH" : "POST",
         body: JSON.stringify(op)
       })
+      if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
-      toast.success("Operator security profile updated")
-    }
+      // If updating current user, refresh their profile to reflect permission changes immediately
+      if (variables.username === userProfile?.username) {
+        queryClient.invalidateQueries({ queryKey: ['user-profile'] })
+      }
+      toast.success("Security profile synchronized")
+    },
+    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
   })
 
   const deleteOperatorMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
+      const res = await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error(await res.text())
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
-      toast.success("Operator revoked from system")
-    }
+      toast.success("Operator access revoked")
+    },
+    onError: (e: any) => toast.error(`Revocation Failed: ${e.message}`)
   })
 
   const [newOpId, setNewOpId] = useState("")
@@ -391,7 +403,21 @@ result_df = get_user_pool()`)
     setNewOpId("");
   }
 
+  const allViews = [
+    "projects", "racks", "assets", "services", "external", "network", 
+    "architecture", "research", "far", "monitoring", "vendors", 
+    "knowledge", "logs", "settings", "permission"
+  ];
+
   const togglePermission = (op: any, view: string) => {
+    // Admin Lock-out Protection
+    if (op.username === userProfile?.username && view === 'settings') {
+        const current = getPermLevel(op.custom_permissions, view);
+        if (current === 3 && !confirm("WARNING: Reducing your own 'Settings' permission may lock you out of this console. Proceed?")) {
+            return;
+        }
+    }
+
     const raw = op.custom_permissions?.[view] ?? op.role?.permissions?.[view] ?? op.role?.permissions?.['all'] ?? 0;
     let current = 0;
     if (typeof raw === 'number') current = raw;
@@ -404,8 +430,17 @@ result_df = get_user_pool()`)
     operatorMutation.mutate({ ...op, custom_permissions: newPerms });
   }
 
+  const getPermLevel = (perms: any, view: string) => {
+    const val = perms?.[view] ?? perms?.['all'] ?? 0;
+    if (typeof val === 'number') return val;
+    if (val === 'read') return 1;
+    if (val === 'add') return 2;
+    if (val === 'edit' || val === 'manage') return 3;
+    return 0;
+  };
+
   return (
-    <div className="h-full flex flex-col space-y-6 max-w-7xl mx-auto px-4 overflow-hidden relative">
+    <div className="h-full flex flex-col space-y-6 max-w-[1600px] mx-auto px-4 overflow-hidden relative">
       <AnimatePresence>
         {isDisconnected && (
           <motion.div 
@@ -463,7 +498,7 @@ result_df = get_user_pool()`)
               <Cpu size={14} /> Parameters
            </button>
            <button onClick={() => setTopTab('permissions')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'permissions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Shield size={14} /> Governance
+              <Shield size={14} /> Permission
            </button>
            <button onClick={() => setTopTab('system')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'system' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Terminal size={14} /> Analysis
@@ -542,8 +577,8 @@ result_df = get_user_pool()`)
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
                   <div>
-                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Security Matrix</h2>
-                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Operator Governance & RBAC Enforcement</p>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none text-blue-500">User Permission</h2>
+                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Identity Governance & System Access Matrix</p>
                   </div>
                   <div className="flex gap-2">
                     <button 
@@ -554,65 +589,12 @@ result_df = get_user_pool()`)
                         <History size={18} />
                     </button>
                     <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
-                        <ShieldCheck size={14} /> Manage Privileges
+                        <Users size={14} /> Total {operators?.length || 0} Operators
                     </button>
                   </div>
                </div>
 
-               {/* Minimal Pool Sync Card */}
-               <div className={`transition-all duration-300 ${showPoolLogic ? 'p-6 bg-indigo-600/5 border-indigo-500/20' : 'p-3 bg-slate-800/20 border-white/5'} border rounded-2xl`}>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-xl transition-all ${showPoolLogic ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-400'}`}><Terminal size={16} /></div>
-                            <div>
-                                <h3 className="text-[10px] font-black uppercase text-[var(--text-primary)] tracking-widest">User Pool Sync</h3>
-                                {showPoolLogic && <p className="text-[8px] text-slate-500 uppercase font-bold italic mt-0.5">Python logic for identity resolution</p>}
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {showPoolLogic && (
-                                <>
-                                    <button 
-                                        onClick={() => setIsSyncEditable(!isSyncEditable)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
-                                    >
-                                        {isSyncEditable ? <Lock size={12} /> : <Edit2 size={12} />}
-                                    </button>
-                                    <button 
-                                        onClick={() => poolMutation.mutate(userPoolScript)}
-                                        className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20"
-                                    >
-                                        <RefreshCcw size={10} className={poolMutation.isPending ? 'animate-spin' : ''} /> Execute
-                                    </button>
-                                </>
-                            )}
-                            <button onClick={() => setShowPoolLogic(!showPoolLogic)} className="p-1.5 text-slate-500 hover:text-white transition-all">
-                                {showPoolLogic ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                            </button>
-                        </div>
-                    </div>
-                    <AnimatePresence>
-                        {showPoolLogic && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-4">
-                                <div className="relative group">
-                                    <textarea 
-                                        readOnly={!isSyncEditable}
-                                        value={userPoolScript} onChange={e => setUserPoolScript(e.target.value)}
-                                        className={`w-full h-48 bg-black/40 border ${isSyncEditable ? 'border-indigo-500/50' : 'border-white/5'} rounded-xl p-4 font-mono text-[10px] text-emerald-400 outline-none transition-all custom-scrollbar`}
-                                    />
-                                    <button 
-                                        onClick={() => { navigator.clipboard.writeText(userPoolScript); toast.success("Script copied"); }}
-                                        className="absolute top-3 right-3 p-2 bg-slate-800/80 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                    >
-                                        <FileCode size={14} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-               </div>
-
-               {/* Compact User Table */}
+               {/* User Table Overhaul */}
                <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-2xl">
                     <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -625,80 +607,143 @@ result_df = get_user_pool()`)
                                 <UserPlus size={14} className="text-blue-500" />
                                 <input 
                                     value={newOpId} onChange={e => setNewOpId(e.target.value)}
-                                    placeholder="Enter User ID to Add..." 
+                                    placeholder="Add Operator ID..." 
                                     onKeyDown={e => e.key === 'Enter' && handleAddOperator()}
                                     className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-400 focus:border-blue-500 outline-none w-48 transition-all" 
                                 />
                                 <button onClick={handleAddOperator} className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"><Plus size={14} /></button>
                              </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            {viewGroups.map(g => (
-                                <div key={g.name} className="flex flex-col items-center">
-                                    <span className="text-[7px] font-black uppercase text-slate-500 tracking-[0.2em] mb-1">{g.name}</span>
-                                    <div className="flex gap-0.5">
-                                        {g.views.map(v => <div key={v} className="w-1.5 h-1.5 rounded-full bg-slate-700" title={v} />)}
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 bg-blue-500/5 px-3 py-1.5 rounded-lg border border-blue-500/10">
+                                <Shield size={12} className="text-blue-500" />
+                                <span className="text-[8px] font-black uppercase text-blue-400 tracking-widest">Global Security Policy: ENFORCED</span>
+                            </div>
                         </div>
                     </div>
                     
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-black/10">
-                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Identity</th>
-                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Admin</th>
-                                    {viewGroups.map(g => (
-                                        <th key={g.name} className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)] text-center bg-blue-500/2">{g.name} Matrix</th>
+                                <tr className="bg-black/20">
+                                    <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] sticky left-0 bg-[#0f172a] z-10 min-w-[200px]">Identity</th>
+                                    <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] text-center">Admin</th>
+                                    {allViews.map(view => (
+                                        <th key={view} className="p-2 text-[8px] font-black uppercase text-slate-500 tracking-tighter border-b border-[var(--glass-border)] text-center min-w-[60px] hover:text-blue-400 transition-colors">
+                                            {view}
+                                        </th>
                                     ))}
-                                    <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-[var(--glass-border)]">Action</th>
+                                    <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {operators?.map((op: any) => (
-                                    <tr key={op.id} className="hover:bg-white/2 transition-colors border-b border-[var(--glass-border)] last:border-0 group">
-                                        <td className="p-4">
+                                    <tr key={op.id} className={`hover:bg-white/2 transition-colors border-b border-[var(--glass-border)] last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
+                                        <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-400 font-black text-[10px]">{op.username?.slice(0,2).toUpperCase()}</div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-[var(--text-primary)] uppercase leading-none">{op.full_name}</p>
-                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic">ID: {op.external_id}</p>
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
+                                                    {op.username?.slice(0,2).toUpperCase()}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <p className="text-[11px] font-black text-[var(--text-primary)] uppercase leading-none truncate flex items-center gap-1.5">
+                                                        {op.full_name}
+                                                        {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded uppercase">You</span>}
+                                                    </p>
+                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic truncate">ID: {op.external_id}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-4">
+                                        <td className="p-4 text-center">
                                             <ToggleSwitch 
                                                 checked={op.is_admin} 
-                                                onChange={(e: any) => operatorMutation.mutate({ ...op, is_admin: e.target.checked })} 
+                                                onChange={(e: any) => {
+                                                    if (op.username === userProfile?.username && !e.target.checked && !confirm("CRITICAL: Disabling your own Admin status will lock you out of this console. Proceed?")) return;
+                                                    operatorMutation.mutate({ ...op, is_admin: e.target.checked });
+                                                }} 
+                                                activeColor="bg-emerald-600"
                                             />
                                         </td>
-                                        {viewGroups.map(g => (
-                                            <td key={g.name} className="p-4 bg-blue-500/1">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    {g.views.map(v => (
-                                                        <ViewPermissionIcon 
-                                                            key={v} level={op.is_admin ? 3 : (op.custom_permissions?.[v] ?? op.role?.permissions?.[v] ?? op.role?.permissions?.['all'] ?? 0)}
-                                                            onClick={() => !op.is_admin && togglePermission(op, v)}
-                                                        />
-                                                    ))}
-                                                </div>
+                                        {allViews.map(view => (
+                                            <td key={view} className="p-1 text-center border-x border-white/[0.02]">
+                                                <ViewPermissionIcon 
+                                                    level={op.is_admin ? 3 : getPermLevel(op.custom_permissions, view)}
+                                                    onClick={() => !op.is_admin && togglePermission(op, view)}
+                                                />
                                             </td>
                                         ))}
                                         <td className="p-4 text-center">
-                                            <button 
-                                                onClick={() => { if(confirm('Revoke this operator access?')) deleteOperatorMutation.mutate(op.id) }}
-                                                className="p-2 text-rose-500/30 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            {op.username !== userProfile?.username ? (
+                                                <button 
+                                                    onClick={() => { if(confirm(`Revoke all access for ${op.full_name}?`)) deleteOperatorMutation.mutate(op.id) }}
+                                                    className="p-2.5 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-rose-500/20"
+                                                    title="Revoke Access"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            ) : (
+                                                <div className="p-2.5 text-slate-700 cursor-not-allowed" title="Protected Identity">
+                                                    <Lock size={16} />
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+               </div>
+
+               {/* User Pool Logic Card (Moved to bottom, more compact) */}
+               <div className={`transition-all duration-300 ${showPoolLogic ? 'p-6 bg-indigo-600/5 border-indigo-500/20' : 'p-4 bg-slate-800/10 border-white/5'} border rounded-2xl`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl transition-all ${showPoolLogic ? 'bg-indigo-600 text-white' : 'bg-slate-700/50 text-slate-400'}`}><Terminal size={16} /></div>
+                            <div>
+                                <h3 className="text-[10px] font-black uppercase text-[var(--text-primary)] tracking-widest italic">Identity Sync Pipeline</h3>
+                                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Automated Operator Onboarding Logic</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {showPoolLogic && (
+                                <>
+                                    <button 
+                                        onClick={() => setIsSyncEditable(!isSyncEditable)}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
+                                    >
+                                        {isSyncEditable ? "Lock" : "Edit Sync"}
+                                    </button>
+                                    <button 
+                                        onClick={() => poolMutation.mutate(userPoolScript)}
+                                        className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20"
+                                    >
+                                        <RefreshCcw size={10} className={poolMutation.isPending ? 'animate-spin' : ''} /> Execute Sync
+                                    </button>
+                                </>
+                            )}
+                            <button onClick={() => setShowPoolLogic(!showPoolLogic)} className="p-2 text-slate-500 hover:text-white transition-all bg-white/5 rounded-lg">
+                                {showPoolLogic ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                        </div>
+                    </div>
+                    <AnimatePresence>
+                        {showPoolLogic && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-6">
+                                <div className="relative group">
+                                    <textarea 
+                                        readOnly={!isSyncEditable}
+                                        value={userPoolScript} onChange={e => setUserPoolScript(e.target.value)}
+                                        className={`w-full h-64 bg-black/40 border ${isSyncEditable ? 'border-indigo-500/50' : 'border-white/5'} rounded-2xl p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
+                                    />
+                                    <button 
+                                        onClick={() => { navigator.clipboard.writeText(userPoolScript); toast.success("Script copied"); }}
+                                        className="absolute top-4 right-4 p-2 bg-slate-800/80 text-slate-400 hover:text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all border border-white/5"
+                                    >
+                                        <FileCode size={18} />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                </div>
             </motion.div>
           )}

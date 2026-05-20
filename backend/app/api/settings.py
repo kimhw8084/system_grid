@@ -434,12 +434,18 @@ async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.Operator).filter(models.Operator.external_id == external_id))
     op = res.scalar_one_or_none()
     
+    # Allowed fields for direct update
+    allowed_fields = ["full_name", "email", "department", "team", "registration_status", "is_admin", "custom_permissions", "role_id"]
+
     if op:
         for key, value in data.items():
-            if hasattr(op, key):
+            if key in allowed_fields:
                 setattr(op, key, value)
     else:
-        op = models.Operator(**data)
+        # For new operators, we take what we have
+        # But we filter it just in case
+        clean_data = {k: v for k, v in data.items() if hasattr(models.Operator, k) and k not in ["id", "created_at", "updated_at"]}
+        op = models.Operator(**clean_data)
         db.add(op)
     
     await db.commit()
@@ -452,8 +458,11 @@ async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get
     op = res.scalar_one_or_none()
     if not op: raise HTTPException(404, "Operator not found")
     
+    # Allowed fields for direct update
+    allowed_fields = ["full_name", "email", "department", "team", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    
     for key, value in data.items():
-        if hasattr(op, key):
+        if key in allowed_fields:
             setattr(op, key, value)
             
     await db.commit()
@@ -462,6 +471,16 @@ async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get
 
 @router.delete("/operators/{op_id}")
 async def delete_operator(op_id: int, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id()
+    
+    # Check if user is trying to delete themselves
+    res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
+    op = res.scalar_one_or_none()
+    if not op: raise HTTPException(404, "Operator not found")
+    
+    if op.username == user_id:
+        raise HTTPException(status_code=400, detail="Identity Protection: You cannot terminate your own active session.")
+        
     await db.execute(delete(models.Operator).where(models.Operator.id == op_id))
     await db.commit()
     return {"status": "success"}
