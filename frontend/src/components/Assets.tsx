@@ -2076,19 +2076,25 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   const queryClient = useQueryClient()
   const { data: device, isLoading: isDeviceLoading } = useQuery({
     queryKey: ['device', deviceId],
-    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json()),
+    staleTime: 300000, // 5 minutes
+    initialData: () => {
+      const allDevices = queryClient.getQueryData<any[]>(['devices'])
+      return allDevices?.find(d => d.id === deviceId)
+    }
   })
 
   // Source network info only for this device to optimize performance
   const { data: connections, isLoading: isConnsLoading } = useQuery({ 
     queryKey: ['connections', deviceId], 
-    queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json()) 
+    queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json()),
+    staleTime: 60000 // 1 minute
   })
 
   if (isConnsLoading || isDeviceLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center justify-between px-2">
          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3">Physical Port Visualization</h3>
       </div>
@@ -2162,9 +2168,8 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
 const DevicePortGrid = ({ device, connections }: { device: any, connections: any[] }) => {
   const isSwitch = device?.type === 'Switch'
   const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
-  
-  // Define standard layouts
-  const getPorts = () => {
+
+  const ports = useMemo(() => {
     const basePorts = []
     if (isSwitch) {
       for (let i = 1; i <= 48; i++) {
@@ -2182,8 +2187,7 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
       basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
     }
 
-    // Add any ports that exist in connections but NOT in our base list (e.g. logical ports like TCP/443)
-    const activePortNames = new Set(connections?.map(c => 
+    const activePortNames = new Set(connections?.map(c =>
       c.source_device_id === device?.id ? c.source_port : c.target_port
     ))
 
@@ -2192,9 +2196,17 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
       .map(name => ({ name, type: 'Virtual', category: 'Logical' }))
 
     return [...basePorts, ...extraPorts]
-  }
+  }, [isSwitch, isFirewall, connections, device?.id])
 
-  const ports = getPorts()
+  // Create a quick lookup map for connections by port name
+  const connMap = useMemo(() => {
+    const map: Record<string, any> = {}
+    connections?.forEach(c => {
+      if (c.source_device_id === device?.id) map[c.source_port] = c
+      if (c.target_device_id === device?.id) map[c.target_port] = c
+    })
+    return map
+  }, [connections, device?.id])
 
   return (
     <div className="bg-black/40 border border-white/5 rounded-[20px] p-8">
@@ -2226,10 +2238,10 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
 
       <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
         {ports.map((p: any, idx) => {
-          const conn = connections?.find(c => (c.source_device_id === device?.id && c.source_port === p.name) || (c.target_device_id === device?.id && c.target_port === p.name))
+          const conn = connMap[p.name]
           const isActive = !!conn
           const isLogical = p.type === 'Virtual'
-          
+
           return (
             <div 
               key={idx} 
@@ -2238,6 +2250,7 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
                   ? (isLogical ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]')
                   : 'bg-black/40 border-white/5 hover:border-white/10'}`}
             >
+
               <div className={`w-full h-1 absolute top-0 left-0 rounded-t-xl transition-all ${isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent'}`} />
               
               <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? (isLogical ? 'text-blue-400' : 'text-emerald-400') : 'text-slate-600'}`}>

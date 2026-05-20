@@ -159,13 +159,10 @@ const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled, isSubI
 const SidebarGroup = ({ label, children, isOpen, isSidebarOpen, defaultExpanded = true }: any) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   
-  // Auto-expand if a child is active (not strictly necessary if defaultExpanded is true, but good for UX)
-  // However, we'll keep it simple: manual toggle.
-  
   if (!isSidebarOpen) return <div className="py-2 border-b border-white/5 last:border-0">{children}</div>;
 
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between px-4 py-2 text-slate-500 hover:text-slate-300 transition-colors group"
@@ -513,7 +510,7 @@ function MainLayout() {
             </button>
           </div>
         )}
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar mt-2">
+        <nav className="flex-1 px-4 overflow-y-auto custom-scrollbar mt-4">
           <SidebarGroup label="OPERATIONS" isSidebarOpen={isSidebarOpen}>
             <SidebarItem icon={LayoutDashboard} label="Home" path="/" active={location.pathname === "/"} isOpen={isSidebarOpen} isSubItem />
             <SidebarItem icon={Briefcase} label="Projects" path="/projects" active={location.pathname === "/projects"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "projects") < 1} />
@@ -560,37 +557,19 @@ function MainLayout() {
               )}
            </button>
 
-           <div className="relative group/theme-container">
-             <button 
-                className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
-             >
-                <div className="w-8 h-8 rounded-lg bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 transition-transform">
-                   <Zap size={16} />
-                </div>
-                {isSidebarOpen && (
-                  <div className="flex flex-col min-w-0">
-                     <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">Interface Mode</span>
-                     <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">Switch Matrix UI</span>
-                  </div>
-                )}
-             </button>
-
-             {/* Theme Hover Menu */}
-             <div className={`absolute bottom-0 left-full ml-2 opacity-0 group-hover/theme-container:opacity-100 pointer-events-none group-hover/theme-container:pointer-events-auto transition-all duration-300 z-50`}>
-                <div className="bg-[var(--bg-header)] border border-[var(--glass-border)] rounded-2xl p-2 shadow-2xl backdrop-blur-2xl w-48 space-y-1">
-                   {THEMES.map(theme => (
-                      <button 
-                        key={theme.id}
-                        onClick={() => changeTheme(theme.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all ${currentTheme === theme.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'hover:bg-white/5 text-slate-400 hover:text-slate-200'}`}
-                      >
-                         <div className={`w-3 h-3 rounded-full ${theme.color} border border-white/10`} />
-                         <span className="text-[9px] font-black uppercase tracking-widest">{theme.label}</span>
-                         {currentTheme === theme.id && <Check size={12} className="ml-auto" />}
-                      </button>
-                   ))}
-                </div>
-             </div>
+           {/* Direct Theme Toggles */}
+           <div className={`flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 ${!isSidebarOpen ? 'flex-col' : 'w-full'}`}>
+              {THEMES.map(theme => (
+                <button 
+                  key={theme.id}
+                  onClick={() => changeTheme(theme.id)}
+                  className={`flex-1 flex items-center gap-2 p-2 rounded-lg transition-all ${currentTheme === theme.id ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20 shadow-lg shadow-blue-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'} ${!isSidebarOpen ? 'w-full justify-center' : ''}`}
+                  title={theme.label}
+                >
+                   <div className={`w-3 h-3 rounded-full ${theme.color} border border-white/10 shrink-0`} />
+                   {isSidebarOpen && <span className="text-[9px] font-black uppercase tracking-widest">{theme.label.split(' ')[0]}</span>}
+                </button>
+              ))}
            </div>
         </div>
 
