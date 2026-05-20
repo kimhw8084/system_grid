@@ -53,6 +53,7 @@ const getStatusCfg = (s: string, isReservation?: boolean) => {
 const getTypeCfg = (t: string) => TYPE_CONFIG[t?.toLowerCase()] ?? { color: 'text-slate-400', short: t?.slice(0,3).toUpperCase() || 'UNK' }
 
 const fillColor = (pct: number) => {
+  if (pct >= 100) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
   if (pct >= 90) return 'bg-rose-500'
   if (pct >= 70) return 'bg-amber-500'
   if (pct >= 50) return 'bg-blue-500'
@@ -60,6 +61,7 @@ const fillColor = (pct: number) => {
 }
 
 const powerColor = (pct: number) => {
+  if (pct >= 100) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
   if (pct >= 90) return 'bg-rose-500'
   if (pct >= 75) return 'bg-amber-500'
   return 'bg-sky-400'
@@ -67,15 +69,30 @@ const powerColor = (pct: number) => {
 
 // ─── Device Options Menu ───────────────────────────────────────────────────────
 
-const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete, deviceName }: any) => {
+const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete, onPatch, deviceName }: any) => {
+  const menuRef = React.useRef<HTMLDivElement>(null)
+  const [pos, setPos] = React.useState({ x, y })
+
+  React.useLayoutEffect(() => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect()
+      let nextX = x
+      let nextY = y
+      if (x + rect.width > window.innerWidth) nextX = window.innerWidth - rect.width - 20
+      if (y + rect.height > window.innerHeight) nextY = window.innerHeight - rect.height - 20
+      setPos({ x: nextX, y: nextY })
+    }
+  }, [x, y])
+
   return (
     <>
       <div className="fixed inset-0 z-[100]" onClick={onClose} />
       <motion.div
+        ref={menuRef}
         initial={{ opacity: 0, scale: 0.95, y: -10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: -10 }}
-        style={{ left: x, top: y }}
+        style={{ left: pos.x, top: pos.y }}
         className="fixed z-[110] w-48 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden p-1.5"
       >
         <div className="px-3 py-2 border-b border-white/5 mb-1">
@@ -87,6 +104,13 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
             <Zap size={12} />
           </div>
           Show Connections
+        </button>
+
+        <button onClick={() => { onPatch(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 rounded-lg flex items-center gap-3 transition-all group">
+          <div className="p-1.5 rounded-lg bg-indigo-500/10 group-hover:bg-indigo-500/20 transition-colors">
+            <Network size={12} />
+          </div>
+          Patch/Cable
         </button>
         
         <button onClick={() => { onEdit(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-3 transition-all group">
@@ -115,108 +139,63 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
   const [lines, setLines] = React.useState<any[]>([])
   const [hoveredLine, setHoveredLine] = React.useState<any>(null)
   const [containerStyle, setContainerStyle] = React.useState({ width: '100%', height: '100%' })
+  const requestRef = React.useRef<number | null>(null)
 
-  React.useEffect(() => {
+  const updateLines = React.useCallback(() => {
     const gridEl = document.getElementById('rack-temp-grid')
     if (!gridEl) return
-
-    const updateLines = () => {
-      const newLines: any[] = []
-      const gridRect = gridEl.getBoundingClientRect()
-      
-      if (gridEl.scrollWidth !== 0) {
-        setContainerStyle({
-          width: `${gridEl.scrollWidth}px`,
-          height: `${gridEl.scrollHeight}px`
-        })
-      }
-
-      const getPoint = (deviceId: number) => {
-        const el = document.querySelector(`[data-device-id="${deviceId}"]`) as HTMLElement
-        if (!el) return null
-        
-        const elRect = el.getBoundingClientRect()
-        let x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
-        let y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
-        let isScrolledOut = false
-
-        const rackScrollEl = el.closest('.overflow-y-auto')
-        if (rackScrollEl) {
-          const scrollRect = rackScrollEl.getBoundingClientRect()
-          
-          if (elRect.bottom < (scrollRect.top + 2)) {
-            y = scrollRect.top - gridRect.top + gridEl.scrollTop
-            isScrolledOut = true
-          } else if (elRect.top > (scrollRect.bottom - 2)) {
-            y = scrollRect.bottom - gridRect.top + gridEl.scrollTop
-            isScrolledOut = true
-          }
-        }
-
-        return { x, y, elRect, isScrolledOut }
-      }
-
-      const sourcePoint = getPoint(sourceDeviceId)
-      if (!sourcePoint) return
-
-      targetDeviceIds.forEach((tid, index) => {
-        const targetPoint = getPoint(tid)
-        if (targetPoint) {
-          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 20
-          
-          const conn = connections?.find((c: any) => 
-            (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
-            (c.source_device_id === tid && c.target_device_id === sourceDeviceId)
-          )
-
-          if (isSameRack) {
-            const offset = ((index % 2 === 0 ? 1 : -1) * (15 + Math.floor(index / 2) * 10))
-            newLines.push({ 
-              x1: sourcePoint.x, y1: sourcePoint.y, 
-              x2: targetPoint.x, y2: targetPoint.y, 
-              isInternal: true,
-              offset,
-              id: `${sourceDeviceId}-${tid}`,
-              connection: conn,
-              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut
-            })
-          } else {
-            newLines.push({ 
-              x1: sourcePoint.x, y1: sourcePoint.y, 
-              x2: targetPoint.x, y2: targetPoint.y, 
-              isInternal: false,
-              id: `${sourceDeviceId}-${tid}`,
-              connection: conn,
-              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut
-            })
-          }
-        }
-      })
-      setLines(newLines)
+    const gridRect = gridEl.getBoundingClientRect()
+    
+    if (gridEl.scrollWidth !== 0) {
+      setContainerStyle({ width: `${gridEl.scrollWidth}px`, height: `${gridEl.scrollHeight}px` })
     }
 
-    updateLines()
-
-    const handleUpdate = () => updateLines()
-    window.addEventListener('resize', handleUpdate)
-    gridEl.addEventListener('scroll', handleUpdate)
-    
-    // Listen to ALL rack scrolls
-    const elevations = document.querySelectorAll('.overflow-y-auto')
-    elevations.forEach(el => el.addEventListener('scroll', handleUpdate))
-
-    const interval = setInterval(updateLines, 100)
-    
-    return () => {
-      window.removeEventListener('resize', handleUpdate)
-      gridEl.removeEventListener('scroll', handleUpdate)
-      elevations.forEach(el => el.removeEventListener('scroll', handleUpdate))
-      clearInterval(interval)
+    const getPoint = (deviceId: number) => {
+      const el = document.querySelector(`[data-device-id="${deviceId}"]`) as HTMLElement
+      if (!el) return null
+      const elRect = el.getBoundingClientRect()
+      const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
+      const y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
+      let isScrolledOut = false
+      const rackScrollEl = el.closest('.overflow-y-auto')
+      if (rackScrollEl) {
+        const scrollRect = rackScrollEl.getBoundingClientRect()
+        if (elRect.bottom < (scrollRect.top + 2) || elRect.top > (scrollRect.bottom - 2)) isScrolledOut = true
+      }
+      return { x, y, elRect, isScrolledOut }
     }
+
+    const sourcePoint = getPoint(sourceDeviceId)
+    if (!sourcePoint) return
+
+    const newLines: any[] = []
+    targetDeviceIds.forEach((tid, index) => {
+      const targetPoint = getPoint(tid)
+      if (targetPoint) {
+        const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 30
+        const conn = connections?.find((c: any) => 
+          (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
+          (c.source_device_id === tid && c.target_device_id === sourceDeviceId)
+        )
+        if (isSameRack) {
+          const offset = ((index % 2 === 0 ? 1 : -1) * (20 + Math.floor(index / 2) * 12))
+          newLines.push({ x1: sourcePoint.x, y1: sourcePoint.y, x2: targetPoint.x, y2: targetPoint.y, isInternal: true, offset, id: `${sourceDeviceId}-${tid}`, connection: conn, isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut })
+        } else {
+          newLines.push({ x1: sourcePoint.x, y1: sourcePoint.y, x2: targetPoint.x, y2: targetPoint.y, isInternal: false, id: `${sourceDeviceId}-${tid}`, connection: conn, isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut })
+        }
+      }
+    })
+    setLines(newLines)
+    requestRef.current = requestAnimationFrame(updateLines)
   }, [sourceDeviceId, targetDeviceIds, connections, racks])
 
+  React.useEffect(() => {
+    requestRef.current = requestAnimationFrame(updateLines)
+    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current) }
+  }, [updateLines])
+
   return (
-    <div className="absolute top-0 left-0 pointer-events-none z-[30]" style={containerStyle}>
+    <div className="absolute top-0 left-0 pointer-events-none z-[25]" style={containerStyle}>
       <svg className="w-full h-full">
         <defs>
           <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -350,7 +329,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
       : isConnected
         ? 'bg-emerald-500/30 border-emerald-400/40'
         : highlight
-          ? 'search-highlight'
+          ? 'animate-pulse bg-amber-500/20 border-amber-500/50 z-10'
           : isReservation
             ? 'bg-violet-500/20 border-violet-500/30'
             : device.status === 'Maintenance'
@@ -370,50 +349,61 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
 
   return (
     <div
-      onClick={(e) => device ? (!isDeleted && onManage(device, loc, e)) : (!isDeleted && onSelect())}
-      className={`relative flex items-center px-2 transition-all cursor-pointer group ${bgBase} ${borderClass} ${roundedClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''} ${isReservation ? 'border-dashed' : ''}`}
       style={{ height: '22px' }}
+      className={`relative flex items-center transition-all cursor-default ${bgBase} ${borderClass} ${roundedClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''} ${isReservation ? 'border-dashed' : ''}`}
       data-device-id={device?.id}
     >
-      <span className={`text-[8px] font-mono w-5 select-none shrink-0 transition-colors tabular-nums ${device ? 'text-slate-400 font-bold' : 'text-slate-600 group-hover:text-slate-400'}`}>
-        {uNumber}
-      </span>
+      {/* Precision Zone: The U-Number is ALWAYS a mounting trigger */}
+      <div 
+        onClick={(e) => { e.stopPropagation(); if (!isDeleted) onSelect(); }}
+        className={`w-7 h-full flex items-center justify-center shrink-0 cursor-pointer border-r border-white/5 hover:bg-blue-500/20 group/u transition-colors`}
+      >
+        <span className={`text-[8px] font-mono select-none tabular-nums transition-colors ${device ? 'text-slate-400 font-black' : 'text-slate-600 group-hover/u:text-blue-400'}`}>
+          {uNumber}
+        </span>
+      </div>
 
-      {isBottom && device && (
-        <div className="flex-1 flex items-center justify-between overflow-hidden gap-1 pl-1">
-          <div className="flex items-center gap-1.5 overflow-hidden">
-            <span className={`shrink-0 ${statusCfg?.dot} w-1.5 h-1.5 rounded-full ${isReservation ? 'animate-pulse' : ''}`} />
-            <span className={`text-[9px] font-black truncate uppercase tracking-tight ${highlight || isFocused || isConnected ? 'text-white' : 'text-slate-100'}`}>
-              {isReservation && <span className="text-violet-400 mr-1">[RES]</span>}
-              {device.name}
-            </span>
-            {device.system && !isReservation && (
-              <span className="text-[8px] text-slate-500 truncate">{device.system}</span>
-            )}
-            {isReservation && device.reservation_info?.poc && (
-              <span className="text-[7px] text-slate-500 truncate">POC: {device.reservation_info.poc}</span>
-            )}
+      {/* Body Zone: Clicking here manages the device if it exists, or mounts if it doesn't */}
+      <div 
+        onClick={(e) => { e.stopPropagation(); if (device && !isDeleted) onManage(device, loc, e); else if (!isDeleted) onSelect(); }}
+        className={`flex-1 h-full flex items-center min-w-0 px-1.5 ${device ? 'cursor-pointer' : 'cursor-pointer'}`}
+      >
+        {isBottom && device && (
+          <div className="flex-1 flex items-center justify-between overflow-hidden gap-1 pl-1">
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              <span className={`shrink-0 ${statusCfg?.dot} w-1.5 h-1.5 rounded-full ${isReservation ? 'animate-pulse' : ''}`} />
+              <div className="flex flex-col min-w-0">
+                <span className={`text-[9px] font-black truncate uppercase tracking-tight leading-none ${highlight || isFocused || isConnected ? 'text-white' : 'text-slate-100'}`}>
+                  {device.name}
+                </span>
+                {isReservation && device.reservation_info?.poc && (
+                  <span className="text-[6px] text-violet-400 font-black uppercase tracking-widest mt-0.5 truncate">
+                    RES: {device.reservation_info.poc} {device.reservation_info.est_date && `· ${device.reservation_info.est_date}`}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {loc?.size_u > 1 && (
+                <span className="text-[7px] text-slate-600 font-mono">{loc.size_u}U</span>
+              )}
+              <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded border ${typeCfg?.color} border-current/20 bg-current/5`}>
+                {typeCfg?.short}
+              </span>
+              {loc.orientation === 'Back' && (
+                <span className="text-[7px] font-black px-1 py-0.5 rounded bg-slate-800 text-slate-400 border border-white/5">REAR</span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {loc?.size_u > 1 && (
-              <span className="text-[7px] text-slate-600 font-mono">{loc.size_u}U</span>
-            )}
-            <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded border ${typeCfg?.color} border-current/20 bg-current/5`}>
-              {typeCfg?.short}
-            </span>
-            {loc.orientation === 'Back' && (
-              <span className="text-[7px] font-black px-1 py-0.5 rounded bg-slate-800 text-slate-400 border border-white/5">REAR</span>
-            )}
-          </div>
-        </div>
-      )}
+        )}
 
-      {!device && (
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center pl-8 pointer-events-none">
-          <Plus size={8} className="text-blue-500/70 mr-1" />
-          <span className="text-[7px] text-blue-500/60 font-bold uppercase tracking-widest">Mount / Reserve</span>
-        </div>
-      )}
+        {!device && (
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center pl-10 pointer-events-none">
+            <Plus size={8} className="text-blue-500/70 mr-1" />
+            <span className="text-[7px] text-blue-500/60 font-bold uppercase tracking-widest">Mount / Reserve</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -432,6 +422,79 @@ const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: num
         <div className={`h-full rounded-full transition-all ${colorFn(pct)}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
+  )
+}
+
+// ─── Audit Log Modal ───────────────────────────────────────────────────────────
+
+const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ['rack-audit-logs'],
+    queryFn: async () => (await (await apiFetch('/api/v1/racks/audit-logs')).json()),
+    enabled: isOpen
+  })
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="glass-panel w-full max-w-3xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                  <List size={20} className="text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight text-white">Rack Evolution Logs</h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Physical state changes & audit trail</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                    <th className="px-4 py-3">Timestamp</th>
+                    <th className="px-4 py-3">Action</th>
+                    <th className="px-4 py-3">User</th>
+                    <th className="px-4 py-3">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {logs?.map((log: any) => (
+                    <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3 text-[10px] font-mono text-slate-400 whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                          log.action === 'MOUNT' ? 'bg-blue-500/10 text-blue-400' :
+                          log.action === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400' :
+                          log.action === 'CREATE' ? 'bg-emerald-500/10 text-emerald-400' :
+                          'bg-slate-500/10 text-slate-400'
+                        }`}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[10px] font-bold text-slate-300">{log.user_id}</td>
+                      <td className="px-4 py-3 text-[10px] text-slate-400">{log.description}</td>
+                    </tr>
+                  ))}
+                  {!logs?.length && !isLoading && (
+                    <tr><td colSpan={4} className="px-4 py-12 text-center text-slate-600 font-bold uppercase text-[10px]">No logs found in this scope</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -477,13 +540,22 @@ const RackElevation = ({
   const isHighlighted = (device: any) =>
     !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 
+  const isPowerOver = estimatedPowerKw >= (rack.max_power_kw || 10)
+  const isFillOver = occupiedU >= totalU
+
   return (
     <div 
       style={{ width: `${rackWidth}px` }}
       className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
+      ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
     `}>
+      
+      {/* Over Capacity Banners */}
+      {(isPowerOver || isFillOver) && (
+        <div className="absolute top-0 inset-x-0 h-1 bg-rose-600 z-30 animate-pulse" />
+      )}
 
       {/* Checkbox */}
       <div className="absolute top-3 left-3 z-20" onClick={e => e.stopPropagation()}>
@@ -576,12 +648,29 @@ const RackElevation = ({
         <div className="space-y-1.5">
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
           <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 10} colorFn={powerColor} label="Power" unit="kW" />
+          {isPowerOver && <p className="text-[7px] font-black text-rose-500 uppercase tracking-tighter text-center">Power Capacity Exceeded</p>}
         </div>
       </div>
 
       {/* Elevation grid */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ maxHeight: `${22 * Math.min(totalU, 48) + 8}px` }}>
-        <div className="bg-black/30 mx-2 my-2 border border-white/[0.05] rounded-lg overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar relative px-6" style={{ maxHeight: `${22 * Math.min(totalU, 48) + 8}px` }}>
+        {/* PDU A (Left) */}
+        <div className="absolute left-2 top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className={`w-1 h-1 rounded-full ${isPowerOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50'}`} />
+          ))}
+          <span className="absolute -left-1 -bottom-4 text-[6px] font-black text-slate-600 rotate-90">PDU-A</span>
+        </div>
+
+        {/* PDU B (Right) */}
+        <div className="absolute right-2 top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className={`w-1 h-1 rounded-full ${isPowerOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50'}`} />
+          ))}
+          <span className="absolute -right-1 -bottom-4 text-[6px] font-black text-slate-600 -rotate-90">PDU-B</span>
+        </div>
+
+        <div className="bg-black/30 border border-white/[0.05] rounded-lg overflow-hidden">
           {units.map(u => {
             const loc = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
             return (
@@ -1093,6 +1182,7 @@ export default function RackTemp() {
   const [rackWidth, setRackWidth] = useState(208)
   const [showRelocateModal, setShowRelocateModal] = useState(false)
   const [mountSearch, setMountSearch] = useState('')
+  const [showAuditLogs, setShowAuditLogs] = useState(false)
   
   const [optionsMenu, setOptionsMenu] = useState<{ x: number; y: number; device: any; loc: any; rack: any } | null>(null)
   const [focusedConnection, setFocusedConnection] = useState<{ sourceId: number; targetIds: number[] } | null>(null)
@@ -1392,11 +1482,24 @@ export default function RackTemp() {
     return devices.find((d: any) => d.id === focusedConnection.sourceId)?.name || ''
   }, [focusedConnection, devices])
 
+  const [patchSource, setPatchSource] = useState<{ deviceId: number; port: string; rackId: number } | null>(null)
+
+  const bulkPatchMutation = useMutation({
+    mutationFn: async (conns: any[]) => {
+      const res = await apiFetch('/api/v1/racks/bulk-patch', { method: 'POST', body: JSON.stringify({ connections: conns }) })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connections'] })
+      toast.success('Patch cables created')
+      setPatchSource(null)
+    }
+  })
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
     <div className="h-full flex flex-col gap-5 min-h-0">
-      <style>{highlightAnimation}</style>
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4 shrink-0">
@@ -1478,6 +1581,12 @@ export default function RackTemp() {
           {/* Add Actions */}
           {activeTab === 'active' && (
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAuditLogs(true)}
+                className="px-4 py-2 bg-slate-600/10 text-slate-400 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
+              >
+                <BarChart3 size={13} /> Audit Logs
+              </button>
               <button
                 onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
                 className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
@@ -1583,7 +1692,7 @@ export default function RackTemp() {
       )}
 
       {/* ── Rack Grid ── */}
-      <div id="rack-temp-grid" className="flex-1 flex gap-4 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
+      <div id="rack-temp-grid" className="flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
         
         {/* Connection Lines overlay */}
         {focusedConnection && (
@@ -1597,33 +1706,85 @@ export default function RackTemp() {
           />
         )}
 
-        {displayedRacks.map((r: any) => (
-          <RackElevation
-            key={r.id}
-            rack={r}
-            searchTerm={searchTerm}
-            isSelected={selectedRacks.includes(r.id)}
-            onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-            onDelete={id => {
-              if (activeTab === 'deleted') {
-                openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
-              } else {
-                openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
-              }
-            }}
-            onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
-            onShowInfo={rack => setShowingRackInfo(rack)}
-            onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
-            onManageDevice={(device, loc, e) => {
-              setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
-            }}
-            isDeleted={activeTab === 'deleted'}
-            onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-            rackWidth={rackWidth}
-            focusedDeviceId={focusedConnection?.sourceId ?? null}
-            connectedDeviceIds={focusedConnection?.targetIds}
-          />
-        ))}
+        {/* Render Racks Grouped by Aisle/Row if not searching */}
+        {(() => {
+          if (searchTerm || focusedConnection || showCompareOnly) {
+            return displayedRacks.map((r: any) => (
+              <RackElevation
+                key={r.id}
+                rack={r}
+                searchTerm={searchTerm}
+                isSelected={selectedRacks.includes(r.id)}
+                onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                onDelete={id => {
+                  if (activeTab === 'deleted') {
+                    openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+                  } else {
+                    openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+                  }
+                }}
+                onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+                onShowInfo={rack => setShowingRackInfo(rack)}
+                onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                onManageDevice={(device, l, e) => {
+                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
+                }}
+                isDeleted={activeTab === 'deleted'}
+                onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                rackWidth={rackWidth}
+                focusedDeviceId={focusedConnection?.sourceId ?? null}
+                connectedDeviceIds={focusedConnection?.targetIds}
+              />
+            ))
+          }
+
+          // Group by Aisle/Row
+          const groups: Record<string, any[]> = {}
+          displayedRacks.forEach(r => {
+            const key = r.aisle ? `AISLE ${r.aisle}` : 'UNGROUPED'
+            if (!groups[key]) groups[key] = []
+            groups[key].push(r)
+          })
+
+          return Object.entries(groups).sort().map(([groupName, groupRacks]) => (
+            <div key={groupName} className="flex flex-col gap-4 shrink-0">
+              <div className="flex items-center gap-3 px-2">
+                <div className="h-px w-8 bg-white/10" />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] whitespace-nowrap">{groupName}</span>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+              <div className="flex gap-4">
+                {groupRacks.map((r: any) => (
+                  <RackElevation
+                    key={r.id}
+                    rack={r}
+                    searchTerm={searchTerm}
+                    isSelected={selectedRacks.includes(r.id)}
+                    onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                    onDelete={id => {
+                      if (activeTab === 'deleted') {
+                        openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+                      } else {
+                        openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+                      }
+                    }}
+                    onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+                    onShowInfo={rack => setShowingRackInfo(rack)}
+                    onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                    onManageDevice={(device, l, e) => {
+                      setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
+                    }}
+                    isDeleted={activeTab === 'deleted'}
+                    onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                    rackWidth={rackWidth}
+                    focusedDeviceId={focusedConnection?.sourceId ?? null}
+                    connectedDeviceIds={focusedConnection?.targetIds}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
+        })()}
 
         {displayedRacks.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -1715,6 +1876,15 @@ export default function RackTemp() {
             setFocusedConnection({ sourceId: optionsMenu.device?.id, targetIds })
             setOptionsMenu(null)
           }}
+          onPatch={() => {
+            setPatchSource({ 
+              deviceId: optionsMenu.device.id, 
+              port: 'Auto', 
+              rackId: optionsMenu.rack.id,
+              name: optionsMenu.device.name
+            } as any)
+            setOptionsMenu(null)
+          }}
           onEdit={() => { setManagingDevice({ device: optionsMenu.device, loc: optionsMenu.loc, rack: optionsMenu.rack }); setOptionsMenu(null) }}
           onDelete={() => {
             openConfirm('Unmount Device', `Unmount ${optionsMenu.device?.name}?`, async () => {
@@ -1727,6 +1897,50 @@ export default function RackTemp() {
           }}
         />
       )}
+
+      {/* Patch Toolbar */}
+      <AnimatePresence>
+        {patchSource && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-6 py-4 bg-indigo-950/95 backdrop-blur-xl border border-indigo-500/30 rounded-xl shadow-2xl"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-500/20 rounded-lg">
+                <Network size={16} className="text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase tracking-widest">Cabling Mode</p>
+                <p className="text-[9px] text-indigo-300 font-bold uppercase">Source: {(patchSource as any).name}</p>
+              </div>
+            </div>
+            <div className="h-6 w-px bg-white/10" />
+            <p className="text-[10px] font-bold text-slate-400 uppercase italic">Select target asset to patch...</p>
+            <button 
+              onClick={() => setPatchSource(null)}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[9px] font-black uppercase transition-all"
+            >Cancel</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!optionsMenu && !!patchSource && (optionsMenu as any).device.id !== (patchSource as any).deviceId}
+        onClose={() => setOptionsMenu(null)}
+        onConfirm={() => {
+          bulkPatchMutation.mutate([{
+            source_device_id: (patchSource as any).deviceId,
+            source_port: 'Auto',
+            target_device_id: (optionsMenu as any).device.id,
+            target_port: 'Auto',
+            purpose: 'Inter-Rack Data'
+          }])
+        }}
+        title="Create Patch Connection"
+        message={`Create a direct network connection between ${(patchSource as any).name} and ${(optionsMenu as any).device?.name}?`}
+        variant="info"
+        confirmText="Create Cable"
+      />
 
       {/* Confirm Modal */}
       {confirmModal.isOpen && (

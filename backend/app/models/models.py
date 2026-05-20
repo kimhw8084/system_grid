@@ -34,6 +34,8 @@ class Rack(Base, BaseMixin):
     __tablename__ = "racks"
     room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
     name = Column(String, index=True)
+    aisle = Column(String, nullable=True)
+    row = Column(String, nullable=True)
     total_u_height = Column(Integer, default=42)
     max_power_kw = Column(Float, default=8.0)
     typical_power_kw = Column(Float, default=4.0)

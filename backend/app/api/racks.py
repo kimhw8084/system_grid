@@ -75,6 +75,8 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
         final_result.append({
             "id": rack.id,
             "name": rack.name,
+            "aisle": rack.aisle,
+            "row": rack.row,
             "total_u": rack.total_u_height,
             "max_power_kw": rack.max_power_kw or 8.0,
             "room_id": rack.room_id,
@@ -85,6 +87,41 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
             "device_locations": device_locations_list
         })
     return final_result
+
+@router.get("/audit-logs")
+async def get_rack_audit_logs(db: AsyncSession = Depends(get_db)):
+    query = select(models.AuditLog).filter(
+        models.AuditLog.target_table.in_(["racks", "devices", "device_locations"])
+    ).order_by(models.AuditLog.timestamp.desc()).limit(100)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+@router.post("/bulk-patch")
+async def bulk_patch_cabling(data: dict, db: AsyncSession = Depends(get_db)):
+    # data: { connections: [{source_device_id, source_port, target_device_id, target_port, purpose, speed_gbps }] }
+    conns = data.get("connections", [])
+    for c in conns:
+        conn = models.PortConnection(
+            source_device_id=c["source_device_id"],
+            source_port=c["source_port"],
+            target_device_id=c["target_device_id"],
+            target_port=c["target_port"],
+            purpose=c.get("purpose", "Data"),
+            speed_gbps=c.get("speed_gbps", 10.0),
+            status="Active"
+        )
+        db.add(conn)
+    
+    log = models.AuditLog(
+        user_id="admin",
+        action="BULK_PATCH",
+        target_table="port_connections",
+        target_id="bulk",
+        description=f"Created {len(conns)} inter-rack connections"
+    )
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(conns)}
 
 @router.post("/reorder")
 async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
@@ -122,7 +159,9 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     max_order = max_res.scalar() or 0
 
     rack = models.Rack(
-        name=name, 
+        name=name,
+        aisle=data.get('aisle'),
+        row=data.get('row'),
         total_u_height=data.get('total_u', 42),
         max_power_kw=data.get('max_power_kw', 8.0),
         room_id=room.id,
@@ -161,7 +200,9 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         if dup_result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE_IN_SITE")
         rack.name = data['name']
-        
+    
+    if 'aisle' in data: rack.aisle = data['aisle']
+    if 'row' in data: rack.row = data['row']
     if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
     if 'total_u' in data: 
         new_total = data['total_u']
