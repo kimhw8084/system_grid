@@ -1357,18 +1357,18 @@ export default function Assets() {
   }, [showBulkMenu])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
-  const { data: allAssets, isLoading } = useQuery({
+  const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
   })
 
   const { inventoryAssets, deletedAssets } = useMemo(() => {
-    if (!allAssets) return { inventoryAssets: [], deletedAssets: [] }
+    if (!devices) return { inventoryAssets: [], deletedAssets: [] }
     return {
-      inventoryAssets: allAssets.filter((a: any) => !a.is_deleted),
-      deletedAssets: allAssets.filter((a: any) => a.is_deleted)
+      inventoryAssets: devices.filter((a: any) => !a.is_deleted),
+      deletedAssets: devices.filter((a: any) => a.is_deleted)
     }
-  }, [allAssets])
+  }, [devices])
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
 
