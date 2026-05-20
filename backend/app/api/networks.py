@@ -42,50 +42,55 @@ async def update_interface(interface_id: int, data: dict, db: AsyncSession = Dep
 
 @router.get("/connections")
 async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_db)):
-    query = select(models.PortConnection)
+    from sqlalchemy.orm import aliased
+    DeviceA = aliased(models.Device)
+    DeviceB = aliased(models.Device)
+    
+    query = select(
+        models.PortConnection,
+        DeviceA.name.label("server_a"),
+        DeviceB.name.label("server_b")
+    ).outerjoin(DeviceA, models.PortConnection.source_device_id == DeviceA.id) \
+     .outerjoin(DeviceB, models.PortConnection.target_device_id == DeviceB.id)
+    
     if device_id:
         query = query.filter(or_(models.PortConnection.source_device_id == device_id, models.PortConnection.target_device_id == device_id))
     
     result = await db.execute(query)
-    conns = result.scalars().all()
+    rows = result.all()
     
     final_result = []
-    for c in conns:
-        dev_a_res = await db.execute(select(models.Device).filter(models.Device.id == c.source_device_id))
-        dev_a = dev_a_res.scalar_one_or_none()
-        dev_b_res = await db.execute(select(models.Device).filter(models.Device.id == c.target_device_id))
-        dev_b = dev_b_res.scalar_one_or_none()
-        
+    for conn, server_a, server_b in rows:
         final_result.append({
-            "id": c.id,
-            "source_device_id": c.source_device_id,
-            "src_device_id": c.source_device_id, # Frontend compatibility
-            "server_a": dev_a.name if dev_a else "Unknown",
-            "source_port": c.source_port,
-            "port_a": c.source_port,
-            "src_port": c.source_port, # Frontend compatibility
-            "source_ip": c.source_ip,
-            "source_mac": c.source_mac,
-            "source_vlan": c.source_vlan,
-            "target_device_id": c.target_device_id,
-            "dst_device_id": c.target_device_id, # Frontend compatibility
-            "server_b": dev_b.name if dev_b else "Unknown",
-            "target_port": c.target_port,
-            "port_b": c.target_port,
-            "dst_port": c.target_port, # Frontend compatibility
-            "target_ip": c.target_ip,
-            "target_mac": c.target_mac,
-            "target_vlan": c.target_vlan,
-            "vlan": c.source_vlan or c.target_vlan, # Frontend compatibility
-            "speed": f"{c.speed_gbps} {c.unit}" if c.speed_gbps else "Unknown",
-            "speed_gbps": c.speed_gbps,
-            "unit": c.unit,
-            "link_type": c.link_type,
-            "connection_type": c.link_type, # Frontend compatibility
-            "purpose": c.purpose,
-            "direction": c.direction,
-            "cable_type": c.cable_type,
-            "status": c.status
+            "id": conn.id,
+            "source_device_id": conn.source_device_id,
+            "src_device_id": conn.source_device_id,
+            "server_a": server_a or "Unknown",
+            "source_port": conn.source_port,
+            "port_a": conn.source_port,
+            "src_port": conn.source_port,
+            "source_ip": conn.source_ip,
+            "source_mac": conn.source_mac,
+            "source_vlan": conn.source_vlan,
+            "target_device_id": conn.target_device_id,
+            "dst_device_id": conn.target_device_id,
+            "server_b": server_b or "Unknown",
+            "target_port": conn.target_port,
+            "port_b": conn.target_port,
+            "dst_port": conn.target_port,
+            "target_ip": conn.target_ip,
+            "target_mac": conn.target_mac,
+            "target_vlan": conn.target_vlan,
+            "vlan": conn.source_vlan or conn.target_vlan,
+            "speed": f"{conn.speed_gbps} {conn.unit}" if conn.speed_gbps else "Unknown",
+            "speed_gbps": conn.speed_gbps,
+            "unit": conn.unit,
+            "link_type": conn.link_type,
+            "connection_type": conn.link_type,
+            "purpose": conn.purpose,
+            "direction": conn.direction,
+            "cable_type": conn.cable_type,
+            "status": conn.status
         })
     return final_result
 

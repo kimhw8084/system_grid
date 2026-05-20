@@ -1338,10 +1338,6 @@ export default function Assets() {
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
-  const { data: devices } = useQuery({ 
-    queryKey: ["devices-list-all"], 
-    queryFn: async () => (await (await apiFetch("/api/v1/devices")).json()) 
-  })
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -1376,14 +1372,17 @@ export default function Assets() {
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
 
+  // Only fetch full fabric map data when explicitly requested or in Map View
   const { data: allConnections } = useQuery({ 
     queryKey: ['connections-map-all'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()),
+    enabled: viewMode === 'map' || !!selectedAssetId
   })
 
   const { data: allRelationships } = useQuery({
     queryKey: ['all-relationships'],
-    queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json())
+    queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()),
+    enabled: viewMode === 'map' || !!selectedAssetId
   })
 
   const mutation = useMutation({
@@ -2080,16 +2079,11 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
   })
 
-  // Source all network info from the connections table (network view's source)
-  const { data: connectionsData, isLoading: isConnsLoading } = useQuery({ 
-    queryKey: ['connections'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+  // Source network info only for this device to optimize performance
+  const { data: connections, isLoading: isConnsLoading } = useQuery({ 
+    queryKey: ['connections', deviceId], 
+    queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json()) 
   })
-
-  const connections = useMemo(() => {
-    if (!connectionsData) return []
-    return connectionsData.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId)
-  }, [connectionsData, deviceId])
 
   if (isConnsLoading || isDeviceLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
 
@@ -2169,28 +2163,35 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
   const isSwitch = device?.type === 'Switch'
   const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
   
-  // Define standard layouts if no interfaces defined
+  // Define standard layouts
   const getPorts = () => {
-    const ports = []
+    const basePorts = []
     if (isSwitch) {
-      // 48 ports for a standard core/agg switch
       for (let i = 1; i <= 48; i++) {
         const name = i <= 24 ? `Gi1/0/${i}` : (i <= 44 ? `Gi1/0/${i}` : `Te1/1/${i-44}`)
-        ports.push({ name, type: i > 44 ? 'SFP+' : 'RJ45' })
+        basePorts.push({ name, type: i > 44 ? 'SFP+' : 'RJ45' })
       }
     } else if (isFirewall) {
-      // 8-12 ports for FW/LB
       for (let i = 0; i < 8; i++) {
-        ports.push({ name: `eth${i}`, type: 'RJ45' })
+        basePorts.push({ name: `eth${i}`, type: 'RJ45' })
       }
-      ports.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+      basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
     } else {
-      // Standard server: 2-4 LOM + maybe mgmt
-      ports.push({ name: 'eth0', type: 'RJ45' })
-      ports.push({ name: 'eth1', type: 'RJ45' })
-      ports.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+      basePorts.push({ name: 'eth0', type: 'RJ45' })
+      basePorts.push({ name: 'eth1', type: 'RJ45' })
+      basePorts.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
     }
-    return ports
+
+    // Add any ports that exist in connections but NOT in our base list (e.g. logical ports like TCP/443)
+    const activePortNames = new Set(connections?.map(c => 
+      c.source_device_id === device?.id ? c.source_port : c.target_port
+    ))
+
+    const extraPorts = Array.from(activePortNames)
+      .filter(name => !basePorts.find(p => p.name === name))
+      .map(name => ({ name, type: 'Virtual', category: 'Logical' }))
+
+    return [...basePorts, ...extraPorts]
   }
 
   const ports = getPorts()
@@ -2213,6 +2214,10 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Linked</span>
            </div>
            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Logical</span>
+           </div>
+           <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-slate-800 border border-white/10" />
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Unassigned</span>
            </div>
@@ -2220,33 +2225,34 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
       </div>
 
       <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
-        {ports.map((p, idx) => {
+        {ports.map((p: any, idx) => {
           const conn = connections?.find(c => (c.source_device_id === device?.id && c.source_port === p.name) || (c.target_device_id === device?.id && c.target_port === p.name))
           const isActive = !!conn
+          const isLogical = p.type === 'Virtual'
           
           return (
             <div 
               key={idx} 
               className={`relative group p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
                 ${isActive 
-                  ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]' 
+                  ? (isLogical ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]')
                   : 'bg-black/40 border-white/5 hover:border-white/10'}`}
             >
-              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-xl transition-all ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-transparent'}`} />
+              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-xl transition-all ${isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent'}`} />
               
-              <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? 'text-emerald-400' : 'text-slate-600'}`}>
+              <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? (isLogical ? 'text-blue-400' : 'text-emerald-400') : 'text-slate-600'}`}>
                 {p.name}
               </div>
               
               <div className={`w-8 h-6 rounded-md border flex items-center justify-center transition-all
-                ${isActive ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-slate-900 text-slate-700'}`}
+                ${isActive ? (isLogical ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400') : 'border-white/10 bg-slate-900 text-slate-700'}`}
               >
-                {p.type === 'SFP+' ? <Zap size={12} /> : <div className="grid grid-cols-2 gap-0.5">
+                {p.type === 'SFP+' ? <Zap size={12} /> : (p.type === 'Virtual' ? <Globe size={12} /> : <div className="grid grid-cols-2 gap-0.5">
                   <div className="w-1 h-1 rounded-full bg-current opacity-20" />
                   <div className="w-1 h-1 rounded-full bg-current opacity-20" />
                   <div className="w-1 h-1 rounded-full bg-current opacity-20" />
                   <div className="w-1 h-1 rounded-full bg-current opacity-20" />
-                </div>}
+                </div>)}
               </div>
 
               {isActive && (
