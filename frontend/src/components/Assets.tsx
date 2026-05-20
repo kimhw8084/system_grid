@@ -2075,6 +2075,10 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
 
 const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
   const queryClient = useQueryClient()
+  const { data: device } = useQuery({
+    queryKey: ['device', deviceId],
+    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
+  })
 
   // Source all network info from the connections table (network view's source)
   const { data: connectionsData, isLoading: isConnsLoading } = useQuery({ 
@@ -2090,65 +2094,181 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   if (isConnsLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between px-2">
-         <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3">Network Link Map (Sourced from Fabric)</h3>
+         <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3">Physical Port Visualization</h3>
       </div>
-      <table className="w-full text-[10px]">
-        <thead className="bg-white/5 border-b border-white/5">
-          <tr>
-            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Local Port</th>
-            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">IP Address</th>
-            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">MAC / VLAN</th>
-            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Speed</th>
-            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Connection</th>
-            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {connections?.map((c: any) => {
-            const isSource = c.source_device_id === deviceId
-            const localPort = isSource ? c.source_port : c.target_port
-            const localIP = isSource ? c.source_ip : c.target_ip
-            const localMAC = isSource ? c.source_mac : c.target_mac
-            const localVLAN = isSource ? c.source_vlan : c.target_vlan
-            const peerName = isSource ? c.server_b : c.server_a
-            const peerPort = isSource ? c.target_port : c.source_port
 
-            return (
-              <tr key={c.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight text-[10px]">{localPort}</td>
-                <td className="px-4 py-3 font-bold text-slate-200 text-[10px]">{localIP || <span className="text-slate-700 ">Unassigned</span>}</td>
-                <td className="px-4 py-3">
-                   <div className="flex flex-col">
-                      <span className="text-slate-500 text-[10px] uppercase font-bold">{localMAC || 'N/A'}</span>
-                      {localVLAN && <span className="text-[10px] font-bold text-indigo-400 uppercase mt-0.5">VLAN {localVLAN}</span>}
-                   </div>
-                </td>
-                <td className="px-4 py-3 text-center">
-                   <span className="text-slate-400 font-bold text-[10px]">{c.speed}</span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <button 
-                    onClick={() => onViewLink(c)}
-                    className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
-                  >
-                    <Network size={10} /> {peerName} ({peerPort})
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex items-center justify-center space-x-1">
-                    <button onClick={() => onEditLink(c)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
-                      <Edit2 size={12}/>
+      <DevicePortGrid device={device} connections={connections} />
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-2">
+           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Network Link Details (Sourced from Fabric)</h3>
+        </div>
+        <table className="w-full text-[10px]">
+          <thead className="bg-white/5 border-b border-white/5">
+            <tr>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Local Port</th>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">IP Address</th>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">MAC / VLAN</th>
+              <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Speed</th>
+              <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Connection</th>
+              <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {connections?.map((c: any) => {
+              const isSource = c.source_device_id === deviceId
+              const localPort = isSource ? c.source_port : c.target_port
+              const localIP = isSource ? c.source_ip : c.target_ip
+              const localMAC = isSource ? c.source_mac : c.target_mac
+              const localVLAN = isSource ? c.source_vlan : c.target_vlan
+              const peerName = isSource ? c.server_b : c.server_a
+              const peerPort = isSource ? c.target_port : c.source_port
+
+              return (
+                <tr key={c.id} className="hover:bg-white/5 transition-colors group">
+                  <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight text-[10px]">{localPort}</td>
+                  <td className="px-4 py-3 font-bold text-slate-200 text-[10px]">{localIP || <span className="text-slate-700 ">Unassigned</span>}</td>
+                  <td className="px-4 py-3">
+                     <div className="flex flex-col">
+                        <span className="text-slate-500 text-[10px] uppercase font-bold">{localMAC || 'N/A'}</span>
+                        {localVLAN && <span className="text-[10px] font-bold text-indigo-400 uppercase mt-0.5">VLAN {localVLAN}</span>}
+                     </div>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                     <span className="text-slate-400 font-bold text-[10px]">{c.speed}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button 
+                      onClick={() => onViewLink(c)}
+                      className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-bold uppercase hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 mx-auto"
+                    >
+                      <Network size={10} /> {peerName} ({peerPort})
                     </button>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center space-x-1">
+                      <button onClick={() => onEditLink(c)} className="p-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all">
+                        <Edit2 size={12}/>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            {!connections?.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-600 font-bold uppercase ">No active network links found in fabric</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+const DevicePortGrid = ({ device, connections }: { device: any, connections: any[] }) => {
+  const isSwitch = device?.type === 'Switch'
+  const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
+  
+  // Define standard layouts if no interfaces defined
+  const getPorts = () => {
+    const ports = []
+    if (isSwitch) {
+      // 48 ports for a standard core/agg switch
+      for (let i = 1; i <= 48; i++) {
+        const name = i <= 24 ? `Gi1/0/${i}` : (i <= 44 ? `Gi1/0/${i}` : `Te1/1/${i-44}`)
+        ports.push({ name, type: i > 44 ? 'SFP+' : 'RJ45' })
+      }
+    } else if (isFirewall) {
+      // 8-12 ports for FW/LB
+      for (let i = 0; i < 8; i++) {
+        ports.push({ name: `eth${i}`, type: 'RJ45' })
+      }
+      ports.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+    } else {
+      // Standard server: 2-4 LOM + maybe mgmt
+      ports.push({ name: 'eth0', type: 'RJ45' })
+      ports.push({ name: 'eth1', type: 'RJ45' })
+      ports.push({ name: 'mgmt0', type: 'RJ45', category: 'Management' })
+    }
+    return ports
+  }
+
+  const ports = getPorts()
+
+  return (
+    <div className="bg-black/40 border border-white/5 rounded-[20px] p-8">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+           <div className={`p-3 rounded-xl ${isSwitch ? 'bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-blue-500/20 text-blue-400 border-blue-500/20'} border`}>
+              <Network size={20} />
+           </div>
+           <div>
+              <h4 className="text-lg font-black uppercase tracking-tighter text-white">{device?.name} <span className="text-slate-500 opacity-50 font-normal">[{device?.model}]</span></h4>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{isSwitch ? 'Core Switching Fabric' : 'Compute Node Network Stack'}</p>
+           </div>
+        </div>
+        <div className="flex items-center gap-6">
+           <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Linked</span>
+           </div>
+           <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-800 border border-white/10" />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Unassigned</span>
+           </div>
+        </div>
+      </div>
+
+      <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
+        {ports.map((p, idx) => {
+          const conn = connections?.find(c => (c.source_device_id === device.id && c.source_port === p.name) || (c.target_device_id === device.id && c.target_port === p.name))
+          const isActive = !!conn
+          
+          return (
+            <div 
+              key={idx} 
+              className={`relative group p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
+                ${isActive 
+                  ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]' 
+                  : 'bg-black/40 border-white/5 hover:border-white/10'}`}
+            >
+              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-xl transition-all ${isActive ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-transparent'}`} />
+              
+              <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? 'text-emerald-400' : 'text-slate-600'}`}>
+                {p.name}
+              </div>
+              
+              <div className={`w-8 h-6 rounded-md border flex items-center justify-center transition-all
+                ${isActive ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-slate-900 text-slate-700'}`}
+              >
+                {p.type === 'SFP+' ? <Zap size={12} /> : <div className="grid grid-cols-2 gap-0.5">
+                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                </div>}
+              </div>
+
+              {isActive && (
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
+                    <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
+                    <div className="text-[10px] font-black text-white uppercase italic truncate mb-2">{conn.server_b === device.name ? conn.server_a : conn.server_b}</div>
+                    <div className="flex items-center justify-between text-[8px] font-black">
+                       <span className="text-slate-500 uppercase">Port:</span>
+                       <span className="text-indigo-400 uppercase italic">{conn.source_device_id === device.id ? conn.target_port : conn.source_port}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[8px] font-black mt-1">
+                       <span className="text-slate-500 uppercase">Metric:</span>
+                       <span className="text-emerald-400 uppercase">{conn.speed}</span>
+                    </div>
                   </div>
-                </td>
-              </tr>
-            )
-          })}
-          {!connections?.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-600 font-bold uppercase ">No active network links found in fabric</td></tr>}
-        </tbody>
-      </table>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
