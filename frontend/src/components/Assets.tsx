@@ -1991,6 +1991,7 @@ export default function Assets() {
         title="Asset Registry Enumerations"
         sections={[
             { title: "Asset Types", category: "DeviceType", icon: Box },
+            { title: "Hardware Profiles", category: "HardwareProfile", icon: Package },
             { title: "Logical Systems", category: "LogicalSystem", icon: LayoutGrid },
             { title: "Business Units", category: "BusinessUnit", icon: Sliders }
         ]}
@@ -2077,7 +2078,7 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   const { data: device, isLoading: isDeviceLoading } = useQuery({
     queryKey: ['device', deviceId],
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json()),
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
     initialData: () => {
       const allDevices = queryClient.getQueryData<any[]>(['devices'])
       return allDevices?.find(d => d.id === deviceId)
@@ -2088,7 +2089,34 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   const { data: connections, isLoading: isConnsLoading } = useQuery({ 
     queryKey: ['connections', deviceId], 
     queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json()),
-    staleTime: 60000 // 1 minute
+    staleTime: 60000
+  })
+
+  // Fetch Hardware Templates
+  const { data: templates } = useQuery({
+    queryKey: ['options', 'HardwareProfile'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/options?category=HardwareProfile')).json())
+  })
+
+  const saveTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const activePorts = Array.from(new Set(connections?.map((c: any) => c.source_device_id === deviceId ? c.source_port : c.target_port)))
+      const portStrings = activePorts.map(p => `${p}:RJ45`) // Default to RJ45 for ad-hoc
+      const res = await apiFetch('/api/v1/settings/options', {
+        method: 'POST',
+        body: JSON.stringify({
+          category: 'HardwareProfile',
+          label: device?.model || 'New Template',
+          value: device?.model || 'New Template',
+          metadata_keys: portStrings
+        })
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['options', 'HardwareProfile'] })
+      alert('Model template saved successfully to Settings.')
+    }
   })
 
   if (isConnsLoading || isDeviceLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
@@ -2097,9 +2125,15 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
     <div className="space-y-8 animate-in fade-in duration-300">
       <div className="flex items-center justify-between px-2">
          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-indigo-600 pl-3">Physical Port Visualization</h3>
+         <button 
+           onClick={() => saveTemplateMutation.mutate()}
+           className="px-3 py-1.5 bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 rounded-lg text-[9px] font-bold uppercase hover:bg-indigo-600/20 transition-all flex items-center gap-2"
+         >
+           <Save size={12} /> Save {device?.model || 'Model'} Template
+         </button>
       </div>
 
-      <DevicePortGrid device={device} connections={connections} />
+      <DevicePortGrid device={device} connections={connections} templates={templates} />
 
       <div className="space-y-4">
         <div className="flex items-center justify-between px-2">
@@ -2165,11 +2199,21 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
   )
 }
 
-const DevicePortGrid = ({ device, connections }: { device: any, connections: any[] }) => {
+const DevicePortGrid = ({ device, connections, templates }: { device: any, connections: any[], templates?: any[] }) => {
   const isSwitch = device?.type === 'Switch'
   const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
 
   const ports = useMemo(() => {
+    // 1. Check for exact model template match
+    const modelTemplate = templates?.find(t => t.value === device?.model || t.label === device?.model)
+    if (modelTemplate?.metadata_keys?.length) {
+      return modelTemplate.metadata_keys.map((k: string) => {
+        const [name, type, category] = k.split(':')
+        return { name, type: type || 'RJ45', category: category || 'General' }
+      })
+    }
+
+    // 2. Fall back to standard type layouts
     const basePorts = []
     if (isSwitch) {
       for (let i = 1; i <= 48; i++) {
@@ -2196,7 +2240,7 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
       .map(name => ({ name, type: 'Virtual', category: 'Logical' }))
 
     return [...basePorts, ...extraPorts]
-  }, [isSwitch, isFirewall, connections, device?.id])
+  }, [isSwitch, isFirewall, connections, device?.id, device?.model, templates])
 
   // Create a quick lookup map for connections by port name
   const connMap = useMemo(() => {

@@ -134,7 +134,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                 </>
                             )}
                         </div>
-                        {(category === 'ServiceType' || category === 'ExternalType') && (
+                        {(category === 'ServiceType' || category === 'ExternalType' || category === 'HardwareProfile') && (
                             <div className="mt-2 pl-6 border-l border-white/5">
                                 {editingId === opt.id ? (
                                     <div className="space-y-1">

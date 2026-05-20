@@ -698,6 +698,16 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ]
         for val, keys in service_types:
             db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
+
+        # Hardware Port Templates (Model-based)
+        # Format in metadata_keys: "PortName:PortType[:Category]"
+        hardware_profiles = [
+            ("Dell PowerEdge R740", ["eth0:RJ45", "eth1:RJ45", "eth2:RJ45", "eth3:RJ45", "idrac:RJ45:Management"]),
+            ("Cisco C9300-48T", [f"Gi1/0/{i}:RJ45" for i in range(1, 49)] + [f"Te1/1/{i}:SFP+" for i in range(1, 5)]),
+            ("Generic 1U Server", ["eth0:RJ45", "eth1:RJ45", "mgmt0:RJ45:Management"])
+        ]
+        for val, keys in hardware_profiles:
+            db.add(models.SettingOption(category="HardwareProfile", label=val, value=val, metadata_keys=keys))
         
     await db.commit()
     return {"status": "initialized"}
