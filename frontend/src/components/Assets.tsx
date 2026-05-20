@@ -2075,7 +2075,7 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
 
 const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
   const queryClient = useQueryClient()
-  const { data: device } = useQuery({
+  const { data: device, isLoading: isDeviceLoading } = useQuery({
     queryKey: ['device', deviceId],
     queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json())
   })
@@ -2091,7 +2091,7 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
     return connectionsData.filter((c: any) => c.source_device_id === deviceId || c.target_device_id === deviceId)
   }, [connectionsData, deviceId])
 
-  if (isConnsLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
+  if (isConnsLoading || isDeviceLoading) return <div className="py-20 text-center"><RefreshCcw className="animate-spin mx-auto text-blue-500 mb-4" /> <span className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Hydrating Fabric Data...</span></div>
 
   return (
     <div className="space-y-8">
@@ -2221,7 +2221,7 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
 
       <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
         {ports.map((p, idx) => {
-          const conn = connections?.find(c => (c.source_device_id === device.id && c.source_port === p.name) || (c.target_device_id === device.id && c.target_port === p.name))
+          const conn = connections?.find(c => (c.source_device_id === device?.id && c.source_port === p.name) || (c.target_device_id === device?.id && c.target_port === p.name))
           const isActive = !!conn
           
           return (
@@ -2253,10 +2253,10 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
                     <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
-                    <div className="text-[10px] font-black text-white uppercase italic truncate mb-2">{conn.server_b === device.name ? conn.server_a : conn.server_b}</div>
+                    <div className="text-[10px] font-black text-white uppercase italic truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
                     <div className="flex items-center justify-between text-[8px] font-black">
                        <span className="text-slate-500 uppercase">Port:</span>
-                       <span className="text-indigo-400 uppercase italic">{conn.source_device_id === device.id ? conn.target_port : conn.source_port}</span>
+                       <span className="text-indigo-400 uppercase italic">{conn.source_device_id === device?.id ? conn.target_port : conn.source_port}</span>
                     </div>
                     <div className="flex items-center justify-between text-[8px] font-black mt-1">
                        <span className="text-slate-500 uppercase">Metric:</span>
@@ -2274,6 +2274,7 @@ const DevicePortGrid = ({ device, connections }: { device: any, connections: any
 }
 
 const SecurityTab = ({ device }: { device: any }) => {
+  if (!device) return null
   const deviceId = device.id
   const queryClient = useQueryClient()
   const [newRule, setNewRule] = useState({
