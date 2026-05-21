@@ -1869,14 +1869,16 @@ export default function RackTemp() {
           deviceName={optionsMenu.device?.name}
           onClose={() => setOptionsMenu(null)}
           onShowConnections={() => {
+            if (!optionsMenu.device) return
             const conns = connections || []
             const targetIds = conns
-              .filter((c: any) => c.source_device_id === optionsMenu.device?.id || c.target_device_id === optionsMenu.device?.id)
-              .map((c: any) => c.source_device_id === optionsMenu.device?.id ? c.target_device_id : c.source_device_id)
-            setFocusedConnection({ sourceId: optionsMenu.device?.id, targetIds })
+              .filter((c: any) => c.source_device_id === optionsMenu.device.id || c.target_device_id === optionsMenu.device.id)
+              .map((c: any) => c.source_device_id === optionsMenu.device.id ? c.target_device_id : c.source_device_id)
+            setFocusedConnection({ sourceId: optionsMenu.device.id, targetIds })
             setOptionsMenu(null)
           }}
           onPatch={() => {
+            if (!optionsMenu.device || !optionsMenu.rack) return
             setPatchSource({ 
               deviceId: optionsMenu.device.id, 
               port: 'Auto', 
@@ -1885,10 +1887,15 @@ export default function RackTemp() {
             } as any)
             setOptionsMenu(null)
           }}
-          onEdit={() => { setManagingDevice({ device: optionsMenu.device, loc: optionsMenu.loc, rack: optionsMenu.rack }); setOptionsMenu(null) }}
+          onEdit={() => { 
+            if (!optionsMenu.device) return
+            setManagingDevice({ device: optionsMenu.device, loc: optionsMenu.loc, rack: optionsMenu.rack })
+            setOptionsMenu(null) 
+          }}
           onDelete={() => {
-            openConfirm('Unmount Device', `Unmount ${optionsMenu.device?.name}?`, async () => {
-              await apiFetch(`/api/v1/racks/mount/${optionsMenu.device?.id}`, { method: 'DELETE' })
+            if (!optionsMenu.device) return
+            openConfirm('Unmount Device', `Unmount ${optionsMenu.device.name}?`, async () => {
+              await apiFetch(`/api/v1/racks/mount/${optionsMenu.device.id}`, { method: 'DELETE' })
               queryClient.invalidateQueries({ queryKey: ['racks-all'] })
               queryClient.invalidateQueries({ queryKey: ['devices'] })
               toast.success('Unmounted')
@@ -1911,7 +1918,7 @@ export default function RackTemp() {
               </div>
               <div>
                 <p className="text-[10px] font-black text-white uppercase tracking-widest">Cabling Mode</p>
-                <p className="text-[9px] text-indigo-300 font-bold uppercase">Source: {(patchSource as any).name}</p>
+                <p className="text-[9px] text-indigo-300 font-bold uppercase">Source: {patchSource.name}</p>
               </div>
             </div>
             <div className="h-6 w-px bg-white/10" />
@@ -1925,19 +1932,19 @@ export default function RackTemp() {
       </AnimatePresence>
 
       <ConfirmationModal
-        isOpen={!!optionsMenu && !!patchSource && (optionsMenu as any).device.id !== (patchSource as any).deviceId}
+        isOpen={!!optionsMenu && !!patchSource && optionsMenu.device?.id && optionsMenu.device.id !== patchSource.deviceId}
         onClose={() => setOptionsMenu(null)}
         onConfirm={() => {
           bulkPatchMutation.mutate([{
-            source_device_id: (patchSource as any).deviceId,
+            source_device_id: patchSource.deviceId,
             source_port: 'Auto',
-            target_device_id: (optionsMenu as any).device.id,
+            target_device_id: optionsMenu.device.id,
             target_port: 'Auto',
             purpose: 'Inter-Rack Data'
           }])
         }}
         title="Create Patch Connection"
-        message={`Create a direct network connection between ${(patchSource as any).name} and ${(optionsMenu as any).device?.name}?`}
+        message={`Create a direct network connection between ${patchSource?.name} and ${optionsMenu?.device?.name}?`}
         variant="info"
         confirmText="Create Cable"
       />

@@ -75,7 +75,7 @@ const SystemScopeRenderer = (p: any) => {
   )
 }
 
-const GanttChart = ({ project, onUpdate }: { project: any, onUpdate: (data: any) => void }) => {
+const GanttChart = ({ project, onUpdate, projectStatusOptions }: { project: any, onUpdate: (data: any) => void, projectStatusOptions: any[] }) => {
   const [tasks, setTasks] = useState<any[]>(project.tasks || [])
   const [taskPool, setTaskPool] = useState<any[]>(project.metadata_json?.task_pool || [])
   const [draggedTask, setDraggedTask] = useState<any>(null)
@@ -186,7 +186,9 @@ const GanttChart = ({ project, onUpdate }: { project: any, onUpdate: (data: any)
                   initial={{ width: 0 }}
                   animate={{ width: `${width}%`, left: `${left}%` }}
                   onClick={() => {
-                    const nextStatus = task.status === 'Completed' ? 'In Progress' : task.status === 'In Progress' ? 'Blocked' : 'Completed'
+                    const statuses = projectStatusOptions.map(s => s.value)
+                    const currentIdx = statuses.indexOf(task.status)
+                    const nextStatus = statuses[(currentIdx + 1) % statuses.length]
                     const nextProgress = nextStatus === 'Completed' ? 100 : task.progress
                     const newTasks = tasks.map(t => t.id === task.id ? { ...t, status: nextStatus, progress: nextProgress } : t)
                     setTasks(newTasks)
@@ -396,7 +398,7 @@ const MonthYearPicker = ({ label, value, onChange }: { label: string, value: str
   )
 }
 
-export function ProjectForm({ initialData, onSave, isSaving, options, devices, services, onOpenTypeSettings }: any) {
+export function ProjectForm({ initialData, onSave, isSaving, options, devices, services, onOpenTypeSettings, projectTypeOptions, projectStatusOptions, projectPriorityOptions }: any) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -465,11 +467,6 @@ export function ProjectForm({ initialData, onSave, isSaving, options, devices, s
     return ["OPERATOR", "ENGINEERING", "PLATFORM", "SECURITY", "SRE", "DEVOPS", "PRODUCT"]
   }, [])
 
-  const projectTypeOptions = useMemo(() => {
-    const registryTypes = options?.filter((o: any) => o.category === 'ProjectType').map((o: any) => ({ value: o.value, label: o.label.toUpperCase() })) || []
-    return registryTypes.length > 0 ? registryTypes : PROJECT_TYPES
-  }, [options])
-
   return (
     <div className="space-y-6 mt-4">
       {/* 1. Project Title */}
@@ -497,7 +494,7 @@ export function ProjectForm({ initialData, onSave, isSaving, options, devices, s
                 <Settings size={10} />
               </button>
             </div>
-            <StyledSelect label="Project Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={PROJECT_STATUSES} />
+            <StyledSelect label="Project Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={projectStatusOptions} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <MonthYearPicker label="Start (Month/Year)" value={formData.start_date} onChange={v => setFormData({...formData, start_date: v})} />
@@ -842,7 +839,7 @@ export default function Projects() {
   const [activeModal, setActiveModal] = useState<any>(null)
   const [viewMode, setViewMode] = useState<'GRID' | 'DASHBOARD'>('GRID')
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
-  const [activeTab, setActiveTab] = useState<'DETAILS' | 'TASKS' | 'ADOPTION' | 'QA' | 'APPENDIX'>('DETAILS')
+  const [activeTab, setActiveTab] = useState<'DETAILS' | 'TASKS' | 'DEPENDENCIES' | 'ADOPTION' | 'QA' | 'APPENDIX' | 'ACTIVITY'>('DETAILS')
   const [searchTerm, setSearchTerm] = useState('')
   const [detailWidth, setDetailWidth] = useState(800)
   const [isMaximized, setIsMaximized] = useState(false)
@@ -870,6 +867,21 @@ export default function Projects() {
     queryKey: ['services-all'], 
     queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) 
   })
+
+  const projectTypeOptions = useMemo(() => {
+    const registryTypes = options?.filter((o: any) => o.category === 'ProjectType').map((o: any) => ({ value: o.value, label: o.label.toUpperCase() })) || []
+    return registryTypes.length > 0 ? registryTypes : PROJECT_TYPES
+  }, [options])
+
+  const projectStatusOptions = useMemo(() => {
+    const registryStatuses = options?.filter((o: any) => o.category === 'ProjectStatus').map((o: any) => ({ value: o.value, label: o.label.toUpperCase() })) || []
+    return registryStatuses.length > 0 ? registryStatuses : PROJECT_STATUSES
+  }, [options])
+
+  const projectPriorityOptions = useMemo(() => {
+    const registryPriorities = options?.filter((o: any) => o.category === 'ProjectPriority').map((o: any) => ({ value: o.value, label: o.label.toUpperCase() })) || []
+    return registryPriorities.length > 0 ? registryPriorities : PROJECT_PRIORITIES
+  }, [options])
 
   const columnDefs = useMemo(() => [
     { 
@@ -915,7 +927,7 @@ export default function Projects() {
       cellClass: 'font-bold',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: PROJECT_STATUSES.map(s => s.value)
+        values: projectStatusOptions.map(s => s.value)
       },
       cellRenderer: (p: any) => {
         const val = p.value?.toUpperCase() || 'UNKNOWN'
@@ -942,7 +954,7 @@ export default function Projects() {
       cellClass: 'font-bold',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
-        values: PROJECT_PRIORITIES.map(p => p.value)
+        values: projectPriorityOptions.map(p => p.value)
       },
       cellRenderer: (p: any) => {
         const val = p.value?.toUpperCase() || 'MEDIUM'
@@ -1013,7 +1025,7 @@ export default function Projects() {
         </div>
       )
     }
-  ], [projects, projectTypeOptions])
+  ], [projects, projectTypeOptions, projectStatusOptions, projectPriorityOptions])
 
   const onCellValueChanged = (event: any) => {
     const updatedData = { ...event.data, [event.column.colId]: event.newValue }
@@ -1036,6 +1048,63 @@ export default function Projects() {
     },
     onError: (e: any) => toast.error(e.message)
   })
+
+  const cloneMutation = useMutation({
+    mutationFn: async (project: any) => {
+      const { id, created_at, updated_at, tasks, ...rest } = project
+      const clonedProject = {
+        ...rest,
+        name: `CLONE: ${rest.name}`,
+        status: 'Planning',
+        tasks: (tasks || []).map(({ id, created_at, updated_at, project_id, ...t }: any) => t)
+      }
+      const res = await apiFetch('/api/v1/projects', { method: 'POST', body: JSON.stringify(clonedProject) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success('Strategic Vector Duplicated')
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
+  const getContextMenuItems = (params: any) => {
+    const project = params.node.data
+    return [
+      {
+        name: `DUPLICATE STRATEGY`,
+        action: () => cloneMutation.mutate(project),
+        icon: '<span class="text-blue-400"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></span>'
+      },
+      'separator',
+      {
+        name: 'QUICK STATUS: IN PROGRESS',
+        action: () => mutation.mutate({ ...project, status: 'In Progress' }),
+        disabled: project.status === 'In Progress'
+      },
+      {
+        name: 'FLAG AS BLOCKED',
+        action: () => mutation.mutate({ ...project, status: 'Blocked' }),
+        disabled: project.status === 'Blocked',
+        icon: '<span class="text-rose-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></span>'
+      },
+      {
+        name: 'MARK COMPLETED',
+        action: () => mutation.mutate({ ...project, status: 'Completed' }),
+        disabled: project.status === 'Completed'
+      },
+      'separator',
+      {
+        name: 'GENERATE EXECUTIVE REPORT',
+        action: () => setActiveModal({ type: 'REPORT', project }),
+        icon: '<span class="text-emerald-400"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></span>'
+      },
+      'separator',
+      'copy',
+      'export'
+    ]
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1243,6 +1312,14 @@ export default function Projects() {
                         <LayoutGrid size={16}/>
                       </button>
 
+                      <button 
+                        onClick={() => cloneMutation.mutate(selectedProject)}
+                        className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black uppercase text-amber-400 hover:bg-white/10 transition-all flex items-center gap-2"
+                        title="Duplicate Project"
+                      >
+                        <PlusCircle size={12}/> Clone
+                      </button>
+
                       <button onClick={() => { setIsEditing(!isEditing); setActiveTab('DETAILS'); }} className={`p-1.5 border rounded-lg transition-all ${isEditing ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}>
                         {isEditing ? <Check size={16}/> : <Edit2 size={16}/>}
                       </button>
@@ -1252,7 +1329,7 @@ export default function Projects() {
                   </div>
 
                   <div className="flex gap-2">
-                     {['DETAILS', 'TASKS', 'DEPENDENCIES', 'ADOPTION', 'QA', 'APPENDIX'].map(tab => (
+                     {['DETAILS', 'TASKS', 'DEPENDENCIES', 'ADOPTION', 'QA', 'APPENDIX', 'ACTIVITY'].map(tab => (
                        <button 
                          key={tab}
                          onClick={() => setActiveTab(tab as any)}
@@ -1279,6 +1356,9 @@ export default function Projects() {
                           devices={devices} 
                           services={services} 
                           onOpenTypeSettings={() => setRegistryModal({ category: 'ProjectType' })}
+                          projectTypeOptions={projectTypeOptions}
+                          projectStatusOptions={projectStatusOptions}
+                          projectPriorityOptions={projectPriorityOptions}
                         />
                         <button 
                           onClick={() => setIsEditing(false)}
@@ -1348,7 +1428,7 @@ export default function Projects() {
                            <Calendar size={14} /> Schedule Visualization
                         </h4>
                       </div>
-                      <GanttChart project={selectedProject} onUpdate={(data) => mutation.mutate(data)} />
+                      <GanttChart project={selectedProject} onUpdate={(data) => mutation.mutate(data)} projectStatusOptions={projectStatusOptions} />
                       
                       <div className="space-y-5">
                          <div className="flex justify-between items-center">
@@ -1430,6 +1510,41 @@ export default function Projects() {
                       />
                     </div>
                   )}
+
+                  {activeTab === 'ACTIVITY' && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
+                       <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                          <History size={14} /> Strategic Activity Stream
+                       </h4>
+                       <div className="flex-1 space-y-4 overflow-y-auto pr-4 custom-scrollbar">
+                          {[...(selectedProject.comments || []), ...(selectedProject.qa_items || [])]
+                            .sort((a: any, b: any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
+                            .map((item: any, i: number) => (
+                              <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-lg space-y-2 group hover:border-blue-500/30 transition-all">
+                                 <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-2">
+                                       <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white">
+                                          {(item.author || item.asked_by || 'U')[0].toUpperCase()}
+                                       </div>
+                                       <span className="text-[10px] font-black text-slate-300 uppercase">{item.author || item.asked_by}</span>
+                                    </div>
+                                    <span className="text-[8px] font-bold text-slate-500 uppercase">{new Date(item.timestamp || item.created_at).toLocaleString()}</span>
+                                 </div>
+                                 <p className="text-[11px] font-bold text-slate-400 leading-relaxed italic">"{item.content || item.question}"</p>
+                                 {item.answer && (
+                                   <div className="mt-2 pl-4 border-l-2 border-emerald-500/30">
+                                      <p className="text-[9px] font-black text-emerald-400 uppercase mb-1 flex items-center gap-1"><CheckCircle2 size={10}/> Answered</p>
+                                      <p className="text-[10px] font-bold text-slate-300 italic">"{item.answer}"</p>
+                                   </div>
+                                 )}
+                              </div>
+                            ))}
+                          {[...(selectedProject.comments || []), ...(selectedProject.qa_items || [])].length === 0 && (
+                            <div className="py-20 text-center text-slate-600 font-black italic tracking-[0.2em] opacity-50">No strategic activity recorded</div>
+                          )}
+                       </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </>
@@ -1460,6 +1575,9 @@ export default function Projects() {
                   devices={devices}
                   services={services}
                   onOpenTypeSettings={() => setRegistryModal({ category: 'ProjectType' })}
+                  projectTypeOptions={projectTypeOptions}
+                  projectStatusOptions={projectStatusOptions}
+                  projectPriorityOptions={projectPriorityOptions}
                 />
             </motion.div>
           </div>
