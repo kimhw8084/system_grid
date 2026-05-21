@@ -9,7 +9,7 @@ import {
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon,
   Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle, BookOpen, Filter,
-  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText
+  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -403,14 +403,16 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
   const [dependencySourceId, setDependencySourceId] = useState<number | null>(null)
   const [showBaseline, setShowBaseline] = useState(false)
   const [showStats, setShowStats] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(200)
+  const [sidebarWidth, setSidebarWidth] = useState(240)
 
-  const ROW_HEIGHT = 36
-  const HEADER_HEIGHT = 40
+  const ROW_HEIGHT = 48
+  const HEADER_HEIGHT = 44
 
   // Sync internal state with props when project changes
   useEffect(() => {
-    setTasks(project.tasks || [])
+    if (JSON.stringify(project.tasks) !== JSON.stringify(tasks)) {
+      setTasks(project.tasks || [])
+    }
   }, [project.tasks])
 
   const handleSelectTask = (id: number, isShift: boolean) => {
@@ -421,14 +423,8 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
       setSelectedTaskIds(next)
       setSelectedTaskId(null)
     } else {
-      if (selectedTaskIds.has(id) && selectedTaskIds.size > 1) {
-         // Keep existing selection or clear? Usually clicking single clears others
-         setSelectedTaskIds(new Set([id]))
-         setSelectedTaskId(id)
-      } else {
-         setSelectedTaskIds(new Set([id]))
-         setSelectedTaskId(id)
-      }
+      setSelectedTaskIds(new Set([id]))
+      setSelectedTaskId(id)
     }
   }
 
@@ -438,12 +434,10 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     const currentPos = getPosFromDate(task.start_date)
     const newPos = currentPos + delta
     const snappedPos = Math.round(newPos / zoomLevel) * zoomLevel
-    if (!isFinal && snappedPos === currentPos) return
-
+    
     const daysMoved = Math.round((snappedPos - currentPos) / zoomLevel)
     if (daysMoved === 0 && !isFinal) return
 
-    // Multi-move logic
     const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
     
     const updatedTasks = tasks.map(t => {
@@ -467,18 +461,23 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     if (tasks.length === 0) return new Set()
     const memo = new Map<number, number>()
     const visiting = new Set<number>()
-    const getTaskDuration = (t: any) => differenceInDays(new Date(t.end_date), new Date(t.start_date))
+    const getTaskDuration = (t: any) => Math.max(0, differenceInDays(new Date(t.end_date), new Date(t.start_date)))
     
     const findLongestPath = (taskId: number): number => {
       if (memo.has(taskId)) return memo.get(taskId)!
-      if (visiting.has(taskId)) return 0
+      if (visiting.has(taskId)) return -Infinity // Cycle detected
+      
       visiting.add(taskId)
       const task = tasks.find(t => t.id === taskId)
       if (!task) { visiting.delete(taskId); return 0; }
+      
       const dependents = tasks.filter(t => (t.dependencies_json || []).includes(taskId))
       let maxSubPath = 0
-      for (const dep of dependents) maxSubPath = Math.max(maxSubPath, findLongestPath(dep.id))
-      const result = getTaskDuration(task) + maxSubPath
+      for (const dep of dependents) {
+        maxSubPath = Math.max(maxSubPath, findLongestPath(dep.id))
+      }
+      
+      const result = getTaskDuration(task) + (maxSubPath === -Infinity ? 0 : maxSubPath)
       memo.set(taskId, result)
       visiting.delete(taskId)
       return result
@@ -487,26 +486,39 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     const pathValues = tasks.map(t => ({ id: t.id, length: findLongestPath(t.id) }))
     const maxLength = Math.max(...pathValues.map(p => p.length), 0)
     const criticalSet = new Set<number>()
-    if (maxLength === 0) return criticalSet
+    
+    if (maxLength <= 0) return criticalSet
 
     const isCriticalMemo = new Map<string, boolean>()
     const isCritical = (taskId: number, currentLength: number): boolean => {
-      const key = `${taskId}-${currentLength}`
+      const key = `${taskId}-${currentLength.toFixed(2)}`
       if (isCriticalMemo.has(key)) return isCriticalMemo.get(key)!
+      
       const task = tasks.find(t => t.id === taskId)
       if (!task) return false
+      
       const duration = getTaskDuration(task)
-      if (Math.abs(currentLength - findLongestPath(taskId)) < 0.1) {
+      const taskLongestPath = findLongestPath(taskId)
+      
+      if (Math.abs(currentLength - taskLongestPath) < 0.1) {
         criticalSet.add(taskId)
         const dependents = tasks.filter(t => (t.dependencies_json || []).includes(taskId))
-        for (const dep of dependents) isCritical(dep.id, currentLength - duration)
+        for (const dep of dependents) {
+          isCritical(dep.id, currentLength - duration)
+        }
         isCriticalMemo.set(key, true)
         return true
       }
+      
       isCriticalMemo.set(key, false)
       return false
     }
-    tasks.forEach(t => { if (Math.abs(findLongestPath(t.id) - maxLength) < 0.1) isCritical(t.id, maxLength) })
+
+    tasks.forEach(t => { 
+      if (Math.abs(findLongestPath(t.id) - maxLength) < 0.1) {
+        isCritical(t.id, maxLength)
+      }
+    })
     return criticalSet
   }, [tasks])
 
@@ -514,34 +526,30 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     if (tasks.length === 0) return startOfMonth(new Date())
     const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
     const min = times.length > 0 ? Math.min(...times) : new Date().getTime()
-    return startOfMonth(addDays(new Date(min), -7))
+    return startOfMonth(addDays(new Date(min), -14))
   }, [tasks])
 
   const endDate = useMemo(() => {
     if (tasks.length === 0) return endOfMonth(addDays(new Date(), 90))
     const times = tasks.map(t => new Date(t.end_date).getTime()).filter(t => !isNaN(t))
     const max = times.length > 0 ? Math.max(...times) : addDays(new Date(), 90).getTime()
-    return endOfMonth(addDays(new Date(max), 30))
+    return endOfMonth(addDays(new Date(max), 45))
   }, [tasks])
 
   const days = useMemo(() => {
-    try { return eachDayOfInterval({ start: startDate, end: endDate }) }
+    try { 
+      const interval = eachDayOfInterval({ start: startDate, end: endDate })
+      // Cap at reasonable limits to prevent infinite rendering
+      return interval.slice(0, 2000) 
+    }
     catch (e) { return [new Date()] }
   }, [startDate, endDate])
 
   const getPosFromDate = (date: string | Date) => {
     const d = new Date(date)
     if (isNaN(d.getTime())) return 0
-    return differenceInDays(d, startDate) * zoomLevel
+    return Math.floor(differenceInDays(d, startDate) * zoomLevel)
   }
-
-  // Scroll to earliest task on load
-  useEffect(() => {
-    if (timelineRef.current && tasks.length > 0) {
-      const earliestPos = Math.min(...tasks.map(t => getPosFromDate(t.start_date)))
-      timelineRef.current.scrollLeft = Math.max(0, earliestPos - 100)
-    }
-  }, [startDate]) // Only on first render / date range shift
 
   const handleTaskUpdate = (id: number, updates: any) => {
     const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
@@ -555,8 +563,7 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     const currentPos = getPosFromDate(type === 'start' ? task.start_date : task.end_date)
     const newPos = currentPos + delta
     const snappedPos = Math.round(newPos / zoomLevel) * zoomLevel
-    if (!isFinal && snappedPos === currentPos) return
-
+    
     const daysMoved = Math.round((snappedPos - currentPos) / zoomLevel)
     if (daysMoved === 0 && !isFinal) return
 
@@ -608,10 +615,18 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
       const x2 = getPosFromDate(task.start_date)
       const y2 = toIdx * ROW_HEIGHT + (ROW_HEIGHT / 2)
       const isCritical = criticalPathIds.has(task.id) && criticalPathIds.has(fromTask.id)
+      
       return (
         <g key={`${task.id}-${depId}`}>
-           <path d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`} stroke={isCritical ? '#f43f5e' : '#3b82f6'} strokeWidth={isCritical ? "2" : "1"} fill="none" opacity={isCritical ? 1 : 0.2} strokeDasharray={isCritical ? "0" : "4,2"} />
-           <circle cx={x2} cy={y2} r="2" fill={isCritical ? '#f43f5e' : '#3b82f6'} />
+           <path 
+             d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`} 
+             stroke={isCritical ? '#f43f5e' : '#3b82f6'} 
+             strokeWidth={isCritical ? "2" : "1"} 
+             fill="none" 
+             opacity={isCritical ? 1 : 0.3} 
+             strokeDasharray={isCritical ? "0" : "4,2"} 
+           />
+           <circle cx={x2} cy={y2} r="3" fill={isCritical ? '#f43f5e' : '#3b82f6'} shadow="0 0 10px rgba(0,0,0,0.5)" />
         </g>
       )
     })).filter(Boolean)
@@ -627,32 +642,49 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     return { progress: avgProgress, blocked: blockedCount, criticalProgress, health: blockedCount > 0 ? 'At Risk' : 'Healthy' }
   }, [tasks, criticalPathIds])
 
+  const onReorderTasks = (newOrder: any[]) => {
+    setTasks(newOrder)
+    onUpdate({ ...project, tasks: newOrder })
+  }
+
   return (
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
        {/* Executive HUD Overlay */}
        <AnimatePresence>
           {showStats && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-[#12141f] border-b border-white/10 overflow-hidden">
-               <div className="p-4 grid grid-cols-4 gap-4">
-                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Portfolio Velocity</p>
-                     <div className="flex items-end gap-2"><span className="text-xl font-black text-white">{stats.progress}%</span><span className="text-[9px] font-bold text-emerald-400 mb-1">↑ 4%</span></div>
-                     <div className="h-1 w-full bg-white/5 rounded-full mt-2"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats.progress}%` }} /></div>
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-[#12141f] border-b border-white/10 overflow-hidden shadow-2xl z-50">
+               <div className="p-6 grid grid-cols-4 gap-6">
+                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+                     <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Portfolio Velocity</p>
+                        <Zap size={14} className="text-blue-400" />
+                     </div>
+                     <div className="flex items-end gap-2"><span className="text-2xl font-black text-white">{stats.progress}%</span><span className="text-[10px] font-bold text-emerald-400 mb-1">COMPLETED</span></div>
+                     <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" style={{ width: `${stats.progress}%` }} /></div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Critical Path Progress</p>
-                     <div className="flex items-end gap-2"><span className="text-xl font-black text-rose-400">{stats.criticalProgress}%</span><span className="text-[9px] font-bold text-slate-600 mb-1">Target 85%</span></div>
-                     <div className="h-1 w-full bg-white/5 rounded-full mt-2"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${stats.criticalProgress}%` }} /></div>
+                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+                     <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Critical Path Health</p>
+                        <Target size={14} className="text-rose-400" />
+                     </div>
+                     <div className="flex items-end gap-2"><span className="text-2xl font-black text-rose-400">{stats.criticalProgress}%</span><span className="text-[10px] font-bold text-slate-600 mb-1">OF CRITICAL VECTOR</span></div>
+                     <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${stats.criticalProgress}%` }} /></div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Blocked Entities</p>
-                     <div className="flex items-end gap-2"><span className={`text-xl font-black ${stats.blocked > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{stats.blocked}</span><span className="text-[9px] font-bold text-slate-600 mb-1">Active Risks</span></div>
-                     <div className="flex gap-1 mt-2">{(Array(5).fill(0)).map((_, i) => <div key={i} className={`h-1 flex-1 rounded-full ${i < stats.blocked ? 'bg-rose-500' : 'bg-white/5'}`} />)}</div>
+                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+                     <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Blocked Entities</p>
+                        <AlertTriangle size={14} className="text-amber-400" />
+                     </div>
+                     <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.blocked > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{stats.blocked}</span><span className="text-[10px] font-bold text-slate-600 mb-1">ACTIVE RISKS</span></div>
+                     <div className="flex gap-1.5 mt-3">{(Array(8).fill(0)).map((_, i) => <div key={i} className={`h-1.5 flex-1 rounded-full ${i < stats.blocked ? 'bg-rose-500' : 'bg-white/5'}`} />)}</div>
                   </div>
-                  <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                     <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Vector Health</p>
-                     <div className="flex items-end gap-2"><span className={`text-xl font-black ${stats.health === 'Healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>{stats.health}</span><Activity size={14} className={stats.health === 'Healthy' ? 'text-emerald-400 mb-1' : 'text-amber-400 mb-1'} /></div>
-                     <p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest mt-2">Operational Integrity Nominal</p>
+                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+                     <div className="flex items-center justify-between mb-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Vector Integrity</p>
+                        <ShieldCheck size={14} className="text-emerald-400" />
+                     </div>
+                     <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.health === 'Healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>{stats.health}</span></div>
+                     <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.1em] mt-3">Operational bounds are within nominal range.</p>
                   </div>
                </div>
             </motion.div>
@@ -660,102 +692,125 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
        </AnimatePresence>
 
        {/* Toolbar */}
-       <div className="h-10 border-b border-white/5 flex items-center px-4 justify-between bg-[#0a0c14]/90 backdrop-blur-md z-40">
-          <div className="flex items-center gap-4">
-             <button onClick={() => setShowStats(!showStats)} className={`p-1.5 rounded transition-all ${showStats ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}><BarChart3 size={14}/></button>
-             <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={12}/></button>
-                <div className="w-px h-2.5 bg-white/10 mx-0.5" />
-                <button onClick={() => setZoomLevel(Math.min(100, zoomLevel + 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={12}/></button>
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1.5">{zoomLevel}PX/D</span>
+       <div className="h-11 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] backdrop-blur-xl z-40">
+          <div className="flex items-center gap-6">
+             <button onClick={() => setShowStats(!showStats)} className={`p-1.5 rounded-lg transition-all border ${showStats ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/30' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white hover:bg-white/10'}`}><BarChart3 size={16}/></button>
+             <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
+                <div className="w-px h-3 bg-white/10 mx-1" />
+                <button onClick={() => setZoomLevel(Math.min(100, zoomLevel + 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
+                <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel}PX/D</span>
              </div>
              {dependencySourceId && (
-               <div className="flex items-center gap-2 px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded animate-pulse">
-                  <Link2 size={10} className="text-blue-400" />
-                  <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Dependency Mode</span>
-                  <button onClick={() => setDependencySourceId(null)} className="ml-1 text-slate-500 hover:text-white"><X size={10}/></button>
+               <div className="flex items-center gap-3 px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg animate-pulse">
+                  <Link2 size={14} className="text-blue-400" />
+                  <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Binding Dependency Vector...</span>
+                  <button onClick={() => setDependencySourceId(null)} className="ml-2 text-slate-500 hover:text-white transition-colors"><X size={12}/></button>
                </div>
              )}
              {selectedTaskIds.size > 1 && (
-               <div className="flex items-center gap-2 px-2 py-1 bg-amber-600/10 border border-amber-500/20 rounded">
-                  <span className="text-[8px] font-black text-amber-400 uppercase tracking-widest">{selectedTaskIds.size} TASKS SELECTED</span>
-                  <button onClick={() => setSelectedTaskIds(new Set())} className="ml-1 text-slate-500 hover:text-white"><X size={10}/></button>
+               <div className="flex items-center gap-3 px-3 py-1.5 bg-amber-600/10 border border-amber-500/20 rounded-lg">
+                  <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{selectedTaskIds.size} NODES SELECTED</span>
+                  <button onClick={() => setSelectedTaskIds(new Set())} className="ml-2 text-slate-500 hover:text-white"><X size={12}/></button>
                </div>
              )}
           </div>
-          <div className="flex items-center gap-2">
-             <button onClick={() => setShowBaseline(!showBaseline)} className={`px-2 py-1 border rounded text-[8px] font-black uppercase tracking-widest transition-all ${showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}>{showBaseline ? 'Hide Baseline' : 'Show Baseline'}</button>
-             <div className="h-4 w-px bg-white/10 mx-1" />
+          <div className="flex items-center gap-4">
+             <button onClick={() => setShowBaseline(!showBaseline)} className={`px-4 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'}`}>{showBaseline ? 'Hide Baseline' : 'Show Baseline'}</button>
+             <div className="h-6 w-px bg-white/10 mx-1" />
              <button 
                onClick={() => {
-                 const name = prompt('MILESTONE IDENTIFIER')
+                 const name = prompt('NEW MILESTONE IDENTIFIER')
                  if (!name) return
-                 const newTask = { id: Date.now(), name, start_date: new Date().toISOString(), end_date: addDays(new Date(), 7).toISOString(), progress: 0, status: 'To Do', dependencies_json: [], metadata_json: {} }
+                 const newTask = { id: Date.now(), name: name.toUpperCase(), start_date: new Date().toISOString(), end_date: addDays(new Date(), 7).toISOString(), progress: 0, status: 'To Do', dependencies_json: [], metadata_json: {} }
                  const updated = [...tasks, newTask]
                  setTasks(updated)
                  onUpdate({ ...project, tasks: updated })
                }}
-               className="px-3 py-1 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded text-[8px] font-black uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center gap-1.5"
-             ><Plus size={10}/> New Task</button>
+               className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95"
+             ><Plus size={14}/> Add Milestone</button>
           </div>
        </div>
 
        <div className="flex-1 flex overflow-hidden relative">
-          {/* Frozen Sidebar */}
-          <div style={{ width: sidebarWidth }} className="flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-2xl">
-             <div className="h-10 border-b border-white/10 flex items-center px-4 shrink-0 bg-[#0a0c14]/80">
-                <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Engineering Stack</span>
+          {/* Frozen Sidebar with Reordering */}
+          <div style={{ width: sidebarWidth }} className="flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-[10px_0_30px_rgba(0,0,0,0.3)]">
+             <div className="h-11 border-b border-white/10 flex items-center px-5 shrink-0 bg-[#0a0c14]/80">
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Engineering Vector Stack</span>
              </div>
-             <div ref={sidebarRef} className="flex-1 overflow-y-hidden custom-scrollbar">
+             <Reorder.Group axis="y" values={tasks} onReorder={onReorderTasks} className="flex-1 overflow-y-hidden custom-scrollbar">
                 {tasks.map((task, idx) => (
-                  <div 
+                  <Reorder.Item 
                     key={task.id} 
+                    value={task}
                     onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-                    className={`h-9 flex items-center px-4 border-b border-white/5 cursor-pointer transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/10' : 'hover:bg-white/5'}`}
+                    className={`h-[48px] flex items-center px-5 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
                   >
-                     <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                     <span className={`text-[10px] font-bold uppercase truncate tracking-tight transition-all ${selectedTaskIds.has(task.id) ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-200'}`}>{task.name}</span>
-                  </div>
+                     <div className={`w-2 h-2 rounded-full mr-4 shrink-0 shadow-lg ${
+                       task.status === 'Completed' ? 'bg-emerald-500 shadow-emerald-500/20' : 
+                       task.status === 'Blocked' ? 'bg-rose-500 shadow-rose-500/20 animate-pulse' : 
+                       'bg-blue-500 shadow-blue-500/20'
+                     }`} />
+                     <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] font-black uppercase truncate tracking-tight transition-all ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{task.name}</p>
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">{task.status} • {task.progress}%</p>
+                     </div>
+                     <GripVertical size={14} className="text-slate-800 group-hover:text-slate-600 transition-colors ml-2" />
+                  </Reorder.Item>
                 ))}
-             </div>
+             </Reorder.Group>
           </div>
 
           {/* Timeline View */}
-          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar relative" onScroll={(e: any) => { if (sidebarRef.current) sidebarRef.current.scrollTop = e.target.scrollTop; }}>
-             <div className="sticky top-0 z-20 flex bg-[#0a0c14] border-b border-white/10" style={{ width: days.length * zoomLevel }}>
-                {days.map((day, i) => (
-                  <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-10 ${isSameDay(day, new Date()) ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
-                     <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">{format(day, 'MMM')}</span>
-                     <span className={`text-[10px] font-black ${isSameDay(day, new Date()) ? 'text-blue-400' : 'text-slate-300'}`}>{format(day, 'd')}</span>
-                  </div>
-                ))}
+          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]" onScroll={(e: any) => { if (sidebarRef.current) sidebarRef.current.scrollTop = e.target.scrollTop; }}>
+             <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
+                {days.map((day, i) => {
+                  const isFirstOfMonth = format(day, 'd') === '1'
+                  const isToday = isSameDay(day, new Date())
+                  return (
+                    <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors ${isToday ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
+                       <span className={`text-[8px] font-black uppercase tracking-tighter ${isFirstOfMonth ? 'text-blue-400' : 'text-slate-600'}`}>{format(day, 'MMM')}</span>
+                       <span className={`text-[11px] font-black ${isToday ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : isFirstOfMonth ? 'text-blue-200' : 'text-slate-400'}`}>{format(day, 'd')}</span>
+                    </div>
+                  )
+                })}
              </div>
 
-             <div className="relative pt-0 pb-20" style={{ width: days.length * zoomLevel, minHeight: '100%' }}>
-                {/* Dependency Lines */}
-                <svg className="absolute inset-0 pointer-events-none z-0" style={{ width: '100%', height: '100%' }}>{dependencyLines}</svg>
+             <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, minHeight: '100%' }}>
+                {/* Grid Lines */}
+                <div className="absolute inset-0 pointer-events-none opacity-20">
+                   {days.map((_, i) => (
+                     <div key={i} className="absolute top-0 bottom-0 border-r border-white/5" style={{ left: i * zoomLevel, width: zoomLevel }} />
+                   ))}
+                </div>
 
-                {/* Today Marker */}
-                <div className="absolute top-0 bottom-0 w-px bg-blue-500/40 z-10 pointer-events-none" style={{ left: getPosFromDate(new Date()) }}>
-                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+                {/* Dependency Lines */}
+                <svg className="absolute inset-0 pointer-events-none z-10">{dependencyLines}</svg>
+
+                {/* Today Marker Line */}
+                <div className="absolute top-0 bottom-0 w-[2px] bg-blue-500/50 z-20 pointer-events-none" style={{ left: getPosFromDate(new Date()) }}>
+                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] border-2 border-[#0a0c14]" />
                 </div>
 
                 {tasks.map((task, idx) => {
                   const left = getPosFromDate(task.start_date)
-                  const width = getPosFromDate(task.end_date) - left
+                  const width = Math.max(zoomLevel, getPosFromDate(task.end_date) - left)
                   const isCritical = criticalPathIds.has(task.id)
                   const baseline = task.metadata_json?.baseline
 
                   return (
-                    <div key={task.id} className="h-9 relative group/row">
-                       <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/5 transition-all pointer-events-none" />
+                    <div key={task.id} className="h-[48px] relative group/row">
+                       <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
                        
                        {/* Baseline Visualization */}
                        {showBaseline && baseline && (
-                         <div className="absolute h-2 bg-amber-500/10 border border-amber-500/20 rounded-sm z-10 top-1.5 opacity-40 pointer-events-none" style={{ left: getPosFromDate(baseline.start), width: getPosFromDate(baseline.end) - getPosFromDate(baseline.start) }} />
+                         <div 
+                           className="absolute h-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[34px] opacity-60 pointer-events-none" 
+                           style={{ left: getPosFromDate(baseline.start), width: Math.max(10, getPosFromDate(baseline.end) - getPosFromDate(baseline.start)) }} 
+                         />
                        )}
 
-                       {/* Task Bar */}
+                       {/* Information-Rich Task Bar */}
                        <motion.div
                          layout
                          drag="x"
@@ -763,36 +818,56 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                          onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
                          onDragEnd={() => handleTaskMove(task.id, 0, true)}
                          onClick={(e) => dependencySourceId ? toggleDependency(task.id) : handleSelectTask(task.id, e.shiftKey)}
-                         className={`absolute h-6 top-1.5 rounded-lg flex items-center px-2 gap-2 border shadow-xl z-20 group/bar transition-shadow ${
-                           selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0d0f17] z-30' : ''
+                         className={`absolute h-8 top-2.5 rounded-xl flex items-center px-4 gap-3 border shadow-2xl z-20 group/bar transition-all ${
+                           selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-4 ring-offset-[#0b0c14] z-40' : ''
                          } ${
-                           isCritical ? 'border-rose-500/60 shadow-rose-500/10' : 'border-blue-500/30'
+                           isCritical ? 'border-rose-500/60 shadow-rose-900/20 bg-[#1a1012]' : 'border-blue-500/40 shadow-blue-900/10 bg-[#0d1425]'
                          } ${
-                           dependencySourceId && dependencySourceId !== task.id ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-grab active:cursor-grabbing'
+                           dependencySourceId && dependencySourceId !== task.id ? 'cursor-pointer hover:scale-[1.02] hover:border-blue-400' : 'cursor-grab active:cursor-grabbing'
                          } ${
-                           task.status === 'Completed' ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30' :
-                           task.status === 'Blocked' ? 'bg-rose-600/30 text-rose-400 border-rose-500/40 animate-pulse' :
-                           'bg-blue-600/20 text-blue-400'
+                           task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' :
+                           task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : ''
                          }`}
                          style={{ left, width }}
                        >
-                          {/* Drag Handles */}
-                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/30 rounded-l-lg" />
-                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/30 rounded-r-lg" />
+                          {/* Rich Progress Gradient Background */}
+                          <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                             <div 
+                               className={`h-full opacity-20 transition-all duration-500 ${
+                                 task.status === 'Completed' ? 'bg-emerald-500' : 
+                                 task.status === 'Blocked' ? 'bg-rose-500' : 
+                                 isCritical ? 'bg-rose-600' : 'bg-blue-600'
+                               }`} 
+                               style={{ width: `${task.progress}%` }} 
+                             />
+                             {/* Subtle scanline effect for progress bar */}
+                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent w-20 animate-scanline" style={{ left: `${task.progress - 10}%` }} />
+                          </div>
 
-                          {/* Progress Visualizer */}
-                          <div className="absolute inset-0 bg-current opacity-5 pointer-events-none rounded-lg overflow-hidden"><div className="h-full bg-current opacity-20" style={{ width: `${task.progress}%` }} /></div>
-                          
-                          <span className="text-[9px] font-black uppercase truncate tracking-tight z-10">{task.name}</span>
-                          <span className="text-[7px] font-bold opacity-60 z-10 ml-auto">{task.progress}%</span>
+                          {/* Resize Handles (Invisible but larger hit area) */}
+                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} className="absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-50 rounded-l-xl hover:bg-white/10" />
+                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} className="absolute -right-1 top-0 bottom-0 w-3 cursor-ew-resize z-50 rounded-r-xl hover:bg-white/10" />
 
-                          {/* Direct-Link Handle */}
+                          {/* Content Overlay */}
+                          <div className="relative z-10 flex items-center gap-3 w-full overflow-hidden">
+                             <span className={`text-[11px] font-black uppercase truncate tracking-tight ${
+                               task.status === 'Completed' ? 'text-emerald-400' : 
+                               task.status === 'Blocked' ? 'text-rose-400' : 
+                               isCritical ? 'text-rose-300' : 'text-blue-300'
+                             }`}>{task.name}</span>
+                             
+                             <div className="ml-auto flex items-center gap-2 shrink-0">
+                                <span className="text-[10px] font-black text-white/40">{task.progress}%</span>
+                                {isCritical && <AlertTriangle size={12} className="text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]" />}
+                             </div>
+                          </div>
+
+                          {/* Connection Socket */}
                           <div 
                             onClick={(e) => { e.stopPropagation(); setDependencySourceId(task.id); }}
-                            className={`absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-white/20 z-40 transition-all cursor-crosshair ${
-                              dependencySourceId === task.id ? 'bg-blue-500 scale-125 shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'bg-slate-700 opacity-0 group-hover/bar:opacity-100 hover:bg-blue-400 hover:scale-110'
+                            className={`absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-[#0b0c14] z-40 transition-all cursor-crosshair group-hover/bar:scale-110 ${
+                              dependencySourceId === task.id ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)] scale-125' : 'bg-slate-700 opacity-0 group-hover/bar:opacity-100 hover:bg-blue-400'
                             }`}
-                            title="Set as Dependency Source"
                           />
                        </motion.div>
                     </div>
@@ -801,21 +876,25 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
              </div>
           </div>
 
-          {/* Jira-style Task Detail Side Panel */}
+          {/* High-Fidelity Task Detail Side Panel */}
           <AnimatePresence>
              {selectedTaskId && (
-               <motion.div initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }} className="absolute right-0 top-0 bottom-0 w-[380px] bg-[#161822] border-l border-white/10 shadow-[-20px_0_40px_rgba(0,0,0,0.5)] z-50 flex flex-col">
+               <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute right-0 top-0 bottom-0 w-[440px] bg-[#0d0f17] border-l border-white/10 shadow-[-30px_0_60px_rgba(0,0,0,0.7)] z-[60] flex flex-col">
                   {(() => {
                     const task = tasks.find(t => t.id === selectedTaskId)
                     if (!task) return null
                     return (
                       <>
-                        <div className="p-6 border-b border-white/5 space-y-4">
-                           <div className="flex items-center justify-between">
-                              <span className="px-2 py-0.5 bg-blue-600/10 text-blue-400 text-[8px] font-black uppercase rounded tracking-widest border border-blue-500/20">Task Detail</span>
-                              <div className="flex items-center gap-2">
-                                 <button onClick={() => setDependencySourceId(task.id)} className={`p-1.5 rounded transition-all ${dependencySourceId === task.id ? 'bg-blue-600 text-white' : 'hover:bg-white/5 text-slate-500'}`} title="Manage Dependencies"><Link2 size={14}/></button>
-                                 <button onClick={() => { if(confirm('Permanently remove task?')) { 
+                        {/* Panel Header */}
+                        <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 backdrop-blur-xl relative">
+                           <div className="flex items-center justify-between mb-6">
+                              <div className="flex items-center gap-3">
+                                 <div className={`w-3 h-3 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Milestone Vector Detail</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                 <button onClick={() => setDependencySourceId(task.id)} className={`p-2 rounded-lg transition-all border ${dependencySourceId === task.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-white/5 text-slate-500 border-transparent'}`} title="Bind Dependencies"><Link2 size={16}/></button>
+                                 <button onClick={() => { if(confirm('PERMANENTLY DECOMMISSION THIS VECTOR?')) { 
                                    const updated = tasks.filter(t => t.id !== task.id).map(t => ({
                                      ...t,
                                      dependencies_json: (t.dependencies_json || []).filter((d: number) => d !== task.id)
@@ -823,52 +902,146 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                                    setTasks(updated); 
                                    onUpdate({ ...project, tasks: updated }); 
                                    setSelectedTaskId(null); 
-                                 } }} className="p-1.5 rounded hover:bg-rose-600/20 text-slate-500 hover:text-rose-500 transition-all"><Trash2 size={14}/></button>
-                                 <button onClick={() => setSelectedTaskId(null)} className="p-1.5 rounded hover:bg-white/10 text-slate-500 transition-all"><X size={14}/></button>
+                                 } }} className="p-2 rounded-lg hover:bg-rose-600/20 text-slate-500 hover:text-rose-500 border border-transparent transition-all"><Trash2 size={16}/></button>
+                                 <button onClick={() => setSelectedTaskId(null)} className="p-2 rounded-lg hover:bg-white/10 text-slate-500 border border-transparent transition-all"><X size={18}/></button>
                               </div>
                            </div>
                            <input 
                              value={task.name} 
-                             onChange={e => handleTaskUpdate(task.id, { name: e.target.value })}
-                             className="w-full bg-transparent text-xl font-black text-white uppercase tracking-tighter outline-none focus:text-blue-400 transition-all"
+                             onChange={e => handleTaskUpdate(task.id, { name: e.target.value.toUpperCase() })}
+                             className="w-full bg-transparent text-2xl font-black text-white uppercase tracking-tighter outline-none focus:text-blue-400 transition-all border-b border-transparent focus:border-blue-500/30 pb-2"
+                             placeholder="TASK IDENTIFIER..."
                            />
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-                           <div className="grid grid-cols-2 gap-4">
-                              <StyledSelect label="Status" value={task.status} options={['To Do', 'In Progress', 'Blocked', 'Completed', 'Review']} onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} />
-                              <div>
-                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block px-1">Progress</label>
-                                 <input type="range" value={task.progress} onChange={e => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })} className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500" />
-                                 <div className="flex justify-between mt-1"><span className="text-[8px] font-bold text-slate-700">0%</span><span className="text-[9px] font-black text-blue-500">{task.progress}%</span><span className="text-[8px] font-bold text-slate-700">100%</span></div>
+                           <div className="flex items-center gap-4 mt-6">
+                              <div className="flex-1">
+                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Strategic State</label>
+                                 <select 
+                                   value={task.status} 
+                                   onChange={e => handleTaskUpdate(task.id, { status: e.target.value })}
+                                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-black text-white uppercase outline-none focus:border-blue-500 transition-all"
+                                 >
+                                    {['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                                 </select>
+                              </div>
+                              <div className="flex-1">
+                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Maturity %</label>
+                                 <div className="flex items-center gap-3">
+                                    <input type="range" value={task.progress} onChange={e => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })} className="flex-1 h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500" />
+                                    <span className="text-[12px] font-black text-blue-400 w-10 text-right">{task.progress}%</span>
+                                 </div>
                               </div>
                            </div>
-                           <div className="grid grid-cols-2 gap-4">
-                              <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1 block">Start Date</label><input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500" /></div>
-                              <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1 block">End Date</label><input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500" /></div>
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest block">Strategic Description</label>
-                              <textarea value={task.description || ''} onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} className="w-full h-32 bg-black/40 border border-white/10 rounded-lg p-3 text-[11px] font-medium text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all" placeholder="DESCRIBE TASK OBJECTIVES AND TECHNICAL CONSTRAINTS..." />
-                           </div>
-                           <div className="space-y-4 pt-4 border-t border-white/5">
-                              <div className="flex items-center justify-between"><h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Dependencies</h4><span className="text-[8px] font-bold text-slate-700">{(task.dependencies_json || []).length} Linked</span></div>
+                        </div>
+
+                        {/* Panel Body */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-10">
+                           {/* Temporal Configuration */}
+                           <section className="space-y-4">
+                              <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Temporal Configuration</h4>
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div>
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Initialization</label>
+                                    <div className="relative">
+                                       <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                       <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
+                                 </div>
+                                 <div>
+                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Termination</label>
+                                    <div className="relative">
+                                       <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                       <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
+                                 </div>
+                              </div>
+                           </section>
+
+                           {/* Strategic Documentation */}
+                           <section className="space-y-4">
+                              <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><FileText size={14}/> Technical Objectives</h4>
+                              <textarea 
+                                value={task.description || ''} 
+                                onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} 
+                                className="w-full h-40 bg-black/40 border border-white/10 rounded-xl p-4 text-[12px] font-medium text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed" 
+                                placeholder="DESCRIBE THE CORE MISSION, TECHNICAL CONSTRAINTS, AND SUCCESS CRITERIA FOR THIS VECTOR..." 
+                              />
+                           </section>
+
+                           {/* Dependency Graph */}
+                           <section className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                 <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14}/> Vector Dependencies</h4>
+                                 <span className="px-2 py-0.5 bg-white/5 rounded text-[8px] font-bold text-slate-600 uppercase">{(task.dependencies_json || []).length} Linked</span>
+                              </div>
                               <div className="space-y-2">
                                  {(task.dependencies_json || []).map((depId: number) => {
                                    const dep = tasks.find(t => t.id === depId)
                                    return (
-                                     <div key={depId} className="flex items-center justify-between p-2 bg-white/5 border border-white/5 rounded">
-                                        <span className="text-[9px] font-black text-blue-400 uppercase truncate">{dep?.name || 'Unknown Task'}</span>
-                                        <button onClick={() => toggleDependency(depId)} className="text-slate-600 hover:text-rose-400"><X size={12}/></button>
+                                     <div key={depId} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-lg group hover:border-amber-500/30 transition-all">
+                                        <div className="flex items-center gap-3">
+                                           <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                                           <span className="text-[10px] font-black text-slate-300 uppercase truncate">{dep?.name || 'TERMINATED VECTOR'}</span>
+                                        </div>
+                                        <button onClick={() => toggleDependency(depId)} className="text-slate-600 hover:text-rose-500 transition-colors"><X size={14}/></button>
                                      </div>
                                    )
                                  })}
-                                 {(task.dependencies_json || []).length === 0 && <p className="text-[9px] font-bold text-slate-700 uppercase">No incoming vectors</p>}
-                                 <button onClick={() => setDependencySourceId(task.id)} className="w-full py-2 border border-dashed border-white/10 rounded text-[9px] font-black text-slate-600 uppercase hover:text-blue-400 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2 mt-2"><Link2 size={12}/> Bind Dependency Vector</button>
+                                 {(task.dependencies_json || []).length === 0 && (
+                                   <div className="py-8 text-center border border-dashed border-white/10 rounded-lg">
+                                      <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.2em]">No Incoming Dependency Vectors</p>
+                                   </div>
+                                 )}
+                                 <button onClick={() => setDependencySourceId(task.id)} className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[9px] font-black text-slate-500 uppercase hover:text-blue-400 hover:border-blue-500/30 transition-all flex items-center justify-center gap-3 mt-4 group">
+                                    <Plus size={14} className="group-hover:rotate-90 transition-transform" /> Bind New Dependency Node
+                                 </button>
                               </div>
-                           </div>
+                           </section>
+                           
+                           {/* Activity/History Log */}
+                           <section className="space-y-4">
+                              <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><History size={14}/> Vector Evolution History</h4>
+                              <div className="space-y-4">
+                                 {(task.metadata_json?.history || []).map((entry: any, i: number) => (
+                                    <div key={i} className="pl-4 border-l-2 border-white/5 relative">
+                                       <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-slate-800 border border-white/10" />
+                                       <div className="flex items-center justify-between mb-1">
+                                          <span className="text-[9px] font-black text-slate-500 uppercase">{entry.author || 'SYSTEM'}</span>
+                                          <span className="text-[8px] font-bold text-slate-700">{format(new Date(entry.timestamp), 'MMM d, HH:mm')}</span>
+                                       </div>
+                                       <p className="text-[10px] font-bold text-slate-400 leading-tight">"{entry.message}"</p>
+                                    </div>
+                                 ))}
+                                 <div className="relative">
+                                    <textarea 
+                                       className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 resize-none h-20"
+                                       placeholder="RECORD PROGRESS UPDATE..."
+                                       onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                             e.preventDefault();
+                                             const msg = e.currentTarget.value.trim();
+                                             if (!msg) return;
+                                             const history = task.metadata_json?.history || [];
+                                             handleTaskUpdate(task.id, { 
+                                                metadata_json: { 
+                                                   ...task.metadata_json, 
+                                                   history: [...history, { author: 'ENGINEER', message: msg, timestamp: new Date().toISOString() }] 
+                                                } 
+                                             });
+                                             e.currentTarget.value = '';
+                                          }
+                                       }}
+                                    />
+                                    <div className="absolute bottom-2 right-2 text-[8px] font-black text-slate-700 uppercase">Press Enter to Sync</div>
+                                 </div>
+                              </div>
+                           </section>
                         </div>
-                        <div className="p-6 bg-black/20 border-t border-white/5 mt-auto">
-                           <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, baseline: { start: task.start_date, end: task.end_date } } })} className="w-full py-3 bg-amber-600/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-600/20 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/10"><Camera size={14}/> Snapshot Baseline</button>
+
+                        {/* Panel Footer */}
+                        <div className="p-8 bg-[#0a0c14] border-t border-white/10 mt-auto">
+                           <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, baseline: { start: task.start_date, end: task.end_date } } })} className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-900/20 active:scale-[0.98]">
+                              <Camera size={18}/> Snapshot Current Baseline
+                           </button>
                         </div>
                       </>
                     )
@@ -880,6 +1053,7 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     </div>
   )
 }
+
 
 const LiveScope = ({ project }: { project: any }) => {
   return (
@@ -1107,12 +1281,22 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
   const filteredAssets = assets.filter((a: any) => a.name.toLowerCase().includes(assetSearch.toLowerCase()))
 
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-12 max-w-5xl mx-auto">
-       <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300 pb-12 max-w-4xl mx-auto p-6 bg-[#0a0c14]/50 rounded-2xl border border-white/5 shadow-2xl mt-4">
+       <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+             <Briefcase size={20} className="text-blue-400" />
+          </div>
+          <div>
+             <h3 className="text-lg font-black uppercase text-white tracking-tighter">Strategic Matrix Configuration</h3>
+             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Define vector parameters and ROI targets</p>
+          </div>
+       </div>
+
+       <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-5">
              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Project Identifier</label>
-                <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all" placeholder="ENTER PROJECT NAME..."/>
+                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Project Identifier</label>
+                <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value.toUpperCase() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" placeholder="ENTER PROJECT NAME..."/>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <StyledSelect label="Type" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} options={PROJECT_TYPES} />
@@ -1121,95 +1305,96 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
              <div className="grid grid-cols-2 gap-4">
                 <StyledSelect label="Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={PROJECT_STATUSES} />
                 <div>
-                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Lead Owner</label>
-                   <input value={formData.owner} onChange={e => setFormData({ ...formData, owner: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
+                   <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Lead Owner</label>
+                   <input value={formData.owner} onChange={e => setFormData({ ...formData, owner: e.target.value.toUpperCase() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500"/>
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-4">
                 <div>
-                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Start Date</label>
-                   <input type="date" value={formData.start_date ? format(new Date(formData.start_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
+                   <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Start Date</label>
+                   <input type="date" value={formData.start_date ? format(new Date(formData.start_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500"/>
                 </div>
                 <div>
-                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">End Date (Target)</label>
-                   <input type="date" value={formData.end_date ? format(new Date(formData.end_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
+                   <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">End Date (Target)</label>
+                   <input type="date" value={formData.end_date ? format(new Date(formData.end_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500"/>
                 </div>
              </div>
           </div>
-          <div className="space-y-6 bg-white/5 p-6 rounded-2xl border border-white/10">
-             <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2 mb-2"><BarChart3 size={14} /> Strategic Impact Metrics</h4>
+          <div className="space-y-5 bg-white/[0.02] p-5 rounded-xl border border-white/5 shadow-inner">
+             <h4 className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2 mb-1"><BarChart3 size={12} /> Strategic Impact Metrics</h4>
              <div className="grid grid-cols-2 gap-4">
                 <StyledSelect label="Defense Line" value={formData.roi_defense_line} onChange={e => setFormData({...formData, roi_defense_line: parseInt(e.target.value)})} options={DEFENSE_LINES} />
-                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Man-Hours Saved</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
-                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Stoploss Min.</label><input type="number" value={formData.stoploss_minutes_saved} onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
-                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Wafers Gained</label><input type="number" value={formData.wafers_gained} onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
+                <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Man-Hours Saved</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
+                <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Stoploss Min.</label><input type="number" value={formData.stoploss_minutes_saved} onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
+                <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Wafers Gained</label><input type="number" value={formData.wafers_gained} onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
              </div>
              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Jira References (Comma separated)</label>
-                <input value={jiraInput} onChange={e => handleJiraChange(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="e.g. PROJ-123, PROJ-456"/>
+                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Jira References (Comma separated)</label>
+                <input value={jiraInput} onChange={e => handleJiraChange(e.target.value.toUpperCase())} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="e.g. PROJ-123, PROJ-456"/>
              </div>
           </div>
        </div>
 
-       <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-6">
-             <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Problem Statement</label><textarea value={formData.problem_statement} onChange={e => setFormData({ ...formData, problem_statement: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white h-24 resize-none outline-none focus:border-blue-500 transition-all" placeholder="DESCRIBE CRITICAL PAIN POINTS..."/></div>
-             <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Mission Objective</label><textarea value={formData.objective} onChange={e => setFormData({ ...formData, objective: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white h-24 resize-none outline-none focus:border-blue-500 transition-all" placeholder="DESCRIBE DESIRED STRATEGIC OUTCOME..."/></div>
+       <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-5">
+             <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Problem Statement</label><textarea value={formData.problem_statement} onChange={e => setFormData({ ...formData, problem_statement: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-medium text-slate-300 h-24 resize-none outline-none focus:border-blue-500 transition-all leading-relaxed" placeholder="DESCRIBE CRITICAL PAIN POINTS..."/></div>
+             <div><label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block px-1">Mission Objective</label><textarea value={formData.objective} onChange={e => setFormData({ ...formData, objective: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-medium text-slate-300 h-24 resize-none outline-none focus:border-blue-500 transition-all leading-relaxed" placeholder="DESCRIBE DESIRED STRATEGIC OUTCOME..."/></div>
           </div>
           <div className="space-y-4">
-             <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Layers size={14} /> Scope Binding</h4>
+             <h4 className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2 mb-1"><Layers size={12} /> Scope Binding</h4>
              <div className="space-y-4">
                 <div>
-                   <div className="flex justify-between items-center mb-2">
-                      <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Target Systems</label>
+                   <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[8px] font-black text-slate-700 uppercase tracking-widest">Target Systems</label>
                       <input 
                         value={systemSearch}
                         onChange={e => setSystemSearch(e.target.value)}
                         placeholder="SEARCH..."
-                        className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[8px] font-bold text-white outline-none focus:border-blue-500 w-24"
+                        className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[7px] font-bold text-white outline-none focus:border-blue-500 w-20"
                       />
                    </div>
-                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-lg border border-white/5">
+                   <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-3 bg-black/30 rounded-lg border border-white/5 shadow-inner">
                       {filteredSystems.map((s: any) => (
-                        <button key={s.id} onClick={() => toggleTarget('target_systems', s.name)} className={`px-2 py-1 text-[9px] font-black uppercase rounded transition-all border ${formData.target_systems?.includes(s.name) ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'}`}>
+                        <button key={s.id} onClick={() => toggleTarget('target_systems', s.name)} className={`px-2 py-1 text-[8px] font-black uppercase rounded transition-all border ${formData.target_systems?.includes(s.name) ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'bg-white/5 border-white/5 text-slate-600 hover:text-slate-400'}`}>
                            {s.name}
                         </button>
                       ))}
-                      {filteredSystems.length === 0 && <span className="text-[9px] font-bold text-slate-700 ">No matches</span>}
+                      {filteredSystems.length === 0 && <span className="text-[8px] font-bold text-slate-800 ">No matches</span>}
                    </div>
                 </div>
                 <div>
-                   <div className="flex justify-between items-center mb-2">
-                      <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Target Assets</label>
+                   <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[8px] font-black text-slate-700 uppercase tracking-widest">Target Assets</label>
                       <input 
                         value={assetSearch}
                         onChange={e => setAssetSearch(e.target.value)}
                         placeholder="SEARCH..."
-                        className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[8px] font-bold text-white outline-none focus:border-emerald-500 w-24"
+                        className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[7px] font-bold text-white outline-none focus:border-emerald-500 w-20"
                       />
                    </div>
-                   <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-black/20 rounded-lg border border-white/5">
+                   <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-3 bg-black/30 rounded-lg border border-white/5 shadow-inner">
                       {filteredAssets.map((a: any) => (
-                        <button key={a.id} onClick={() => toggleTarget('target_assets', a.name)} className={`px-2 py-1 text-[9px] font-black uppercase rounded transition-all border ${formData.target_assets?.includes(a.name) ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'}`}>
+                        <button key={a.id} onClick={() => toggleTarget('target_assets', a.name)} className={`px-2 py-1 text-[8px] font-black uppercase rounded transition-all border ${formData.target_assets?.includes(a.name) ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 border-white/5 text-slate-600 hover:text-slate-400'}`}>
                            {a.name}
                         </button>
                       ))}
-                      {filteredAssets.length === 0 && <span className="text-[9px] font-bold text-slate-700 ">No matches</span>}
+                      {filteredAssets.length === 0 && <span className="text-[8px] font-bold text-slate-800 ">No matches</span>}
                    </div>
                 </div>
              </div>
           </div>
        </div>
 
-       <div className="flex gap-4">
-          <button onClick={onCancel} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-500 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] transition-all">Abort Changes</button>
-          <button disabled={isSaving || !formData.name} onClick={() => onSave(formData)} className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-600/30 transition-all active:scale-95">
-             {isSaving ? 'Synchronizing Strategic Matrix...' : 'Commit Strategic Vector'}
+       <div className="flex gap-4 pt-4">
+          <button onClick={onCancel} className="flex-1 py-3 bg-white/5 hover:bg-rose-600/10 hover:text-rose-400 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-transparent hover:border-rose-500/20">Abort</button>
+          <button disabled={isSaving || !formData.name} onClick={() => onSave(formData)} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 transition-all active:scale-[0.98]">
+             {isSaving ? 'Establishing Link...' : 'Commit Strategic Vector'}
           </button>
        </div>
     </div>
   )
 }
+
 
 const ProjectRisks = ({ project, onUpdate }: { project: any, onUpdate: (data: any) => void }) => {
   const risks = project.metadata_json?.risks || []
@@ -1772,7 +1957,20 @@ export default function Projects() {
            />
          )}
        </AnimatePresence>
-       <style>{`.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }`}</style>
+       <style>{`
+         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } 
+         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
+         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; } 
+         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
+         @keyframes scanline {
+           0% { transform: translateX(-100%); }
+           100% { transform: translateX(500%); }
+         }
+         .animate-scanline {
+           animation: scanline 3s linear infinite;
+         }
+       `}</style>
     </div>
   )
 }
+
