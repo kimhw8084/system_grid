@@ -53,6 +53,7 @@ const getStatusCfg = (s: string, isReservation?: boolean) => {
 const getTypeCfg = (t: string) => TYPE_CONFIG[t?.toLowerCase()] ?? { color: 'text-slate-400', short: t?.slice(0,3).toUpperCase() || 'UNK' }
 
 const fillColor = (pct: number) => {
+  if (pct >= 110) return 'bg-rose-600 shadow-[0_0_15px_rgba(225,29,72,0.8)]'
   if (pct >= 100) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
   if (pct >= 90) return 'bg-rose-500'
   if (pct >= 70) return 'bg-amber-500'
@@ -61,10 +62,106 @@ const fillColor = (pct: number) => {
 }
 
 const powerColor = (pct: number) => {
+  if (pct >= 110) return 'bg-rose-600 shadow-[0_0_15px_rgba(225,29,72,0.8)]'
   if (pct >= 100) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
   if (pct >= 90) return 'bg-rose-500'
   if (pct >= 75) return 'bg-amber-500'
   return 'bg-sky-400'
+}
+
+// ─── Status Breathing Bar ────────────────────────────────────────────────────
+
+const RackStatusBar = ({ rack, isPowerOver, isFillOver }: { rack: any; isPowerOver: boolean; isFillOver: boolean }) => {
+  const hasMaintenance = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Maintenance'), [rack])
+  const hasCritical = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Critical' || l.device?.status === 'Offline'), [rack])
+  
+  let colorClass = 'bg-emerald-500'
+  let label = 'Healthy'
+  
+  if (isPowerOver || isFillOver) {
+    colorClass = 'bg-rose-600'
+    label = 'Capacity Alert'
+  } else if (hasCritical) {
+    colorClass = 'bg-rose-500'
+    label = 'Asset Critical'
+  } else if (hasMaintenance) {
+    colorClass = 'bg-amber-500'
+    label = 'Maintenance'
+  }
+
+  return (
+    <div className="absolute top-0 inset-x-0 h-1 z-30 flex">
+      <div className={`h-full w-full ${colorClass} animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]`} />
+      <div className="absolute top-0 right-2 px-1.5 py-0.5 rounded-b bg-black/40 backdrop-blur-md border-x border-b border-white/5">
+        <span className={`text-[6px] font-black uppercase tracking-[0.2em] ${colorClass.replace('bg-', 'text-')}`}>{label}</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Power / Fill Mini Bar ─────────────────────────────────────────────────────
+
+const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: number; colorFn: (p: number) => string; label: string; unit: string }) => {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0
+  const isOverflow = pct >= 100
+  
+  return (
+    <div className="space-y-0.5 group/bar">
+      <div className="flex justify-between items-center">
+        <span className={`text-[7px] uppercase font-bold tracking-wider ${isOverflow ? 'text-rose-400' : 'text-slate-500'}`}>
+          {label} <span className="text-slate-400 font-black ml-1">({pct}%)</span>
+        </span>
+        <span className={`text-[8px] font-black tabular-nums transition-colors ${isOverflow ? 'text-rose-500' : 'text-slate-300'}`}>
+          {value.toFixed(1)}<span className="text-slate-500 font-normal">/{max}{unit}</span>
+        </span>
+      </div>
+      <div className="h-1 bg-white/5 rounded-full overflow-hidden relative">
+        <div 
+          className={`h-full rounded-full transition-all duration-500 ${colorFn(pct)}`} 
+          style={{ width: `${Math.min(pct, 100)}%` }} 
+        />
+        {isOverflow && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 1.5 }}
+            className="absolute inset-0 bg-rose-500/30"
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── PDU Bar ───────────────────────────────────────────────────────────
+
+const PduBar = ({ side, isOver, onClick }: { side: 'A' | 'B'; isOver: boolean; onClick?: () => void }) => {
+  return (
+    <div 
+      onClick={onClick}
+      className={`absolute ${side === 'A' ? 'left-2' : 'right-2'} top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2 cursor-pointer hover:bg-slate-800 transition-colors group/pdu`}
+    >
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className={`w-1 h-1 rounded-full transition-all duration-300 ${isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
+      ))}
+      <span className={`absolute ${side === 'A' ? '-left-1 rotate-90' : '-right-1 -rotate-90'} -bottom-4 text-[6px] font-black text-slate-600 transition-colors group-hover/pdu:text-blue-400 uppercase`}>PDU-{side}</span>
+      
+      {/* Tooltip on hover */}
+      <div className={`absolute top-1/2 -translate-y-1/2 ${side === 'A' ? 'left-4' : 'right-4'} opacity-0 group-hover/pdu:opacity-100 pointer-events-none transition-all duration-200 z-50`}>
+        <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 p-2 rounded-lg shadow-2xl min-w-[100px]">
+          <p className="text-[7px] font-black text-blue-400 uppercase tracking-widest mb-1">CIRCUIT {side}</p>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[6px] font-bold">
+              <span className="text-slate-500">LOAD</span>
+              <span className={isOver ? 'text-rose-500' : 'text-emerald-400'}>{isOver ? 'OVERLOAD' : 'NOMINAL'}</span>
+            </div>
+            <div className="h-0.5 bg-white/5 rounded-full overflow-hidden">
+              <div className={`h-full ${isOver ? 'bg-rose-500' : 'bg-emerald-500'} w-[65%]`} />
+            </div>
+            <p className="text-[5px] text-slate-600 italic mt-1">Click to configure PDU mapping</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Device Options Menu ───────────────────────────────────────────────────────
@@ -169,7 +266,14 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
     if (!sourcePoint) return
 
     const newLines: any[] = []
+    const processedPairs = new Set<string>()
+
     targetDeviceIds.forEach((tid, index) => {
+      // Avoid duplicate lines for the same pair
+      const pairKey = [sourceDeviceId, tid].sort().join('-')
+      if (processedPairs.has(pairKey)) return
+      processedPairs.add(pairKey)
+
       const targetPoint = getPoint(tid)
       if (targetPoint) {
         const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 30
@@ -177,11 +281,29 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
           (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
           (c.source_device_id === tid && c.target_device_id === sourceDeviceId)
         )
+        
         if (isSameRack) {
-          const offset = ((index % 2 === 0 ? 1 : -1) * (20 + Math.floor(index / 2) * 12))
-          newLines.push({ x1: sourcePoint.x, y1: sourcePoint.y, x2: targetPoint.x, y2: targetPoint.y, isInternal: true, offset, id: `${sourceDeviceId}-${tid}`, connection: conn, isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut })
+          // Internal rack connection: keep it inside the rack width
+          // Reduce offset to keep lines within the rack body (px-6 padding gives us room)
+          const offset = ((index % 2 === 0 ? 1 : -1) * (10 + Math.floor(index / 2) * 4))
+          newLines.push({ 
+            x1: sourcePoint.x, y1: sourcePoint.y, 
+            x2: targetPoint.x, y2: targetPoint.y, 
+            isInternal: true, 
+            offset, 
+            id: pairKey, 
+            connection: conn, 
+            isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
+          })
         } else {
-          newLines.push({ x1: sourcePoint.x, y1: sourcePoint.y, x2: targetPoint.x, y2: targetPoint.y, isInternal: false, id: `${sourceDeviceId}-${tid}`, connection: conn, isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut })
+          newLines.push({ 
+            x1: sourcePoint.x, y1: sourcePoint.y, 
+            x2: targetPoint.x, y2: targetPoint.y, 
+            isInternal: false, 
+            id: pairKey, 
+            connection: conn, 
+            isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
+          })
         }
       }
     })
@@ -408,23 +530,6 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
   )
 }
 
-// ─── Power / Fill Mini Bar ─────────────────────────────────────────────────────
-
-const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: number; colorFn: (p: number) => string; label: string; unit: string }) => {
-  const pct = max > 0 ? Math.round((value / max) * 100) : 0
-  return (
-    <div className="space-y-0.5">
-      <div className="flex justify-between items-center">
-        <span className="text-[7px] text-slate-500 uppercase font-bold tracking-wider">{label} <span className="text-slate-400 font-black ml-1">({pct}%)</span></span>
-        <span className="text-[8px] font-black text-slate-300 tabular-nums">{value.toFixed(1)}<span className="text-slate-500 font-normal">/{max}{unit}</span></span>
-      </div>
-      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${colorFn(pct)}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
-
 // ─── Audit Log Modal ───────────────────────────────────────────────────────────
 
 const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
@@ -439,7 +544,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-            className="glass-panel w-full max-w-3xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            className="glass-panel w-full max-w-4xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
@@ -463,19 +568,24 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     <th className="px-4 py-3">Action</th>
                     <th className="px-4 py-3">User</th>
                     <th className="px-4 py-3">Details</th>
+                    <th className="px-4 py-3">Changes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.03]">
                   {logs?.map((log: any) => (
                     <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-3 text-[10px] font-mono text-slate-400 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {new Date(log.timestamp).toLocaleString(undefined, {
+                          year: 'numeric', month: '2-digit', day: '2-digit',
+                          hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        })}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
                           log.action === 'MOUNT' ? 'bg-blue-500/10 text-blue-400' :
                           log.action === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400' :
                           log.action === 'CREATE' ? 'bg-emerald-500/10 text-emerald-400' :
+                          log.action === 'UPDATE' ? 'bg-amber-500/10 text-amber-400' :
                           'bg-slate-500/10 text-slate-400'
                         }`}>
                           {log.action}
@@ -483,10 +593,29 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       </td>
                       <td className="px-4 py-3 text-[10px] font-bold text-slate-300">{log.user_id}</td>
                       <td className="px-4 py-3 text-[10px] text-slate-400">{log.description}</td>
+                      <td className="px-4 py-3">
+                        {log.changes && Object.keys(log.changes).length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(log.changes).map(([key, val]: [string, any]) => (
+                              <div key={key} className="bg-black/20 rounded px-1.5 py-0.5 border border-white/5 flex flex-col">
+                                <span className="text-[6px] text-slate-500 font-black uppercase leading-none mb-0.5">{key}</span>
+                                <span className="text-[8px] text-blue-300 font-mono truncate max-w-[120px]">
+                                  {typeof val === 'object' && val !== null ? 
+                                    (val.new !== undefined ? `${val.old} → ${val.new}` : JSON.stringify(val)) 
+                                    : String(val)
+                                  }
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-[8px] text-slate-700 italic">No diff</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {!logs?.length && !isLoading && (
-                    <tr><td colSpan={4} className="px-4 py-12 text-center text-slate-600 font-bold uppercase text-[10px]">No logs found in this scope</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase text-[10px]">No logs found in this scope</td></tr>
                   )}
                 </tbody>
               </table>
@@ -497,6 +626,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     </AnimatePresence>
   )
 }
+
 
 // ─── Rack Elevation Card ───────────────────────────────────────────────────────
 
@@ -531,8 +661,6 @@ const RackElevation = ({
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.size_u || 1), 0),
   [rack.device_locations])
 
-  const fillPct = Math.round((occupiedU / totalU) * 100)
-
   const estimatedPowerKw = useMemo(() =>
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + ((l.device?.power_typical_w || 0) / 1000), 0),
   [rack.device_locations])
@@ -552,10 +680,7 @@ const RackElevation = ({
       ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
     `}>
       
-      {/* Over Capacity Banners */}
-      {(isPowerOver || isFillOver) && (
-        <div className="absolute top-0 inset-x-0 h-1 bg-rose-600 z-30 animate-pulse" />
-      )}
+      <RackStatusBar rack={rack} isPowerOver={isPowerOver} isFillOver={isFillOver} />
 
       {/* Checkbox */}
       <div className="absolute top-3 left-3 z-20" onClick={e => e.stopPropagation()}>
@@ -569,8 +694,8 @@ const RackElevation = ({
         </div>
       </div>
 
-      {/* Header */}
-      <div className="px-4 pt-3 pb-3 bg-white/[0.03] border-b border-white/[0.06] space-y-2.5">
+      {/* Header - FIXED */}
+      <div className="px-4 pt-4 pb-3 bg-white/[0.03] border-b border-white/[0.06] space-y-2.5 shrink-0">
         <div className="flex items-start justify-between ml-6 gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="font-black text-[11px] uppercase tracking-widest text-white truncate leading-tight">{rack.name}</h3>
@@ -645,55 +770,47 @@ const RackElevation = ({
         </div>
 
         {/* Capacity bars */}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 px-0.5">
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
           <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 10} colorFn={powerColor} label="Power" unit="kW" />
-          {isPowerOver && <p className="text-[7px] font-black text-rose-500 uppercase tracking-tighter text-center">Power Capacity Exceeded</p>}
         </div>
       </div>
 
-      {/* Elevation grid */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar relative px-6" style={{ maxHeight: `${22 * Math.min(totalU, 48) + 8}px` }}>
-        {/* PDU A (Left) */}
-        <div className="absolute left-2 top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className={`w-1 h-1 rounded-full ${isPowerOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50'}`} />
-          ))}
-          <span className="absolute -left-1 -bottom-4 text-[6px] font-black text-slate-600 rotate-90">PDU-A</span>
-        </div>
+      {/* Elevation grid - SCROLLABLE CONTENT WITH FIXED EDGES */}
+      <div className="flex-1 min-h-0 relative flex flex-col">
+        {/* Fixed PDU Bar A */}
+        <PduBar side="A" isOver={isPowerOver} onClick={() => toast('PDU-A Configuration (Planned)')} />
+        
+        {/* Fixed PDU Bar B */}
+        <PduBar side="B" isOver={isPowerOver} onClick={() => toast('PDU-B Configuration (Planned)')} />
 
-        {/* PDU B (Right) */}
-        <div className="absolute right-2 top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className={`w-1 h-1 rounded-full ${isPowerOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50'}`} />
-          ))}
-          <span className="absolute -right-1 -bottom-4 text-[6px] font-black text-slate-600 -rotate-90">PDU-B</span>
-        </div>
-
-        <div className="bg-black/30 border border-white/[0.05] rounded-lg overflow-hidden">
-          {units.map(u => {
-            const loc = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
-            return (
-              <RackUnit
-                key={u}
-                uNumber={u}
-                loc={loc}
-                isTop={loc ? u === loc.start_unit + loc.size_u - 1 : false}
-                isBottom={loc ? u === loc.start_unit : false}
-                highlight={loc?.device ? isHighlighted(loc.device) : false}
-                onSelect={() => onMount(rack.id, u)}
-                onManage={(device, l, e) => onManageDevice(device, l, e)}
-                isDeleted={isDeleted}
-                isFocused={loc?.device_id === focusedDeviceId}
-                isConnected={connectedDeviceIds?.includes(loc?.device_id)}
-              />
-            )
-          })}
+        {/* Scrollable interior grid */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-2">
+          <div className="bg-black/30 border border-white/[0.05] rounded-lg overflow-hidden">
+            {units.map(u => {
+              const loc = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
+              return (
+                <RackUnit
+                  key={u}
+                  uNumber={u}
+                  loc={loc}
+                  isTop={loc ? u === loc.start_unit + loc.size_u - 1 : false}
+                  isBottom={loc ? u === loc.start_unit : false}
+                  highlight={loc?.device ? isHighlighted(loc.device) : false}
+                  onSelect={() => onMount(rack.id, u)}
+                  onManage={(device, l, e) => onManageDevice(device, l, e)}
+                  isDeleted={isDeleted}
+                  isFocused={loc?.device_id === focusedDeviceId}
+                  isConnected={connectedDeviceIds?.includes(loc?.device_id)}
+                />
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-4 py-2 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between">
+      {/* Footer - FIXED */}
+      <div className="px-4 py-2 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">{(rack.device_locations || []).length} assets</span>
           <span className="text-[7px] text-blue-500/80 font-black tracking-widest uppercase">{totalU}U TOTAL</span>

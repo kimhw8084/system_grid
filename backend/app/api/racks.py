@@ -92,7 +92,7 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
 async def get_rack_audit_logs(db: AsyncSession = Depends(get_db)):
     query = select(models.AuditLog).filter(
         models.AuditLog.target_table.in_(["racks", "devices", "device_locations"])
-    ).order_by(models.AuditLog.timestamp.desc()).limit(100)
+    ).order_by(models.AuditLog.timestamp.desc()).limit(500)
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -117,7 +117,8 @@ async def bulk_patch_cabling(data: dict, db: AsyncSession = Depends(get_db)):
         action="BULK_PATCH",
         target_table="port_connections",
         target_id="bulk",
-        description=f"Created {len(conns)} inter-rack connections"
+        description=f"Created {len(conns)} inter-rack connections",
+        changes={"connection_count": len(conns)}
     )
     db.add(log)
     await db.commit()
@@ -133,6 +134,16 @@ async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
             .where(models.Rack.id == rack_id)
             .values(order_index=index)
         )
+    
+    log = models.AuditLog(
+        user_id="admin",
+        action="REORDER",
+        target_table="racks",
+        target_id="bulk",
+        description="Reordered racks in site/room",
+        changes={"order": ids}
+    )
+    db.add(log)
     await db.commit()
     return {"status": "success"}
 
@@ -176,7 +187,14 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
         action="CREATE", 
         target_table="racks", 
         target_id=str(rack.id), 
-        description=f"Provisioned rack {rack.name} at site ID {site_id}"
+        description=f"Provisioned rack {rack.name} at site ID {site_id}",
+        changes={
+            "name": rack.name,
+            "aisle": rack.aisle,
+            "row": rack.row,
+            "total_u": rack.total_u_height,
+            "max_power_kw": rack.max_power_kw
+        }
     )
     db.add(log)
     await db.commit()
@@ -189,6 +207,7 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
     if not rack:
         raise HTTPException(status_code=404, detail="Rack not found")
     
+    changes = {}
     if 'name' in data and data['name'] != rack.name:
         # Check for duplicate name in ANOTHER rack within the SAME site
         current_room_id = rack.room_id
@@ -199,12 +218,19 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         ))
         if dup_result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE_IN_SITE")
+        changes["name"] = {"old": rack.name, "new": data["name"]}
         rack.name = data['name']
     
-    if 'aisle' in data: rack.aisle = data['aisle']
-    if 'row' in data: rack.row = data['row']
-    if 'max_power_kw' in data: rack.max_power_kw = data['max_power_kw']
-    if 'total_u' in data: 
+    if 'aisle' in data and data['aisle'] != rack.aisle: 
+        changes["aisle"] = {"old": rack.aisle, "new": data["aisle"]}
+        rack.aisle = data['aisle']
+    if 'row' in data and data['row'] != rack.row: 
+        changes["row"] = {"old": rack.row, "new": data["row"]}
+        rack.row = data['row']
+    if 'max_power_kw' in data and data['max_power_kw'] != rack.max_power_kw: 
+        changes["max_power_kw"] = {"old": rack.max_power_kw, "new": data["max_power_kw"]}
+        rack.max_power_kw = data['max_power_kw']
+    if 'total_u' in data and data['total_u'] != rack.total_u_height: 
         new_total = data['total_u']
         if new_total < rack.total_u_height:
             # Check if any devices are mounted above the new limit
@@ -214,10 +240,12 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
             ))
             if loc_res.scalars().first():
                 raise HTTPException(status_code=400, detail="RACK_SHRINK_CONFLICT: Units to be removed are occupied")
+        changes["total_u"] = {"old": rack.total_u_height, "new": new_total}
         rack.total_u_height = new_total
     
     if 'new_site_id' in data:
         if data['new_site_id'] is None:
+            changes["room_id"] = {"old": rack.room_id, "new": None}
             rack.room_id = None
         else:
             room_res = await db.execute(select(models.Room).filter(models.Room.site_id == int(data['new_site_id'])))
@@ -234,6 +262,7 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
             if dup_target_res.scalar_one_or_none():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="RACK_NAME_DUPLICATE_IN_TARGET_SITE")
             
+            changes["room_id"] = {"old": rack.room_id, "new": new_room.id}
             rack.room_id = new_room.id
     
     log = models.AuditLog(
@@ -241,7 +270,8 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
         action="UPDATE", 
         target_table="racks", 
         target_id=str(rack.id), 
-        description=f"Updated rack {rack.name} configuration"
+        description=f"Updated rack {rack.name} configuration",
+        changes=changes
     )
     db.add(log)
     await db.commit()
@@ -261,7 +291,8 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
         action="SOFT_DELETE", 
         target_table="racks", 
         target_id=str(rack_id), 
-        description=f"Soft-deleted rack {name}"
+        description=f"Soft-deleted rack {name}",
+        changes={"is_deleted": True}
     )
     db.add(log)
     await db.commit()
@@ -276,6 +307,10 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     rack = rack_res.scalar_one_or_none()
     if not rack:
         raise HTTPException(status_code=404, detail="Rack not found")
+
+    # Get device info for logging
+    dev_res = await db.execute(select(models.Device).filter(models.Device.id == device_id))
+    device = dev_res.scalar_one_or_none()
 
     # Get ALL existing locations for this device in ACTIVE racks
     loc_res = await db.execute(
@@ -338,7 +373,14 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
         action="MOUNT",
         target_table="devices",
         target_id=str(device_id),
-        description=f"Mounted/Relocated device in rack ID {rack_id}"
+        description=f"Mounted {device.name if device else device_id} in rack {rack.name} at U{new_start}",
+        changes={
+            "rack_id": rack_id,
+            "start_unit": new_start,
+            "size_u": new_size_u,
+            "orientation": loc.orientation,
+            "depth": loc.depth
+        }
     )
     db.add(log)
     await db.commit()
@@ -353,8 +395,18 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
 
     if action == "delete": # Soft delete
         await db.execute(update(models.Rack).where(models.Rack.id.in_(ids)).values(is_deleted=True))
+        log = models.AuditLog(
+            user_id="admin", action="BULK_DELETE", target_table="racks", target_id="bulk",
+            description=f"Soft-deleted {len(ids)} racks", changes={"ids": ids}
+        )
+        db.add(log)
     elif action == "purge": # Hard delete
         await db.execute(delete(models.Rack).where(models.Rack.id.in_(ids)))
+        log = models.AuditLog(
+            user_id="admin", action="BULK_PURGE", target_table="racks", target_id="bulk",
+            description=f"Permanently purged {len(ids)} racks", changes={"ids": ids}
+        )
+        db.add(log)
     elif action == "restore":
         res = await db.execute(select(models.Rack).where(models.Rack.id.in_(ids)))
         racks_to_restore = res.scalars().all()
@@ -400,6 +452,12 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                 if str(r.id) in renames:
                     r.name = renames[str(r.id)]
                 restored_ids.append(r.id)
+        
+        log = models.AuditLog(
+            user_id="admin", action="BULK_RESTORE", target_table="racks", target_id="bulk",
+            description=f"Restored {len(restored_ids)} racks", changes={"ids": restored_ids, "site_id": new_site_id}
+        )
+        db.add(log)
         await db.commit()
         return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
 
@@ -429,6 +487,11 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                 r.room_id = new_room.id
                 relocated_ids.append(r.id)
         
+        log = models.AuditLog(
+            user_id="admin", action="BULK_RELOCATE", target_table="racks", target_id="bulk",
+            description=f"Relocated {len(relocated_ids)} racks to site {new_site_id}", changes={"ids": relocated_ids, "new_site_id": new_site_id}
+        )
+        db.add(log)
         await db.commit()
         return {"status": "success", "relocated": relocated_ids, "conflicts": conflict_ids}
     
@@ -486,7 +549,8 @@ async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
         action="MOVE",
         target_table="devices",
         target_id=str(device_id),
-        description=f"Moved {device.name} to {rack.name} U{target_start_u} (Interactive)"
+        description=f"Moved {device.name} to {rack.name} U{target_start_u} (Interactive)",
+        changes={"rack_id": target_rack_id, "start_unit": target_start_u}
     )
     db.add(log)
     
@@ -495,6 +559,10 @@ async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.delete("/mount/{device_id}")
 async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
+    # Get device for logging
+    dev_res = await db.execute(select(models.Device).filter(models.Device.id == device_id))
+    device = dev_res.scalar_one_or_none()
+
     # Delete ALL locations for this device (should only be 1, but cleanup stale duplicates)
     await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
 
@@ -503,8 +571,10 @@ async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
         action="UNMOUNT",
         target_table="devices",
         target_id=str(device_id),
-        description="Removed device from rack"
+        description=f"Removed {device.name if device else device_id} from rack",
+        changes={"device_id": device_id}
     )
     db.add(log)
     await db.commit()
     return {"status": "success"}
+
