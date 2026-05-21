@@ -24,6 +24,8 @@ class SiteResponse(SiteBase, BaseSchema): pass
 class RackBase(BaseModel):
     room_id: Optional[int] = None
     name: str
+    aisle: Optional[str] = None
+    row: Optional[str] = None
     total_u_height: int = 42
     max_power_kw: float = 8.0
     max_weight_kg: float = 1000.0

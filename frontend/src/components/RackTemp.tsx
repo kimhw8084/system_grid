@@ -1168,7 +1168,7 @@ export default function RackTemp() {
   const [newSite, setNewSite] = useState({ name: '', address: '' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
   const [isAddingRack, setIsAddingRack] = useState(false)
-  const [newRack, setNewRack] = useState({ name: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
+  const [newRack, setNewRack] = useState({ name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
   const [isEditingRack, setIsEditingRack] = useState<any>(null)
   const [isProvisioning, setIsProvisioning] = useState<any>(null)
   const [provisionMode, setProvisionMode] = useState<'asset' | 'reserve'>('asset')
@@ -1361,7 +1361,7 @@ export default function RackTemp() {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setIsAddingRack(false)
       setIsEditingRack(null)
-      setNewRack({ name: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
+      setNewRack({ name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
       toast.success('Rack saved')
     },
     onError: (e: any) => toast.error(e.message)
@@ -1588,7 +1588,7 @@ export default function RackTemp() {
                 <BarChart3 size={13} /> Audit Logs
               </button>
               <button
-                onClick={() => { setNewRack({ name: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
+                onClick={() => { setNewRack({ name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
                 className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
               >
                 <Plus size={13} /> Add Rack
@@ -1727,7 +1727,7 @@ export default function RackTemp() {
                 onShowInfo={rack => setShowingRackInfo(rack)}
                 onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
                 onManageDevice={(device, l, e) => {
-                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
+                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
                 }}
                 isDeleted={activeTab === 'deleted'}
                 onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
@@ -1772,7 +1772,7 @@ export default function RackTemp() {
                     onShowInfo={rack => setShowingRackInfo(rack)}
                     onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
                     onManageDevice={(device, l, e) => {
-                      setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc, rack: r })
+                      setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
                     }}
                     isDeleted={activeTab === 'deleted'}
                     onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
@@ -2177,6 +2177,24 @@ export default function RackTemp() {
                     onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
                     className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
                     placeholder="e.g. RACK-A01" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Aisle</label>
+                    <input
+                      value={isEditingRack ? (isEditingRack.aisle || '') : newRack.aisle}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, aisle: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, aisle: e.target.value.toUpperCase() })}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
+                      placeholder="e.g. A1" />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Row</label>
+                    <input
+                      value={isEditingRack ? (isEditingRack.row || '') : newRack.row}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, row: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, row: e.target.value.toUpperCase() })}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
+                      placeholder="e.g. 10" />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

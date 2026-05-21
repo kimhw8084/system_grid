@@ -185,9 +185,24 @@ const GanttChart = ({ project, onUpdate }: { project: any, onUpdate: (data: any)
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${width}%`, left: `${left}%` }}
-                  className="absolute h-8 bg-blue-600/20 border border-blue-500/30 rounded-lg flex items-center px-3 gap-2 overflow-hidden hover:bg-blue-600/30 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const nextStatus = task.status === 'Completed' ? 'In Progress' : task.status === 'In Progress' ? 'Blocked' : 'Completed'
+                    const nextProgress = nextStatus === 'Completed' ? 100 : task.progress
+                    const newTasks = tasks.map(t => t.id === task.id ? { ...t, status: nextStatus, progress: nextProgress } : t)
+                    setTasks(newTasks)
+                    onUpdate({ ...project, tasks: newTasks })
+                    toast.success(`${task.name} -> ${nextStatus}`)
+                  }}
+                  className={`absolute h-8 border rounded-lg flex items-center px-3 gap-2 overflow-hidden cursor-pointer transition-all ${
+                    task.status === 'Completed' ? 'bg-emerald-600/20 border-emerald-500/40' : 
+                    task.status === 'Blocked' ? 'bg-rose-600/20 border-rose-500/40 animate-pulse' :
+                    'bg-blue-600/20 border-blue-500/40'
+                  }`}
                 >
-                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                   <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                     task.status === 'Completed' ? 'bg-emerald-400' : 
+                     task.status === 'Blocked' ? 'bg-rose-400' : 'bg-blue-400'
+                   }`} />
                    <span className="text-[9px] font-black text-white uppercase truncate">{task.name}</span>
                    <span className="ml-auto text-[8px] font-bold text-blue-400">{task.progress}%</span>
                 </motion.div>
@@ -548,6 +563,43 @@ export function ProjectForm({ initialData, onSave, isSaving, options, devices, s
         </div>
       </div>
 
+      {/* ROI & Impact Metrics */}
+      <div className="grid grid-cols-4 gap-4 bg-white/5 p-6 rounded-xl border border-white/10">
+        <StyledSelect 
+          label="Defense Line" 
+          value={formData.roi_defense_line} 
+          onChange={e => setFormData({...formData, roi_defense_line: parseInt(e.target.value)})} 
+          options={DEFENSE_LINES} 
+        />
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block px-1">Man-Hours Saved</label>
+          <input 
+            type="number"
+            value={formData.man_hours_saved} 
+            onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value)})} 
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" 
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block px-1">Stoploss Min.</label>
+          <input 
+            type="number"
+            value={formData.stoploss_minutes_saved} 
+            onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value)})} 
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" 
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 block px-1">Wafers Gained</label>
+          <input 
+            type="number"
+            value={formData.wafers_gained} 
+            onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value)})} 
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" 
+          />
+        </div>
+      </div>
+
       {/* 10, 11, 12. Scoping */}
       <div className="grid grid-cols-3 gap-8">
         <MultiSelectBox 
@@ -583,16 +635,217 @@ export function ProjectForm({ initialData, onSave, isSaving, options, devices, s
   )
 }
 
+const ExecutiveReportModal = ({ project, onClose }: { project: any, onClose: () => void }) => {
+  const tasks = project.tasks || []
+  const completedTasks = tasks.filter((t: any) => t.status === 'Completed').length
+  const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 overflow-y-auto">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white text-slate-900 w-[800px] min-h-[1131px] p-12 shadow-2xl relative flex flex-col font-sans"
+      >
+        {/* Close Button (Hidden in Print) */}
+        <button onClick={onClose} className="absolute -right-16 top-0 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all print:hidden">
+          <X size={24} />
+        </button>
+
+        {/* Report Header */}
+        <div className="border-b-4 border-slate-900 pb-6 mb-8 flex justify-between items-end">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+               <span className="bg-slate-900 text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest">{project.type} STRATEGY</span>
+               <span className="border-2 border-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest">{project.status}</span>
+            </div>
+            <h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-1">{project.name}</h1>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Strategic Infrastructure Evolution Report // {new Date().toLocaleDateString()}</p>
+          </div>
+          <div className="text-right">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Project Maturity</p>
+             <div className="text-4xl font-black leading-none">{progress}%</div>
+          </div>
+        </div>
+
+        {/* Executive Narrative */}
+        <div className="grid grid-cols-2 gap-12 mb-10">
+           <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 flex items-center gap-2">
+                 <AlertTriangle size={14} /> Critical Problem Statement
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium italic">
+                "{project.problem_statement || 'No problem statement defined for this strategic vector.'}"
+              </p>
+           </div>
+           <div className="space-y-4">
+              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 flex items-center gap-2">
+                 <Target size={14} /> Mission Objective
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                {project.objective || 'Objective currently being refined by the strategic lead.'}
+              </p>
+           </div>
+        </div>
+
+        {/* ROI & Success Metrics */}
+        <div className="mb-10">
+           <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 mb-6 flex items-center gap-2">
+              <BarChart3 size={14} /> Quantitative Success Metrics (ROI)
+           </h3>
+           <div className="grid grid-cols-4 gap-4">
+              <div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center">
+                 <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Defense Line</p>
+                 <p className="text-2xl font-black">L{project.roi_defense_line || 0}</p>
+              </div>
+              <div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center">
+                 <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Man-Hours Saved</p>
+                 <p className="text-2xl font-black text-blue-600">{project.man_hours_saved || 0}h</p>
+              </div>
+              <div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center">
+                 <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Stoploss Min.</p>
+                 <p className="text-2xl font-black text-rose-600">{project.stoploss_minutes_saved || 0}m</p>
+              </div>
+              <div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center">
+                 <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Wafers Gained</p>
+                 <p className="text-2xl font-black text-emerald-600">{project.wafers_gained || 0}</p>
+              </div>
+           </div>
+        </div>
+
+        {/* Strategic Timeline */}
+        <div className="mb-10 flex-1">
+           <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 mb-6 flex items-center gap-2">
+              <Clock size={14} /> Execution Roadmap & Milestones
+           </h3>
+           <div className="space-y-4">
+              {tasks.length > 0 ? tasks.slice(0, 8).map((t: any) => (
+                <div key={t.id} className="flex items-center gap-6">
+                   <div className="w-24 text-[9px] font-black text-slate-400 uppercase tracking-tighter">
+                      {new Date(t.start_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                   </div>
+                   <div className="relative flex-1 h-8 bg-slate-50 rounded-full border border-slate-100 overflow-hidden">
+                      <div 
+                        className={`absolute inset-y-0 left-0 transition-all ${t.status === 'Completed' ? 'bg-emerald-500' : 'bg-slate-900'}`} 
+                        style={{ width: `${t.progress}%` }} 
+                      />
+                      <div className="absolute inset-0 flex items-center px-4 justify-between">
+                         <span className={`text-[10px] font-black uppercase ${t.progress > 50 ? 'text-white' : 'text-slate-900'}`}>{t.name}</span>
+                         <span className={`text-[9px] font-bold ${t.progress > 90 ? 'text-white' : 'text-slate-500'}`}>{t.status}</span>
+                      </div>
+                   </div>
+                </div>
+              )) : (
+                <div className="py-20 text-center text-slate-300 font-black uppercase tracking-[0.5em] italic">No Roadmap Data Available</div>
+              )}
+           </div>
+        </div>
+
+        {/* Footer Audit */}
+        <div className="border-t border-slate-200 pt-6 mt-auto flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+           <div>Owner: {project.owner} // System Scope: {project.target_systems?.join(', ') || 'N/A'}</div>
+           <div>Ref: SYSGRID-PROJ-{project.id} // SECURE DOCUMENT</div>
+        </div>
+
+        <button 
+          onClick={() => window.print()}
+          className="absolute bottom-8 right-8 p-4 bg-slate-900 text-white rounded-full shadow-2xl hover:scale-110 transition-all print:hidden"
+        >
+          <Download size={20} />
+        </button>
+      </motion.div>
+    </div>
+  )
+}
+
+const DashboardView = ({ projects }: { projects: any[] }) => {
+  const stats = useMemo(() => {
+    const total = projects.length
+    const completed = projects.filter(p => p.status === 'Completed').length
+    const active = projects.filter(p => p.status === 'In Progress').length
+    const blocked = projects.filter(p => p.status === 'Blocked').length
+    
+    const totalManHours = projects.reduce((acc, p) => acc + (p.man_hours_saved || 0), 0)
+    const totalStoploss = projects.reduce((acc, p) => acc + (p.stoploss_minutes_saved || 0), 0)
+    
+    return { total, completed, active, blocked, totalManHours, totalStoploss }
+  }, [projects])
+
+  return (
+    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-8 p-2">
+       {/* Stats Grid */}
+       <div className="grid grid-cols-4 gap-6">
+          {[
+            { label: 'Total Initiatives', val: stats.total, color: 'text-white' },
+            { label: 'Active Streams', val: stats.active, color: 'text-blue-400' },
+            { label: 'Critical Blockers', val: stats.blocked, color: 'text-rose-500', pulse: stats.blocked > 0 },
+            { label: 'Total ROI Hours', val: `${stats.totalManHours}h`, color: 'text-emerald-400' }
+          ].map((s, i) => (
+            <div key={i} className="glass-panel p-8 rounded-xl border border-white/5 flex flex-col items-center justify-center text-center">
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2">{s.label}</p>
+               <p className={`text-4xl font-black ${s.color} ${s.pulse ? 'animate-pulse' : ''}`}>{s.val}</p>
+            </div>
+          ))}
+       </div>
+
+       {/* High Level Progress Bars */}
+       <div className="grid grid-cols-2 gap-8">
+          <div className="glass-panel p-8 rounded-xl border border-white/5 space-y-6">
+             <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                <Activity size={14} /> Active Project Trajectory
+             </h3>
+             <div className="space-y-4">
+                {projects.filter(p => p.status === 'In Progress').slice(0, 5).map(p => (
+                  <div key={p.id} className="space-y-2">
+                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-white">{p.name}</span>
+                        <span className="text-slate-500">{p.priority} PRIORITY</span>
+                     </div>
+                     <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${p.tasks?.length ? (p.tasks.filter((t:any)=>t.status==='Completed').length / p.tasks.length)*100 : 0}%` }}
+                          className="h-full bg-blue-600 rounded-full"
+                        />
+                     </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+          
+          <div className="glass-panel p-8 rounded-xl border border-white/5 space-y-6 text-center flex flex-col justify-center">
+             <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                <TrendingUp size={14} /> Aggregated Strategic Impact
+             </h3>
+             <div className="flex items-center justify-around py-6">
+                <div>
+                   <p className="text-[9px] font-black text-slate-500 uppercase mb-2">Wafers Gained</p>
+                   <p className="text-5xl font-black text-emerald-400">+{projects.reduce((acc, p) => acc + (p.wafers_gained || 0), 0)}</p>
+                </div>
+                <div className="w-px h-16 bg-white/5" />
+                <div>
+                   <p className="text-[9px] font-black text-slate-500 uppercase mb-2">Risk Avoided (Min)</p>
+                   <p className="text-5xl font-black text-rose-500">-{projects.reduce((acc, p) => acc + (p.stoploss_minutes_saved || 0), 0)}</p>
+                </div>
+             </div>
+          </div>
+       </div>
+    </div>
+  )
+}
+
 // --- Main View ---
 
 export default function Projects() {
   const queryClient = useQueryClient()
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [activeModal, setActiveModal] = useState<any>(null)
+  const [viewMode, setViewMode] = useState<'GRID' | 'DASHBOARD'>('GRID')
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'TASKS' | 'ADOPTION' | 'QA' | 'APPENDIX'>('DETAILS')
   const [searchTerm, setSearchTerm] = useState('')
   const [detailWidth, setDetailWidth] = useState(800)
+  const [isMaximized, setIsMaximized] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [registryModal, setRegistryModal] = useState<any>(null)
@@ -634,56 +887,138 @@ export default function Projects() {
       sortable: false,
       filter: false,
     },
-    { field: 'name', headerName: 'TITLE', minWidth: 200, cellClass: 'font-bold uppercase text-white' },
-    { field: 'type', headerName: 'TYPE', valueFormatter: (p: any) => p.value?.toUpperCase(), cellClass: 'font-bold text-slate-400' },
+    { 
+      field: 'name', 
+      headerName: 'TITLE', 
+      minWidth: 250, 
+      editable: true,
+      cellClass: 'font-bold uppercase text-white px-4',
+      cellEditor: 'agTextCellEditor'
+    },
+    { 
+      field: 'type', 
+      headerName: 'TYPE', 
+      width: 130,
+      editable: true,
+      valueFormatter: (p: any) => p.value?.toUpperCase(), 
+      cellClass: 'font-bold text-slate-400',
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: projectTypeOptions.map((o: any) => o.value)
+      }
+    },
     {
       field: 'status',
       headerName: 'STATUS',
-      valueFormatter: (p: any) => p.value?.toUpperCase(),
+      width: 150,
+      editable: true,
       cellClass: 'font-bold',
-      cellClassRules: {
-        'text-emerald-400': (p: any) => p.value === 'Completed' || p.value === 'In Progress',
-        'text-amber-400': (p: any) => p.value === 'Paused' || p.value === 'Planning',
-        'text-rose-400': (p: any) => p.value === 'Blocked' || p.value === 'Cancelled'
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: PROJECT_STATUSES.map(s => s.value)
+      },
+      cellRenderer: (p: any) => {
+        const val = p.value?.toUpperCase() || 'UNKNOWN'
+        const color = 
+          p.value === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+          p.value === 'In Progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+          p.value === 'Planning' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+          p.value === 'Blocked' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse' :
+          'bg-slate-500/10 text-slate-400 border-white/10'
+        
+        return (
+          <div className={`px-2 py-1 rounded-md border ${color} text-[9px] font-black tracking-widest flex items-center gap-1.5`}>
+            <div className={`w-1 h-1 rounded-full ${color.split(' ')[1].replace('text-', 'bg-')}`} />
+            {val}
+          </div>
+        )
       }
     },
     {
       field: 'priority',
       headerName: 'PRIORITY',
-      valueFormatter: (p: any) => p.value?.toUpperCase(),
+      width: 130,
+      editable: true,
       cellClass: 'font-bold',
-      cellClassRules: {
-        'text-rose-500': (p: any) => p.value === 'Highest',
-        'text-amber-500': (p: any) => p.value === 'High',
-        'text-blue-400': (p: any) => p.value === 'Medium',
-        'text-slate-500': (p: any) => p.value === 'Low'
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: PROJECT_PRIORITIES.map(p => p.value)
+      },
+      cellRenderer: (p: any) => {
+        const val = p.value?.toUpperCase() || 'MEDIUM'
+        const color = 
+          p.value === 'Highest' ? 'text-rose-500' :
+          p.value === 'High' ? 'text-amber-500' :
+          p.value === 'Medium' ? 'text-blue-400' :
+          'text-slate-500'
+        return <span className={color}>{val}</span>
       }
     },
-    { field: 'owner', headerName: 'OWNER(S)', cellClass: 'font-bold text-slate-300' },
+    { 
+      field: 'owner', 
+      headerName: 'OWNER(S)', 
+      width: 180,
+      editable: true,
+      cellClass: 'font-bold text-slate-300' 
+    },
     {
       field: 'target_systems',
       headerName: 'SYSTEM SCOPE',
+      width: 150,
       cellRenderer: SystemScopeRenderer,
       cellClass: 'font-bold'
     },
     {
+      field: 'stoploss_minutes_saved',
+      headerName: 'STOPLOSS (M)',
+      width: 120,
+      editable: true,
+      cellClass: 'font-bold text-rose-400 text-center',
+      cellEditor: 'agNumberCellEditor'
+    },
+    {
+      field: 'wafers_gained',
+      headerName: 'WAFERS (+)',
+      width: 120,
+      editable: true,
+      cellClass: 'font-bold text-emerald-400 text-center',
+      cellEditor: 'agNumberCellEditor'
+    },
+    {
       headerName: 'TASKS',
+      width: 100,
       valueGetter: (p: any) => p.data.tasks?.length || 0,
       cellClass: 'font-bold text-center'
     },
     {
-      field: 'created_at',
-      headerName: 'CREATED',
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '',
-      cellClass: 'font-bold text-slate-500'
-    },
-    {
-      field: 'updated_at',
-      headerName: 'MODIFIED',
-      valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '',
-      cellClass: 'font-bold text-slate-500'
+      headerName: 'REPORT',
+      width: 100,
+      pinned: 'right',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center gap-2 h-full">
+          <button 
+            onClick={() => setActiveModal({ type: 'REPORT', project: p.data })}
+            className="p-1.5 hover:bg-blue-600/20 text-blue-400 rounded-md transition-all"
+            title="Executive Report"
+          >
+            <FileText size={14} />
+          </button>
+          <button 
+            onClick={() => setSelectedProjectId(p.data.id)}
+            className="p-1.5 hover:bg-emerald-600/20 text-emerald-400 rounded-md transition-all"
+            title="Project Insights"
+          >
+            <BarChart3 size={14} />
+          </button>
+        </div>
+      )
     }
-  ], [projects])
+  ], [projects, projectTypeOptions])
+
+  const onCellValueChanged = (event: any) => {
+    const updatedData = { ...event.data, [event.column.colId]: event.newValue }
+    mutation.mutate(updatedData)
+  }
   const selectedProject = useMemo(() => projects?.find((p: any) => p.id === selectedProjectId), [projects, selectedProjectId])
 
   const mutation = useMutation({
@@ -751,6 +1086,22 @@ export default function Projects() {
         </div>
         
         <div className="flex items-center space-x-3">
+           {/* View Toggle */}
+           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 mr-4">
+              <button 
+                onClick={() => setViewMode('GRID')}
+                className={`px-4 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${viewMode === 'GRID' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Grid
+              </button>
+              <button 
+                onClick={() => setViewMode('DASHBOARD')}
+                className={`px-4 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${viewMode === 'DASHBOARD' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Dashboard
+              </button>
+           </div>
+
            <div className="flex items-center space-x-3 bg-white/5 p-1 rounded-lg border border-white/5">
              <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
@@ -778,37 +1129,45 @@ export default function Projects() {
       </div>
 
       <div className="flex-1 flex overflow-hidden space-x-1 relative">
-        {/* Project Table - Always Visible */}
-        <div className="flex-1 glass-panel rounded-lg border border-white/5 overflow-hidden flex flex-col ag-theme-alpine-dark">
-          <AgGridReact 
-            ref={gridRef}
-            rowData={projects}
-            columnDefs={columnDefs}
-            rowSelection="multiple"
-            onSelectionChanged={(e) => {
-              const selected = e.api.getSelectedRows()
-              if (selected.length > 0) {
-                setSelectedProjectId(selected[0].id)
-                setIsEditing(false)
-              }
-            }}
-            onGridReady={(params) => params.api.sizeColumnsToFit()}
-            quickFilterText={searchTerm}
-            animateRows={true}
-            enableCellTextSelection={true}
-            headerHeight={35}
-            rowHeight={40}
-            defaultColDef={{ 
-              resizable: true, 
-              sortable: true, 
-              filter: true,
-              floatingFilter: true,
-              flex: 1,
-              minWidth: 100,
-              cellStyle: { fontSize: '10px', fontWeight: 'bold' }
-            }}
-          />
-        </div>
+        {viewMode === 'DASHBOARD' ? (
+          <DashboardView projects={projects || []} />
+        ) : (
+          <div className="flex-1 glass-panel rounded-lg border border-white/5 overflow-hidden flex flex-col ag-theme-alpine-dark">
+            <AgGridReact 
+              ref={gridRef}
+              rowData={projects}
+              columnDefs={columnDefs}
+              rowSelection="multiple"
+              onSelectionChanged={(e) => {
+                const selected = e.api.getSelectedRows()
+                if (selected.length > 0) {
+                  setSelectedProjectId(selected[0].id)
+                  setIsEditing(false)
+                }
+              }}
+              onCellValueChanged={onCellValueChanged}
+              onGridReady={(params) => params.api.sizeColumnsToFit()}
+              quickFilterText={searchTerm}
+              animateRows={true}
+              enableCellTextSelection={true}
+              headerHeight={35}
+              rowHeight={45}
+              undoRedoCellEditing={true}
+              undoRedoCellEditingLimit={20}
+              enterMovesDown={true}
+              enterMovesDownAfterEdit={true}
+              defaultColDef={{ 
+                resizable: true, 
+                sortable: true, 
+                filter: true, 
+                floatingFilter: true,
+                flex: 1,
+                minWidth: 100,
+                cellStyle: { fontSize: '10px', fontWeight: 'bold' }
+              }}
+            />
+          </div>
+        )}
 
         {/* Detail Pane - Slides Out */}
         <AnimatePresence>
@@ -821,10 +1180,13 @@ export default function Projects() {
               
               <motion.div 
                 initial={{ x: '100%', opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
+                animate={{ 
+                  x: 0, 
+                  opacity: 1,
+                  width: isMaximized ? '95%' : detailWidth 
+                }}
                 exit={{ x: '100%', opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                style={{ width: detailWidth }}
                 className="glass-panel border-l border-white/10 bg-[#0a0c14]/40 backdrop-blur-xl flex flex-col z-20 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] rounded-lg"
               >
                 {/* Detail Header */}
@@ -855,16 +1217,42 @@ export default function Projects() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const tasks = selectedProject.tasks || []
+                          const completed = tasks.filter((t:any) => t.status === 'Completed').map((t:any) => t.name)
+                          const pending = tasks.filter((t:any) => t.status !== 'Completed').map((t:any) => t.name)
+                          const update = `**WEEKLY UPDATE: ${selectedProject.name}**\n\n` +
+                                        `✅ **COMPLETED:**\n${completed.length ? completed.map(t => `- ${t}`).join('\n') : '- No tasks completed this week.'}\n\n` +
+                                        `🚀 **IN PROGRESS / NEXT:**\n${pending.length ? pending.map(t => `- ${t}`).join('\n') : '- No pending tasks.'}\n\n` +
+                                        `⚠️ **RISKS/BLOCKERS:**\n${selectedProject.status === 'Blocked' ? '- PROJECT IS CURRENTLY BLOCKED' : '- No major blockers flagged.'}`
+                          navigator.clipboard.writeText(update)
+                          toast.success('WEEKLY UPDATE COPIED TO CLIPBOARD')
+                        }}
+                        className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black uppercase text-blue-400 hover:bg-white/10 transition-all flex items-center gap-2"
+                        title="Copy Weekly Update"
+                      >
+                        <RefreshCcw size={12}/> Update
+                      </button>
+
+                      <button 
+                        onClick={() => setIsMaximized(!isMaximized)} 
+                        className={`p-1.5 border rounded-lg transition-all ${isMaximized ? 'bg-amber-500 border-amber-400 text-white shadow-lg' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}
+                        title={isMaximized ? "Restore Size" : "Maximize View"}
+                      >
+                        <LayoutGrid size={16}/>
+                      </button>
+
                       <button onClick={() => { setIsEditing(!isEditing); setActiveTab('DETAILS'); }} className={`p-1.5 border rounded-lg transition-all ${isEditing ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'}`}>
                         {isEditing ? <Check size={16}/> : <Edit2 size={16}/>}
                       </button>
                       <button onClick={() => setConfirmModal({ isOpen: true, id: selectedProject.id })} className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-rose-500 transition-all"><Trash2 size={16}/></button>
-                      <button onClick={() => { setSelectedProjectId(null); setIsEditing(false); }} className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all ml-2"><X size={16}/></button>
+                      <button onClick={() => { setSelectedProjectId(null); setIsEditing(false); setIsMaximized(false); }} className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all ml-2"><X size={16}/></button>
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                     {['DETAILS', 'TASKS', 'ADOPTION', 'QA', 'APPENDIX'].map(tab => (
+                     {['DETAILS', 'TASKS', 'DEPENDENCIES', 'ADOPTION', 'QA', 'APPENDIX'].map(tab => (
                        <button 
                          key={tab}
                          onClick={() => setActiveTab(tab as any)}
@@ -1050,7 +1438,11 @@ export default function Projects() {
       </div>
 
       <AnimatePresence>
-        {activeModal && (
+        {activeModal?.type === 'REPORT' && (
+          <ExecutiveReportModal project={activeModal.project} onClose={() => setActiveModal(null)} />
+        )}
+
+        {activeModal && activeModal.type !== 'REPORT' && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[1100px] max-h-[90vh] overflow-y-auto p-12 rounded-lg border border-blue-500/30 custom-scrollbar shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/5 pb-8">
