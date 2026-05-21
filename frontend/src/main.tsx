@@ -106,18 +106,18 @@ const Bootstrap = () => {
 
   if (error) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-[#88c0d0] p-8 font-mono">
-        <div className="max-w-md w-full border border-[#88c0d0]/20 p-8 rounded-lg bg-slate-900/50 backdrop-blur-xl shadow-2xl">
+      <div className="h-screen w-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--accent-primary)] p-8 font-mono">
+        <div className="max-w-md w-full border border-[var(--glass-border)] p-8 rounded-lg bg-[var(--sidebar-bg)]/50 backdrop-blur-xl shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-            <h1 className="text-xl font-bold uppercase tracking-tighter">Connection Failure</h1>
+            <h1 className="text-xl font-bold uppercase tracking-tighter text-[var(--text-primary)]">Connection Failure</h1>
           </div>
           
           <div className="bg-black/40 p-4 rounded mb-4 border border-white/5">
-            <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2">
+            <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2 font-bold">
               Failed to reach backend API. If you recently entered a custom API URL, it might be routing through a corporate proxy (APISIX) that rejects unauthenticated requests.
             </p>
-            <p className="text-[10px] text-white/40">
+            <p className="text-[10px] text-[var(--text-muted)]">
               Target URL: {failedUrl} <br/>
               Error: {error}
             </p>
@@ -126,17 +126,17 @@ const Bootstrap = () => {
           <div className="flex flex-col gap-3">
              <button 
                onClick={() => {
-                 setApiOverride(null); // Clear the bad URL override
+                 setApiOverride(null); 
                  window.location.reload();
                }}
-               className="w-full px-4 py-3 bg-red-500 text-white text-xs font-bold uppercase tracking-widest hover:bg-red-400 transition-all active:scale-95"
+               className="w-full px-4 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-500 transition-all active:scale-95"
              >
                Clear Overrides & Retry (Self-Heal)
              </button>
 
              <button 
                onClick={() => setReady(true)}
-               className="w-full px-4 py-3 bg-[#88c0d0] text-slate-900 text-xs font-bold uppercase tracking-widest hover:bg-white transition-all active:scale-95"
+               className="w-full px-4 py-3 bg-[var(--accent-primary)] text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all active:scale-95"
              >
                Ignore Error & Launch App Anyway
              </button>
@@ -150,7 +150,7 @@ const Bootstrap = () => {
                    window.location.reload();
                  }
                }}
-               className="w-full px-4 py-2 border border-[#88c0d0]/30 text-[#88c0d0]/60 text-[10px] uppercase tracking-widest hover:text-[#88c0d0] hover:border-[#88c0d0]/60 transition-all"
+               className="w-full px-4 py-2 border border-[var(--glass-border)] text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-all"
              >
                Manually Configure API URL
              </button>
@@ -162,15 +162,15 @@ const Bootstrap = () => {
 
   if (!ready) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-slate-950 text-[#88c0d0] font-mono">
+      <div className="h-screen w-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--accent-primary)] font-mono">
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
-            <div className="w-16 h-16 border-2 border-[#88c0d0]/10 rounded-full"></div>
-            <div className="absolute top-0 left-0 w-16 h-16 border-2 border-[#88c0d0] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-2 border-[var(--glass-border)] rounded-full"></div>
+            <div className="absolute top-0 left-0 w-16 h-16 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin"></div>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] uppercase tracking-[0.3em] font-bold animate-pulse">Initializing SysGrid</span>
-            <span className="text-[8px] uppercase tracking-[0.1em] opacity-30">Verifying Backend Synchronization...</span>
+            <span className="text-[10px] uppercase tracking-[0.3em] font-black animate-pulse text-[var(--text-primary)]">Initializing SysGrid</span>
+            <span className="text-[8px] uppercase tracking-[0.1em] opacity-30 text-[var(--text-muted)] font-black">Verifying Backend Synchronization...</span>
           </div>
         </div>
       </div>

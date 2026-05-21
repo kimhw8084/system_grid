@@ -132,9 +132,6 @@ const PduBar = ({ side, isOver, name, capacity, load, onClick }: { side: 'A' | '
       {Array.from({ length: 14 }).map((_, i) => (
         <div key={i} className={`w-1.5 h-1 rounded-sm transition-all duration-300 ${!hasPdu ? 'bg-slate-700' : isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
       ))}
-      <span className={`absolute ${side === 'A' ? '-left-0.5 rotate-90' : '-right-0.5 -rotate-90'} -bottom-6 text-[7px] font-black transition-colors group-hover/pdu:text-blue-400 uppercase tracking-tighter ${hasPdu ? 'text-slate-500' : 'text-slate-700'}`}>
-        {name || `PDU-${side}`}
-      </span>
       
       {/* Tooltip on hover */}
       {hasPdu && (

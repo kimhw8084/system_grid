@@ -1016,7 +1016,10 @@ export default function Projects() {
             <FileText size={14} />
           </button>
           <button 
-            onClick={() => setSelectedProjectId(p.data.id)}
+            onClick={() => {
+              setSelectedProjectId(p.data.id)
+              setIsMaximized(true)
+            }}
             className="p-1.5 hover:bg-emerald-600/20 text-emerald-400 rounded-md transition-all"
             title="Project Insights"
           >
@@ -1212,6 +1215,7 @@ export default function Projects() {
                 if (selected.length > 0) {
                   setSelectedProjectId(selected[0].id)
                   setIsEditing(false)
+                  setIsMaximized(true)
                 }
               }}
               onCellValueChanged={onCellValueChanged}
