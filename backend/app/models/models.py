@@ -18,6 +18,7 @@ class Site(Base, BaseMixin):
     cooling_capacity_kw = Column(Float, default=0.0)
     power_capacity_kw = Column(Float, default=0.0)
     order_index = Column(Integer, default=0)
+    color = Column(String, default="#3b82f6")
     rooms = relationship("Room", back_populates="site", cascade="all, delete-orphan")
 
 class Room(Base, BaseMixin):
@@ -43,6 +44,10 @@ class Rack(Base, BaseMixin):
     cooling_type = Column(String)
     pdu_a_id = Column(String)
     pdu_b_id = Column(String)
+    pdu_a_name = Column(String, default="PDU-A")
+    pdu_b_name = Column(String, default="PDU-B")
+    pdu_a_cap_kw = Column(Float, default=10.0)
+    pdu_b_cap_kw = Column(Float, default=10.0)
     is_deleted = Column(Boolean, default=False)
     order_index = Column(Integer, default=0)
     last_site_name = Column(String, nullable=True) # Historical record for unassigned racks

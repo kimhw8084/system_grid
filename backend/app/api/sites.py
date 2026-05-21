@@ -10,7 +10,7 @@ router = APIRouter(prefix="/sites", tags=["Sites"])
 async def get_sites(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Site).order_by(models.Site.order_index.asc()))
     sites = result.scalars().all()
-    return [{"id": s.id, "name": s.name, "address": s.address, "order_index": s.order_index} for s in sites]
+    return [{"id": s.id, "name": s.name, "address": s.address, "order_index": s.order_index, "color": s.color or "#3b82f6"} for s in sites]
 
 @router.post("/reorder")
 async def reorder_sites(data: dict, db: AsyncSession = Depends(get_db)):
@@ -37,7 +37,7 @@ async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
     max_res = await db.execute(select(func.max(models.Site.order_index)))
     max_order = max_res.scalar() or 0
     
-    site = models.Site(name=name, address=data.get('address', ''), order_index=max_order + 1)
+    site = models.Site(name=name, address=data.get('address', ''), color=data.get('color', '#3b82f6'), order_index=max_order + 1)
     db.add(site)
     try:
         await db.commit()
@@ -49,7 +49,8 @@ async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
             action="CREATE", 
             target_table="sites", 
             target_id=str(site.id), 
-            description=f"Established new site: {site.name}"
+            description=f"Established new site: {site.name}",
+            changes={"color": site.color}
         )
         db.add(log)
         
@@ -57,7 +58,7 @@ async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
         db.add(room)
         
         await db.commit()
-        return {"id": site.id, "name": site.name, "address": site.address, "order_index": site.order_index}
+        return {"id": site.id, "name": site.name, "address": site.address, "order_index": site.order_index, "color": site.color}
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -77,10 +78,12 @@ async def update_site(site_id: int, data: dict, db: AsyncSession = Depends(get_d
         
     if 'address' in data: site.address = data['address']
     if 'order_index' in data: site.order_index = data['order_index']
+    if 'color' in data: site.color = data['color']
     
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="sites", 
-        target_id=str(site.id), description=f"Updated site: {site.name}"
+        target_id=str(site.id), description=f"Updated site: {site.name}",
+        changes={"color": site.color} if 'color' in data else {}
     )
     db.add(log)
     await db.commit()

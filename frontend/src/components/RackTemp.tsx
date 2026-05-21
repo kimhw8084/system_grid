@@ -71,17 +71,15 @@ const powerColor = (pct: number) => {
 
 // ─── Status Breathing Bar ────────────────────────────────────────────────────
 
-const RackStatusBar = ({ rack, isPowerOver, isFillOver }: { rack: any; isPowerOver: boolean; isFillOver: boolean }) => {
+const RackStatusBar = ({ rack, siteColor }: { rack: any; siteColor?: string }) => {
   const hasMaintenance = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Maintenance'), [rack])
   const hasCritical = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Critical' || l.device?.status === 'Offline'), [rack])
   
-  let colorClass = 'bg-emerald-500'
-  let label = 'Healthy'
+  // Use siteColor if provided, otherwise default to emerald
+  let colorClass = siteColor ? `bg-[${siteColor}]` : 'bg-emerald-500'
+  let label = 'Nominal'
   
-  if (isPowerOver || isFillOver) {
-    colorClass = 'bg-rose-600'
-    label = 'Capacity Alert'
-  } else if (hasCritical) {
+  if (hasCritical) {
     colorClass = 'bg-rose-500'
     label = 'Asset Critical'
   } else if (hasMaintenance) {
@@ -89,11 +87,17 @@ const RackStatusBar = ({ rack, isPowerOver, isFillOver }: { rack: any; isPowerOv
     label = 'Maintenance'
   }
 
+  // Fallback for dynamic tailwind classes if needed, or just use inline style
+  const style = siteColor && !hasCritical && !hasMaintenance ? { backgroundColor: siteColor } : {}
+
   return (
-    <div className="absolute top-0 inset-x-0 h-1 z-30 flex">
-      <div className={`h-full w-full ${colorClass} animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]`} />
-      <div className="absolute top-0 right-2 px-1.5 py-0.5 rounded-b bg-black/40 backdrop-blur-md border-x border-b border-white/5">
-        <span className={`text-[6px] font-black uppercase tracking-[0.2em] ${colorClass.replace('bg-', 'text-')}`}>{label}</span>
+    <div className="absolute top-0 inset-x-0 h-1.5 z-30 flex">
+      <div 
+        className={`h-full w-full ${!style.backgroundColor ? colorClass : ''} animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]`} 
+        style={style}
+      />
+      <div className="absolute top-0 right-2 px-1.5 py-0.5 rounded-b bg-black/60 backdrop-blur-md border-x border-b border-white/10">
+        <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${!style.backgroundColor ? colorClass.replace('bg-', 'text-') : 'text-white'}`}>{label}</span>
       </div>
     </div>
   )
@@ -106,24 +110,26 @@ const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: num
   const isOverflow = pct >= 100
   
   return (
-    <div className="space-y-0.5 group/bar">
+    <div className="space-y-0.5 group/bar relative">
       <div className="flex justify-between items-center">
-        <span className={`text-[7px] uppercase font-bold tracking-wider ${isOverflow ? 'text-rose-400' : 'text-slate-500'}`}>
-          {label} <span className="text-slate-400 font-black ml-1">({pct}%)</span>
+        <span className={`text-[7px] uppercase font-bold tracking-wider ${isOverflow ? 'text-rose-400 animate-pulse' : 'text-slate-500'}`}>
+          {label} {isOverflow && <span className="text-[6px] font-black ml-1">[CAPACITY ALERT]</span>}
         </span>
         <span className={`text-[8px] font-black tabular-nums transition-colors ${isOverflow ? 'text-rose-500' : 'text-slate-300'}`}>
           {value.toFixed(1)}<span className="text-slate-500 font-normal">/{max}{unit}</span>
         </span>
       </div>
-      <div className="h-1 bg-white/5 rounded-full overflow-hidden relative">
-        <div 
-          className={`h-full rounded-full transition-all duration-500 ${colorFn(pct)}`} 
+      <div className={`h-1.5 bg-white/5 rounded-full overflow-hidden relative border border-white/5 ${isOverflow ? 'ring-1 ring-rose-500/50 shadow-[0_0_8px_rgba(225,29,72,0.3)]' : ''}`}>
+        <motion.div 
+          className={`h-full rounded-full transition-all duration-700 ease-out ${colorFn(pct)}`} 
           style={{ width: `${Math.min(pct, 100)}%` }} 
+          animate={isOverflow ? { opacity: [1, 0.6, 1], scaleY: [1, 1.2, 1] } : {}}
+          transition={isOverflow ? { repeat: Infinity, duration: 1 } : {}}
         />
         {isOverflow && (
           <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 1.5 }}
-            className="absolute inset-0 bg-rose-500/30"
+            initial={{ opacity: 0 }} animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ repeat: Infinity, duration: 1 }}
+            className="absolute inset-0 bg-white/20"
           />
         )}
       </div>
@@ -133,33 +139,44 @@ const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: num
 
 // ─── PDU Bar ───────────────────────────────────────────────────────────
 
-const PduBar = ({ side, isOver, onClick }: { side: 'A' | 'B'; isOver: boolean; onClick?: () => void }) => {
+const PduBar = ({ side, isOver, name, capacity, load, onClick }: { side: 'A' | 'B'; isOver: boolean; name?: string; capacity?: number; load?: number; onClick?: () => void }) => {
+  const hasPdu = !!name && name !== 'None'
   return (
     <div 
       onClick={onClick}
-      className={`absolute ${side === 'A' ? 'left-2' : 'right-2'} top-2 bottom-2 w-1.5 rounded-full bg-slate-900 border border-white/5 flex flex-col items-center justify-around py-2 cursor-pointer hover:bg-slate-800 transition-colors group/pdu`}
+      className={`absolute ${side === 'A' ? 'left-1' : 'right-1'} top-1 bottom-1 w-2.5 rounded bg-slate-900 border border-white/10 flex flex-col items-center justify-around py-4 cursor-pointer hover:bg-slate-800 transition-all z-20 group/pdu ${!hasPdu ? 'opacity-30 grayscale' : ''}`}
     >
-      {Array.from({ length: 12 }).map((_, i) => (
-        <div key={i} className={`w-1 h-1 rounded-full transition-all duration-300 ${isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
+      {Array.from({ length: 14 }).map((_, i) => (
+        <div key={i} className={`w-1.5 h-1 rounded-sm transition-all duration-300 ${!hasPdu ? 'bg-slate-700' : isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
       ))}
-      <span className={`absolute ${side === 'A' ? '-left-1 rotate-90' : '-right-1 -rotate-90'} -bottom-4 text-[6px] font-black text-slate-600 transition-colors group-hover/pdu:text-blue-400 uppercase`}>PDU-{side}</span>
+      <span className={`absolute ${side === 'A' ? '-left-0.5 rotate-90' : '-right-0.5 -rotate-90'} -bottom-6 text-[7px] font-black transition-colors group-hover/pdu:text-blue-400 uppercase tracking-tighter ${hasPdu ? 'text-slate-500' : 'text-slate-700'}`}>
+        {name || `PDU-${side}`}
+      </span>
       
       {/* Tooltip on hover */}
-      <div className={`absolute top-1/2 -translate-y-1/2 ${side === 'A' ? 'left-4' : 'right-4'} opacity-0 group-hover/pdu:opacity-100 pointer-events-none transition-all duration-200 z-50`}>
-        <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 p-2 rounded-lg shadow-2xl min-w-[100px]">
-          <p className="text-[7px] font-black text-blue-400 uppercase tracking-widest mb-1">CIRCUIT {side}</p>
-          <div className="space-y-1">
-            <div className="flex justify-between text-[6px] font-bold">
-              <span className="text-slate-500">LOAD</span>
-              <span className={isOver ? 'text-rose-500' : 'text-emerald-400'}>{isOver ? 'OVERLOAD' : 'NOMINAL'}</span>
+      {hasPdu && (
+        <div className={`absolute top-1/2 -translate-y-1/2 ${side === 'A' ? 'left-6' : 'right-6'} opacity-0 group-hover/pdu:opacity-100 pointer-events-none transition-all duration-200 z-50`}>
+          <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 p-3 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] min-w-[140px]">
+            <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Zap size={10} /> {name}
+            </p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-[7px] font-black">
+                <span className="text-slate-500 uppercase">LOAD STATUS</span>
+                <span className={isOver ? 'text-rose-500 animate-pulse' : 'text-emerald-400'}>{isOver ? 'OVERLOADED' : 'NOMINAL'}</span>
+              </div>
+              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className={`h-full ${isOver ? 'bg-rose-500' : 'bg-emerald-500'} w-[68%]`} />
+              </div>
+              <div className="flex justify-between text-[7px] font-bold text-slate-400">
+                <span>CAPACITY</span>
+                <span>{capacity || 10}kW</span>
+              </div>
+              <p className="text-[6px] text-slate-500 italic mt-2 border-t border-white/5 pt-1.5 text-center">Click to configure mapping</p>
             </div>
-            <div className="h-0.5 bg-white/5 rounded-full overflow-hidden">
-              <div className={`h-full ${isOver ? 'bg-rose-500' : 'bg-emerald-500'} w-[65%]`} />
-            </div>
-            <p className="text-[5px] text-slate-600 italic mt-1">Click to configure PDU mapping</p>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -673,17 +690,17 @@ const RackElevation = ({
 
   return (
     <div 
-      style={{ width: `${rackWidth}px` }}
+      style={{ width: `${rackWidth}px`, height: 'calc(100vh - 300px)' }}
       className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
       ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
     `}>
       
-      <RackStatusBar rack={rack} isPowerOver={isPowerOver} isFillOver={isFillOver} />
+      <RackStatusBar rack={rack} siteColor={rack.site_color} />
 
       {/* Checkbox */}
-      <div className="absolute top-3 left-3 z-20" onClick={e => e.stopPropagation()}>
+      <div className="absolute top-4 left-4 z-20" onClick={e => e.stopPropagation()}>
         <div
           onClick={() => onToggleSelect(rack.id)}
           className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-all ${
@@ -695,13 +712,13 @@ const RackElevation = ({
       </div>
 
       {/* Header - FIXED */}
-      <div className="px-4 pt-4 pb-3 bg-white/[0.03] border-b border-white/[0.06] space-y-2.5 shrink-0">
+      <div className="px-4 pt-5 pb-3 bg-white/[0.03] border-b border-white/[0.06] space-y-2.5 shrink-0">
         <div className="flex items-start justify-between ml-6 gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="font-black text-[11px] uppercase tracking-widest text-white truncate leading-tight">{rack.name}</h3>
             <div className="flex items-center gap-1.5 mt-0.5">
               <MapPin size={9} className="text-slate-600 shrink-0" />
-              <span className="text-[8px] text-slate-500 font-bold uppercase truncate">{rack.site_name || 'Unassigned'}</span>
+              <span className="text-[8px] text-slate-500 font-bold uppercase truncate" style={{ color: rack.site_color }}>{rack.site_name || 'Unassigned'}</span>
             </div>
           </div>
 
@@ -777,15 +794,27 @@ const RackElevation = ({
       </div>
 
       {/* Elevation grid - SCROLLABLE CONTENT WITH FIXED EDGES */}
-      <div className="flex-1 min-h-0 relative flex flex-col">
+      <div className="flex-1 min-h-0 relative flex flex-col bg-slate-950/40">
         {/* Fixed PDU Bar A */}
-        <PduBar side="A" isOver={isPowerOver} onClick={() => toast('PDU-A Configuration (Planned)')} />
+        <PduBar 
+          side="A" 
+          isOver={isPowerOver} 
+          name={rack.pdu_a_name} 
+          capacity={rack.pdu_a_cap_kw} 
+          onClick={() => onEdit(rack)} 
+        />
         
         {/* Fixed PDU Bar B */}
-        <PduBar side="B" isOver={isPowerOver} onClick={() => toast('PDU-B Configuration (Planned)')} />
+        <PduBar 
+          side="B" 
+          isOver={isPowerOver} 
+          name={rack.pdu_b_name} 
+          capacity={rack.pdu_b_cap_kw} 
+          onClick={() => onEdit(rack)} 
+        />
 
         {/* Scrollable interior grid */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-2">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-5 py-2">
           <div className="bg-black/30 border border-white/[0.05] rounded-lg overflow-hidden">
             {units.map(u => {
               const loc = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
@@ -810,16 +839,35 @@ const RackElevation = ({
       </div>
 
       {/* Footer - FIXED */}
-      <div className="px-4 py-2 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between shrink-0">
+      <div className="px-4 py-2.5 bg-white/[0.02] border-t border-white/[0.05] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">{(rack.device_locations || []).length} assets</span>
-          <span className="text-[7px] text-blue-500/80 font-black tracking-widest uppercase">{totalU}U TOTAL</span>
+          <span className="text-[7px] text-slate-500 font-black uppercase tracking-wider">{(rack.device_locations || []).length} ASSETS</span>
+          <span className="text-[7px] text-blue-500/80 font-black tracking-widest uppercase">{totalU}U</span>
         </div>
         <span className="text-[7px] text-emerald-400/80 font-black tracking-widest uppercase">{totalU - occupiedU}U FREE</span>
       </div>
     </div>
   )
 }
+
+// ─── Asset Legend ──────────────────────────────────────────────────────────────
+
+const AssetLegend = () => (
+  <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-lg border border-white/[0.06]">
+    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mr-1">Legend:</span>
+    {[
+      { label: 'SRV', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+      { label: 'NET', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+      { label: 'STO', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+      { label: 'PHY', color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
+      { label: 'VM',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    ].map(l => (
+      <div key={l.label} className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${l.color}`}>
+        <span className="text-[7px] font-black uppercase tracking-tighter">{l.label}</span>
+      </div>
+    ))}
+  </div>
+)
 
 // ─── Site Capacity Summary Bar ─────────────────────────────────────────────────
 
@@ -1269,6 +1317,70 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
   )
 }
 
+// ─── Spatial Map (Top View) ───────────────────────────────────────────────────
+
+const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackClick: (rack: any) => void; siteColor?: string }) => {
+  // Group racks by Aisle and Row
+  const aisles = useMemo(() => {
+    const data: Record<string, Record<string, any>> = {}
+    racks.forEach(r => {
+      const aisle = r.aisle || 'Unknown'
+      const row = r.row || '0'
+      if (!data[aisle]) data[aisle] = {}
+      data[aisle][row] = r
+    })
+    return data
+  }, [racks])
+
+  return (
+    <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-xl border border-white/5">
+      <div className="flex flex-col gap-12">
+        {Object.entries(aisles).sort().map(([aisleName, rows]) => (
+          <div key={aisleName} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="h-px flex-1 bg-white/5" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName}</span>
+              <div className="h-px flex-1 bg-white/5" />
+            </div>
+            <div className="flex flex-wrap gap-4 justify-center">
+              {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rack]) => {
+                const occupiedU = (rack.device_locations || []).reduce((a: number, l: any) => a + (l.size_u || 1), 0)
+                const totalU = rack.total_u || 42
+                const fillPct = Math.round((occupiedU / totalU) * 100)
+                const isOver = fillPct >= 95
+
+                return (
+                  <motion.div
+                    key={rack.id}
+                    whileHover={{ scale: 1.05, y: -4 }}
+                    onClick={() => onRackClick(rack)}
+                    className={`w-32 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative overflow-hidden group
+                      ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
+                    `}
+                  >
+                    <div className="absolute top-0 inset-x-0 h-1 bg-emerald-500/40" style={siteColor ? { backgroundColor: siteColor } : {}} />
+                    <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className={`h-full ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
+                      </div>
+                      <span className="text-[8px] font-bold text-slate-500 tabular-nums">{fillPct}%</span>
+                    </div>
+                    {isOver && <div className="absolute inset-0 bg-rose-500/5 animate-pulse" />}
+                    <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <ExternalLink size={10} className="text-blue-400" />
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function RackTemp() {
@@ -1282,10 +1394,14 @@ export default function RackTemp() {
   const [activeSite, setActiveSite] = useState<number | null>(null)
   const [activeSiteMenu, setActiveSiteMenu] = useState<number | null>(null)
   const [isAddingSite, setIsAddingSite] = useState(false)
-  const [newSite, setNewSite] = useState({ name: '', address: '' })
+  const [viewMode, setViewMode] = useState<'elevation' | 'spatial'>('elevation')
+  const [newSite, setNewSite] = useState({ name: '', address: '', color: '#3b82f6' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
   const [isAddingRack, setIsAddingRack] = useState(false)
-  const [newRack, setNewRack] = useState({ name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
+  const [newRack, setNewRack] = useState({ 
+    name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '',
+    pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
+  })
   const [isEditingRack, setIsEditingRack] = useState<any>(null)
   const [isProvisioning, setIsProvisioning] = useState<any>(null)
   const [provisionMode, setProvisionMode] = useState<'asset' | 'reserve'>('asset')
@@ -1639,27 +1755,43 @@ export default function RackTemp() {
 
         <div className="flex items-center gap-3">
           {/* Width slider */}
-          <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/[0.06]">
-            <Layers size={11} className="text-slate-500" />
-            <input 
-              type="range" min={160} max={400} value={rackWidth}
-              onChange={e => setRackWidth(parseInt(e.target.value))}
-              className="w-24 accent-blue-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-            />
-            <span className="text-[8px] font-black text-slate-500 w-8 tabular-nums">{rackWidth}px</span>
+          {viewMode === 'elevation' && (
+            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/[0.06]">
+              <Layers size={11} className="text-slate-500" />
+              <input 
+                type="range" min={160} max={400} value={rackWidth}
+                onChange={e => setRackWidth(parseInt(e.target.value))}
+                className="w-24 accent-blue-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+              />
+              <span className="text-[8px] font-black text-slate-500 w-8 tabular-nums">{rackWidth}px</span>
+            </div>
+          )}
+
+          {/* View Mode Toggle */}
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
+            <button onClick={() => setViewMode('elevation')}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === 'elevation' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Elevation View">
+              <Layers size={14} />
+            </button>
+            <button onClick={() => setViewMode('spatial')}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === 'spatial' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Spatial Map">
+              <MapPin size={14} />
+            </button>
           </div>
 
           {/* Site View / Compare */}
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
-            <button onClick={() => setShowCompareOnly(false)}
-              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-              All
-            </button>
-            <button onClick={() => setShowCompareOnly(true)}
-              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-              Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
-            </button>
-          </div>
+          {viewMode === 'elevation' && (
+            <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
+              <button onClick={() => setShowCompareOnly(false)}
+                className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                All
+              </button>
+              <button onClick={() => setShowCompareOnly(true)}
+                className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
+              </button>
+            </div>
+          )}
 
           {/* Search */}
           <div className="relative">
@@ -1730,178 +1862,194 @@ export default function RackTemp() {
 
       {/* ── Site Tabs ── */}
       {!showCompareOnly && activeTab !== 'deleted' && (
-        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center shrink-0">
-          <button
-            onClick={() => setActiveSite(null)}
-            className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
-          >
-            All
-            {activeRacks && <span className="opacity-60 font-mono">{activeRacks.length}</span>}
-          </button>
+        <div className="flex items-center justify-between gap-4 shrink-0">
+          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center">
+            <button
+              onClick={() => setActiveSite(null)}
+              className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-1.5 ${!activeSite ? 'bg-blue-600 border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+            >
+              All
+              {activeRacks && <span className="opacity-60 font-mono">{activeRacks.length}</span>}
+            </button>
 
-          {sites?.map((s: any) => {
-            const siteRacks = activeRacks?.filter((r: any) => r.site_id === s.id) || []
-            const siteUsed = siteRacks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
-            const siteTotal = siteRacks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
-            const siteFill = siteTotal > 0 ? Math.round((siteUsed / siteTotal) * 100) : 0
-            const isMenuOpen = activeSiteMenu === s.id
-            const isActive = activeSite === s.id
+            {sites?.map((s: any) => {
+              const siteRacks = activeRacks?.filter((r: any) => r.site_id === s.id) || []
+              const siteUsed = siteRacks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
+              const siteTotal = siteRacks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
+              const siteFill = siteTotal > 0 ? Math.round((siteUsed / siteTotal) * 100) : 0
+              const isMenuOpen = activeSiteMenu === s.id
+              const isActive = activeSite === s.id
 
-            return (
-              <div key={s.id} className="relative group/site shrink-0">
-                <button
-                  onClick={() => setActiveSite(s.id)}
-                  className={`pl-3 pr-9 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
-                >
-                  {s.name}
-                  <span className={`text-[7px] font-black px-1 py-0.5 rounded-md tabular-nums ${
-                    siteFill >= 90 ? 'bg-rose-500/30 text-rose-300' :
-                    siteFill >= 70 ? 'bg-amber-500/30 text-amber-300' :
-                    isActive ? 'bg-white/20 text-white/70' : 'bg-white/5 text-slate-500'
-                  }`}>{siteFill}%</span>
-                </button>
+              return (
+                <div key={s.id} className="relative group/site shrink-0">
+                  <button
+                    onClick={() => setActiveSite(s.id)}
+                    className={`pl-3 pr-9 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
+                    style={isActive && s.color ? { backgroundColor: s.color, borderColor: 'rgba(255,255,255,0.1)' } : {}}
+                  >
+                    {s.name}
+                    <span className={`text-[7px] font-black px-1 py-0.5 rounded-md tabular-nums ${
+                      siteFill >= 90 ? 'bg-rose-500/30 text-rose-300' :
+                      siteFill >= 70 ? 'bg-amber-500/30 text-amber-300' :
+                      isActive ? 'bg-white/20 text-white/70' : 'bg-white/5 text-slate-500'
+                    }`}>{siteFill}%</span>
+                  </button>
 
-                <button
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (!isMenuOpen) {
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      const style = document.documentElement.style
-                      style.setProperty('--site-menu-x', `${rect.left}px`)
-                      style.setProperty('--site-menu-y', `${rect.bottom + 8}px`)
-                    }
-                    setActiveSiteMenu(isMenuOpen ? null : s.id)
-                  }}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors opacity-0 group-hover/site:opacity-100 ${isActive ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-400'}`}
-                >
-                  <MoreVertical size={12} />
-                </button>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (!isMenuOpen) {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const style = document.documentElement.style
+                        style.setProperty('--site-menu-x', `${rect.left}px`)
+                        style.setProperty('--site-menu-y', `${rect.bottom + 8}px`)
+                      }
+                      setActiveSiteMenu(isMenuOpen ? null : s.id)
+                    }}
+                    className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors opacity-0 group-hover/site:opacity-100 ${isActive ? 'text-white/50 hover:text-white hover:bg-white/10' : 'text-slate-600 hover:text-slate-400'}`}
+                  >
+                    <MoreVertical size={12} />
+                  </button>
 
-                <AnimatePresence>
-                  {isMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-[60]" onClick={() => setActiveSiteMenu(null)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
-                        style={{
-                          left: 'var(--site-menu-x, auto)',
-                          top: 'var(--site-menu-y, auto)',
-                        }}
-                      >
-                        <button onClick={e => { e.stopPropagation(); setIsEditingSite(s); setActiveSiteMenu(null) }}
-                          className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg flex items-center gap-2 transition-colors">
-                          <Edit2 size={9} /> Edit Site
-                        </button>
-                        <div className="h-px bg-white/5 my-1" />
-                        <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone. All racks will be unassigned but keep historical site name.`, () => deleteSiteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
-                          className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors">
-                          <Trash2 size={9} /> Decommission
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-            )
-          })}
+                  <AnimatePresence>
+                    {isMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-[60]" onClick={() => setActiveSiteMenu(null)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                          className="fixed w-36 bg-slate-950/95 backdrop-blur border border-white/10 rounded-lg shadow-2xl z-[70] overflow-hidden p-1"
+                          style={{
+                            left: 'var(--site-menu-x, auto)',
+                            top: 'var(--site-menu-y, auto)',
+                          }}
+                        >
+                          <button onClick={e => { e.stopPropagation(); setIsEditingSite(s); setActiveSiteMenu(null) }}
+                            className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-slate-400 hover:bg-blue-500/10 hover:text-blue-400 rounded-lg flex items-center gap-2 transition-colors">
+                            <Edit2 size={9} /> Edit Site
+                          </button>
+                          <div className="h-px bg-white/5 my-1" />
+                          <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone. All racks will be unassigned but keep historical site name.`, () => deleteSiteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
+                            className="w-full text-left px-3 py-2 text-[8px] font-bold uppercase text-rose-500 hover:bg-rose-500/10 rounded-lg flex items-center gap-2 transition-colors">
+                            <Trash2 size={9} /> Decommission
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </div>
+          
+          <AssetLegend />
         </div>
       )}
 
       {/* ── Rack Grid ── */}
       <div id="rack-temp-grid" className="flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
         
-        {/* Connection Lines overlay */}
-        {focusedConnection && (
-          <ConnectionLines
-            sourceDeviceId={focusedConnection.sourceId}
-            targetDeviceIds={focusedConnection.targetIds}
-            racks={racks}
-            connections={connections}
-            devices={devices}
-            onLineClick={(conn) => setViewingConnection(conn)}
+        {viewMode === 'spatial' ? (
+          <SpatialMap 
+            racks={displayedRacks} 
+            onRackClick={(r) => { setActiveSite(r.site_id); setViewMode('elevation'); setTimeout(() => {
+              const el = document.querySelector(`[data-rack-id="${r.id}"]`)
+              el?.scrollIntoView({ behavior: 'smooth', inline: 'center' })
+            }, 100)}}
+            siteColor={activeSite ? sites?.find((s: any) => s.id === activeSite)?.color : undefined}
           />
-        )}
+        ) : (<>
+          {/* Connection Lines overlay */}
+          {focusedConnection && (
+            <ConnectionLines
+              sourceDeviceId={focusedConnection.sourceId}
+              targetDeviceIds={focusedConnection.targetIds}
+              racks={racks}
+              connections={connections}
+              devices={devices}
+              onLineClick={(conn) => setViewingConnection(conn)}
+            />
+          )}
 
-        {/* Render Racks Grouped by Aisle/Row if not searching */}
-        {(() => {
-          if (searchTerm || focusedConnection || showCompareOnly) {
-            return displayedRacks.map((r: any) => (
-              <RackElevation
-                key={r.id}
-                rack={r}
-                searchTerm={searchTerm}
-                isSelected={selectedRacks.includes(r.id)}
-                onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                onDelete={id => {
-                  if (activeTab === 'deleted') {
-                    openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
-                  } else {
-                    openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
-                  }
-                }}
-                onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
-                onShowInfo={rack => setShowingRackInfo(rack)}
-                onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
-                onManageDevice={(device, l, e) => {
-                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
-                }}
-                isDeleted={activeTab === 'deleted'}
-                onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-                rackWidth={rackWidth}
-                focusedDeviceId={focusedConnection?.sourceId ?? null}
-                connectedDeviceIds={focusedConnection?.targetIds}
-              />
+          {/* Render Racks Grouped by Aisle/Row if not searching */}
+          {(() => {
+            if (searchTerm || focusedConnection || showCompareOnly) {
+              return displayedRacks.map((r: any) => (
+                <RackElevation
+                  key={r.id}
+                  rack={r}
+                  searchTerm={searchTerm}
+                  isSelected={selectedRacks.includes(r.id)}
+                  onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                  onDelete={id => {
+                    if (activeTab === 'deleted') {
+                      openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+                    } else {
+                      openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+                    }
+                  }}
+                  onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+                  onShowInfo={rack => setShowingRackInfo(rack)}
+                  onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                  onManageDevice={(device, l, e) => {
+                    setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                  }}
+                  isDeleted={activeTab === 'deleted'}
+                  onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                  rackWidth={rackWidth}
+                  focusedDeviceId={focusedConnection?.sourceId ?? null}
+                  connectedDeviceIds={focusedConnection?.targetIds}
+                />
+              ))
+            }
+
+            // Group by Aisle/Row
+            const groups: Record<string, any[]> = {}
+            displayedRacks.forEach(r => {
+              const key = r.aisle ? `AISLE ${r.aisle}` : 'UNGROUPED'
+              if (!groups[key]) groups[key] = []
+              groups[key].push(r)
+            })
+
+            return Object.entries(groups).sort().map(([groupName, groupRacks]) => (
+              <div key={groupName} className="flex flex-col gap-4 shrink-0" data-rack-id={groupRacks[0]?.id}>
+                <div className="flex items-center gap-3 px-2">
+                  <div className="h-px w-8 bg-white/10" />
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] whitespace-nowrap">{groupName}</span>
+                  <div className="h-px flex-1 bg-white/5" />
+                </div>
+                <div className="flex gap-4">
+                  {groupRacks.map((r: any) => (
+                    <RackElevation
+                      key={r.id}
+                      rack={r}
+                      searchTerm={searchTerm}
+                      isSelected={selectedRacks.includes(r.id)}
+                      onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                      onDelete={id => {
+                        if (activeTab === 'deleted') {
+                          openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+                        } else {
+                          openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+                        }
+                      }}
+                      onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+                      onShowInfo={rack => setShowingRackInfo(rack)}
+                      onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                      onManageDevice={(device, l, e) => {
+                        setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                      }}
+                      isDeleted={activeTab === 'deleted'}
+                      onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                      rackWidth={rackWidth}
+                      focusedDeviceId={focusedConnection?.sourceId ?? null}
+                      connectedDeviceIds={focusedConnection?.targetIds}
+                    />
+                  ))}
+                </div>
+              </div>
             ))
-          }
-
-          // Group by Aisle/Row
-          const groups: Record<string, any[]> = {}
-          displayedRacks.forEach(r => {
-            const key = r.aisle ? `AISLE ${r.aisle}` : 'UNGROUPED'
-            if (!groups[key]) groups[key] = []
-            groups[key].push(r)
-          })
-
-          return Object.entries(groups).sort().map(([groupName, groupRacks]) => (
-            <div key={groupName} className="flex flex-col gap-4 shrink-0">
-              <div className="flex items-center gap-3 px-2">
-                <div className="h-px w-8 bg-white/10" />
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] whitespace-nowrap">{groupName}</span>
-                <div className="h-px flex-1 bg-white/5" />
-              </div>
-              <div className="flex gap-4">
-                {groupRacks.map((r: any) => (
-                  <RackElevation
-                    key={r.id}
-                    rack={r}
-                    searchTerm={searchTerm}
-                    isSelected={selectedRacks.includes(r.id)}
-                    onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                    onDelete={id => {
-                      if (activeTab === 'deleted') {
-                        openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
-                      } else {
-                        openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
-                      }
-                    }}
-                    onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
-                    onShowInfo={rack => setShowingRackInfo(rack)}
-                    onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
-                    onManageDevice={(device, l, e) => {
-                      setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
-                    }}
-                    isDeleted={activeTab === 'deleted'}
-                    onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-                    rackWidth={rackWidth}
-                    focusedDeviceId={focusedConnection?.sourceId ?? null}
-                    connectedDeviceIds={focusedConnection?.targetIds}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
-        })()}
+          })()}
+        </>)}
 
         {displayedRacks.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -2233,38 +2381,60 @@ export default function RackTemp() {
         )}
 
         {(isAddingSite || isEditingSite) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[420px] p-8 rounded-lg space-y-5 border border-emerald-500/20">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/15 rounded-lg border border-emerald-500/20">
-                  <MapPin size={18} className="text-emerald-400" />
+              className="glass-panel w-[420px] p-8 rounded-xl space-y-6 border border-emerald-500/20 shadow-2xl">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/15 rounded-xl border border-emerald-500/20">
+                  <MapPin size={22} className="text-emerald-400" />
                 </div>
-                <h2 className="text-base font-black uppercase tracking-tight text-white">
-                  {isEditingSite ? 'Edit Site' : 'New Site'}
-                </h2>
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight text-white">
+                    {isEditingSite ? 'Edit Site' : 'Establish New Site'}
+                  </h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Physical Facility Management</p>
+                </div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Site Name</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Site Name</label>
                   <input value={isEditingSite ? isEditingSite.name : newSite.name}
                     onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value.toUpperCase() }) : setNewSite({ ...newSite, name: e.target.value.toUpperCase() })}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-emerald-500/60 transition-colors text-white font-bold"
                     placeholder="e.g. DATA-CENTER-01" />
                 </div>
                 <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Physical Address</label>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Physical Address</label>
                   <input value={isEditingSite ? isEditingSite.address : newSite.address}
                     onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, address: e.target.value }) : setNewSite({ ...newSite, address: e.target.value })}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-emerald-500/60 transition-colors"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-emerald-500/60 transition-colors text-slate-300"
                     placeholder="123 Silicon Valley Way..." />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 ml-1">Site Theme Color (for Rack Bars)</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'].map(c => (
+                      <button 
+                        key={c}
+                        onClick={() => isEditingSite ? setIsEditingSite({ ...isEditingSite, color: c }) : setNewSite({ ...newSite, color: c })}
+                        className={`w-8 h-8 rounded-lg border-2 transition-all ${ (isEditingSite ? isEditingSite.color : newSite.color) === c ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100' }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                  <input 
+                    type="text"
+                    value={isEditingSite ? isEditingSite.color : newSite.color}
+                    onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, color: e.target.value }) : setNewSite({ ...newSite, color: e.target.value })}
+                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs outline-none focus:border-emerald-500/60 transition-colors text-slate-400 font-mono"
+                    placeholder="#HEXCOLOR" />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { setIsAddingSite(false); setIsEditingSite(null) }} className="flex-1 py-3 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
+                <button onClick={() => { setIsAddingSite(false); setIsEditingSite(null) }} className="flex-1 py-3.5 text-[10px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
                 <button onClick={() => siteMutation.mutate(isEditingSite || newSite)}
-                  className="flex-1 py-3 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                  {isEditingSite ? 'Save Changes' : 'Create Site'}
+                  className="flex-1 py-3.5 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                  {isEditingSite ? 'Update Site' : 'Create Site'}
                 </button>
               </div>
             </motion.div>
@@ -2273,16 +2443,19 @@ export default function RackTemp() {
 
         {/* Rack Create / Edit */}
         {(isAddingRack || isEditingRack) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[440px] p-8 rounded-lg space-y-5 border border-blue-500/20 my-auto">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-500/15 rounded-lg border border-blue-500/20">
-                  <Server size={18} className="text-blue-400" />
+              className="glass-panel w-[500px] p-8 rounded-xl space-y-6 border border-blue-500/20 shadow-2xl my-auto">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-500/15 rounded-xl border border-blue-500/20">
+                  <Server size={22} className="text-blue-400" />
                 </div>
-                <h2 className="text-base font-black uppercase tracking-tight text-white">
-                  {isEditingRack ? 'Edit Rack' : 'Provision Rack'}
-                </h2>
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight text-white">
+                    {isEditingRack ? 'Configure Rack' : 'Deploy New Rack'}
+                  </h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Physical Slot & Power Management</p>
+                </div>
               </div>
               <div className="space-y-4 relative z-10">
                 {!isEditingRack && (
@@ -2294,51 +2467,96 @@ export default function RackTemp() {
                     placeholder="Select deployment site..."
                   />
                 )}
-                <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Rack Identifier</label>
-                  <input
-                    value={isEditingRack ? isEditingRack.name : newRack.name}
-                    onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
-                    placeholder="e.g. RACK-A01" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Identifier</label>
+                    <input
+                      value={isEditingRack ? isEditingRack.name : newRack.name}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-white font-bold"
+                      placeholder="e.g. A01" />
+                  </div>
                   <div>
-                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Aisle</label>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Aisle</label>
                     <input
                       value={isEditingRack ? (isEditingRack.aisle || '') : newRack.aisle}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, aisle: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, aisle: e.target.value.toUpperCase() })}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
-                      placeholder="e.g. A1" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-slate-300"
+                      placeholder="A1" />
                   </div>
                   <div>
-                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Row</label>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Row</label>
                     <input
                       value={isEditingRack ? (isEditingRack.row || '') : newRack.row}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, row: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, row: e.target.value.toUpperCase() })}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors"
-                      placeholder="e.g. 10" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-slate-300"
+                      placeholder="10" />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Height (U)</label>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Total Capacity (U)</label>
                     <input type="number" min={1} max={100}
                       value={isEditingRack ? isEditingRack.total_u : newRack.total_u}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, total_u: parseInt(e.target.value) }) : setNewRack({ ...newRack, total_u: parseInt(e.target.value) })}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
                   </div>
                   <div>
-                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">Max Power (kW)</label>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Total Max Power (kW)</label>
                     <input type="number" min={0} max={1000} step={0.5}
                       value={isEditingRack ? (isEditingRack.max_power_kw ?? 10.0) : newRack.max_power_kw}
                       onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, max_power_kw: parseFloat(e.target.value) }) : setNewRack({ ...newRack, max_power_kw: parseFloat(e.target.value) })}
-                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono" />
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
                   </div>
                 </div>
+
+                {/* PDU Configuration Section */}
+                <div className="pt-2 border-t border-white/5 space-y-4">
+                  <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                    <Zap size={12} /> PDU Configuration
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">PDU-A (Primary)</p>
+                      <input 
+                        value={isEditingRack ? (isEditingRack.pdu_a_name || '') : newRack.pdu_a_name}
+                        onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, pdu_a_name: e.target.value }) : setNewRack({ ...newRack, pdu_a_name: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/40 text-blue-300 font-bold"
+                        placeholder="PDU-A Name"
+                      />
+                      <div className="flex items-center gap-2">
+                         <input type="number" step={0.1}
+                          value={isEditingRack ? (isEditingRack.pdu_a_cap_kw || 10) : newRack.pdu_a_cap_kw}
+                          onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, pdu_a_cap_kw: parseFloat(e.target.value) }) : setNewRack({ ...newRack, pdu_a_cap_kw: parseFloat(e.target.value) })}
+                          className="w-20 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-mono outline-none focus:border-blue-500/40 text-slate-300" 
+                        />
+                        <span className="text-[8px] font-black text-slate-600">kW CAP</span>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">PDU-B (Redundant)</p>
+                      <input 
+                        value={isEditingRack ? (isEditingRack.pdu_b_name || '') : newRack.pdu_b_name}
+                        onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, pdu_b_name: e.target.value }) : setNewRack({ ...newRack, pdu_b_name: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-blue-500/40 text-blue-300 font-bold"
+                        placeholder="PDU-B Name"
+                      />
+                      <div className="flex items-center gap-2">
+                         <input type="number" step={0.1}
+                          value={isEditingRack ? (isEditingRack.pdu_b_cap_kw || 10) : newRack.pdu_b_cap_kw}
+                          onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, pdu_b_cap_kw: parseFloat(e.target.value) }) : setNewRack({ ...newRack, pdu_b_cap_kw: parseFloat(e.target.value) })}
+                          className="w-20 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-mono outline-none focus:border-blue-500/40 text-slate-300" 
+                        />
+                        <span className="text-[8px] font-black text-slate-600">kW CAP</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {isEditingRack && (
                   <StyledSelect
-                    label="Relocate to Site (optional)"
+                    label="Relocate to Site"
                     value={isEditingRack.new_site_id ? String(isEditingRack.new_site_id) : ''}
                     onChange={e => setIsEditingRack({ ...isEditingRack, new_site_id: e.target.value ? parseInt(e.target.value) : null })}
                     options={sites?.map((s: any) => ({ value: String(s.id), label: s.name })) || []}
@@ -2346,15 +2564,15 @@ export default function RackTemp() {
                   />
                 )}
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setIsAddingRack(false); setIsEditingRack(null) }} className="flex-1 py-3 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
+              <div className="flex gap-3 pt-4 border-t border-white/5">
+                <button onClick={() => { setIsAddingRack(false); setIsEditingRack(null) }} className="flex-1 py-3.5 text-[10px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
                 <button
                   onClick={() => {
                     if (!isEditingRack && !newRack.site_id) return toast.error('Site is required')
                     rackMutation.mutate(isEditingRack || newRack)
                   }}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-                  {isEditingRack ? 'Save Rack' : 'Deploy Rack'}
+                  className="flex-1 py-3.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+                  {isEditingRack ? 'Update Config' : 'Deploy Rack'}
                 </button>
               </div>
             </motion.div>

@@ -59,6 +59,8 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
                 })
         
         site_name = "Unassigned"
+        site_color = "#3b82f6"
+        site_id = None
         if rack.last_site_name:
             site_name = f"Prev: {rack.last_site_name}"
         
@@ -67,10 +69,12 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
             room_res = await db.execute(select(models.Room).filter(models.Room.id == rack.room_id))
             room = room_res.scalar_one_or_none()
             if room:
+                site_id = room.site_id
                 site_res = await db.execute(select(models.Site).filter(models.Site.id == room.site_id))
                 site = site_res.scalar_one_or_none()
                 if site:
                     site_name = site.name
+                    site_color = site.color
 
         final_result.append({
             "id": rack.id,
@@ -79,9 +83,14 @@ async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False
             "row": rack.row,
             "total_u": rack.total_u_height,
             "max_power_kw": rack.max_power_kw or 8.0,
+            "pdu_a_name": rack.pdu_a_name,
+            "pdu_b_name": rack.pdu_b_name,
+            "pdu_a_cap_kw": rack.pdu_a_cap_kw,
+            "pdu_b_cap_kw": rack.pdu_b_cap_kw,
             "room_id": rack.room_id,
-            "site_id": room.site_id if room else None,
+            "site_id": site_id,
             "site_name": site_name,
+            "site_color": site_color,
             "order_index": rack.order_index,
             "is_deleted": rack.is_deleted,
             "device_locations": device_locations_list
@@ -175,6 +184,10 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
         row=data.get('row'),
         total_u_height=data.get('total_u', 42),
         max_power_kw=data.get('max_power_kw', 8.0),
+        pdu_a_name=data.get('pdu_a_name', 'PDU-A'),
+        pdu_b_name=data.get('pdu_b_name', 'PDU-B'),
+        pdu_a_cap_kw=data.get('pdu_a_cap_kw', 10.0),
+        pdu_b_cap_kw=data.get('pdu_b_cap_kw', 10.0),
         room_id=room.id,
         order_index=max_order + 1
     )
@@ -193,7 +206,9 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
             "aisle": rack.aisle,
             "row": rack.row,
             "total_u": rack.total_u_height,
-            "max_power_kw": rack.max_power_kw
+            "max_power_kw": rack.max_power_kw,
+            "pdu_a": rack.pdu_a_name,
+            "pdu_b": rack.pdu_b_name
         }
     )
     db.add(log)
@@ -230,6 +245,20 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
     if 'max_power_kw' in data and data['max_power_kw'] != rack.max_power_kw: 
         changes["max_power_kw"] = {"old": rack.max_power_kw, "new": data["max_power_kw"]}
         rack.max_power_kw = data['max_power_kw']
+
+    if 'pdu_a_name' in data and data['pdu_a_name'] != rack.pdu_a_name:
+        changes["pdu_a_name"] = {"old": rack.pdu_a_name, "new": data["pdu_a_name"]}
+        rack.pdu_a_name = data['pdu_a_name']
+    if 'pdu_b_name' in data and data['pdu_b_name'] != rack.pdu_b_name:
+        changes["pdu_b_name"] = {"old": rack.pdu_b_name, "new": data["pdu_b_name"]}
+        rack.pdu_b_name = data['pdu_b_name']
+    if 'pdu_a_cap_kw' in data and data['pdu_a_cap_kw'] != rack.pdu_a_cap_kw:
+        changes["pdu_a_cap_kw"] = {"old": rack.pdu_a_cap_kw, "new": data["pdu_a_cap_kw"]}
+        rack.pdu_a_cap_kw = data['pdu_a_cap_kw']
+    if 'pdu_b_cap_kw' in data and data['pdu_b_cap_kw'] != rack.pdu_b_cap_kw:
+        changes["pdu_b_cap_kw"] = {"old": rack.pdu_b_cap_kw, "new": data["pdu_b_cap_kw"]}
+        rack.pdu_b_cap_kw = data['pdu_b_cap_kw']
+
     if 'total_u' in data and data['total_u'] != rack.total_u_height: 
         new_total = data['total_u']
         if new_total < rack.total_u_height:

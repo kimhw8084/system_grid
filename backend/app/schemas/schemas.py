@@ -17,6 +17,7 @@ class SiteBase(BaseModel):
     contact_phone: Optional[str] = None
     cooling_capacity_kw: Optional[float] = 0.0
     power_capacity_kw: Optional[float] = 0.0
+    color: Optional[str] = "#3b82f6"
 
 class SiteCreate(SiteBase): pass
 class SiteResponse(SiteBase, BaseSchema): pass
@@ -32,6 +33,10 @@ class RackBase(BaseModel):
     cooling_type: Optional[str] = "Air"
     pdu_a_id: Optional[str] = None
     pdu_b_id: Optional[str] = None
+    pdu_a_name: Optional[str] = "PDU-A"
+    pdu_b_name: Optional[str] = "PDU-B"
+    pdu_a_cap_kw: Optional[float] = 10.0
+    pdu_b_cap_kw: Optional[float] = 10.0
 
 class RackCreate(RackBase):
     site_id: Optional[int] = None
@@ -45,6 +50,8 @@ class DeviceTinyResponse(BaseSchema):
 
 class RackResponse(RackBase, BaseSchema):
     site_name: Optional[str] = None
+    site_id: Optional[int] = None
+    site_color: Optional[str] = None
     devices: List[DeviceTinyResponse] = []
 
 class DeviceBase(BaseModel):
