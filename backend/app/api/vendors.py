@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
@@ -9,11 +9,19 @@ from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/vendors", tags=["Vendor & Contract Management"])
 
+async def get_vendor_full(vendor_id: int, db: AsyncSession):
+    query = select(models.Vendor).filter(models.Vendor.id == vendor_id).options(
+        selectinload(models.Vendor.contracts),
+        selectinload(models.Vendor.personnel)
+    )
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
 @router.get("")
 async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     query = select(models.Vendor).options(
-        joinedload(models.Vendor.contracts),
-        joinedload(models.Vendor.personnel)
+        selectinload(models.Vendor.contracts),
+        selectinload(models.Vendor.personnel)
     )
     if not include_deleted:
         query = query.filter(models.Vendor.is_deleted == False)
@@ -27,8 +35,7 @@ async def create_vendor(data: dict, db: AsyncSession = Depends(get_db)):
     db.add(vendor)
     try:
         await db.commit()
-        await db.refresh(vendor)
-        return vendor
+        return await get_vendor_full(vendor.id, db)
     except Exception as e:
         await db.rollback()
         raise HTTPException(400, detail=str(e))
@@ -44,8 +51,7 @@ async def update_vendor(vendor_id: int, data: dict, db: AsyncSession = Depends(g
         setattr(vendor, k, v)
         
     await db.commit()
-    await db.refresh(vendor)
-    return vendor
+    return await get_vendor_full(vendor_id, db)
 
 @router.delete("/{vendor_id}")
 async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
@@ -62,7 +68,6 @@ async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
 @router.post("/{vendor_id}/personnel")
 async def add_personnel(vendor_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.VendorPersonnel, data)
-    # Ensure vendor_id is set correctly from the URL path
     clean_data["vendor_id"] = vendor_id
     personnel = models.VendorPersonnel(**clean_data)
     db.add(personnel)
@@ -81,7 +86,6 @@ async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Dep
     if not personnel: raise HTTPException(404, "Personnel not found")
     
     clean_data = filter_valid_columns(models.VendorPersonnel, data)
-    # Don't allow changing vendor_id via PUT for now
     if "vendor_id" in clean_data: del clean_data["vendor_id"]
     
     for k, v in clean_data.items():

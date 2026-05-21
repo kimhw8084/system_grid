@@ -230,7 +230,6 @@ input::placeholder,
 textarea::placeholder {
   color: var(--text-muted) !important;
   opacity: 0.6 !important;
-  font-style: italic !important;
   font-weight: 300 !important;
   letter-spacing: 0.05em !important;
 }
@@ -238,7 +237,6 @@ textarea::placeholder {
 select:invalid,
 select option[value=""] {
   color: var(--text-muted) !important;
-  font-style: italic !important;
 }
 
 /* ReactFlow Layering Overrides */

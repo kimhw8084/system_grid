@@ -1183,7 +1183,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                  <div className="px-3 py-1 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-[9px] font-black text-indigo-400 uppercase tracking-widest">MAP_INTERCONNECT</div>
                  <div className="px-3 py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest">DATA_FLOW_ESTABLISHMENT</div>
               </div>
-              <h1 className="text-5xl font-black uppercase italic tracking-tighter text-white">ESTABLISH_LINK</h1>
+              <h1 className="text-5xl font-black uppercase tracking-tighter text-white">ESTABLISH_LINK</h1>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Mapping Topology Between Global & Local Matrix</p>
            </div>
            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>

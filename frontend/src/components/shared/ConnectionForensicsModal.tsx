@@ -113,7 +113,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                    </div>
                    <div className="pt-4 border-t border-white/5">
                       <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
-                      <p className="text-xs text-slate-300 italic">{connection.purpose || 'No description provided for this interconnect.'}</p>
+                      <p className="text-xs text-slate-300">{connection.purpose || 'No description provided for this interconnect.'}</p>
                    </div>
                 </div>
              </div>

@@ -125,7 +125,7 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
                    <div key={opt.value} onClick={() => toggle(opt.value)} className={`px-4 py-3 rounded-lg text-[10px] font-black uppercase cursor-pointer transition-all flex items-center justify-between group ${selected.includes(opt.value) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-white/5'}`}>
                      <div className="flex items-center space-x-3">
                         <div className={`w-2.5 h-2.5 rounded-full border-2 ${selected.includes(opt.value) ? 'bg-white border-white' : 'bg-transparent border-slate-700'}`} />
-                        <span className="truncate italic tracking-tight">{opt.label}</span>
+                        <span className="truncate tracking-tight">{opt.label}</span>
                      </div>
                      <span className={`text-[8px] px-2 py-0.5 rounded-md ${selected.includes(opt.value) ? 'bg-white/20' : 'bg-black/40'} border border-white/5 text-slate-500 font-bold`}>{opt.system}</span>
                    </div>
@@ -292,7 +292,7 @@ export default function Temp1() {
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-8">
            <div className="relative group cursor-default">
-              <h1 className="text-3xl font-black uppercase tracking-tighter italic leading-none mb-1 group-hover:text-blue-400 transition-colors">Matrix Forensics</h1>
+              <h1 className="text-3xl font-black uppercase tracking-tighter leading-none mb-1 group-hover:text-blue-400 transition-colors">Matrix Forensics</h1>
               <p className="text-[9px] text-slate-600 uppercase tracking-[0.4em] font-black">Industrial Asset Propagation Engine</p>
            </div>
            {graphData.nodes.length > 0 && (
@@ -348,7 +348,7 @@ export default function Temp1() {
           {graphData.nodes.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-8 opacity-20">
                <Compass size={120} className="text-white animate-spin-slow" />
-               <p className="text-[14px] font-black uppercase tracking-[0.8em] text-white italic ml-4 text-center">Engage Targets to Initialize Fabric</p>
+               <p className="text-[14px] font-black uppercase tracking-[0.8em] text-white ml-4 text-center">Engage Targets to Initialize Fabric</p>
             </div>
           ) : (
             dimensions.width > 0 && dimensions.height > 0 && (
@@ -389,16 +389,16 @@ export default function Temp1() {
                   
                   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
                   let fSize = radius * 0.6; 
-                  // Use italic 900 for "standard"
-                  ctx.font = `italic 900 ${fSize}px Inter, sans-serif`;
+                  // Use 900 for "standard"
+                  ctx.font = `900 ${fSize}px Inter, sans-serif`;
                   const label = node.name.toUpperCase();
                   while (ctx.measureText(label).width > radius * 1.7 && fSize > 6) {
-                    fSize -= 1; ctx.font = `italic 900 ${fSize}px Inter, sans-serif`;
+                    fSize -= 1; ctx.font = `900 ${fSize}px Inter, sans-serif`;
                   }
                   ctx.fillText(label, node.x, node.y - (fSize * 0.15));
                   
                   const subFSize = Math.max(fSize * 0.45, 6);
-                  ctx.font = `italic 900 ${subFSize}px Inter, sans-serif`;
+                  ctx.font = `900 ${subFSize}px Inter, sans-serif`;
                   ctx.fillStyle = node.color;
                   ctx.fillText(node.type.toUpperCase(), node.x, node.y + (radius * 0.5));
                 }}
@@ -418,7 +418,7 @@ export default function Temp1() {
                   if (angle > Math.PI / 2 || angle < -Math.PI / 2) angle += Math.PI;
                   const fontSize = 12 / globalScale;
                   ctx.save(); ctx.translate(midX, midY); ctx.rotate(angle);
-                  ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`;
+                  ctx.font = `900 ${fontSize}px Inter, sans-serif`;
                   const textWidth = ctx.measureText(label).width;
                   const padding = 12 / globalScale;
                   const boxW = textWidth + padding;
@@ -454,7 +454,7 @@ export default function Temp1() {
                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-4 text-blue-400">
                        <Fingerprint size={24} className={isSimulatingFailure ? 'text-rose-500 animate-pulse' : 'animate-pulse'} />
-                       <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white italic">Forensic Hub</h3>
+                       <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white">Forensic Hub</h3>
                     </div>
                     {highlightedNodeId && <button onClick={() => setHighlightedNodeId(null)} className="p-2 text-slate-600 hover:text-white transition-colors bg-white/5 rounded-lg"><X size={20} /></button>}
                  </div>
@@ -481,14 +481,14 @@ export default function Temp1() {
                                            <div className={`p-2 rounded-lg ${isOrigin ? 'bg-white/20' : 'bg-amber-500/20'} text-white`}>
                                               {isOrigin ? <Flame size={18} /> : getImpact(impactInfo.type).icon}
                                            </div>
-                                           <span className="text-[12px] font-black uppercase tracking-widest text-white italic">{isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}</span>
+                                           <span className="text-[12px] font-black uppercase tracking-widest text-white">{isOrigin ? 'FAILURE ORIGIN' : getImpact(impactInfo.type).title}</span>
                                         </div>
                                      </div>
                                      <p className="text-[11px] font-bold text-white leading-relaxed opacity-90 uppercase tracking-tight">{isOrigin ? 'This asset has been forced offline. Catastrophic propagation active.' : getImpact(impactInfo.type).desc}</p>
                                      {!isOrigin && (
                                        <div className="flex items-center space-x-2 pt-2 border-t border-white/10">
                                           <span className="text-[8px] font-black text-amber-500 uppercase">Triggered by</span>
-                                          <span className="text-[8px] font-black text-white uppercase italic">{(devices as any[]).find(d => Number(d.id) === impactInfo.sourceId)?.name || 'Unknown Path'}</span>
+                                          <span className="text-[8px] font-black text-white uppercase">{(devices as any[]).find(d => Number(d.id) === impactInfo.sourceId)?.name || 'Unknown Path'}</span>
                                        </div>
                                      )}
                                   </div>
@@ -496,7 +496,7 @@ export default function Temp1() {
                              )}
 
                              <div className="bg-[#1e293b]/50 p-6 rounded-lg border border-white/5 relative overflow-hidden">
-                                <h4 className="text-3xl font-black text-blue-400 uppercase tracking-tighter italic leading-[1.1] mb-4 break-all">{rawDevice.name}</h4>
+                                <h4 className="text-3xl font-black text-blue-400 uppercase tracking-tighter leading-[1.1] mb-4 break-all">{rawDevice.name}</h4>
                                 <div className="flex flex-wrap gap-2">
                                    <StatusBadge label={rawDevice.type} color={getTypeColor(rawDevice.type)} />
                                    <StatusBadge label={rawDevice.system} color="#94a3b8" />
@@ -535,7 +535,7 @@ export default function Temp1() {
                                                 {isSource ? <ArrowRightLeft size={16} /> : <Zap size={16} />}
                                              </div>
                                              <div className="flex flex-col items-start">
-                                                <span className={`text-[12px] font-black uppercase tracking-tight italic group-hover:text-blue-400 ${isImpacted ? 'text-rose-400' : 'text-white'}`}>{partner?.name || 'Unknown'}</span>
+                                                <span className={`text-[12px] font-black uppercase tracking-tight group-hover:text-blue-400 ${isImpacted ? 'text-rose-400' : 'text-white'}`}>{partner?.name || 'Unknown'}</span>
                                                 <span className="text-[8px] font-black text-slate-600 uppercase">{isSource ? 'Out' : 'In'} ➔ {link.type}</span>
                                              </div>
                                           </div>

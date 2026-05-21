@@ -180,7 +180,7 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
                  {type === 'WORKAROUND' && (
                     <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-5 shadow-inner">
                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">bkm alignment</label>
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">bkm alignment</label>
                           <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                              <button onClick={() => setFormData({...formData, bkm_mode: 'input'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${formData.bkm_mode === 'input' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}>Paste Link</button>
                              <button onClick={() => setFormData({...formData, bkm_mode: 'link'})} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${formData.bkm_mode === 'link' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}>Direct Link</button>
@@ -199,7 +199,7 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
 
                  {type === 'MONITORING' && (
                     <div className="bg-black/20 p-6 rounded-lg border border-white/5 space-y-4">
-                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">active monitor linkage</label>
+                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">active monitor linkage</label>
                        <select value={formData.monitoring_item_id} onChange={e => setFormData({...formData, monitoring_item_id: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none uppercase appearance-none cursor-pointer">
                           <option value="">SELECT MONITOR...</option>
                           {monitoring?.map((m: any) => <option key={m.id} value={m.id}>{m.title}</option>)}
@@ -253,7 +253,7 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
                 </div>
                 <div>
                   <h2 className="text-4xl font-bold uppercase text-white tracking-tighter">Initiate Prevention Project</h2>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1 italic">Architectural Hardening & Risk Elimination</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Architectural Hardening & Risk Elimination</p>
                 </div>
               </div>
               <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors bg-white/5 p-4 rounded-full"><X size={32}/></button>
@@ -263,6 +263,7 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
                  initialData={{ name: `PREVENTION PROJECT`, description: '', status: 'Planning', priority: 'High' }}
                  onSave={projectMutation.mutate}
                  isSaving={projectMutation.isPending}
+                 onCancel={onClose}
               />
            </div>
         </motion.div>

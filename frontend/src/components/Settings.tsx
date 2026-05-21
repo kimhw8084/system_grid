@@ -524,7 +524,7 @@ result_df = get_user_pool()`)
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                <div className="border-b border-[var(--glass-border)] pb-6">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">Core Infrastructure</h2>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none">Core Infrastructure</h2>
                   <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Global Environment & .env Management</p>
                </div>
 
@@ -577,7 +577,7 @@ result_df = get_user_pool()`)
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
                   <div>
-                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none text-blue-500">User Permission</h2>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none text-blue-500">User Permission</h2>
                      <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Identity Governance & System Access Matrix</p>
                   </div>
                   <div className="flex gap-2">
@@ -649,7 +649,7 @@ result_df = get_user_pool()`)
                                                         {op.full_name}
                                                         {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded uppercase">You</span>}
                                                     </p>
-                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic truncate">ID: {op.external_id}</p>
+                                                    <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter truncate">ID: {op.external_id}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -699,7 +699,7 @@ result_df = get_user_pool()`)
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-xl transition-all ${showPoolLogic ? 'bg-indigo-600 text-white' : 'bg-slate-700/50 text-slate-400'}`}><Terminal size={16} /></div>
                             <div>
-                                <h3 className="text-[10px] font-black uppercase text-[var(--text-primary)] tracking-widest italic">Identity Sync Pipeline</h3>
+                                <h3 className="text-[10px] font-black uppercase text-[var(--text-primary)] tracking-widest">Identity Sync Pipeline</h3>
                                 <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Automated Operator Onboarding Logic</p>
                             </div>
                         </div>
@@ -751,7 +751,7 @@ result_df = get_user_pool()`)
           {topTab === 'system' && (
              <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
                 <div className="border-b border-[var(--glass-border)] pb-6">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-[var(--text-primary)] leading-none">System Inspect</h2>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none">System Inspect</h2>
                   <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Outer Join .env Analysis (Raw Variables)</p>
                </div>
 
@@ -834,7 +834,7 @@ result_df = get_user_pool()`)
                   <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><History size={20} /></div>
                   <div>
                     <h3 className="text-sm font-black uppercase text-[var(--text-primary)] tracking-widest leading-none">Parameter History</h3>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic">{historyField}</p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{historyField}</p>
                   </div>
                 </div>
                 <button onClick={() => setHistoryField(null)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20} /></button>
@@ -858,7 +858,7 @@ result_df = get_user_pool()`)
                     </div>
                     <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
                        <div className="w-5 h-5 rounded-full bg-blue-600/20 flex items-center justify-center text-[9px] text-blue-400 font-black uppercase">{entry.user?.[0] || 'O'}</div>
-                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest italic">Action by: {entry.user || 'SYSTEM_OP'}</span>
+                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Action by: {entry.user || 'SYSTEM_OP'}</span>
                     </div>
                   </div>
                 ))}
@@ -879,7 +879,7 @@ result_df = get_user_pool()`)
                         <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg"><Clock size={20} /></div>
                         <div>
                             <h3 className="text-sm font-black uppercase text-[var(--text-primary)] tracking-widest leading-none">Sync Snapshots</h3>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter italic">Version-controlled user pool history</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">Version-controlled user pool history</p>
                         </div>
                     </div>
                     <button onClick={() => setShowPoolHistory(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20} /></button>
@@ -892,7 +892,7 @@ result_df = get_user_pool()`)
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col">
                                     <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">{v.version_label}</span>
-                                    <span className="text-[8px] font-black text-slate-500 uppercase mt-1 italic">{new Date(v.created_at).toLocaleString()}</span>
+                                    <span className="text-[8px] font-black text-slate-500 uppercase mt-1">{new Date(v.created_at).toLocaleString()}</span>
                                 </div>
                                 {v.is_active ? (
                                     <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-[8px] font-black uppercase tracking-widest">Active</span>
@@ -960,7 +960,7 @@ result_df = get_user_pool()`)
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
                     <div>
-                        <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">Snapshot Raw Data</h3>
+                        <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Snapshot Raw Data</h3>
                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">Direct view of pulled user pool entities</p>
                     </div>
                     <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
@@ -1002,7 +1002,7 @@ result_df = get_user_pool()`)
                     <div className="flex items-center gap-3">
                         <FileCode className="text-amber-500" size={24} />
                         <div>
-                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest italic">Historical Sync Logic</h3>
+                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Historical Sync Logic</h3>
                             <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">The script used for this specific version</p>
                         </div>
                     </div>

@@ -74,7 +74,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
             <AlertOctagon size={32} className="text-rose-500" />
           </div>
           
-          <h1 className="text-4xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none">Error</h1>
+          <h1 className="text-4xl font-black uppercase text-[var(--text-primary)] tracking-tighter leading-none">Error</h1>
           <p className="text-slate-500 text-[10px] mt-4 uppercase font-black tracking-[0.2em] max-w-md leading-relaxed">
             The UI layer has encountered a fatal exception. Systems are running in degraded mode.
           </p>
@@ -201,7 +201,7 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
           <ShieldAlert size={40} className="text-rose-500 relative z-10" />
         </div>
 
-        <h1 className="text-5xl font-black uppercase text-[var(--text-primary)] tracking-tighter italic leading-none mb-2">Access <span className="text-rose-500">Denied</span></h1>
+        <h1 className="text-5xl font-black uppercase text-[var(--text-primary)] tracking-tighter leading-none mb-2">Access <span className="text-rose-500">Denied</span></h1>
         <p className="text-slate-500 text-[10px] mt-4 uppercase font-black tracking-[0.2em] max-w-md leading-relaxed border-t border-white/5 pt-6">
           Your current security clearance (ID: {userProfile.id}) does not permit viewing the <span className="text-blue-500 font-black">{view.toUpperCase()}</span> matrix.
         </p>
@@ -285,7 +285,7 @@ const LinuxEnvModal = ({ onClose }: any) => {
             <div className="flex items-center space-x-4">
                <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20"><Terminal size={24} /></div>
                <div>
-                  <h2 className="text-2xl font-black uppercase text-white italic tracking-tighter leading-none">Local Environment <span className="text-blue-500">Forensics</span></h2>
+                  <h2 className="text-2xl font-black uppercase text-white tracking-tighter leading-none">Local Environment <span className="text-blue-500">Forensics</span></h2>
                   <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-2">Active Operating System Parameters</p>
                </div>
             </div>
@@ -495,7 +495,7 @@ function MainLayout() {
              <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
                 <Grid3X3 size={20} className="text-white" />
              </div>
-             {isSidebarOpen && <span className="font-black text-xl text-[var(--text-primary)] tracking-tighter uppercase italic">SYSGRID</span>}
+             {isSidebarOpen && <span className="font-black text-xl text-[var(--text-primary)] tracking-tighter uppercase">SYSGRID</span>}
           </Link>
           {isSidebarOpen && (
             <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-[var(--text-muted)]">
@@ -551,7 +551,7 @@ function MainLayout() {
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col min-w-0">
-                   <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate italic">{userProfile?.full_name || userProfile?.username || 'Operator'}</span>
+                   <span className="text-[10px] font-black uppercase text-[var(--text-primary)] truncate">{userProfile?.full_name || userProfile?.username || 'Operator'}</span>
                    <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-tighter truncate">ID: {userProfile?.id || userProfile?.username || '0000'}</span>
                 </div>
               )}

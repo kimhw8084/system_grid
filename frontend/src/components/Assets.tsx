@@ -628,7 +628,7 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
             </tr>
           ))}
           {!monitors?.length && (
-            <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No active monitoring nodes deployed</td></tr>
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase tracking-widest">No active monitoring nodes deployed</td></tr>
           )}
         </tbody>
       </table>
@@ -720,7 +720,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
   return (
     <div ref={containerRef} className="h-[260px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
        {graphData.nodes.length <= 1 ? (
-         <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 italic tracking-widest">
+         <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 tracking-widest">
             No active {type} vectors identified
          </div>
        ) : (
@@ -749,7 +749,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
               if (!text) return;
               
               const fontSize = Math.min(MAX_FONT_SIZE, 12 / globalScale);
-              ctx.font = `italic 900 ${fontSize}px Inter`;
+              ctx.font = `900 ${fontSize}px Inter`;
               const textWidth = ctx.measureText(text.toUpperCase()).width;
               const padding = fontSize * 0.8;
               const bckgDimensions = [textWidth + padding, fontSize + padding/2];
@@ -776,7 +776,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
            nodeCanvasObject={(node: any, ctx, globalScale) => {
              const label = (node.name || 'UNKNOWN').toUpperCase();
              const fontSize = 10/globalScale;
-             ctx.font = `italic 900 ${fontSize}px Inter`;
+             ctx.font = `900 ${fontSize}px Inter`;
 
              ctx.shadowColor = node.isCenter ? 'rgba(59, 130, 246, 0.6)' : 'rgba(245, 158, 11, 0.4)';
              ctx.shadowBlur = 12 / globalScale;
@@ -887,7 +887,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </button>
           ))}
           {!filteredAssets.length && (
-            <div className="py-20 text-center text-slate-600 italic text-[10px] font-bold uppercase tracking-widest">No matching assets</div>
+            <div className="py-20 text-center text-slate-600 font-bold uppercase tracking-widest">No matching assets</div>
           )}
         </div>
       </div>
@@ -904,7 +904,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                       <Box size={40} />
                    </div>
                    <div>
-                      <h1 className="text-4xl font-black uppercase tracking-tighter text-white italic">{selectedAsset.name}</h1>
+                      <h1 className="text-4xl font-black uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
                       <div className="flex items-center space-x-4 mt-1">
                         <span className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[12px]">{selectedAsset.system}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
@@ -1011,7 +1011,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         <div>
                            <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Deployment Phase</p>
                            <p className="text-xs font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
-                           <p className="text-[9px] font-bold text-blue-400 mt-0.5 uppercase italic">Total Uptime Age: {selectedAsset.hardware_age}</p>
+                           <p className="text-[9px] font-bold text-blue-400 mt-0.5 uppercase">Total Uptime Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
                            <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Warranty Coverage</p>
@@ -1040,11 +1040,11 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                </div>
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Dependency Vector Map</p>
+                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">Dependency Vector Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
                   <div className="space-y-2">
-                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Network Interconnect Map</p>
+                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">Network Interconnect Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} onNodeClick={onViewAssetDetails} />
                   </div>
                </div>
@@ -1116,7 +1116,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="p-6 bg-white/5 rounded-full border border-white/10 opacity-20 animate-pulse">
                <FileText size={64} />
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.5em] italic">Select Asset for Detailed Inspection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.5em]">Select Asset for Detailed Inspection</p>
           </div>
         )}
       </div>
@@ -1226,7 +1226,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                 <ArrowRightLeft className="rotate-180" size={20} />
              </button>
              <div>
-                <h1 className="text-3xl font-bold uppercase tracking-tighter text-white italic">System <span className="text-blue-500">Matrix Comparison</span></h1>
+                <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">System <span className="text-blue-500">Matrix Comparison</span></h1>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Comparative Analysis of {selectedAssets.length} Infrastructure Assets</p>
              </div>
           </div>
@@ -1795,7 +1795,7 @@ export default function Assets() {
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
-            onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+            onSelectionChanged={(e) => setSelectedIds(e.api.getSelectedNodes().map(n => n.data?.id).filter(Boolean))}
             quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
             enableCellTextSelection={true}
@@ -2318,10 +2318,10 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
                     <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
-                    <div className="text-[10px] font-black text-white uppercase italic truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
+                    <div className="text-[10px] font-black text-white uppercase truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
                     <div className="flex items-center justify-between text-[8px] font-black">
                        <span className="text-slate-500 uppercase">Port:</span>
-                       <span className="text-indigo-400 uppercase italic">{conn.source_device_id === device?.id ? conn.target_port : conn.source_port}</span>
+                       <span className="text-indigo-400 uppercase">{conn.source_device_id === device?.id ? conn.target_port : conn.source_port}</span>
                     </div>
                     <div className="flex items-center justify-between text-[8px] font-black mt-1">
                        <span className="text-slate-500 uppercase">Metric:</span>
@@ -3862,7 +3862,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                               <span className="w-1 h-1 rounded-full bg-white/10" />
                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.1em]">{selectedNode.type}</span>
                            </div>
-                           <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none italic">{selectedNode.name}</h4>
+                           <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none">{selectedNode.name}</h4>
                         </div>
                         <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white p-1 hover:bg-white/5 rounded-lg transition-all"><X size={14}/></button>
                      </div>
@@ -4037,7 +4037,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                      {hoveredLink.labels.map((l: string, i: number) => (
                        <div key={i} className="flex items-center gap-2">
                          <div className={`w-1 h-1 rounded-full ${hoveredLink.type === 'network' ? 'bg-emerald-400' : 'bg-indigo-400'}`} />
-                         <span className="text-[9px] font-black text-white uppercase tracking-tighter italic">{l}</span>
+                         <span className="text-[9px] font-black text-white uppercase tracking-tighter">{l}</span>
                        </div>
                      ))}
                    </div>

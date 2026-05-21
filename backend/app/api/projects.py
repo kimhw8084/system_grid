@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from ..database import get_db
@@ -30,8 +30,8 @@ async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends
     db_project = models.Project(**data.model_dump())
     db.add(db_project)
     await db.commit()
-    await db.refresh(db_project)
-    return db_project
+    # Re-fetch with all relations for response to avoid greenlet errors
+    return await get_project(db_project.id, db)
 
 @router.get("/{project_id}", response_model=schemas.ProjectResponse)
 async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
@@ -71,16 +71,20 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
     
     # Handle Nested Tasks
     if tasks_data is not None:
-        # Simple implementation: Sync tasks
-        # In a real production app, you'd match by ID, update existing, add new, and potentially delete removed.
-        # For this interactive engineering tool, we'll do a basic sync.
         existing_tasks = {t.id: t for t in db_project.tasks}
-        new_tasks = []
+        current_task_ids = {t_data.get("id") for t_data in tasks_data if t_data.get("id")}
+        
+        # Delete removed tasks
+        for t_id, t_obj in existing_tasks.items():
+            if t_id not in current_task_ids:
+                await db.delete(t_obj)
+
         for t_data in tasks_data:
             t_id = t_data.get("id")
             if t_id and t_id in existing_tasks:
                 task = existing_tasks[t_id]
-                for k, v in t_data.items():
+                clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
+                for k, v in clean_task_data.items():
                     if k != "id": setattr(task, k, v)
             else:
                 # Create new task
@@ -89,8 +93,6 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
                 db.add(new_task)
         
     await db.commit()
-    await db.refresh(db_project)
-    
     # Re-fetch with all relations for response
     return await get_project(project_id, db)
 
@@ -111,17 +113,23 @@ async def create_task(data: dict, db: AsyncSession = Depends(get_db)):
     task = models.ProjectTask(**clean_data)
     db.add(task)
     await db.commit()
-    await db.refresh(task)
-    return task
+    # Re-fetch task to avoid greenlet errors
+    return await update_task(task.id, {}, db)
 
 @router.put("/tasks/{task_id}", response_model=schemas.ProjectTaskResponse)
 async def update_task(task_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    task = await db.get(models.ProjectTask, task_id)
+    query = select(models.ProjectTask).filter(models.ProjectTask.id == task_id).options(
+        selectinload(models.ProjectTask.subtasks),
+        selectinload(models.ProjectTask.comments),
+        selectinload(models.ProjectTask.qa_items)
+    )
+    result = await db.execute(query)
+    task = result.scalar_one_or_none()
     if not task: raise HTTPException(404, "Task not found")
     clean_data = filter_valid_columns(models.ProjectTask, data)
     for k, v in clean_data.items(): setattr(task, k, v)
     await db.commit()
-    await db.refresh(task)
+    await db.refresh(task) # This is safe now because relations are loaded
     return task
 
 # --- Comments ---

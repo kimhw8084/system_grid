@@ -127,7 +127,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
         >
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-black text-slate-200 uppercase tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5 italic">{new Date(item.created_at || item.updated_at).toLocaleDateString()}</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{new Date(item.created_at || item.updated_at).toLocaleDateString()}</span>
           </div>
           <ChevronRight size={12} className="text-slate-700 group-hover/item:translate-x-1 transition-transform" />
         </Link>
@@ -152,7 +152,7 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
         <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
-            <span className="text-[8px] font-bold text-slate-600 uppercase italic shrink-0">{new Date(p.updated_at).toLocaleDateString()}</span>
+            <span className="text-[8px] font-bold text-slate-600 uppercase shrink-0">{new Date(p.updated_at).toLocaleDateString()}</span>
           </div>
         </Link>
       )) : (
@@ -181,7 +181,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           <div className="flex flex-col items-center gap-6 relative z-10">
              <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(37,99,235,0.3)]" />
              <div className="flex flex-col items-center">
-                <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white animate-pulse">Initializing Matrix</h1>
+                <h1 className="text-2xl font-black uppercase tracking-tighter text-white animate-pulse">Initializing Matrix</h1>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] mt-2">Sector-01 Data Orchestrator</p>
              </div>
           </div>
@@ -216,7 +216,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                  </div>
                  <div>
                     <span className="text-[10px] font-black uppercase tracking-widest">Critical Infrastructure Alert</span>
-                    <p className="text-[11px] font-bold tracking-tight italic opacity-90">{metrics.critical_alerts[0].title} — {metrics.critical_alerts[0].impact}</p>
+                    <p className="text-[11px] font-bold tracking-tight opacity-90">{metrics.critical_alerts[0].title} — {metrics.critical_alerts[0].impact}</p>
                  </div>
               </div>
               <button onClick={() => navigate('/monitoring')} className="px-4 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Intercept Incident</button>
@@ -235,7 +235,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               </div>
            </div>
            <div>
-              <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">Command <span className="text-blue-500">Center</span></h1>
+              <h1 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">Command <span className="text-blue-500">Center</span></h1>
               <div className="flex items-center gap-3 mt-1">
                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.4em] font-black">Holistic Infrastructure Orchestration</p>
                  <div className="h-1 w-1 rounded-full bg-slate-700" />
@@ -313,7 +313,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               <div className="glass-panel p-6 rounded-2xl border-white/5 bg-gradient-to-br from-emerald-600/10 to-transparent flex items-center justify-between group hover:border-emerald-500/20 transition-all cursor-pointer" onClick={() => onNavigate('racks')}>
                  <div>
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Racks</p>
-                    <h3 className="text-3xl font-black text-white italic tracking-tighter tabular-nums">{metrics?.rack_overview.total_racks}</h3>
+                    <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.rack_overview.total_racks}</h3>
                  </div>
                  <div className="w-10 h-10 rounded-lg bg-emerald-600/20 flex items-center justify-center text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
                     <Box size={20} />
@@ -322,7 +322,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               <div className="glass-panel p-6 rounded-2xl border-white/5 bg-gradient-to-br from-rose-600/10 to-transparent flex items-center justify-between group hover:border-rose-500/20 transition-all cursor-pointer" onClick={() => onNavigate('monitoring')}>
                  <div>
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Monitors</p>
-                    <h3 className="text-3xl font-black text-white italic tracking-tighter tabular-nums">{metrics?.monitoring_overview.total}</h3>
+                    <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.monitoring_overview.total}</h3>
                  </div>
                  <div className="w-10 h-10 rounded-lg bg-rose-600/20 flex items-center justify-center text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
                     <Activity size={20} />
@@ -340,7 +340,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/20">
                        <History size={16} />
                     </div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Activity Stream</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Activity Stream</h3>
                  </div>
                  <Link to="/logs" className="p-1.5 rounded-md hover:bg-white/5 text-slate-500 hover:text-white transition-all"><ExternalLink size={12}/></Link>
               </div>
@@ -369,7 +369,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                  <div className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
                     <Zap size={16} />
                  </div>
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Quick Vectors</h3>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Quick Vectors</h3>
               </div>
               <div className="grid grid-cols-2 gap-3">
                  {[
@@ -398,7 +398,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                  <div className="p-2 rounded-lg bg-amber-600/20 text-amber-400 border border-amber-500/20">
                     <Globe size={16} />
                  </div>
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Regional Clocks</h3>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Regional Clocks</h3>
               </div>
               <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
                  {metrics?.rack_overview.sites?.map((site: any, i: number) => (
@@ -416,14 +416,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            {/* Performance/Stability Card */}
            <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent flex flex-col group h-[280px]">
               <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white italic">Stability Metric</h3>
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Stability Metric</h3>
                  <Shield size={16} className="text-blue-500 animate-pulse" />
               </div>
               <div className="flex-1 flex flex-col justify-center items-center relative">
                  <div className="absolute inset-0 flex items-center justify-center opacity-10">
                     <div className="w-40 h-40 border-8 border-blue-500 rounded-full animate-ping" />
                  </div>
-                 <h2 className="text-5xl font-black text-white italic tracking-tighter tabular-nums z-10">{metrics?.stability_score}%</h2>
+                 <h2 className="text-5xl font-black text-white tracking-tighter tabular-nums z-10">{metrics?.stability_score}%</h2>
                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-2 z-10">Nominal State</p>
                  
                  <div className="w-full h-12 bg-white/5 mt-8 rounded-lg relative overflow-hidden">

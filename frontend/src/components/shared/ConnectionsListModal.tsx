@@ -131,7 +131,7 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                                     <div className="flex flex-col items-center gap-4 opacity-20">
                                       <Network size={64} className="text-slate-500" />
                                       <div>
-                                        <p className="text-slate-300 font-black uppercase italic tracking-[0.4em] text-lg">Empty Fabric</p>
+                                        <p className="text-slate-300 font-black uppercase tracking-[0.4em] text-lg">Empty Fabric</p>
                                         <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">No valid physical links mapped to this entity</p>
                                       </div>
                                     </div>

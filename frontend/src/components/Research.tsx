@@ -82,7 +82,7 @@ export const PriorityGauge = ({ value, onChange, disabled, type }: { value: stri
     <div className={`space-y-3 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between px-1">
          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Priority Spectrum</label>
-         <div className={`text-[10px] font-bold uppercase italic tracking-tighter ${priorities[activeIdx]?.text}`}>
+         <div className={`text-[10px] font-bold uppercase tracking-tighter ${priorities[activeIdx]?.text}`}>
             {priorities[activeIdx]?.hint}
          </div>
       </div>
@@ -541,7 +541,7 @@ export default function Research() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight italic flex items-center gap-2 text-white">
+              <h1 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-2 text-white">
                 <Shield size={24} className="text-blue-500" /> Research Matrix
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Unified System Intelligence & RCA Engine</p>
@@ -794,7 +794,7 @@ export function SearchableMultiSelect({ label, selected = [], onChange, options 
               )
             })
           ) : (
-            <span className="text-slate-500 italic uppercase">{placeholder}</span>
+            <span className="text-slate-500 uppercase">{placeholder}</span>
           )}
         </div>
         <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -834,7 +834,7 @@ export function SearchableMultiSelect({ label, selected = [], onChange, options 
                       onClick={() => toggleOption(opt)}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all group ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-white/5 text-slate-400'}`}
                     >
-                      <span className={`text-[10px] font-bold uppercase tracking-tight ${isNew ? 'text-blue-400 italic' : ''}`}>{lbl}</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-tight ${isNew ? 'text-blue-400' : ''}`}>{lbl}</span>
                       <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                         {isSelected && <Check size={10} className="text-white" />}
                         {isNew && !isSelected && <Plus size={10} className="text-blue-400" />}
@@ -886,7 +886,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
         {step === 0 ? (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold uppercase italic text-white tracking-tighter">Initialize Research Flow</h2>
+              <h2 className="text-2xl font-bold uppercase text-white tracking-tighter">Initialize Research Flow</h2>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Select the nature of this investigation</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -912,7 +912,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <h2 className={`text-xl font-bold uppercase italic flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
+              <h2 className={`text-xl font-bold uppercase flex items-center gap-3 tracking-tighter ${formData.type === 'RCA' ? 'text-purple-400' : 'text-blue-400'}`}>
                 {formData.type === 'RCA' ? <ShieldAlert size={20}/> : <Search size={20}/>} 
                 Initialize {formData.type}
               </h2>
@@ -997,7 +997,7 @@ function TypeCard({ icon: Icon, title, desc, active, color, onClick }: any) {
     <button onClick={onClick} className={`p-6 rounded-lg border-2 transition-all text-left flex flex-col gap-4 group ${active ? color + ' bg-white/5 shadow-xl' : 'border-white/5 bg-transparent hover:border-white/10 hover:bg-white/5'}`}>
       <div className={`p-3 rounded-lg bg-white/5 w-fit ${active ? color : 'text-slate-500'}`}><Icon size={24} /></div>
       <div>
-        <h3 className={`text-sm font-bold uppercase italic tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
+        <h3 className={`text-sm font-bold uppercase tracking-tighter mb-1 ${active ? color : 'text-slate-300'}`}>{title}</h3>
         <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{desc}</p>
       </div>
     </button>
@@ -1321,7 +1321,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
         {/* Header Block */}
         <div className="px-8 py-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xl font-bold italic tracking-tighter">RCA</div>
+            <div className="w-16 h-16 bg-purple-600/20 rounded-lg flex items-center justify-center text-purple-400 border border-purple-500/30 shadow-inner text-xl font-bold tracking-tighter">RCA</div>
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
@@ -1339,7 +1339,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                    </div>
                 </div>
               </div>
-              <h1 className="text-3xl font-bold uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-bold uppercase tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -1621,7 +1621,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                         ))}
                                         {(formData.linked_failure_mode_ids || []).length === 0 && (
                                            <tr>
-                                              <td colSpan={4} className="py-8 text-center text-[9px] font-bold uppercase text-slate-600 italic">No linked failure modes</td>
+                                              <td colSpan={4} className="py-8 text-center text-[9px] font-bold uppercase text-slate-600">No linked failure modes</td>
                                            </tr>
                                         )}
                                      </tbody>
@@ -1817,7 +1817,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          <div className="space-y-2">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                <p className="text-[12px] font-black text-slate-200 uppercase leading-relaxed tracking-tight">{item.description}</p>
-                                               {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase italic">@ {item.owner}</span>}
+                                               {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase">@ {item.owner}</span>}
                                             </div>
                                             <div className="flex items-center gap-2">
                                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
@@ -2094,7 +2094,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
         {/* Header Block */}
         <div className="px-8 py-6 border-b border-white/5 bg-white/2 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-black italic tracking-tighter">INV</div>
+            <div className="w-16 h-16 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/30 shadow-inner text-xl font-black tracking-tighter">INV</div>
             <div>
               <div className="flex items-center space-x-4 mb-2">
                 <div className="flex items-center gap-2">
@@ -2104,7 +2104,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                 <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {new Date(formData.updated_at || formData.created_at).toLocaleString()}</span>
               </div>
-              <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white leading-none">{formData.title}</h1>
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">

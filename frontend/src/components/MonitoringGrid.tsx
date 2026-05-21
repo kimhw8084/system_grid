@@ -242,7 +242,7 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const isActive = p.value
-        const isDeleted = p.data.is_deleted || p.data.status === 'Deleted'
+        const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
         return (
           <div className="flex items-center justify-center h-full">
             <div className="relative">
@@ -253,8 +253,7 @@ export default function MonitoringGrid() {
             </div>
           </div>
         )
-      },
-      hide: hiddenColumns.includes("is_active")
+      },      hide: hiddenColumns.includes("is_active")
     },
     { 
       field: "owners", 
@@ -387,14 +386,14 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setDetailItem(p.data)} title="Quick View" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => setHistoryItem(p.data)} title="Version History" className="p-1.5 text-purple-400 hover:text-purple-200 transition-all border-r border-white/5"><Clock size={14}/></button>
-               <button onClick={() => setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [], monitorId: p.data.id })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
-               <button onClick={() => { setEditingItem(p.data); setIsFormOpen(true); }} title="Edit Logic" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+               <button onClick={() => p.data && setDetailItem(p.data)} title="Quick View" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => p.data && setHistoryItem(p.data)} title="Version History" className="p-1.5 text-purple-400 hover:text-purple-200 transition-all border-r border-white/5"><Clock size={14}/></button>
+               <button onClick={() => p.data && setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [], monitorId: p.data.id })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
+               <button onClick={() => { if(p.data) { setEditingItem(p.data); setIsFormOpen(true); } }} title="Edit Logic" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
                {activeTab === 'active' ? (
-                 <button onClick={() => openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => p.data?.id && openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                ) : (
-                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                 <button onClick={() => p.data?.id && openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                )}
            </div>
         </div>
@@ -412,7 +411,7 @@ export default function MonitoringGrid() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight italic flex items-center">
+              <h1 className="text-2xl font-black uppercase tracking-tight flex items-center">
                 <span>Monitoring Matrix</span>
               </h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">High-Reliability Infrastructure Observability</p>
@@ -553,7 +552,7 @@ export default function MonitoringGrid() {
           rowSelection="multiple"
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
-          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data?.id).filter(Boolean))}
           quickFilterText={searchTerm}
           suppressRowClickSelection={true}
           enableCellTextSelection={true}
@@ -783,7 +782,7 @@ function ServicesModal({ names, title, onClose }: any) {
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
         </div>
-        <p className="text-[10px] text-slate-500 font-bold uppercase mb-4 italic">Linked to: {title}</p>
+        <p className="text-[10px] text-slate-500 font-bold uppercase mb-4">Linked to: {title}</p>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
           {names.map((name: string, i: number) => (
             <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3">
@@ -816,7 +815,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
               <span className="text-[11px] font-bold text-slate-200">{r}</span>
             </div>
           ))}
-          {recipients.length === 0 && <p className="text-center py-4 text-slate-600 italic text-[10px]">No recipients defined</p>}
+          {recipients.length === 0 && <p className="text-center py-4 text-slate-600 text-[10px]">No recipients defined</p>}
         </div>
       </motion.div>
     </div>
@@ -905,7 +904,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
                        <Plus size={12} className="text-slate-600 group-hover:text-amber-500" />
                     </button>
                   ))}
-                  {filteredKnowledge.length === 0 && <p className="text-center py-4 text-[9px] text-slate-600 uppercase font-black italic">No available procedures found</p>}
+                  {filteredKnowledge.length === 0 && <p className="text-center py-4 text-[9px] text-slate-600 uppercase font-black">No available procedures found</p>}
                </div>
             </div>
           )}
@@ -939,7 +938,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
           {ids.length === 0 && !isAdding && (
              <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-lg">
                 <BookOpen size={24} className="text-slate-800" />
-                <p className="text-[10px] text-slate-700 font-black uppercase italic tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
+                <p className="text-[10px] text-slate-700 font-black uppercase tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
              </div>
           )}
         </div>
@@ -964,9 +963,9 @@ function BkmDetailModal({ bkmId, onClose }: any) {
                 <BookOpen size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">{bkm?.title || 'Loading Document...'}</h2>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-white">{bkm?.title || 'Loading Document...'}</h2>
                 <div className="flex items-center space-x-2 mt-0.5">
-                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Operational Triage Instruction</span>
+                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Operational Triage Instruction</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
                    <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">BKM ID: KB-{bkmId}</span>
                 </div>
@@ -1044,7 +1043,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                        {item.status}
                     </span>
                  </div>
-                 <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-none">{item.title}</h2>
+                 <h2 className="text-2xl font-black text-white tracking-tighter uppercase leading-none">{item.title}</h2>
               </div>
            </div>
            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all">
@@ -1061,7 +1060,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                        <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Info size={12}/> <span>Purpose</span>
                        </h4>
-                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
+                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed">
                           {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
@@ -1069,7 +1068,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                        <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Zap size={12}/> <span>Impact</span>
                        </h4>
-                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed italic">
+                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed">
                           {item.impact || 'No impact analysis defined.'}
                        </p>
                     </div>
@@ -1167,7 +1166,7 @@ function MonitoringDetailModal({ item, onClose }: any) {
                        {item.recovery_doc_titles?.length === 0 && (
                           <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-4 text-center">
                              <AlertCircle size={18} className="mx-auto text-rose-500 mb-2" />
-                             <p className="text-[10px] font-black text-rose-500 uppercase italic">No BKM Linked</p>
+                             <p className="text-[10px] font-black text-rose-500 uppercase">No BKM Linked</p>
                           </div>
                        )}
                     </div>
@@ -1375,7 +1374,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 <Zap size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">
+                <h2 className="text-xl font-black uppercase tracking-tighter text-white">
                   {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
                 <div className="flex items-center space-x-2 mt-0.5">
@@ -1429,7 +1428,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       {formData.device_id && (
                         <div className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-3">
                            <div className="flex items-center justify-between px-1">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 italic">Service Scope</label>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Scope</label>
                               <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">
                                 {formData.monitored_services?.length || 0} Bound
                               </span>
@@ -1471,7 +1470,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    
                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="flex items-center justify-between px-1">
-                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Ownership Matrix</h3>
+                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ownership Matrix</h3>
                          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
                       </div>
                       
@@ -1622,13 +1621,13 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                            </button>
                            <div className="flex items-center justify-between mb-2">
                               <span className="text-[10px] font-black uppercase text-blue-400">{entry.type}</span>
-                              <span className="text-[8px] font-bold text-slate-600 uppercase italic">Entry #{entry.id.toString().slice(-4)}</span>
+                              <span className="text-[8px] font-bold text-slate-600 uppercase">Entry #{entry.id.toString().slice(-4)}</span>
                            </div>
                            <p className="text-[11px] font-bold text-slate-300 truncate">{entry.description || 'No description provided'}</p>
                         </div>
                       ))}
                       {formData.logic_json?.length === 0 && (
-                        <div className="py-12 text-center text-slate-600 italic text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-lg">
+                        <div className="py-12 text-center text-slate-600 text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-lg">
                            No logic entries defined
                         </div>
                       )}
@@ -1637,7 +1636,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    <div className="space-y-4 pt-4 border-t border-white/5">
                       <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1 italic">Check Frequency (Seconds)</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Check Frequency (Seconds)</label>
                             <div className="relative">
                                <Clock size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
@@ -1649,7 +1648,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                             </div>
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1 italic">Alert Duration (Seconds Delay)</label>
+                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Alert Duration (Seconds Delay)</label>
                             <div className="relative">
                                <AlertCircle size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
@@ -1746,7 +1745,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="space-y-1.5">
                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notification Throttle (Seconds)</label>
-                         <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight italic">Minimum time between re-alerts for the same issue</p>
+                         <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight">Minimum time between re-alerts for the same issue</p>
                          <input 
                            type="number"
                            value={formData.notification_throttle}
@@ -1798,7 +1797,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       <div className="p-6 border-2 border-dashed border-white/5 rounded-lg space-y-6">
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                               <p className="text-[12px] font-black text-white uppercase tracking-tighter italic">Link Recovery Documents</p>
+                               <p className="text-[12px] font-black text-white uppercase tracking-tighter">Link Recovery Documents</p>
                                <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Documentation linked here will be presented to the on-call engineer during an alert.</p>
                             </div>
                             <div className="flex items-center space-x-2 bg-blue-600/10 px-3 py-1 rounded-lg border border-blue-600/20">
@@ -1844,7 +1843,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                                </button>
                             ))}
                             {filteredKnowledge?.length === 0 && (
-                               <div className="col-span-2 py-8 text-center text-slate-600 italic text-[10px] uppercase font-black">No matching knowledge entries found</div>
+                               <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] uppercase font-black">No matching knowledge entries found</div>
                             )}
                          </div>
                       </div>
@@ -1855,7 +1854,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                          <AlertCircle size={16} />
                       </div>
                       <div className="space-y-1">
-                         <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest italic">Operational Directive</p>
+                         <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Operational Directive</p>
                          <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Linking high-quality recovery documentation is critical for reducing Mean Time to Repair (MTTR). Ensure the linked Knowledge Entries contain up-to-date troubleshooting steps.</p>
                       </div>
                    </div>
@@ -1953,7 +1952,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                 <Clock size={32} strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white leading-none">Temporal Evolution Matrix</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Temporal Evolution Matrix</h2>
                 <div className="flex items-center space-x-2 mt-1">
                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
@@ -2036,7 +2035,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                 )}
               </div>
               <div className="mt-4 p-4 bg-purple-500/5 border border-purple-500/10 rounded-lg">
-                 <p className="text-[9px] text-slate-500 font-bold leading-relaxed uppercase italic">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
+                 <p className="text-[9px] text-slate-500 font-bold leading-relaxed uppercase">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
               </div>
            </div>
 
@@ -2045,9 +2044,9 @@ function MonitoringHistoryModal({ item, onClose }: any) {
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                       <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-[12px] font-black italic">v{newer?.version}</div>
+                       <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-[12px] font-black">v{newer?.version}</div>
                        <div className="w-4 h-px bg-slate-700" />
-                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black italic">{older ? `v${older.version}` : 'Ø'}</div>
+                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.version}` : 'Ø'}</div>
                     </div>
                     <div>
                        <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-300">Semantic Delta Analysis</h3>
@@ -2071,7 +2070,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                                    <div className="w-2 h-6 bg-purple-500 rounded-full" />
                                    <span className="text-[12px] font-black uppercase text-white tracking-[0.2em]">{d.field.replace(/_/g, ' ')}</span>
                                 </div>
-                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest italic">Vector Field: {d.field}</span>
+                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Vector Field: {d.field}</span>
                              </div>
                              
                              <div className="grid grid-cols-2 gap-6">
@@ -2134,7 +2133,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Trace ID: {newer?.id}</span>
                     </div>
                  </div>
-                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] italic">Temporal Data Repository - v4.2</div>
+                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Temporal Data Repository - v4.2</div>
               </div>
            </div>
         </div>

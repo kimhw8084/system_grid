@@ -260,7 +260,7 @@ export function InvestigationTab({ formData, setFormData, failureModes, setFocus
                    <div className="flex items-center gap-6">
                       <div className="flex flex-col">
                          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active Vector</span>
-                         <span className="text-[12px] font-black text-purple-400 uppercase italic tracking-tighter">{selectedFailure.title}</span>
+                         <span className="text-[12px] font-black text-purple-400 uppercase tracking-tighter">{selectedFailure.title}</span>
                       </div>
                       <div className="flex items-center gap-4 pl-6 border-l border-white/10">
                          {(() => {
@@ -601,7 +601,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                             {(formData.identification_steps_json || []).filter((s: any) => s.failure_id === selectedFailureId && s.cause_id === cause.id).map((step: any, idx: number) => (
                                <div key={step.id || idx} className="flex gap-6 group">
                                   <div className="flex flex-col items-center shrink-0">
-                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] border italic shadow-lg bg-blue-600/10 text-blue-400 border-blue-500/20">{idx + 1}</div>
+                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] border shadow-lg bg-blue-600/10 text-blue-400 border-blue-500/20">{idx + 1}</div>
                                      <div className="w-px flex-1 bg-white/5 my-2" />
                                   </div>
                                   <div className="flex-1 space-y-3 pt-1 pb-6">

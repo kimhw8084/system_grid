@@ -45,7 +45,7 @@ export const StyledSelect = ({
             ${error ? 'border-rose-500/50' : 'border-white/10 group-hover:border-white/20'} 
             rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500 
             transition-all ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} 
-            ${!value ? 'text-slate-500 italic' : 'text-slate-200'}
+            ${!value ? 'text-slate-500' : 'text-slate-200'}
           `}
         >
           {placeholder && <option value="">{placeholder}</option>}

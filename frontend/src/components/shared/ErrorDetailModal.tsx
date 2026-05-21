@@ -84,7 +84,7 @@ export const ErrorDetailModal = ({ isOpen, onClose, error }: ErrorDetailModalPro
         </div>
 
         <div className="mt-8 pt-6 border-t border-white/10 flex justify-center">
-           <p className="text-[9px] font-bold text-slate-600 uppercase italic tracking-[0.2em]">End of Debug Stack · SysGrid Orchestration Engine</p>
+           <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em]">End of Debug Stack · SysGrid Orchestration Engine</p>
         </div>
       </motion.div>
     </div>

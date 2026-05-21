@@ -143,7 +143,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
         <div className="space-y-4">
           <div>
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Mathematical Derivation</p>
-            <div className="bg-black/40 border border-white/5 rounded-lg p-6 font-serif text-lg italic text-blue-300 text-center shadow-inner">
+            <div className="bg-black/40 border border-white/5 rounded-lg p-6 font-serif text-lg text-blue-300 text-center shadow-inner">
                {def.formula}
             </div>
           </div>
@@ -416,11 +416,11 @@ export default function FAR() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const m = p.data.mitigations || [];
-        const c = p.data.causes || [];
+        const m = p.data?.mitigations || [];
+        const c = p.data?.causes || [];
         const mons = m.filter((i:any) => i.mitigation_type === 'Monitoring').length;
         const wrks = m.filter((i:any) => i.mitigation_type === 'Workaround').length;
-        const prevs = (p.data.prevention_actions || []).length;
+        const prevs = (p.data?.prevention_actions || []).length;
         const res = c.flatMap((i:any) => i.resolutions || []).length;
         
         const Badge = ({label, value, color}: any) => (
@@ -450,7 +450,7 @@ export default function FAR() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const rcas = p.data.linked_rcas || [];
+        const rcas = p.data?.linked_rcas || [];
         const count = rcas.length;
         if (count === 0) return <span className="text-slate-600 font-bold uppercase tracking-widest text-[9px]">None</span>;
         
@@ -513,8 +513,8 @@ export default function FAR() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => p.data?.id && openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
       )
@@ -675,8 +675,7 @@ export default function FAR() {
                 animateRows={true}
                 enableCellTextSelection={true}
                 rowSelection="multiple"
-                onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
-              />
+                onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean))}              />
               <AnimatePresence>
                 {showColumnPicker && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
@@ -717,7 +716,7 @@ export default function FAR() {
                 <table className="w-full text-left border-collapse">
                    <thead className="sticky top-0 bg-slate-900 border-b border-white/10 z-10">
                       <tr className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                         <th className="py-3 px-4 w-12 text-center italic text-blue-400">#</th>
+                         <th className="py-3 px-4 w-12 text-center text-blue-400">#</th>
                          <th className="py-3 px-4 w-16">ID</th>
                          <th className="py-3 px-4">Incident Title</th>
                          <th className="py-3 px-4 w-40">Occurrence Datetime</th>
@@ -735,7 +734,7 @@ export default function FAR() {
                           }}
                           className="group cursor-pointer hover:bg-purple-500/5 transition-colors"
                         >
-                          <td className="py-4 px-4 text-center text-[10px] font-bold text-slate-600 italic group-hover:text-blue-400">{idx + 1}</td>
+                          <td className="py-4 px-4 text-center text-[10px] font-bold text-slate-600 group-hover:text-blue-400">{idx + 1}</td>
                           <td className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-tighter">RCA-{r.id}</td>
                           <td className="py-4 px-4">
                              <div className="text-[11px] font-bold text-slate-200 uppercase group-hover:text-white transition-colors leading-tight">{r.title}</div>
@@ -1282,7 +1281,7 @@ function CausalTab({ mode, onUpdate }: any) {
                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> <span className="text-[10px] font-bold text-rose-500 uppercase">Critical (&gt;150)</span></div>
             </div>
          </div>
-         <div className="text-6xl font-black text-center text-white tracking-tighter italic">RPN = S <span className="text-slate-700">×</span> O <span className="text-slate-700">×</span> D</div>
+         <div className="text-6xl font-black text-center text-white tracking-tighter">RPN = S <span className="text-slate-700">×</span> O <span className="text-slate-700">×</span> D</div>
        </div>
        </motion.div>
        </div>
@@ -1308,7 +1307,7 @@ function CausalTab({ mode, onUpdate }: any) {
        <div className="grid grid-cols-2 gap-x-12 gap-y-4">
          {maturityLevels.map((ml) => (
             <div key={ml.lv} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-               <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black italic border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
+               <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
                <div>
                   <h4 className="text-[11px] font-black uppercase text-white tracking-widest">{ml.label}</h4>
                   <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 leading-tight">{ml.desc}</p>
@@ -1348,7 +1347,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                 {cause.cause_text}
              </button>
           ))}
-          {mode.causes?.length === 0 && <span className="text-[10px] font-black text-slate-700 uppercase italic">No causes attributed to this vector</span>}
+          {mode.causes?.length === 0 && <span className="text-[10px] font-black text-slate-700 uppercase">No causes attributed to this vector</span>}
        </div>
 
        <div className="flex items-center justify-between">
@@ -1382,7 +1381,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                            <div className="space-y-1">
                               {m.mitigation_steps?.split('\n').map((line: string, i: number) => (
                                 <div key={i} className="flex gap-3">
-                                   <span className="text-slate-600 text-[9px] font-black italic">{i + 1}.</span>
+                                   <span className="text-slate-600 text-[9px] font-black">{i + 1}.</span>
                                    <span className="normal-case font-medium text-slate-300 uppercase">{line}</span>
                                 </div>
                               ))}

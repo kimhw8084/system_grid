@@ -139,7 +139,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
             </tr>
           ))}
           {!services?.length && !isLoading && (
-            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No logical services bound to this asset</td></tr>
+            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase tracking-widest">No logical services bound to this asset</td></tr>
           )}
         </tbody>
       </table>
@@ -371,7 +371,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
               </tr>
             ))}
             {Object.keys(obj).length === 0 && (
-              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No additional payload data</td></tr>
+              <tr><td colSpan={2} className="px-4 py-8 text-center text-slate-600 font-bold uppercase">No additional payload data</td></tr>
             )}
           </tbody>
         </table>
@@ -423,7 +423,7 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
             </tr>
           ))}
           {!monitors?.length && (
-            <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase italic tracking-widest">No active monitoring nodes deployed</td></tr>
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase tracking-widest">No active monitoring nodes deployed</td></tr>
           )}
         </tbody>
       </table>
@@ -489,7 +489,7 @@ const ConnectionMap = ({ deviceId, type, devices }: { deviceId: number, type: 'd
   return (
     <div className="h-[300px] w-full relative bg-black/20 rounded-lg border border-white/5 overflow-hidden">
        {graphData.nodes.length <= 1 ? (
-         <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 italic tracking-widest">
+         <div className="h-full flex items-center justify-center text-[10px] font-bold uppercase text-slate-600 tracking-widest">
             No active {type} vectors identified
          </div>
        ) : (
@@ -646,7 +646,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </button>
           ))}
           {!filteredAssets.length && (
-            <div className="py-20 text-center text-slate-600 italic text-[10px] font-bold uppercase tracking-widest">No matching assets</div>
+            <div className="py-20 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">No matching assets</div>
           )}
         </div>
       </div>
@@ -663,7 +663,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                       <Box size={48} />
                    </div>
                    <div>
-                      <h1 className="text-5xl font-black uppercase tracking-tighter text-white italic">{selectedAsset.name}</h1>
+                      <h1 className="text-5xl font-black uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
                       <div className="flex items-center space-x-4 mt-2">
                         <span className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[14px]">{selectedAsset.system}</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
@@ -770,7 +770,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Deployment Phase</p>
                            <p className="text-sm font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
-                           <p className="text-[10px] font-bold text-blue-400 mt-1 uppercase italic">Total Uptime Age: {selectedAsset.hardware_age}</p>
+                           <p className="text-[10px] font-bold text-blue-400 mt-1 uppercase">Total Uptime Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Warranty Coverage</p>
@@ -799,11 +799,11 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                </div>
                <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Dependency Vector Map</p>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center">Dependency Vector Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} />
                   </div>
                   <div className="space-y-3">
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center italic">Network Interconnect Map</p>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-center">Network Interconnect Map</p>
                      <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} />
                   </div>
                </div>
@@ -875,7 +875,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="p-6 bg-white/5 rounded-full border border-white/10 opacity-20 animate-pulse">
                <FileText size={64} />
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.5em] italic">Select Asset for Detailed Inspection</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.5em]">Select Asset for Detailed Inspection</p>
           </div>
         )}
       </div>
@@ -1191,7 +1191,7 @@ export default function AssetGrid() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight italic text-white">Assets</h1>
+              <h1 className="text-2xl font-bold uppercase tracking-tight text-white">Assets</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
            </div>
 
@@ -1477,7 +1477,7 @@ export default function AssetGrid() {
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
             justify-content: center !important; 
-            font-style: italic !important;
+            font-style: !important;
         }
         .ag-cell { 
             display: flex; 
@@ -1704,7 +1704,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase">No hardware mappings found</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -1866,7 +1866,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No credentials stored</td></tr>}
+          {!secrets?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase">No credentials stored</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -2139,7 +2139,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               </tr>
             )
           })}
-          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase italic">No relationships defined</td></tr>}
+          {!relationships?.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-600 font-bold uppercase">No relationships defined</td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -2543,7 +2543,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
             <div className="flex items-center justify-between border-b border-white/5 pb-4">
                <div className="flex items-center gap-3">
                   <Share2 size={18} className="text-blue-400" />
-                  <h3 className="text-xs font-black uppercase tracking-widest text-white italic">Vector Intelligence</h3>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white">Vector Intelligence</h3>
                </div>
                <div className="px-2 py-0.5 rounded bg-blue-600/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-widest">
                  {hasFilter ? `${graphData.nodes.length} NODES` : 'NO FILTER'}
@@ -2604,7 +2604,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         </button>
                       ))}
                       {filteredAssetsForSelection.length === 0 && (
-                        <div className="py-4 text-center text-[8px] font-bold text-slate-700 uppercase italic">No Matching Assets</div>
+                        <div className="py-4 text-center text-[8px] font-bold text-slate-700 uppercase">No Matching Assets</div>
                       )}
                     </div>
                   </div>
@@ -2633,7 +2633,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                      </div>
                      <div>
                         <p className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em] mb-0.5">{selectedNode.system}</p>
-                        <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none italic">{selectedNode.name}</h4>
+                        <h4 className="text-sm font-black text-white uppercase tracking-tight leading-none">{selectedNode.name}</h4>
                      </div>
                   </div>
                   <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
@@ -2659,7 +2659,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
          {!hasFilter ? (
            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-700 bg-slate-950/50 backdrop-blur-sm z-0">
               <Globe size={64} className="mb-6 opacity-10 animate-pulse" />
-              <p className="text-[11px] font-black uppercase tracking-[0.5em] italic opacity-40">Awaiting Intelligence Filter Deployment</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.5em] opacity-40">Awaiting Intelligence Filter Deployment</p>
               <p className="text-[8px] font-bold uppercase tracking-widest mt-2 opacity-20">Select Systems or Assets to Begin Mapping</p>
            </div>
          ) : (
@@ -2680,7 +2680,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
              nodeCanvasObject={(node: any, ctx, globalScale) => {
                const label = node.label.toUpperCase()
                const fontSize = 11/globalScale
-               ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`
+               ctx.font = `900 ${fontSize}px Inter, sans-serif`
                const textWidth = ctx.measureText(label).width
                const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.4) as [number, number]
 
@@ -2721,7 +2721,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
 
                 const text = link.label.toUpperCase();
                 const fontSize = Math.min(MAX_FONT_SIZE, 8 / globalScale);
-                ctx.font = `italic 900 ${fontSize}px Inter, sans-serif`;
+                ctx.font = `900 ${fontSize}px Inter, sans-serif`;
                 const textWidth = ctx.measureText(text).width;
                 const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) as [number, number];
 
@@ -2755,7 +2755,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
            {showLegend && (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="glass-panel p-4 rounded-lg border border-white/10 shadow-2xl pointer-events-auto bg-slate-950/80 backdrop-blur-xl space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                   <span className="text-[9px] font-black text-white uppercase tracking-widest italic">Vector Legend</span>
+                   <span className="text-[9px] font-black text-white uppercase tracking-widest">Vector Legend</span>
                    <button onClick={() => setShowLegend(false)} className="text-slate-500 hover:text-white"><X size={10}/></button>
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2">
@@ -2770,11 +2770,11 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                 <div className="flex flex-col gap-2">
                    <div className="flex items-center gap-2">
                       <div className="w-4 h-0.5 bg-emerald-500/40" />
-                      <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest italic">Network Fabric</span>
+                      <span className="text-[8px] font-bold text-emerald-400 uppercase tracking-widest">Network Fabric</span>
                    </div>
                    <div className="flex items-center gap-2">
                       <div className="w-4 h-0.5 bg-indigo-500/40" />
-                      <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest italic">Dependency Vector</span>
+                      <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-widest">Dependency Vector</span>
                    </div>
                 </div>
              </motion.div>

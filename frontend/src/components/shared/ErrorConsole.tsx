@@ -47,7 +47,7 @@ export function ErrorConsole() {
                   <Bug size={20} />
                </div>
                <div>
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Buganizer Terminal</h2>
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-white">Buganizer Terminal</h2>
                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">System Kernel & API Traceback Console</p>
                </div>
             </div>
@@ -174,7 +174,7 @@ export function ErrorConsole() {
                 <div className="flex items-start justify-between">
                    <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-3">
-                         <h2 className="text-3xl font-black text-rose-500 uppercase italic tracking-tighter leading-none">{selectedError.message}</h2>
+                         <h2 className="text-3xl font-black text-rose-500 uppercase tracking-tighter leading-none">{selectedError.message}</h2>
                       </div>
                       <div className="flex items-center gap-6">
                          <div className="flex items-center gap-2">

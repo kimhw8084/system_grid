@@ -408,7 +408,7 @@ export default function Vendor() {
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
           rowSelection="multiple"
-          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+          onSelectionChanged={(e) => setSelectedIds(e.api.getSelectedNodes().map(n => n.data?.id).filter(Boolean))}
         />
 
         <AnimatePresence>

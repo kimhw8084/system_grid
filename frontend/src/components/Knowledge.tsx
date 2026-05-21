@@ -112,7 +112,7 @@ export default function Knowledge() {
       {/* Header Section */}
       <div className="flex items-center justify-between bg-slate-900/50 p-6 rounded-2xl border border-white/5 shadow-2xl backdrop-blur-xl">
         <div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter italic flex items-center gap-4 text-white">
+          <h1 className="text-4xl font-black uppercase tracking-tighter flex items-center gap-4 text-white">
             <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
               <BookOpen size={32} className="text-white" />
             </div>
@@ -202,7 +202,7 @@ export default function Knowledge() {
                 <RefreshCcw size={48} className="animate-spin opacity-20" />
                 <Database size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
               </div>
-              <p className="text-[11px] font-black uppercase tracking-[0.4em] animate-pulse italic">Traversing Intelligence Grid...</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.4em] animate-pulse">Traversing Intelligence Grid...</p>
            </div>
          ) : entries?.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center space-y-6 text-slate-700 opacity-50">
@@ -303,7 +303,7 @@ function KnowledgeCard({ entry, onClick }: any) {
           <h3 className="text-base font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight mb-2">
             {entry.title}
           </h3>
-          <p className="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium italic">
+          <p className="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">
             {entry.question_context || entry.content_json?.purpose || entry.content_json?.business_value?.business_problem || entry.content}
           </p>
        </div>
@@ -355,7 +355,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
             >
                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-white uppercase bg-blue-600 px-2 py-0.5 rounded italic">NODE_{entry.id}</span>
+                    <span className="text-[10px] font-black text-white uppercase bg-blue-600 px-2 py-0.5 rounded">NODE_{entry.id}</span>
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{new Date(entry.created_at).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -364,7 +364,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
                     ))}
                   </div>
                </div>
-               <h3 className="text-lg font-black text-white uppercase italic tracking-tight mb-2 group-hover:text-blue-400 transition-colors">{entry.title}</h3>
+               <h3 className="text-lg font-black text-white uppercase tracking-tight mb-2 group-hover:text-blue-400 transition-colors">{entry.title}</h3>
                <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
                  {entry.question_context || entry.content_json?.purpose || entry.content}
                </p>
@@ -444,7 +444,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                    />
                 </div>
                 <div className="space-y-3">
-                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Knowledge Title // Subject</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Knowledge Title // Subject</label>
                    <input 
                      value={formData.title} 
                      onChange={e => setFormData({...formData, title: e.target.value})} 
@@ -467,7 +467,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                     <textarea 
                       value={formData.question_context} 
                       onChange={e => setFormData({...formData, question_context: e.target.value})} 
-                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[150px] outline-none focus:border-blue-500/50 leading-relaxed font-medium italic" 
+                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[150px] outline-none focus:border-blue-500/50 leading-relaxed font-medium" 
                       placeholder="Describe the technical challenge or inquiry in detail..."
                     />
                  </div>
@@ -506,7 +506,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                    </div>
                 </div>
                 <div className="space-y-3">
-                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 italic">Node Status</label>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Node Status</label>
                    <StyledSelect 
                      value={formData.status} 
                      onChange={e => setFormData({...formData, status: e.target.value})}
@@ -563,7 +563,7 @@ function BKMStudio({ data, onChange }: any) {
         <textarea 
           value={data.purpose} 
           onChange={e => update('purpose', e.target.value)} 
-          className="w-full bg-transparent border-none outline-none text-base font-medium text-slate-200 min-h-[100px] leading-relaxed italic" 
+          className="w-full bg-transparent border-none outline-none text-base font-medium text-slate-200 min-h-[100px] leading-relaxed" 
           placeholder="Define the primary operational objective of this BKM node..." 
         />
       </section>
@@ -610,7 +610,7 @@ function BKMStudio({ data, onChange }: any) {
           {data.steps?.map((s: any, idx: number) => (
             <div key={idx} className="flex gap-8 p-8 bg-slate-900/30 border border-white/5 rounded-[32px] relative group hover:border-rose-500/30 transition-all shadow-xl">
               <div className="flex flex-col items-center gap-4">
-                 <div className="w-14 h-14 rounded-2xl bg-rose-600 flex items-center justify-center text-xl font-black text-white shadow-2xl shadow-rose-600/30 italic">
+                 <div className="w-14 h-14 rounded-2xl bg-rose-600 flex items-center justify-center text-xl font-black text-white shadow-2xl shadow-rose-600/30">
                    {String(idx + 1).padStart(2, '0')}
                  </div>
                  <div className="flex-1 w-1 bg-gradient-to-b from-rose-600/50 to-transparent rounded-full" />
@@ -621,7 +621,7 @@ function BKMStudio({ data, onChange }: any) {
                   onChange={e => {
                     const next = [...data.steps]; next[idx].task = e.target.value; update('steps', next)
                   }} 
-                  className="w-full bg-transparent border-none outline-none text-xl font-black text-white uppercase italic tracking-tighter" 
+                  className="w-full bg-transparent border-none outline-none text-xl font-black text-white uppercase tracking-tighter" 
                   placeholder="Task Header..." 
                 />
                 <textarea 
@@ -737,7 +737,7 @@ function BKMStudio({ data, onChange }: any) {
                   onChange={e => {
                     const next = [...data.tips]; next[idx] = e.target.value; update('tips', next)
                   }} 
-                  className="bg-transparent border-none outline-none text-[11px] font-bold text-slate-200 flex-1 italic" 
+                  className="bg-transparent border-none outline-none text-[11px] font-bold text-slate-200 flex-1" 
                   placeholder="Tribal knowledge / Optimization shortcut..."
                 />
                 <button onClick={() => update('tips', data.tips.filter((_:any, i:any) => i !== idx))} className="text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
@@ -756,7 +756,7 @@ function BKMStudio({ data, onChange }: any) {
              <textarea 
                value={data.next_steps} 
                onChange={e => update('next_steps', e.target.value)} 
-               className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 min-h-[100px] leading-relaxed italic" 
+               className="w-full bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 min-h-[100px] leading-relaxed" 
                placeholder="Define post-execution verification steps or next BKM node in flow..." 
              />
           </div>
@@ -783,7 +783,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
           <div className="flex items-center gap-4 border-l-4 border-blue-500 pl-6">
              <Briefcase size={28} className="text-blue-500" />
              <div>
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">01 // Strategic Business Value</h3>
+                <h3 className="text-2xl font-black uppercase tracking-tighter text-white">01 // Strategic Business Value</h3>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">ROI, KPIs & Primary Beneficiaries</p>
              </div>
           </div>
@@ -794,7 +794,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <textarea 
                      value={data.business_value?.business_problem} 
                      onChange={e => update('business_value', 'business_problem', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[120px] outline-none focus:border-blue-500/50 italic leading-relaxed" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[120px] outline-none focus:border-blue-500/50 leading-relaxed" 
                      placeholder="Define the critical business challenge this system addresses..."
                    />
                 </div>
@@ -864,7 +864,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
           <div className="flex items-center gap-4 border-l-4 border-emerald-500 pl-6">
              <Workflow size={28} className="text-emerald-500" />
              <div>
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">02 // Technical System Overview</h3>
+                <h3 className="text-2xl font-black uppercase tracking-tighter text-white">02 // Technical System Overview</h3>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Architecture, Assets & Interfaces</p>
              </div>
           </div>
@@ -939,7 +939,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
           <div className="flex items-center gap-4 border-l-4 border-amber-500 pl-6">
              <TrendingUp size={28} className="text-amber-500" />
              <div>
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">03 // Performance, Capacity & SLOs</h3>
+                <h3 className="text-2xl font-black uppercase tracking-tighter text-white">03 // Performance, Capacity & SLOs</h3>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Availability Targets & Capacity Methods</p>
              </div>
           </div>
@@ -979,7 +979,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <textarea 
                      value={data.performance?.capacity_methodology} 
                      onChange={e => update('performance', 'capacity_methodology', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-[11px] text-slate-400 min-h-[100px] outline-none focus:border-amber-500/30 font-medium italic" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-[11px] text-slate-400 min-h-[100px] outline-none focus:border-amber-500/30 font-medium" 
                      placeholder="Define how capacity is forecasted and scaled..." 
                    />
                 </div>
@@ -992,7 +992,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
           <div className="flex items-center gap-4 border-l-4 border-rose-500 pl-6">
              <Users size={28} className="text-rose-500" />
              <div>
-                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">04 // Operational Support & Reliability</h3>
+                <h3 className="text-2xl font-black uppercase tracking-tighter text-white">04 // Operational Support & Reliability</h3>
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">RACI, Maintenance & Failure Modes</p>
              </div>
           </div>
@@ -1116,11 +1116,11 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                       {entry.category} // INTEL_NODE_{entry.id}
                    </span>
                    <span className="text-slate-700 font-black tracking-widest">{" >> "}</span>
-                   <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest italic">
+                   <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
                      <History size={14}/> LAST_SYNC: {new Date(entry.updated_at).toLocaleString()}
                    </span>
                 </div>
-                <h1 className="text-6xl font-black uppercase italic tracking-tighter text-white leading-[0.9] max-w-5xl">
+                <h1 className="text-6xl font-black uppercase tracking-tighter text-white leading-[0.9] max-w-5xl">
                    {entry.title}
                 </h1>
                 <div className="flex flex-wrap gap-2 pt-2">
@@ -1171,7 +1171,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                    </div>
                    <div>
                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Custodian</p>
-                      <p className="text-[10px] font-black text-white uppercase italic tracking-tighter">system_admin</p>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">system_admin</p>
                    </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1180,7 +1180,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                    </div>
                    <div>
                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Verification Status</p>
-                      <p className="text-[10px] font-black text-emerald-500 uppercase italic tracking-tighter">SECURED_V2.0</p>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-tighter">SECURED_V2.0</p>
                    </div>
                 </div>
              </div>
@@ -1208,7 +1208,7 @@ function BKMViewer({ data }: any) {
           <h4 className="text-[12px] font-black text-rose-500 uppercase tracking-[0.5em] flex items-center gap-4">
              <Target size={20} className="animate-pulse" /> 01 // MISSION_OBJECTIVE
           </h4>
-          <p className="text-3xl font-medium text-slate-200 leading-tight italic border-l-8 border-rose-600 pl-12 max-w-4xl relative z-10">
+          <p className="text-3xl font-medium text-slate-200 leading-tight border-l-8 border-rose-600 pl-12 max-w-4xl relative z-10">
              {data.purpose}
           </p>
        </section>
@@ -1222,7 +1222,7 @@ function BKMViewer({ data }: any) {
                <div key={i} className="bg-white/[0.02] border border-white/5 p-6 rounded-[32px] flex items-start gap-4 hover:border-rose-500/30 transition-all hover:bg-white/[0.04] group">
                   <div className={`w-3 h-3 rounded-full mt-1 shrink-0 ${p.criticality === 'High' ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-blue-500'}`} />
                   <div className="space-y-1">
-                     <span className="text-[12px] font-black text-white uppercase italic leading-tight block group-hover:text-rose-500 transition-colors">{p.description}</span>
+                     <span className="text-[12px] font-black text-white uppercase leading-tight block group-hover:text-rose-500 transition-colors">{p.description}</span>
                      {p.link && <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mt-2">LINKED_RESOURCE: {p.link}</span>}
                   </div>
                </div>
@@ -1239,21 +1239,21 @@ function BKMViewer({ data }: any) {
              {data.steps?.map((s: any, i: number) => (
                <div key={i} className="flex gap-12 group relative">
                   <div className="relative z-10 shrink-0">
-                     <div className="w-16 h-16 rounded-[24px] bg-slate-900 border-2 border-rose-600/50 flex items-center justify-center text-2xl font-black text-rose-500 shadow-2xl group-hover:bg-rose-600 group-hover:text-white transition-all italic">
+                     <div className="w-16 h-16 rounded-[24px] bg-slate-900 border-2 border-rose-600/50 flex items-center justify-center text-2xl font-black text-rose-500 shadow-2xl group-hover:bg-rose-600 group-hover:text-white transition-all">
                         {String(i + 1).padStart(2, '0')}
                      </div>
                   </div>
                   <div className="flex-1 pb-16 space-y-6">
                      <div className="space-y-2">
-                        <h5 className="text-3xl font-black text-white uppercase italic tracking-tighter group-hover:text-rose-400 transition-colors">{s.task}</h5>
+                        <h5 className="text-3xl font-black text-white uppercase tracking-tighter group-hover:text-rose-400 transition-colors">{s.task}</h5>
                         {s.tool && <span className="text-[9px] font-black bg-rose-600/10 text-rose-500 border border-rose-500/20 px-3 py-1 rounded-lg uppercase tracking-widest">{s.tool}</span>}
                      </div>
-                     <p className="text-base text-slate-400 leading-relaxed font-medium italic border-l-2 border-white/5 pl-6">{s.description}</p>
+                     <p className="text-base text-slate-400 leading-relaxed font-medium border-l-2 border-white/5 pl-6">{s.description}</p>
                      {s.image_url && (
                         <div className="aspect-video bg-black/40 rounded-[40px] border border-white/10 overflow-hidden shadow-2xl relative group/img">
                            <img src={s.image_url} className="w-full h-full object-cover opacity-60 group-hover/img:opacity-100 transition-opacity" alt={s.task} />
                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest italic flex items-center gap-2">
+                              <p className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
                                  <ImageIcon size={14} className="text-rose-500" /> CAPTURED_EVIDENCE_SOURCE_{i+1}
                               </p>
                            </div>
@@ -1276,16 +1276,16 @@ function BKMViewer({ data }: any) {
                      <div className="p-3 bg-amber-500/20 rounded-2xl text-amber-500">
                         <AlertTriangle size={20} />
                      </div>
-                     <h5 className="text-lg font-black text-white uppercase italic tracking-tight">{t.symptom}</h5>
+                     <h5 className="text-lg font-black text-white uppercase tracking-tight">{t.symptom}</h5>
                   </div>
                   <div className="space-y-4">
                      <div className="space-y-1">
                         <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">Probable Cause</p>
-                        <p className="text-sm font-bold text-slate-300 italic">{t.cause}</p>
+                        <p className="text-sm font-bold text-slate-300">{t.cause}</p>
                      </div>
                      <div className="space-y-1">
                         <p className="text-[9px] font-black text-emerald-500/50 uppercase tracking-widest">Correction Path</p>
-                        <p className="text-sm font-bold text-emerald-400 italic flex items-center gap-2">
+                        <p className="text-sm font-bold text-emerald-400 flex items-center gap-2">
                            <ArrowRight size={14}/> {t.solution}
                         </p>
                      </div>
@@ -1304,7 +1304,7 @@ function BKMViewer({ data }: any) {
                 {data.tips?.map((t: string, i: number) => (
                   <div key={i} className="flex gap-6 p-6 bg-blue-600/5 border border-blue-500/10 rounded-[32px] items-start hover:bg-blue-600/10 transition-all">
                      <Zap size={20} className="text-blue-400 mt-1 shrink-0 animate-pulse" />
-                     <p className="text-sm font-black text-blue-200 uppercase tracking-tight italic leading-relaxed">{t}</p>
+                     <p className="text-sm font-black text-blue-200 uppercase tracking-tight leading-relaxed">{t}</p>
                   </div>
                 ))}
              </div>
@@ -1318,7 +1318,7 @@ function BKMViewer({ data }: any) {
                 <div className="absolute top-0 right-0 p-8 opacity-5 text-emerald-500">
                    <ShieldCheck size={100} />
                 </div>
-                <p className="text-lg font-medium text-emerald-400 italic leading-relaxed relative z-10">
+                <p className="text-lg font-medium text-emerald-400 leading-relaxed relative z-10">
                    {data.next_steps}
                 </p>
              </div>
@@ -1350,7 +1350,7 @@ function SystemManualViewer({ data, context }: any) {
           <div className="flex items-center gap-6 border-l-8 border-blue-600 pl-10">
              <Briefcase size={40} className="text-blue-500" />
              <div>
-                <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">01 // STRATEGIC_VALUE_MATRIX</h3>
+                <h3 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">01 // STRATEGIC_VALUE_MATRIX</h3>
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">Economic Impact & Primary Goals</p>
              </div>
           </div>
@@ -1360,20 +1360,20 @@ function SystemManualViewer({ data, context }: any) {
                    <h5 className="text-[11px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-3">
                       <Target size={16}/> Business Problem Analysis
                    </h5>
-                   <p className="text-xl font-medium text-slate-200 leading-relaxed italic border-l-2 border-white/10 pl-8">
+                   <p className="text-xl font-medium text-slate-200 leading-relaxed border-l-2 border-white/10 pl-8">
                       {data.business_value?.business_problem}
                    </p>
                 </div>
                 <div className="grid grid-cols-2 gap-8">
                    <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 shadow-inner">
                       <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">ROI_PROJECTION</h6>
-                      <p className="text-lg font-black text-white uppercase italic tracking-tighter">{data.business_value?.roi_projection}</p>
+                      <p className="text-lg font-black text-white uppercase tracking-tighter">{data.business_value?.roi_projection}</p>
                    </div>
                    <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 shadow-inner">
                       <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">KPI_ANCHORS</h6>
                       <div className="flex flex-wrap gap-2">
                         {data.business_value?.kpis?.map((k: string) => (
-                          <span key={k} className="text-[10px] font-black text-blue-400 uppercase italic">#{k}</span>
+                          <span key={k} className="text-[10px] font-black text-blue-400 uppercase">#{k}</span>
                         ))}
                       </div>
                    </div>
@@ -1390,7 +1390,7 @@ function SystemManualViewer({ data, context }: any) {
                            <User size={20} />
                         </div>
                         <div>
-                           <p className="text-sm font-black text-white uppercase italic">{b.who}</p>
+                           <p className="text-sm font-black text-white uppercase">{b.who}</p>
                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1 tracking-tight">{b.value}</p>
                         </div>
                      </div>
@@ -1405,7 +1405,7 @@ function SystemManualViewer({ data, context }: any) {
           <div className="flex items-center gap-6 border-l-8 border-emerald-600 pl-10">
              <Workflow size={40} className="text-emerald-500" />
              <div>
-                <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">02 // ARCHITECTURAL_BLUEPRINT</h3>
+                <h3 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">02 // ARCHITECTURAL_BLUEPRINT</h3>
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">Systems, Services & Physical Nodes</p>
              </div>
           </div>
@@ -1414,17 +1414,17 @@ function SystemManualViewer({ data, context }: any) {
                 <div className="bg-emerald-600/[0.03] p-10 rounded-[48px] border border-emerald-500/10 space-y-8 h-full">
                    <div className="space-y-2">
                       <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">OFFICIAL_IDENTIFIER</p>
-                      <h4 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none">{data.overview?.official_name}</h4>
+                      <h4 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{data.overview?.official_name}</h4>
                    </div>
                    <div className="space-y-2">
                       <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">RELEASE_SPEC</p>
-                      <p className="text-lg font-black text-emerald-400 uppercase italic tracking-tighter">{data.overview?.version}</p>
+                      <p className="text-lg font-black text-emerald-400 uppercase tracking-tighter">{data.overview?.version}</p>
                    </div>
                    <div className="pt-8 border-t border-white/5 space-y-4">
                       <h6 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                          <Lock size={12}/> SOURCE_CODE_METADATA
                       </h6>
-                      <p className="text-xs font-bold text-slate-400 italic leading-relaxed">{data.overview?.source_config}</p>
+                      <p className="text-xs font-bold text-slate-400 leading-relaxed">{data.overview?.source_config}</p>
                    </div>
                 </div>
              </div>
@@ -1441,7 +1441,7 @@ function SystemManualViewer({ data, context }: any) {
                                  <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                                     <Cpu size={14} />
                                  </div>
-                                 <span className="text-[10px] font-black text-white uppercase italic">{s.name}</span>
+                                 <span className="text-[10px] font-black text-white uppercase">{s.name}</span>
                               </div>
                               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{s.service_type}</span>
                            </div>
@@ -1459,7 +1459,7 @@ function SystemManualViewer({ data, context }: any) {
                                  <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                                     <Server size={14} />
                                  </div>
-                                 <span className="text-[10px] font-black text-white uppercase italic">{d.name}</span>
+                                 <span className="text-[10px] font-black text-white uppercase">{d.name}</span>
                               </div>
                               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{d.status}</span>
                            </div>
@@ -1476,7 +1476,7 @@ function SystemManualViewer({ data, context }: any) {
           <div className="flex items-center gap-6 border-l-8 border-amber-600 pl-10">
              <TrendingUp size={40} className="text-amber-500" />
              <div>
-                <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">03 // PERFORMANCE_BOUNDARIES</h3>
+                <h3 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">03 // PERFORMANCE_BOUNDARIES</h3>
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">SLOs, Capacity & Latency Controls</p>
              </div>
           </div>
@@ -1486,25 +1486,25 @@ function SystemManualViewer({ data, context }: any) {
                    <Shield size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">AVAILABILITY_TARGET</p>
-                <p className="text-4xl font-black text-white italic tracking-tighter">{data.performance?.availability_target}</p>
+                <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.availability_target}</p>
              </div>
              <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-6 opacity-5 text-amber-500 group-hover:scale-110 transition-transform">
                    <Clock size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">LATENCY_UPPER_BOUND</p>
-                <p className="text-4xl font-black text-white italic tracking-tighter">{data.performance?.latency_limits}</p>
+                <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.latency_limits}</p>
              </div>
              <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-6 opacity-5 text-amber-500 group-hover:scale-110 transition-transform">
                    <Zap size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">MAX_THROUGHPUT_CAP</p>
-                <p className="text-4xl font-black text-white italic tracking-tighter">{data.performance?.throughput_capacity}</p>
+                <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.throughput_capacity}</p>
              </div>
              <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl flex flex-col justify-center">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">CAPACITY_STRATEGY</p>
-                <p className="text-xs font-bold text-slate-400 italic leading-relaxed">{data.performance?.capacity_methodology}</p>
+                <p className="text-xs font-bold text-slate-400 leading-relaxed">{data.performance?.capacity_methodology}</p>
              </div>
           </div>
        </section>
@@ -1514,7 +1514,7 @@ function SystemManualViewer({ data, context }: any) {
           <div className="flex items-center gap-6 border-l-8 border-rose-600 pl-10">
              <Users size={40} className="text-rose-500" />
              <div>
-                <h3 className="text-4xl font-black uppercase italic tracking-tighter text-white leading-none">04 // OPERATIONAL_RELIAIBLITY</h3>
+                <h3 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">04 // OPERATIONAL_RELIAIBLITY</h3>
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">RACI, Failure Handling & Recovery Plan</p>
              </div>
           </div>
@@ -1523,11 +1523,11 @@ function SystemManualViewer({ data, context }: any) {
                 <div className="grid grid-cols-2 gap-8">
                    <div className="space-y-1">
                       <p className="text-[9px] font-black text-rose-500/50 uppercase tracking-widest">OWNER_ORGANIZATION</p>
-                      <p className="text-xl font-black text-white uppercase italic tracking-tighter">{data.operation?.owner_team}</p>
+                      <p className="text-xl font-black text-white uppercase tracking-tighter">{data.operation?.owner_team}</p>
                    </div>
                    <div className="space-y-1">
                       <p className="text-[9px] font-black text-rose-500/50 uppercase tracking-widest">TECHNICAL_DRI</p>
-                      <p className="text-xl font-black text-white uppercase italic tracking-tighter">{data.operation?.owner_individual}</p>
+                      <p className="text-xl font-black text-white uppercase tracking-tighter">{data.operation?.owner_individual}</p>
                    </div>
                 </div>
                 <div className="space-y-6">
@@ -1539,11 +1539,11 @@ function SystemManualViewer({ data, context }: any) {
                         <div key={fm.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-rose-600/10 transition-all">
                            <div className="flex items-center gap-3">
                               <AlertTriangle size={14} className="text-rose-500" />
-                              <span className="text-[10px] font-black text-white uppercase italic">{fm.title}</span>
+                              <span className="text-[10px] font-black text-white uppercase">{fm.title}</span>
                            </div>
                            <div className="flex items-center gap-4">
                               <span className="text-[8px] font-black text-slate-500 uppercase">SEV_{fm.severity}</span>
-                              <span className="px-2 py-0.5 rounded bg-rose-600 text-white text-[8px] font-black italic">RPN_{fm.rpn}</span>
+                              <span className="px-2 py-0.5 rounded bg-rose-600 text-white text-[8px] font-black">RPN_{fm.rpn}</span>
                            </div>
                         </div>
                       ))}
@@ -1557,12 +1557,12 @@ function SystemManualViewer({ data, context }: any) {
                 <div className="grid grid-cols-2 gap-8">
                    <div className="bg-emerald-600/5 p-8 rounded-[40px] border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">RECOVERY_TIME_OBJ (RTO)</p>
-                      <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{data.operation?.dr_strategy?.rto}</p>
+                      <p className="text-4xl font-black text-white tracking-tighter leading-none">{data.operation?.dr_strategy?.rto}</p>
                       <p className="text-[9px] font-bold text-slate-600 uppercase mt-4">MAX_ALLOWED_DOWNTIME</p>
                    </div>
                    <div className="bg-emerald-600/5 p-8 rounded-[40px] border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">RECOVERY_POINT_OBJ (RPO)</p>
-                      <p className="text-4xl font-black text-white italic tracking-tighter leading-none">{data.operation?.dr_strategy?.rpo}</p>
+                      <p className="text-4xl font-black text-white tracking-tighter leading-none">{data.operation?.dr_strategy?.rpo}</p>
                       <p className="text-[9px] font-bold text-slate-600 uppercase mt-4">MAX_ALLOWED_DATA_LOSS</p>
                    </div>
                 </div>
@@ -1574,7 +1574,7 @@ function SystemManualViewer({ data, context }: any) {
                       {data.operation?.raci?.map((r: any, i: number) => (
                         <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
                            <span className="text-[9px] font-black text-slate-500 uppercase">{r.role}</span>
-                           <span className="text-[10px] font-black text-white uppercase italic tracking-tighter">{r.DRI}</span>
+                           <span className="text-[10px] font-black text-white uppercase tracking-tighter">{r.DRI}</span>
                         </div>
                       ))}
                    </div>
@@ -1629,11 +1629,11 @@ function QAViewer({ entry }: any) {
                 <h4 className="text-[12px] font-black text-blue-500 uppercase tracking-[0.5em] mb-6 flex items-center gap-4">
                    <Info size={20}/> 00 // ORIGIN_INQUIRY
                 </h4>
-                <p className="text-2xl font-medium text-slate-200 leading-relaxed italic border-l-8 border-blue-600 pl-10 relative z-10">
+                <p className="text-2xl font-medium text-slate-200 leading-relaxed border-l-8 border-blue-600 pl-10 relative z-10">
                    {entry.question_context}
                 </p>
                 {entry.content && (
-                  <div className="mt-8 pt-8 border-t border-white/5 prose prose-invert max-w-none text-slate-400 text-sm italic font-mono relative z-10">
+                  <div className="mt-8 pt-8 border-t border-white/5 prose prose-invert max-w-none text-slate-400 text-sm font-mono relative z-10">
                      {entry.content}
                   </div>
                 )}
@@ -1673,7 +1673,7 @@ function QAViewer({ entry }: any) {
                    <textarea 
                      value={replyText} 
                      onChange={e => setReplyText(e.target.value)}
-                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white placeholder:text-slate-700 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all min-h-[60px] max-h-[200px] font-medium italic"
+                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white placeholder:text-slate-700 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all min-h-[60px] max-h-[200px] font-medium"
                      placeholder={activeReplyTo ? "Synchronize reply..." : "Inject new collaborative node..."}
                    />
                 </div>
@@ -1706,16 +1706,16 @@ function QANode({ qa, onReply }: any) {
           <div className="flex-1 space-y-3 pb-4">
              <div className="flex items-center justify-between bg-white/[0.02] px-6 py-2 rounded-xl border border-white/5">
                 <div className="flex items-center gap-4">
-                   <span className="text-[10px] font-black text-white uppercase italic tracking-tighter">{qa.author}</span>
+                   <span className="text-[10px] font-black text-white uppercase tracking-tighter">{qa.author}</span>
                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">{qa.author_team}</span>
-                   {qa.is_verified && <span className="text-[8px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded italic">VERIFIED_DRI</span>}
+                   {qa.is_verified && <span className="text-[8px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded">VERIFIED_DRI</span>}
                 </div>
                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{new Date(qa.created_at).toLocaleString()}</span>
              </div>
              <div className={`p-6 rounded-[32px] border border-white/5 shadow-xl relative group-hover:border-blue-500/30 transition-all ${
                qa.entry_type === 'Answer' ? 'bg-emerald-600/5' : 'bg-slate-900/50'
              }`}>
-                <p className="text-sm font-medium text-slate-200 leading-relaxed italic">{qa.content}</p>
+                <p className="text-sm font-medium text-slate-200 leading-relaxed">{qa.content}</p>
                 <button 
                   onClick={onReply}
                   className="absolute bottom-4 right-6 text-[9px] font-black text-slate-600 uppercase tracking-widest hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2"

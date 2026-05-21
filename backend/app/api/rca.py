@@ -155,14 +155,12 @@ async def delete_rca(rca_id: int, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return {"status": "success"}
 
-# --- Timeline Events ---
-
-@router.post("/{rca_id}/timeline")
+@router.post("/{rca_id}/timeline", response_model=schemas.RcaTimelineEventResponse)
 async def add_timeline_event(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.RcaTimelineEvent, data)
     clean_data["rca_id"] = rca_id
     if 'event_time' in clean_data and isinstance(clean_data['event_time'], str):
-        clean_data['event_time'] = datetime.fromisoformat(clean_data['event_time'].replace('Z', '+00:00'))
+        clean_data['event_time'] = parse_iso_date(clean_data['event_time'])
     
     event = models.RcaTimelineEvent(**clean_data)
     db.add(event)
@@ -172,7 +170,7 @@ async def add_timeline_event(rca_id: int, data: dict, db: AsyncSession = Depends
 
 # --- Mitigations ---
 
-@router.post("/{rca_id}/mitigations")
+@router.post("/{rca_id}/mitigations", response_model=schemas.RcaMitigationResponse)
 async def add_mitigation(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     clean_data = filter_valid_columns(models.RcaMitigation, data)
     clean_data["rca_id"] = rca_id
