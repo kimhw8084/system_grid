@@ -920,7 +920,7 @@ const DiagramBuilder = ({ data, onChange }: { data: any, onChange: (data: any) =
   )
 }
 
-const WorkbenchView = ({ project, portfolioMetrics, resourceHeatmap, onEdit }: any) => {
+const WorkbenchView = ({ project, portfolioMetrics, resourceHeatmap, onEdit, onUpdate }: any) => {
   const [roiCollapsed, setRoiCollapsed] = React.useState(false)
   const tasks = project?.tasks || []
   const stats = useMemo(() => {
@@ -1622,13 +1622,13 @@ export default function Projects() {
                             assets={devices || []}
                           />
                         ) : (
-                          <WorkbenchView 
-                            project={selectedProject} 
-                            portfolioMetrics={portfolioMetrics} 
+                          <WorkbenchView
+                            project={selectedProject}
+                            portfolioMetrics={portfolioMetrics}
                             resourceHeatmap={resourceHeatmap}
                             onEdit={() => setIsEditing(true)}
-                          />
-                        )}
+                            onUpdate={mutation.mutate}
+                          />                        )}
                      </motion.div>
                    )}
                    {activeTab === 'GANTT' && <motion.div key="gantt" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="h-full"><PrecisionGantt project={selectedProject} onUpdate={mutation.mutate} /></motion.div>}
