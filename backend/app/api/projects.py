@@ -81,14 +81,17 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
 
         for t_data in tasks_data:
             t_id = t_data.get("id")
+            clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
+            # Remove id and project_id from data to avoid multiple values
+            clean_task_data.pop("id", None)
+            clean_task_data.pop("project_id", None)
+            
             if t_id and t_id in existing_tasks:
                 task = existing_tasks[t_id]
-                clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
                 for k, v in clean_task_data.items():
-                    if k != "id": setattr(task, k, v)
+                    setattr(task, k, v)
             else:
                 # Create new task
-                clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
                 new_task = models.ProjectTask(**clean_task_data, project_id=project_id)
                 db.add(new_task)
         

@@ -394,21 +394,17 @@ const ProjectLedger = ({ project }: { project: any }) => {
 
 const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: any) => void }) => {
   const [tasks, setTasks] = useState<any[]>(project.tasks || [])
-  const [zoomLevel, setZoomLevel] = useState(30)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [zoomLevel, setZoomLevel] = useState(60) // Increased default zoom for better resolution
   const timelineRef = useRef<HTMLDivElement>(null)
-  const sidebarRef = useRef<HTMLDivElement>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
   const [dependencySourceId, setDependencySourceId] = useState<number | null>(null)
   const [showBaseline, setShowBaseline] = useState(false)
-  const [showStats, setShowStats] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(240)
+  const [showExecutiveChart, setShowExecutiveChart] = useState(false)
 
-  const ROW_HEIGHT = 48
+  const ROW_HEIGHT = 32 // Smaller row height
   const HEADER_HEIGHT = 44
 
-  // Sync internal state with props when project changes
   useEffect(() => {
     if (JSON.stringify(project.tasks) !== JSON.stringify(tasks)) {
       setTasks(project.tasks || [])
@@ -421,7 +417,6 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
       if (next.has(id)) next.delete(id)
       else next.add(id)
       setSelectedTaskIds(next)
-      setSelectedTaskId(null)
     } else {
       setSelectedTaskIds(new Set([id]))
       setSelectedTaskId(id)
@@ -451,76 +446,8 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     })
 
     setTasks(updatedTasks)
-    
-    if (isFinal) {
-      onUpdate({ ...project, tasks: updatedTasks })
-    }
+    if (isFinal) onUpdate({ ...project, tasks: updatedTasks })
   }
-
-  const criticalPathIds = useMemo(() => {
-    if (tasks.length === 0) return new Set()
-    const memo = new Map<number, number>()
-    const visiting = new Set<number>()
-    const getTaskDuration = (t: any) => Math.max(0, differenceInDays(new Date(t.end_date), new Date(t.start_date)))
-    
-    const findLongestPath = (taskId: number): number => {
-      if (memo.has(taskId)) return memo.get(taskId)!
-      if (visiting.has(taskId)) return -Infinity // Cycle detected
-      
-      visiting.add(taskId)
-      const task = tasks.find(t => t.id === taskId)
-      if (!task) { visiting.delete(taskId); return 0; }
-      
-      const dependents = tasks.filter(t => (t.dependencies_json || []).includes(taskId))
-      let maxSubPath = 0
-      for (const dep of dependents) {
-        maxSubPath = Math.max(maxSubPath, findLongestPath(dep.id))
-      }
-      
-      const result = getTaskDuration(task) + (maxSubPath === -Infinity ? 0 : maxSubPath)
-      memo.set(taskId, result)
-      visiting.delete(taskId)
-      return result
-    }
-
-    const pathValues = tasks.map(t => ({ id: t.id, length: findLongestPath(t.id) }))
-    const maxLength = Math.max(...pathValues.map(p => p.length), 0)
-    const criticalSet = new Set<number>()
-    
-    if (maxLength <= 0) return criticalSet
-
-    const isCriticalMemo = new Map<string, boolean>()
-    const isCritical = (taskId: number, currentLength: number): boolean => {
-      const key = `${taskId}-${currentLength.toFixed(2)}`
-      if (isCriticalMemo.has(key)) return isCriticalMemo.get(key)!
-      
-      const task = tasks.find(t => t.id === taskId)
-      if (!task) return false
-      
-      const duration = getTaskDuration(task)
-      const taskLongestPath = findLongestPath(taskId)
-      
-      if (Math.abs(currentLength - taskLongestPath) < 0.1) {
-        criticalSet.add(taskId)
-        const dependents = tasks.filter(t => (t.dependencies_json || []).includes(taskId))
-        for (const dep of dependents) {
-          isCritical(dep.id, currentLength - duration)
-        }
-        isCriticalMemo.set(key, true)
-        return true
-      }
-      
-      isCriticalMemo.set(key, false)
-      return false
-    }
-
-    tasks.forEach(t => { 
-      if (Math.abs(findLongestPath(t.id) - maxLength) < 0.1) {
-        isCritical(t.id, maxLength)
-      }
-    })
-    return criticalSet
-  }, [tasks])
 
   const startDate = useMemo(() => {
     if (tasks.length === 0) return startOfMonth(new Date())
@@ -537,11 +464,7 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
   }, [tasks])
 
   const days = useMemo(() => {
-    try { 
-      const interval = eachDayOfInterval({ start: startDate, end: endDate })
-      // Cap at reasonable limits to prevent infinite rendering
-      return interval.slice(0, 2000) 
-    }
+    try { return eachDayOfInterval({ start: startDate, end: endDate }).slice(0, 2000) }
     catch (e) { return [new Date()] }
   }, [startDate, endDate])
 
@@ -570,22 +493,15 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     let updatedTask = { ...task }
     if (type === 'start') {
       const newStart = addDays(new Date(task.start_date), daysMoved)
-      if (newStart < new Date(task.end_date)) {
-        updatedTask.start_date = newStart.toISOString()
-      }
+      if (newStart < new Date(task.end_date)) updatedTask.start_date = newStart.toISOString()
     } else {
       const newEnd = addDays(new Date(task.end_date), daysMoved)
-      if (newEnd > new Date(task.start_date)) {
-        updatedTask.end_date = newEnd.toISOString()
-      }
+      if (newEnd > new Date(task.start_date)) updatedTask.end_date = newEnd.toISOString()
     }
 
     const updatedTasks = tasks.map(t => t.id === id ? updatedTask : t)
     setTasks(updatedTasks)
-
-    if (isFinal) {
-      onUpdate({ ...project, tasks: updatedTasks })
-    }
+    if (isFinal) onUpdate({ ...project, tasks: updatedTasks })
   }
 
   const toggleDependency = (targetId: number) => {
@@ -599,106 +515,21 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     handleTaskUpdate(dependencySourceId, { dependencies_json: deps })
   }
 
-  const dependencyLines = useMemo(() => {
-    const taskMap = new Map(tasks.map(t => [t.id, t]))
-    const taskIndices = new Map(tasks.map((t, i) => [t.id, i]))
-
-    return tasks.flatMap(task => (task.dependencies_json || []).map(depId => {
-      const fromTask = taskMap.get(depId)
-      if (!fromTask) return null
-      const fromIdx = taskIndices.get(depId) ?? -1
-      const toIdx = taskIndices.get(task.id) ?? -1
-      if (fromIdx === -1 || toIdx === -1) return null
-      
-      const x1 = getPosFromDate(fromTask.end_date)
-      const y1 = fromIdx * ROW_HEIGHT + (ROW_HEIGHT / 2)
-      const x2 = getPosFromDate(task.start_date)
-      const y2 = toIdx * ROW_HEIGHT + (ROW_HEIGHT / 2)
-      const isCritical = criticalPathIds.has(task.id) && criticalPathIds.has(fromTask.id)
-      
-      return (
-        <g key={`${task.id}-${depId}`}>
-           <path 
-             d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`} 
-             stroke={isCritical ? '#f43f5e' : '#3b82f6'} 
-             strokeWidth={isCritical ? "2" : "1"} 
-             fill="none" 
-             opacity={isCritical ? 1 : 0.3} 
-             strokeDasharray={isCritical ? "0" : "4,2"} 
-           />
-           <circle cx={x2} cy={y2} r="3" fill={isCritical ? '#f43f5e' : '#3b82f6'} shadow="0 0 10px rgba(0,0,0,0.5)" />
-        </g>
-      )
-    })).filter(Boolean)
-  }, [tasks, zoomLevel, criticalPathIds])
-
-  const stats = useMemo(() => {
-    const total = tasks.length
-    if (total === 0) return { progress: 0, blocked: 0, health: 'Stable' }
-    const avgProgress = Math.round(tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / total)
-    const blockedCount = tasks.filter(t => t.status === 'Blocked').length
-    const criticalTasks = tasks.filter(t => criticalPathIds.has(t.id))
-    const criticalProgress = criticalTasks.length > 0 ? Math.round(criticalTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / criticalTasks.length) : 0
-    return { progress: avgProgress, blocked: blockedCount, criticalProgress, health: blockedCount > 0 ? 'At Risk' : 'Healthy' }
-  }, [tasks, criticalPathIds])
-
-  const onReorderTasks = (newOrder: any[]) => {
-    setTasks(newOrder)
-    onUpdate({ ...project, tasks: newOrder })
-  }
-
   return (
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
-       {/* Executive HUD Overlay */}
-       <AnimatePresence>
-          {showStats && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-[#12141f] border-b border-white/10 overflow-hidden shadow-2xl z-50">
-               <div className="p-6 grid grid-cols-4 gap-6">
-                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
-                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Portfolio Velocity</p>
-                        <Zap size={14} className="text-blue-400" />
-                     </div>
-                     <div className="flex items-end gap-2"><span className="text-2xl font-black text-white">{stats.progress}%</span><span className="text-[10px] font-bold text-emerald-400 mb-1">COMPLETED</span></div>
-                     <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" style={{ width: `${stats.progress}%` }} /></div>
-                  </div>
-                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
-                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Critical Path Health</p>
-                        <Target size={14} className="text-rose-400" />
-                     </div>
-                     <div className="flex items-end gap-2"><span className="text-2xl font-black text-rose-400">{stats.criticalProgress}%</span><span className="text-[10px] font-bold text-slate-600 mb-1">OF CRITICAL VECTOR</span></div>
-                     <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${stats.criticalProgress}%` }} /></div>
-                  </div>
-                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
-                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Blocked Entities</p>
-                        <AlertTriangle size={14} className="text-amber-400" />
-                     </div>
-                     <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.blocked > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{stats.blocked}</span><span className="text-[10px] font-bold text-slate-600 mb-1">ACTIVE RISKS</span></div>
-                     <div className="flex gap-1.5 mt-3">{(Array(8).fill(0)).map((_, i) => <div key={i} className={`h-1.5 flex-1 rounded-full ${i < stats.blocked ? 'bg-rose-500' : 'bg-white/5'}`} />)}</div>
-                  </div>
-                  <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
-                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Vector Integrity</p>
-                        <ShieldCheck size={14} className="text-emerald-400" />
-                     </div>
-                     <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.health === 'Healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>{stats.health}</span></div>
-                     <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.1em] mt-3">Operational bounds are within nominal range.</p>
-                  </div>
-               </div>
-            </motion.div>
-          )}
-       </AnimatePresence>
-
        {/* Toolbar */}
-       <div className="h-11 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] backdrop-blur-xl z-40">
+       <div className="h-11 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] z-40">
           <div className="flex items-center gap-6">
-             <button onClick={() => setShowStats(!showStats)} className={`p-1.5 rounded-lg transition-all border ${showStats ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/30' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white hover:bg-white/10'}`}><BarChart3 size={16}/></button>
+             <button 
+               onClick={() => setShowExecutiveChart(!showExecutiveChart)}
+               className={`p-1.5 rounded-lg transition-all border ${showExecutiveChart ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}
+             >
+                <BarChart3 size={16}/>
+             </button>
              <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
+                <button onClick={() => setZoomLevel(Math.max(20, zoomLevel - 10))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
                 <div className="w-px h-3 bg-white/10 mx-1" />
-                <button onClick={() => setZoomLevel(Math.min(100, zoomLevel + 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
+                <button onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
                 <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel}PX/D</span>
              </div>
              {dependencySourceId && (
@@ -708,16 +539,9 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                   <button onClick={() => setDependencySourceId(null)} className="ml-2 text-slate-500 hover:text-white transition-colors"><X size={12}/></button>
                </div>
              )}
-             {selectedTaskIds.size > 1 && (
-               <div className="flex items-center gap-3 px-3 py-1.5 bg-amber-600/10 border border-amber-500/20 rounded-lg">
-                  <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest">{selectedTaskIds.size} NODES SELECTED</span>
-                  <button onClick={() => setSelectedTaskIds(new Set())} className="ml-2 text-slate-500 hover:text-white"><X size={12}/></button>
-               </div>
-             )}
           </div>
           <div className="flex items-center gap-4">
-             <button onClick={() => setShowBaseline(!showBaseline)} className={`px-4 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400 shadow-[0_0_15px_rgba(217,119,6,0.2)]' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'}`}>{showBaseline ? 'Hide Baseline' : 'Show Baseline'}</button>
-             <div className="h-6 w-px bg-white/10 mx-1" />
+             <button onClick={() => setShowBaseline(!showBaseline)} className={`px-4 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}>{showBaseline ? 'Hide Baseline' : 'Show Baseline'}</button>
              <button 
                onClick={() => {
                  const name = prompt('NEW MILESTONE IDENTIFIER')
@@ -727,42 +551,38 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                  setTasks(updated)
                  onUpdate({ ...project, tasks: updated })
                }}
-               className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 active:scale-95"
+               className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
              ><Plus size={14}/> Add Milestone</button>
           </div>
        </div>
 
        <div className="flex-1 flex overflow-hidden relative">
-          {/* Frozen Sidebar with Reordering */}
-          <div style={{ width: sidebarWidth }} className="flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-[10px_0_30px_rgba(0,0,0,0.3)]">
+          {/* Engineering Vector Stack */}
+          <div className="w-[240px] flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-2xl">
              <div className="h-11 border-b border-white/10 flex items-center px-5 shrink-0 bg-[#0a0c14]/80">
-                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Engineering Vector Stack</span>
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Vector Stack</span>
              </div>
-             <Reorder.Group axis="y" values={tasks} onReorder={onReorderTasks} className="flex-1 overflow-y-hidden custom-scrollbar">
-                {tasks.map((task, idx) => (
+             <Reorder.Group axis="y" values={tasks} onReorder={(newOrder) => { setTasks(newOrder); onUpdate({ ...project, tasks: newOrder }); }} className="flex-1 overflow-y-auto no-scrollbar">
+                {tasks.map((task) => (
                   <Reorder.Item 
                     key={task.id} 
                     value={task}
                     onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-                    className={`h-[48px] flex items-center px-5 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
+                    className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
                   >
-                     <div className={`w-2 h-2 rounded-full mr-4 shrink-0 shadow-lg ${
-                       task.status === 'Completed' ? 'bg-emerald-500 shadow-emerald-500/20' : 
-                       task.status === 'Blocked' ? 'bg-rose-500 shadow-rose-500/20 animate-pulse' : 
-                       'bg-blue-500 shadow-blue-500/20'
+                     <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${
+                       task.status === 'Completed' ? 'bg-emerald-500' : 
+                       task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'
                      }`} />
-                     <div className="flex-1 min-w-0">
-                        <p className={`text-[11px] font-black uppercase truncate tracking-tight transition-all ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{task.name}</p>
-                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">{task.status} • {task.progress}%</p>
-                     </div>
-                     <GripVertical size={14} className="text-slate-800 group-hover:text-slate-600 transition-colors ml-2" />
+                     <p className={`text-[10px] font-black uppercase truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{task.name}</p>
+                     <GripVertical size={12} className="text-slate-800 group-hover:text-slate-600 ml-2" />
                   </Reorder.Item>
                 ))}
              </Reorder.Group>
           </div>
 
           {/* Timeline View */}
-          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]" onScroll={(e: any) => { if (sidebarRef.current) sidebarRef.current.scrollTop = e.target.scrollTop; }}>
+          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]">
              <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
                 {days.map((day, i) => {
                   const isFirstOfMonth = format(day, 'd') === '1'
@@ -770,47 +590,35 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                   return (
                     <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors ${isToday ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
                        <span className={`text-[8px] font-black uppercase tracking-tighter ${isFirstOfMonth ? 'text-blue-400' : 'text-slate-600'}`}>{format(day, 'MMM')}</span>
-                       <span className={`text-[11px] font-black ${isToday ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]' : isFirstOfMonth ? 'text-blue-200' : 'text-slate-400'}`}>{format(day, 'd')}</span>
+                       <span className={`text-[11px] font-black ${isToday ? 'text-blue-400' : isFirstOfMonth ? 'text-blue-200' : 'text-slate-400'}`}>{format(day, 'd')}</span>
                     </div>
                   )
                 })}
              </div>
 
              <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, minHeight: '100%' }}>
-                {/* Grid Lines */}
                 <div className="absolute inset-0 pointer-events-none opacity-20">
                    {days.map((_, i) => (
                      <div key={i} className="absolute top-0 bottom-0 border-r border-white/5" style={{ left: i * zoomLevel, width: zoomLevel }} />
                    ))}
                 </div>
 
-                {/* Dependency Lines */}
-                <svg className="absolute inset-0 pointer-events-none z-10">{dependencyLines}</svg>
-
-                {/* Today Marker Line */}
-                <div className="absolute top-0 bottom-0 w-[2px] bg-blue-500/50 z-20 pointer-events-none" style={{ left: getPosFromDate(new Date()) }}>
-                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] border-2 border-[#0a0c14]" />
-                </div>
-
                 {tasks.map((task, idx) => {
                   const left = getPosFromDate(task.start_date)
                   const width = Math.max(zoomLevel, getPosFromDate(task.end_date) - left)
-                  const isCritical = criticalPathIds.has(task.id)
                   const baseline = task.metadata_json?.baseline
 
                   return (
-                    <div key={task.id} className="h-[48px] relative group/row">
+                    <div key={task.id} className="h-[32px] relative group/row">
                        <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
                        
-                       {/* Baseline Visualization */}
                        {showBaseline && baseline && (
                          <div 
-                           className="absolute h-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[34px] opacity-60 pointer-events-none" 
+                           className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" 
                            style={{ left: getPosFromDate(baseline.start), width: Math.max(10, getPosFromDate(baseline.end) - getPosFromDate(baseline.start)) }} 
                          />
                        )}
 
-                       {/* Information-Rich Task Bar */}
                        <motion.div
                          layout
                          drag="x"
@@ -818,338 +626,470 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                          onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
                          onDragEnd={() => handleTaskMove(task.id, 0, true)}
                          onClick={(e) => dependencySourceId ? toggleDependency(task.id) : handleSelectTask(task.id, e.shiftKey)}
-                         className={`absolute h-8 top-2.5 rounded-xl flex items-center px-4 gap-3 border shadow-2xl z-20 group/bar transition-all ${
-                           selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-4 ring-offset-[#0b0c14] z-40' : ''
-                         } ${
-                           isCritical ? 'border-rose-500/60 shadow-rose-900/20 bg-[#1a1012]' : 'border-blue-500/40 shadow-blue-900/10 bg-[#0d1425]'
-                         } ${
-                           dependencySourceId && dependencySourceId !== task.id ? 'cursor-pointer hover:scale-[1.02] hover:border-blue-400' : 'cursor-grab active:cursor-grabbing'
+                         className={`absolute h-5 top-1.5 rounded-full flex items-center px-3 gap-2 border shadow-lg z-20 group/bar transition-all ${
+                           selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''
                          } ${
                            task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' :
-                           task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : ''
+                           task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 'border-blue-500/40 bg-[#0d1425]'
                          }`}
                          style={{ left, width }}
+                         title={`${task.name} (${task.progress}%) - ${task.status}\n${format(new Date(task.start_date), 'MMM d')} - ${format(new Date(task.end_date), 'MMM d')}`}
                        >
-                          {/* Rich Progress Gradient Background */}
-                          <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-                             <div 
-                               className={`h-full opacity-20 transition-all duration-500 ${
-                                 task.status === 'Completed' ? 'bg-emerald-500' : 
-                                 task.status === 'Blocked' ? 'bg-rose-500' : 
-                                 isCritical ? 'bg-rose-600' : 'bg-blue-600'
-                               }`} 
-                               style={{ width: `${task.progress}%` }} 
-                             />
-                             {/* Subtle scanline effect for progress bar */}
-                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent w-20 animate-scanline" style={{ left: `${task.progress - 10}%` }} />
-                          </div>
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
+                            task.status === 'Completed' ? 'bg-emerald-500' : 
+                            task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'
+                          }`} />
+                          
+                          <span className={`text-[9px] font-black uppercase truncate tracking-tight flex-1 ${
+                            task.status === 'Completed' ? 'text-emerald-400' : 
+                            task.status === 'Blocked' ? 'text-rose-400' : 'text-blue-300'
+                          }`}>{task.name}</span>
+                          
+                          <span className="text-[8px] font-black text-white/40 shrink-0">{task.progress}%</span>
 
-                          {/* Resize Handles (Invisible but larger hit area) */}
-                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} className="absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-50 rounded-l-xl hover:bg-white/10" />
-                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} className="absolute -right-1 top-0 bottom-0 w-3 cursor-ew-resize z-50 rounded-r-xl hover:bg-white/10" />
-
-                          {/* Content Overlay */}
-                          <div className="relative z-10 flex items-center gap-3 w-full overflow-hidden">
-                             <span className={`text-[11px] font-black uppercase truncate tracking-tight ${
-                               task.status === 'Completed' ? 'text-emerald-400' : 
-                               task.status === 'Blocked' ? 'text-rose-400' : 
-                               isCritical ? 'text-rose-300' : 'text-blue-300'
-                             }`}>{task.name}</span>
-                             
-                             <div className="ml-auto flex items-center gap-2 shrink-0">
-                                <span className="text-[10px] font-black text-white/40">{task.progress}%</span>
-                                {isCritical && <AlertTriangle size={12} className="text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)]" />}
-                             </div>
-                          </div>
-
-                          {/* Connection Socket */}
-                          <div 
-                            onClick={(e) => { e.stopPropagation(); setDependencySourceId(task.id); }}
-                            className={`absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-[#0b0c14] z-40 transition-all cursor-crosshair group-hover/bar:scale-110 ${
-                              dependencySourceId === task.id ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,1)] scale-125' : 'bg-slate-700 opacity-0 group-hover/bar:opacity-100 hover:bg-blue-400'
-                            }`}
-                          />
+                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-full hover:bg-white/10" />
+                          <motion.div drag="x" dragMomentum={false} onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-full hover:bg-white/10" />
                        </motion.div>
                     </div>
                   )
                 })}
              </div>
           </div>
+       </div>
 
-          {/* High-Fidelity Task Detail Side Panel */}
-          <AnimatePresence>
-             {selectedTaskId && (
-               <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute right-0 top-0 bottom-0 w-[440px] bg-[#0d0f17] border-l border-white/10 shadow-[-30px_0_60px_rgba(0,0,0,0.7)] z-[60] flex flex-col">
+       {/* Comprehensive Task Detail Modal */}
+       <AnimatePresence>
+          {selectedTaskId && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
+               <motion.div 
+                 initial={{ scale: 0.95, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 1 }}
+                 exit={{ scale: 0.95, opacity: 0 }}
+                 className="bg-[#0d0f17] w-[900px] h-[85vh] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+               >
                   {(() => {
                     const task = tasks.find(t => t.id === selectedTaskId)
                     if (!task) return null
                     return (
                       <>
-                        {/* Panel Header */}
-                        <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 backdrop-blur-xl relative">
-                           <div className="flex items-center justify-between mb-6">
-                              <div className="flex items-center gap-3">
-                                 <div className={`w-3 h-3 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Milestone Vector Detail</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                 <button onClick={() => setDependencySourceId(task.id)} className={`p-2 rounded-lg transition-all border ${dependencySourceId === task.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-white/5 text-slate-500 border-transparent'}`} title="Bind Dependencies"><Link2 size={16}/></button>
-                                 <button onClick={() => { if(confirm('PERMANENTLY DECOMMISSION THIS VECTOR?')) { 
-                                   const updated = tasks.filter(t => t.id !== task.id).map(t => ({
-                                     ...t,
-                                     dependencies_json: (t.dependencies_json || []).filter((d: number) => d !== task.id)
-                                   })); 
-                                   setTasks(updated); 
-                                   onUpdate({ ...project, tasks: updated }); 
-                                   setSelectedTaskId(null); 
-                                 } }} className="p-2 rounded-lg hover:bg-rose-600/20 text-slate-500 hover:text-rose-500 border border-transparent transition-all"><Trash2 size={16}/></button>
-                                 <button onClick={() => setSelectedTaskId(null)} className="p-2 rounded-lg hover:bg-white/10 text-slate-500 border border-transparent transition-all"><X size={18}/></button>
+                        <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 flex items-center justify-between">
+                           <div className="flex items-center gap-4">
+                              <div className={`w-4 h-4 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                              <div>
+                                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{task.name}</h2>
+                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Strategic Vector Milestone</p>
                               </div>
                            </div>
-                           <input 
-                             value={task.name} 
-                             onChange={e => handleTaskUpdate(task.id, { name: e.target.value.toUpperCase() })}
-                             className="w-full bg-transparent text-2xl font-black text-white uppercase tracking-tighter outline-none focus:text-blue-400 transition-all border-b border-transparent focus:border-blue-500/30 pb-2"
-                             placeholder="TASK IDENTIFIER..."
-                           />
-                           <div className="flex items-center gap-4 mt-6">
-                              <div className="flex-1">
-                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Strategic State</label>
-                                 <select 
-                                   value={task.status} 
-                                   onChange={e => handleTaskUpdate(task.id, { status: e.target.value })}
-                                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-black text-white uppercase outline-none focus:border-blue-500 transition-all"
-                                 >
-                                    {['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                                 </select>
-                              </div>
-                              <div className="flex-1">
-                                 <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Maturity %</label>
-                                 <div className="flex items-center gap-3">
-                                    <input type="range" value={task.progress} onChange={e => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })} className="flex-1 h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500" />
-                                    <span className="text-[12px] font-black text-blue-400 w-10 text-right">{task.progress}%</span>
-                                 </div>
-                              </div>
+                           <div className="flex items-center gap-3">
+                              <button onClick={() => setSelectedTaskId(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
                            </div>
                         </div>
 
-                        {/* Panel Body */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-10">
-                           {/* Temporal Configuration */}
-                           <section className="space-y-4">
-                              <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Temporal Configuration</h4>
-                              <div className="grid grid-cols-2 gap-6">
-                                 <div>
-                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Initialization</label>
-                                    <div className="relative">
-                                       <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                       <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                 </div>
-                                 <div>
-                                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 block">Termination</label>
-                                    <div className="relative">
-                                       <Calendar size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                       <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-[11px] font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                 </div>
-                              </div>
-                           </section>
-
-                           {/* Strategic Documentation */}
-                           <section className="space-y-4">
-                              <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><FileText size={14}/> Technical Objectives</h4>
-                              <textarea 
-                                value={task.description || ''} 
-                                onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} 
-                                className="w-full h-40 bg-black/40 border border-white/10 rounded-xl p-4 text-[12px] font-medium text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed" 
-                                placeholder="DESCRIBE THE CORE MISSION, TECHNICAL CONSTRAINTS, AND SUCCESS CRITERIA FOR THIS VECTOR..." 
-                              />
-                           </section>
-
-                           {/* Dependency Graph */}
-                           <section className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                 <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14}/> Vector Dependencies</h4>
-                                 <span className="px-2 py-0.5 bg-white/5 rounded text-[8px] font-bold text-slate-600 uppercase">{(task.dependencies_json || []).length} Linked</span>
-                              </div>
-                              <div className="space-y-2">
-                                 {(task.dependencies_json || []).map((depId: number) => {
-                                   const dep = tasks.find(t => t.id === depId)
-                                   return (
-                                     <div key={depId} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-lg group hover:border-amber-500/30 transition-all">
-                                        <div className="flex items-center gap-3">
-                                           <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
-                                           <span className="text-[10px] font-black text-slate-300 uppercase truncate">{dep?.name || 'TERMINATED VECTOR'}</span>
-                                        </div>
-                                        <button onClick={() => toggleDependency(depId)} className="text-slate-600 hover:text-rose-500 transition-colors"><X size={14}/></button>
-                                     </div>
-                                   )
-                                 })}
-                                 {(task.dependencies_json || []).length === 0 && (
-                                   <div className="py-8 text-center border border-dashed border-white/10 rounded-lg">
-                                      <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.2em]">No Incoming Dependency Vectors</p>
-                                   </div>
-                                 )}
-                                 <button onClick={() => setDependencySourceId(task.id)} className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[9px] font-black text-slate-500 uppercase hover:text-blue-400 hover:border-blue-500/30 transition-all flex items-center justify-center gap-3 mt-4 group">
-                                    <Plus size={14} className="group-hover:rotate-90 transition-transform" /> Bind New Dependency Node
-                                 </button>
-                              </div>
-                           </section>
-                           
-                           {/* Activity/History Log */}
-                           <section className="space-y-4">
-                              <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><History size={14}/> Vector Evolution History</h4>
-                              <div className="space-y-4">
-                                 {(task.metadata_json?.history || []).map((entry: any, i: number) => (
-                                    <div key={i} className="pl-4 border-l-2 border-white/5 relative">
-                                       <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-slate-800 border border-white/10" />
-                                       <div className="flex items-center justify-between mb-1">
-                                          <span className="text-[9px] font-black text-slate-500 uppercase">{entry.author || 'SYSTEM'}</span>
-                                          <span className="text-[8px] font-bold text-slate-700">{format(new Date(entry.timestamp), 'MMM d, HH:mm')}</span>
-                                       </div>
-                                       <p className="text-[10px] font-bold text-slate-400 leading-tight">"{entry.message}"</p>
-                                    </div>
-                                 ))}
-                                 <div className="relative">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-10">
+                           <div className="grid grid-cols-3 gap-10">
+                              <div className="col-span-2 space-y-10">
+                                 <section className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14}/> Technical Mission</h4>
                                     <textarea 
-                                       className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 resize-none h-20"
-                                       placeholder="RECORD PROGRESS UPDATE..."
-                                       onKeyDown={(e) => {
-                                          if (e.key === 'Enter' && !e.shiftKey) {
-                                             e.preventDefault();
-                                             const msg = e.currentTarget.value.trim();
-                                             if (!msg) return;
-                                             const history = task.metadata_json?.history || [];
-                                             handleTaskUpdate(task.id, { 
-                                                metadata_json: { 
-                                                   ...task.metadata_json, 
-                                                   history: [...history, { author: 'ENGINEER', message: msg, timestamp: new Date().toISOString() }] 
-                                                } 
-                                             });
-                                             e.currentTarget.value = '';
-                                          }
-                                       }}
+                                      value={task.description || ''} 
+                                      onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} 
+                                      className="w-full h-48 bg-black/40 border border-white/10 rounded-xl p-5 text-sm font-medium text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" 
+                                      placeholder="DEFINE THE CORE OBJECTIVES AND CONSTRAINTS..." 
                                     />
-                                    <div className="absolute bottom-2 right-2 text-[8px] font-black text-slate-700 uppercase">Press Enter to Sync</div>
+                                 </section>
+
+                                 <div className="grid grid-cols-2 gap-8">
+                                    <section className="space-y-4">
+                                       <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Timeline Parameters</h4>
+                                       <div className="space-y-4">
+                                          <div>
+                                             <label className="text-[8px] font-black text-slate-600 uppercase mb-1 block">Vector Initialization</label>
+                                             <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                          </div>
+                                          <div>
+                                             <label className="text-[8px] font-black text-slate-600 uppercase mb-1 block">Vector Termination</label>
+                                             <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                          </div>
+                                       </div>
+                                    </section>
+                                    <section className="space-y-4">
+                                       <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Shield size={14}/> Strategic State</h4>
+                                       <div className="space-y-4">
+                                          <div>
+                                             <label className="text-[8px] font-black text-slate-600 uppercase mb-1 block">Status</label>
+                                             <select value={task.status} onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-black text-white uppercase outline-none focus:border-blue-500">
+                                                {['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                                             </select>
+                                          </div>
+                                          <div>
+                                             <label className="text-[8px] font-black text-slate-600 uppercase mb-1 block">Maturity ({task.progress}%)</label>
+                                             <input type="range" value={task.progress} onChange={e => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })} className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500" />
+                                          </div>
+                                       </div>
+                                    </section>
                                  </div>
                               </div>
-                           </section>
+
+                              <div className="space-y-10">
+                                 <section className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14}/> Dependencies</h4>
+                                    <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                       {(task.dependencies_json || []).map((depId: number) => (
+                                          <div key={depId} className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-lg group">
+                                             <span className="text-[10px] font-black text-slate-400 uppercase truncate">{tasks.find(t => t.id === depId)?.name || 'UNKNOWN VECTOR'}</span>
+                                             <button onClick={() => toggleDependency(depId)} className="text-slate-600 hover:text-rose-500 transition-colors"><X size={14}/></button>
+                                          </div>
+                                       ))}
+                                       <button onClick={() => { setDependencySourceId(task.id); setSelectedTaskId(null); }} className="w-full py-2 border border-dashed border-white/10 rounded-lg text-[8px] font-black text-slate-600 uppercase hover:text-blue-500 transition-all">Bind Dependency</button>
+                                    </div>
+                                 </section>
+
+                                 <section className="space-y-4">
+                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><History size={14}/> Evolution Log</h4>
+                                    <div className="space-y-3">
+                                       {(task.metadata_json?.history || []).slice(-3).map((entry: any, i: number) => (
+                                          <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/5">
+                                             <p className="text-[10px] font-bold text-slate-400 leading-tight">"{entry.message}"</p>
+                                             <p className="text-[7px] font-black text-slate-600 uppercase mt-2">{format(new Date(entry.timestamp), 'MMM d, HH:mm')}</p>
+                                          </div>
+                                       ))}
+                                       <input 
+                                         className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50"
+                                         placeholder="APPEND LOG ENTRY..."
+                                         onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                               const msg = e.currentTarget.value.trim();
+                                               if (!msg) return;
+                                               const history = task.metadata_json?.history || [];
+                                               handleTaskUpdate(task.id, { 
+                                                  metadata_json: { ...task.metadata_json, history: [...history, { author: 'ENGINEER', message: msg, timestamp: new Date().toISOString() }] } 
+                                               });
+                                               e.currentTarget.value = '';
+                                            }
+                                         }}
+                                       />
+                                    </div>
+                                 </section>
+                              </div>
+                           </div>
                         </div>
 
-                        {/* Panel Footer */}
-                        <div className="p-8 bg-[#0a0c14] border-t border-white/10 mt-auto">
-                           <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, baseline: { start: task.start_date, end: task.end_date } } })} className="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black uppercase tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-amber-900/20 active:scale-[0.98]">
-                              <Camera size={18}/> Snapshot Current Baseline
+                        <div className="p-8 border-t border-white/10 bg-[#0a0c14] flex gap-4">
+                           <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, baseline: { start: task.start_date, end: task.end_date } } })} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20">
+                              <Camera size={16}/> Snapshot Baseline
+                           </button>
+                           <button onClick={() => { if(confirm('DECOMMISSION THIS VECTOR?')) { onUpdate({ ...project, tasks: tasks.filter(t => t.id !== task.id) }); setSelectedTaskId(null); } }} className="px-6 py-3 bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all">
+                              Decommission
                            </button>
                         </div>
                       </>
                     )
                   })()}
                </motion.div>
+            </div>
+          )}
+       </AnimatePresence>
+    </div>
+  )
+}
+
+
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
+
+const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
+  const data = useMemo(() => {
+    if (tasks.length === 0) return []
+    const start = startOfMonth(new Date(Math.min(...tasks.map(t => new Date(t.start_date).getTime()))))
+    const end = endOfMonth(new Date(Math.max(...tasks.map(t => new Date(t.end_date).getTime()))))
+    const interval = eachDayOfInterval({ start, end })
+    
+    return interval.filter((_, i) => i % 7 === 0).map(date => {
+      const scheduledTasks = tasks.filter(t => new Date(t.end_date) <= date).length
+      const scheduledPercent = Math.round((scheduledTasks / tasks.length) * 100)
+      
+      const actualProgress = Math.round(tasks.reduce((acc, t) => {
+        if (new Date(t.start_date) > date) return acc
+        const taskDuration = differenceInDays(new Date(t.end_date), new Date(t.start_date)) || 1
+        const elapsed = Math.max(0, Math.min(taskDuration, differenceInDays(date, new Date(t.start_date))))
+        const taskProgressAtDate = (elapsed / taskDuration) * (t.progress / 100) * 100
+        return acc + taskProgressAtDate
+      }, 0) / tasks.length)
+
+      return {
+        date: format(date, 'MMM d'),
+        scheduled: scheduledPercent,
+        actual: actualProgress
+      }
+    })
+  }, [tasks])
+
+  return (
+    <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6">
+       <div className="flex items-center justify-between">
+          <div>
+             <h3 className="text-xl font-black text-white uppercase tracking-tighter">Strategic Velocity Vector</h3>
+             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Scheduled vs Actual Execution Performance</p>
+          </div>
+          <div className="flex gap-6">
+             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-blue-500" /><span className="text-[10px] font-black text-slate-400 uppercase">Scheduled</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-emerald-500" /><span className="text-[10px] font-black text-slate-400 uppercase">Actual</span></div>
+          </div>
+       </div>
+       <div className="flex-1 min-h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+             <AreaChart data={data}>
+                <defs>
+                   <linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                   <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="date" stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                <YAxis stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                <RechartsTooltip 
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSched)" />
+                <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" />
+             </AreaChart>
+          </ResponsiveContainer>
+       </div>
+    </div>
+  )
+}
+
+
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  MiniMap, 
+  useNodesState, 
+  useEdgesState, 
+  addEdge,
+  Connection,
+  Edge,
+  Node
+} from 'reactflow'
+import 'reactflow/dist/style.css'
+
+const DiagramBuilder = ({ data, onChange }: { data: any, onChange: (data: any) => void }) => {
+  const [nodes, setNodes, onNodesChange] = useNodesState(data?.nodes || [])
+  const [edges, setEdges, onEdgesChange] = useEdgesState(data?.edges || [])
+
+  const onConnect = (params: Connection) => {
+    const newEdges = addEdge(params, edges)
+    setEdges(newEdges)
+    onChange({ nodes, edges: newEdges })
+  }
+
+  useEffect(() => {
+    onChange({ nodes, edges })
+  }, [nodes, edges])
+
+  return (
+    <div className="h-[500px] bg-[#0a0c14] border border-white/5 rounded-xl overflow-hidden relative group">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        fitView
+        theme="dark"
+      >
+        <Background color="#1e293b" gap={20} />
+        <Controls />
+        <MiniMap nodeStrokeColor="#3b82f6" nodeColor="#1e293b" maskColor="rgba(0,0,0,0.5)" />
+      </ReactFlow>
+      <div className="absolute top-4 right-4 flex gap-2">
+         <button 
+           onClick={() => setNodes([...nodes, { 
+             id: Date.now().toString(), 
+             type: 'default', 
+             data: { label: 'NEW NODE' }, 
+             position: { x: Math.random() * 400, y: Math.random() * 400 },
+             style: { background: '#1e293b', color: '#fff', border: '1px solid #3b82f6', fontSize: '10px', fontWeight: 'bold' }
+           }])}
+           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-black uppercase tracking-widest shadow-lg"
+         >
+           Add Node
+         </button>
+      </div>
+    </div>
+  )
+}
+
+const WorkbenchView = ({ project, portfolioMetrics, resourceHeatmap, onEdit }: any) => {
+  const [roiCollapsed, setRoiCollapsed] = React.useState(false)
+  const tasks = project?.tasks || []
+  const stats = useMemo(() => {
+    const total = tasks.length
+    if (total === 0) return { progress: 0, blocked: 0, health: 'Stable', criticalProgress: 0 }
+    const avgProgress = Math.round(tasks.reduce((acc: number, t: any) => acc + (t.progress || 0), 0) / total)
+    const blockedCount = tasks.filter((t: any) => t.status === 'Blocked').length
+    return { progress: avgProgress, blocked: blockedCount, criticalProgress: avgProgress, health: blockedCount > 0 ? 'At Risk' : 'Healthy' }
+  }, [tasks])
+
+  if (!project) return null
+
+  return (
+    <div className="max-w-full mx-auto space-y-8 pb-20">
+       {/* Precision Status Header (Moved from Gantt) */}
+       <div className="grid grid-cols-4 gap-6">
+          <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+             <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Portfolio Velocity</p>
+                <Zap size={14} className="text-blue-400" />
+             </div>
+             <div className="flex items-end gap-2"><span className="text-2xl font-black text-white">{stats.progress}%</span><span className="text-[10px] font-bold text-emerald-400 mb-1">COMPLETED</span></div>
+             <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full shadow-[0_0_15px_rgba(37,99,235,0.4)]" style={{ width: `${stats.progress}%` }} /></div>
+          </div>
+          <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+             <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Strategic Maturity</p>
+                <Target size={14} className="text-rose-400" />
+             </div>
+             <div className="flex items-end gap-2"><span className="text-2xl font-black text-rose-400">{stats.criticalProgress}%</span><span className="text-[10px] font-bold text-slate-600 mb-1">STABILITY</span></div>
+             <div className="h-2 w-full bg-white/5 rounded-full mt-3 overflow-hidden border border-white/5"><div className="h-full bg-rose-500 rounded-full" style={{ width: `${stats.criticalProgress}%` }} /></div>
+          </div>
+          <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+             <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Risky Nodes</p>
+                <AlertTriangle size={14} className="text-amber-400" />
+             </div>
+             <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.blocked > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{stats.blocked}</span><span className="text-[10px] font-bold text-slate-600 mb-1">BLOCKED</span></div>
+             <div className="flex gap-1.5 mt-3">{(Array(8).fill(0)).map((_, i) => <div key={i} className={`h-1.5 flex-1 rounded-full ${i < stats.blocked ? 'bg-rose-500' : 'bg-white/5'}`} />)}</div>
+          </div>
+          <div className="bg-[#1a1b26] p-4 rounded-xl border border-white/5 shadow-inner">
+             <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">System Integrity</p>
+                <ShieldCheck size={14} className="text-emerald-400" />
+             </div>
+             <div className="flex items-end gap-2"><span className={`text-2xl font-black ${stats.health === 'Healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>{stats.health}</span></div>
+             <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.1em] mt-3">OPERATIONAL NOMINAL RANGE.</p>
+          </div>
+       </div>
+
+       {/* Strategic ROI Section (Collapsible) */}
+       <div className="border border-white/5 rounded-xl bg-[#12141f] overflow-hidden">
+          <button 
+            onClick={() => setRoiCollapsed(!roiCollapsed)}
+            className="w-full px-6 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-all"
+          >
+             <div className="flex items-center gap-3">
+                <BarChart3 size={16} className="text-blue-400" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Strategic ROI Matrix</span>
+             </div>
+             {roiCollapsed ? <ChevronDown size={18} className="text-slate-500" /> : <ChevronRight size={18} className="text-slate-500 rotate-90" />}
+          </button>
+          
+          <AnimatePresence>
+             {!roiCollapsed && (
+               <motion.div 
+                 initial={{ height: 0, opacity: 0 }}
+                 animate={{ height: 'auto', opacity: 1 }}
+                 exit={{ height: 0, opacity: 0 }}
+                 className="overflow-hidden"
+               >
+                  <div className="p-6 grid grid-cols-4 gap-6">
+                     <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
+                        <p className="text-xl font-black text-white">LEVEL {project.roi_defense_line || 0}</p>
+                     </div>
+                     <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimized</p>
+                        <p className="text-xl font-black text-emerald-400">+{project.man_hours_saved || 0}H</p>
+                     </div>
+                     <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
+                        <p className="text-xl font-black text-rose-400">+{project.stoploss_minutes_saved || 0}m</p>
+                     </div>
+                     <div className="bg-white/5 p-4 rounded-lg border border-white/5">
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
+                        <p className="text-xl font-black text-blue-400">+{project.wafers_gained || 0}</p>
+                     </div>
+                  </div>
+               </motion.div>
              )}
           </AnimatePresence>
        </div>
-    </div>
-  )
-}
 
-
-const LiveScope = ({ project }: { project: any }) => {
-  return (
-    <div className="h-full flex flex-col p-4 space-y-6 overflow-y-auto custom-scrollbar">
-       <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 bg-blue-500/10 rounded flex items-center justify-center border border-blue-500/20">
-                <Network size={16} className="text-blue-400" />
+       {/* Objectives and Problems */}
+       <div className="grid grid-cols-2 gap-8">
+          <section className="space-y-3">
+             <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
+                <button onClick={onEdit} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={12}/></button>
              </div>
-             <div>
-                <h3 className="text-sm font-black uppercase text-white tracking-tighter ">Live Scope Matrix</h3>
-                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Health of in-scope assets</p>
+             <div className="bg-white/5 p-6 rounded-xl border border-white/5 min-h-[120px] shadow-inner relative group">
+                <p className="text-[11px] font-bold text-slate-400 leading-relaxed">"{project.problem_statement || 'No problem statement defined.'}"</p>
              </div>
-          </div>
-          <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded border border-white/5">
-             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Healthy</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">At Risk</span></div>
-          </div>
+          </section>
+          <section className="space-y-3">
+             <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Mission Objective</h4>
+                <button onClick={onEdit} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-emerald-400 transition-all"><Edit2 size={12}/></button>
+             </div>
+             <div className="bg-white/5 p-6 rounded-xl border border-white/5 min-h-[120px] shadow-inner relative group">
+                <p className="text-[11px] font-bold text-slate-400 leading-relaxed">{project.objective || 'No objective defined.'}</p>
+             </div>
+          </section>
        </div>
-       <div className="grid grid-cols-4 gap-3">
-          {(project?.target_assets || []).map((assetId: string, i: number) => (
-            <div key={i} className="bg-[#1a1b26]/40 border border-white/5 rounded-lg p-3 hover:border-blue-500/30 transition-all group">
-               <div className="flex justify-between items-start mb-3">
-                  <div><h4 className="text-[11px] font-black text-white uppercase tracking-tight truncate max-w-[100px]">{assetId}</h4><p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">Physical Asset</p></div>
-                  <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-emerald-400"><Cpu size={12} /></div>
-               </div>
-               <div className="space-y-3">
-                  <div className="flex items-center justify-between"><span className="text-[8px] font-black text-slate-500 uppercase">State</span><span className="text-[9px] font-black text-emerald-400 uppercase">Active</span></div>
-                  <div className="h-0.5 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[95%]" /></div>
-                  <div className="flex gap-1.5">
-                     <button className="flex-1 py-1 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[8px] font-black uppercase hover:bg-blue-600/20 transition-all">Link</button>
-                     <button className="flex-1 py-1 bg-white/5 border border-white/10 text-slate-500 rounded text-[8px] font-black uppercase hover:bg-white/10 transition-all">Det</button>
-                  </div>
-               </div>
-            </div>
-          ))}
-          {(project?.target_assets || []).length === 0 && (
-            <div className="col-span-4 py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-xl text-slate-700">
-               <Binary size={32} className="mb-2 opacity-20" /><p className="text-[9px] font-black uppercase tracking-[0.4em]">No Assets Bound</p>
-            </div>
-          )}
+
+       {/* Infrastructure & Design Assets */}
+       <div className="grid grid-cols-3 gap-8">
+          <div className="col-span-2 space-y-4">
+             <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Workflow size={14} /> System & Logic Architecture</h4>
+             <DiagramBuilder 
+               data={project.metadata_json?.diagram} 
+               onChange={(d) => {
+                 // Only update if data actually changed to avoid infinite loops
+                 if (JSON.stringify(d) !== JSON.stringify(project.metadata_json?.diagram)) {
+                    onUpdate({ ...project, metadata_json: { ...project.metadata_json, diagram: d } })
+                 }
+               }} 
+             />
+          </div>
+          <div className="space-y-8">
+             <section className="space-y-4">
+                <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ImageIcon size={14} /> Design Artifacts</h4>
+                <div className="grid grid-cols-2 gap-3">
+                   {(project.metadata_json?.images || []).map((img: string, i: number) => (
+                     <div key={i} className="aspect-square bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative">
+                        <img src={img} alt="Artifact" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                           <button className="p-2 bg-rose-600 rounded-full text-white"><Trash2 size={14}/></button>
+                        </div>
+                     </div>
+                   ))}
+                   <button className="aspect-square border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center text-slate-700 hover:text-blue-500 hover:border-blue-500/30 transition-all group">
+                      <Camera size={24} className="mb-2 opacity-30 group-hover:opacity-100" />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Attach Artifact</span>
+                   </button>
+                </div>
+             </section>
+
+             <section className="space-y-4">
+                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> Intelligence Links</h4>
+                <div className="space-y-2">
+                   {(project.metadata_json?.links || []).map((link: any, i: number) => (
+                     <a key={i} href={link.url} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all group">
+                        <span className="text-[10px] font-black text-slate-400 uppercase truncate">{link.label}</span>
+                        <ExternalLink size={12} className="text-slate-600 group-hover:text-blue-400" />
+                     </a>
+                   ))}
+                   <button className="w-full py-2 border border-dashed border-white/5 rounded-lg text-[8px] font-black text-slate-700 uppercase hover:text-blue-500 hover:border-blue-500/30 transition-all">
+                      Add Reference Link
+                   </button>
+                </div>
+             </section>
+          </div>
        </div>
     </div>
   )
 }
 
-const DevLog = ({ project, onUpdate }: { project: any, onUpdate: (data: any) => void }) => {
-  const [content, setContent] = useState(project.metadata_json?.dev_log || '')
-  const [isSaving, setIsSaving] = useState(false)
-  const handleSave = () => {
-    setIsSaving(true)
-    onUpdate({ ...project, metadata_json: { ...project.metadata_json, dev_log: content } })
-    setTimeout(() => setIsSaving(false), 500)
-    toast.success('Log Synchronized')
-  }
-  return (
-    <div className="h-full flex flex-col p-4 space-y-4">
-       <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 bg-amber-500/10 rounded flex items-center justify-center border border-amber-500/20"><ScrollText size={16} className="text-amber-400" /></div>
-             <div><h3 className="text-sm font-black uppercase text-white tracking-tighter ">Engineering Log</h3><p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Markdown Production Notebook</p></div>
-          </div>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/20">
-             {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Save size={12} />}Sync Log
-          </button>
-       </div>
-       <div className="flex-1 bg-black/40 rounded-lg border border-white/5 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5 bg-white/5"><div className="flex items-center gap-1 border-r border-white/10 pr-2 mr-1"><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><FileText size={12}/></button><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><ImageIcon size={12}/></button><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><Terminal size={12}/></button></div><p className="text-[7px] font-bold text-slate-700 uppercase tracking-widest animate-pulse">CTRL+V TO ATTACH</p></div>
-          <textarea value={content} onChange={e => setContent(e.target.value)} className="flex-1 bg-transparent p-4 text-[12px] font-medium text-slate-300 outline-none resize-none font-mono placeholder:text-slate-800 leading-relaxed" placeholder="# Today's Progress..."/>
-       </div>
-    </div>
-  )
-}
-
-const ExecutiveReportModal = ({ project, onClose }: { project: any, onClose: () => void }) => {
-  const tasks = project.tasks || []
-  const progress = tasks.length > 0 
-    ? Math.round(tasks.reduce((acc: number, t: any) => acc + (t.progress || 0), 0) / tasks.length) 
-    : 0
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 overflow-y-auto">
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white text-slate-900 w-[800px] min-h-[1131px] p-12 shadow-2xl relative flex flex-col font-sans">
-        <button onClick={onClose} className="absolute -right-16 top-0 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all print:hidden"><X size={24} /></button>
-        <div className="border-b-4 border-slate-900 pb-6 mb-8 flex justify-between items-end">
-          <div><div className="flex items-center gap-2 mb-2"><span className="bg-slate-900 text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest">{project.type} STRATEGY</span><span className="border-2 border-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest">{project.status}</span></div><h1 className="text-4xl font-black uppercase tracking-tighter leading-none mb-1">{project.name}</h1><p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">Strategic Infrastructure Evolution Report // {new Date().toLocaleDateString()}</p></div>
-          <div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Project Maturity</p><div className="text-4xl font-black leading-none">{progress}%</div></div>
-        </div>
-        <div className="grid grid-cols-2 gap-12 mb-10"><div className="space-y-4"><h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 flex items-center gap-2"><AlertTriangle size={14} /> Critical Problem Statement</h3><p className="text-sm text-slate-600 leading-relaxed font-medium ">"{project.problem_statement || 'No problem statement defined.'}"</p></div><div className="space-y-4"><h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 flex items-center gap-2"><Target size={14} /> Mission Objective</h3><p className="text-sm text-slate-600 leading-relaxed font-medium">{project.objective || 'Objective being refined.'}</p></div></div>
-        <div className="mb-10"><h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 mb-6 flex items-center gap-2"><BarChart3 size={14} /> Quantitative Success Metrics (ROI)</h3><div className="grid grid-cols-4 gap-4"><div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center"><p className="text-[9px] font-black text-slate-400 uppercase mb-2">Defense Line</p><p className="text-2xl font-black">L{project.roi_defense_line || 0}</p></div><div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center"><p className="text-[9px] font-black text-slate-400 uppercase mb-2">Man-Hours Saved</p><p className="text-2xl font-black text-blue-600">{project.man_hours_saved || 0}h</p></div><div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center"><p className="text-[9px] font-black text-slate-400 uppercase mb-2">Stoploss Min.</p><p className="text-2xl font-black text-rose-600">{project.stoploss_minutes_saved || 0}m</p></div><div className="bg-slate-50 p-6 border border-slate-100 rounded-xl text-center"><p className="text-[9px] font-black text-slate-400 uppercase mb-2">Wafers Gained</p><p className="text-2xl font-black text-emerald-600">{project.wafers_gained || 0}</p></div></div></div>
-        <div className="mb-10 flex-1"><h3 className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em] border-b border-slate-200 pb-2 mb-6 flex items-center gap-2"><Clock size={14} /> Execution Roadmap & Milestones</h3><div className="space-y-4">{tasks.length > 0 ? tasks.slice(0, 10).map((t: any) => (<div key={t.id} className="flex items-center gap-6"><div className="w-24 text-[9px] font-black text-slate-400 uppercase tracking-tighter">{format(new Date(t.start_date), 'MMM yyyy')}</div><div className="relative flex-1 h-8 bg-slate-50 rounded-full border border-slate-100 overflow-hidden"><div className={`absolute inset-y-0 left-0 transition-all ${t.status === 'Completed' ? 'bg-emerald-500' : 'bg-slate-900'}`} style={{ width: `${t.progress}%` }} /><div className="absolute inset-0 flex items-center px-4 justify-between"><span className={`text-[10px] font-black uppercase ${t.progress > 50 ? 'text-white' : 'text-slate-900'}`}>{t.name}</span><span className={`text-[9px] font-bold ${t.progress > 90 ? 'text-white' : 'text-slate-500'}`}>{t.status}</span></div></div></div>)) : (<div className="py-20 text-center text-slate-300 font-black uppercase tracking-[0.5em]">No Roadmap Data Available</div>)}</div></div>
-        <div className="border-t border-slate-200 pt-6 mt-auto flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest"><div>Owner: {project.owner} // System Scope: {project.target_systems?.join(', ') || 'N/A'}</div><div>Ref: SYSGRID-PROJ-{project.id} // SECURE DOCUMENT</div></div>
-        <button onClick={() => window.print()} className="absolute bottom-8 right-8 p-4 bg-slate-900 text-white rounded-full shadow-2xl hover:scale-110 transition-all print:hidden"><Download size={20} /></button>
-      </motion.div>
-    </div>
-  )
-}
 
 const ProjectCommandPalette = ({ isOpen, onClose, onAction }: { isOpen: boolean, onClose: () => void, onAction: (action: string) => void }) => {
   const [search, setSearch] = useState('')
@@ -1187,14 +1127,20 @@ const ProjectCommandPalette = ({ isOpen, onClose, onAction }: { isOpen: boolean,
 const ProjectActivityStream = ({ project, allProjects = [] }: { project: any, allProjects?: any[] }) => {
   const activities = useMemo(() => {
     if (project) {
-      return [...(project.comments || []), ...(project.qa_items || []), ...(project.metadata_json?.history || [])]
+      const taskHistory = (project.tasks || []).flatMap((t: any) => 
+        (t.metadata_json?.history || []).map((h: any) => ({ ...h, taskName: t.name }))
+      )
+      return [...(project.comments || []), ...(project.qa_items || []), ...(project.metadata_json?.history || []), ...taskHistory]
         .sort((a: any, b: any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
     } else {
       // Global Stream
       const all = [] as any[]
       allProjects.forEach(p => {
-        const stream = [...(p.comments || []), ...(p.qa_items || []), ...(p.metadata_json?.history || [])]
-          .map(item => ({ ...item, projectName: p.name }))
+        const taskHistory = (p.tasks || []).flatMap((t: any) => 
+          (t.metadata_json?.history || []).map((h: any) => ({ ...h, taskName: t.name, projectName: p.name }))
+        )
+        const stream = [...(p.comments || []), ...(p.qa_items || []), ...(p.metadata_json?.history || []), ...taskHistory]
+          .map(item => ({ ...item, projectName: item.projectName || p.name }))
         all.push(...stream)
       })
       return all.sort((a: any, b: any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
@@ -1221,6 +1167,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: { project: any, al
                      <div>
                         <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.author || item.asked_by || 'System'}</span>
                         {item.projectName && <span className="ml-2 text-[7px] font-black text-blue-500 uppercase tracking-widest">@ {item.projectName}</span>}
+                        {item.taskName && <span className="ml-2 text-[7px] font-black text-amber-500 uppercase tracking-widest"># {item.taskName}</span>}
                      </div>
                   </div>
                   <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">{format(new Date(item.timestamp || item.created_at), 'MMM d, HH:mm')}</span>
@@ -1233,6 +1180,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: { project: any, al
     </div>
   )
 }
+
 
 export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems = [], assets = [] }: any) => {
   const [formData, setFormData] = useState({ 
@@ -1505,154 +1453,10 @@ const ProjectRisks = ({ project, onUpdate }: { project: any, onUpdate: (data: an
   )
 }
 
-const ProjectMatrix = ({ projects, onSelect, onEdit, onBulkUpdate }: { projects: any[], onSelect: (id: number) => void, onEdit: (p: any) => void, onBulkUpdate: (ids: number[], data: any) => void }) => {
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-
-  const columnDefs = useMemo(() => [
-    { 
-      field: 'name', 
-      headerName: 'IDENTIFIER', 
-      flex: 2, 
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      cellClass: 'font-bold text-white uppercase tracking-tight',
-      cellRenderer: (params: any) => (
-        <div className="flex items-center gap-2 h-full">
-           <div className={`w-2 h-2 rounded-full ${
-             params.data?.status === 'Completed' ? 'bg-emerald-500' :
-             params.data?.status === 'Blocked' ? 'bg-rose-500' :
-             params.data?.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
-           }`} />
-           {params.value}
-        </div>
-      )
-    },
-    { 
-      field: 'type', 
-      headerName: 'VECTOR', 
-      width: 120, 
-      cellClass: 'font-bold text-slate-500 text-[9px] uppercase tracking-widest' 
-    },
-    { 
-      field: 'status', 
-      headerName: 'STATE', 
-      width: 140,
-      cellRenderer: (params: any) => (
-        <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase text-center mt-2 ${
-          params.value === 'Completed' ? 'bg-emerald-600/20 text-emerald-400' :
-          params.value === 'Blocked' ? 'bg-rose-600/20 text-rose-400 animate-pulse' :
-          params.value === 'In Progress' ? 'bg-blue-600/20 text-blue-400' : 'bg-white/5 text-slate-500'
-        }`}>
-           {params.value}
-        </div>
-      )
-    },
-    { 
-      field: 'priority', 
-      headerName: 'PRIORITY', 
-      width: 100,
-      cellRenderer: (params: any) => (
-        <span className={`text-[9px] font-bold ${
-          params.value === 'Highest' ? 'text-rose-500' :
-          params.value === 'High' ? 'text-amber-500' :
-          params.value === 'Medium' ? 'text-blue-500' : 'text-slate-600'
-        }`}>{(params.value || '').toUpperCase()}</span>
-      )
-    },
-    { 
-      field: 'owner', 
-      headerName: 'LEAD', 
-      width: 150,
-      cellClass: 'font-bold text-slate-400 uppercase tracking-tighter'
-    },
-    { 
-      field: 'roi_defense_line', 
-      headerName: 'LINE', 
-      width: 70, 
-      cellClass: 'text-center font-bold text-blue-400',
-      valueFormatter: (p: any) => `L${p.value ?? 0}`
-    },
-    { 
-      field: 'created_at', 
-      headerName: 'ADDED', 
-      width: 100, 
-      cellClass: 'font-bold text-slate-500 text-[9px] uppercase',
-      valueFormatter: (p: any) => p.value ? format(new Date(p.value), 'MMM d, yyyy') : 'N/A'
-    },
-    { 
-      field: 'completed_at', 
-      headerName: 'COMPLETED', 
-      width: 110, 
-      cellClass: 'font-bold text-emerald-500 text-[9px] uppercase',
-      valueFormatter: (p: any) => p.value ? format(new Date(p.value), 'MMM d, yyyy') : 'N/A'
-    },
-    {
-      headerName: 'ACTIONS',
-      width: 100,
-      pinned: 'right',
-      cellRenderer: (params: any) => (
-        <div className="flex items-center gap-2 h-full">
-           <button onClick={() => params.data?.id && onSelect(params.data.id)} className="p-1.5 hover:bg-blue-600/20 text-blue-400 rounded-md transition-all"><LayoutGrid size={14}/></button>
-           <button onClick={() => params.data && onEdit(params.data)} className="p-1.5 hover:bg-emerald-600/20 text-emerald-400 rounded-md transition-all"><Edit2 size={14}/></button>
-        </div>
-      )
-    }
-  ], [onSelect, onEdit])
-
-  return (
-    <div className="h-full w-full flex flex-col bg-[#0a0c14] border-t border-white/5">
-       <div className="h-12 border-b border-white/5 flex items-center px-6 justify-between bg-black/40">
-          <div className="flex items-center gap-4">
-             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{selectedIds.length} STREAMS SELECTED</span>
-             {selectedIds.length > 0 && (
-               <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                  <select 
-                    onChange={e => onBulkUpdate(selectedIds, { status: e.target.value })}
-                    className="bg-blue-600/10 border border-blue-500/20 rounded-lg px-3 py-1 text-[9px] font-black text-blue-400 outline-none uppercase tracking-widest"
-                  >
-                     <option value="">MASS UPDATE STATUS</option>
-                     {PROJECT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
-                  <select 
-                    onChange={e => onBulkUpdate(selectedIds, { priority: e.target.value })}
-                    className="bg-amber-600/10 border border-amber-500/20 rounded-lg px-3 py-1 text-[9px] font-black text-amber-400 outline-none uppercase tracking-widest"
-                  >
-                     <option value="">MASS UPDATE PRIORITY</option>
-                     {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                  </select>
-               </div>
-             )}
-          </div>
-          <div className="flex items-center gap-2 text-[9px] font-bold text-slate-600 uppercase">Double-click row to teleport to workbench</div>
-       </div>
-       <div className="flex-1 ag-theme-alpine-dark">
-          <AgGridReact
-            rowData={projects}
-            columnDefs={columnDefs as any}
-            rowSelection="multiple"
-            suppressRowClickSelection={true}
-            onSelectionChanged={(params: any) => {
-              const selectedNodes = params.api.getSelectedNodes()
-              setSelectedIds(selectedNodes.map((node: any) => node.data?.id).filter(Boolean))
-            }}            defaultColDef={{
-              sortable: true,
-              filter: true,
-              resizable: true,
-            }}
-            headerHeight={40}
-            rowHeight={48}
-            className="w-full h-full"
-            onRowDoubleClicked={(p) => p.data?.id && onSelect(p.data.id)}
-          />
-       </div>
-    </div>
-  )
-}
-
 export default function Projects() {
   const queryClient = useQueryClient()
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'SCOPE' | 'RISKS' | 'MATRIX' | 'LOG' | 'ACTIVITY'>('WORKSPACE')
+  const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'RISKS' | 'ACTIVITY'>('WORKSPACE')
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -1699,18 +1503,6 @@ export default function Projects() {
     onError: (e: any) => toast.error(e.message)
   })
 
-  const bulkUpdateMutation = useMutation({
-    mutationFn: async ({ ids, data }: { ids: number[], data: any }) => {
-      const promises = ids.map(id => apiFetch(`/api/v1/projects/${id}`, { method: 'PUT', body: JSON.stringify({ ...projects.find((p:any) => p.id === id), ...data }) }))
-      return Promise.all(promises)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-      toast.success('Bulk Synchronization Successful')
-    },
-    onError: (e: any) => toast.error(e.message)
-  })
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setIsCommandPaletteOpen(true); } }
     window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown)
@@ -1744,10 +1536,7 @@ export default function Projects() {
       case 'add_task': setActiveTab('GANTT'); break; 
       case 'edit_details': setIsEditing(true); break; 
       case 'view_gantt': setActiveTab('GANTT'); break; 
-      case 'view_scope': setActiveTab('SCOPE'); break; 
       case 'view_risks': setActiveTab('RISKS'); break;
-      case 'view_matrix': setActiveTab('MATRIX'); break;
-      case 'view_log': setActiveTab('LOG'); break; 
       case 'gen_report': setActiveModal({ type: 'REPORT', project: selectedProject }); break;
       case 'sync_jira':
         if (!selectedProject) break
@@ -1811,10 +1600,7 @@ export default function Projects() {
                 {[
                   { id: 'WORKSPACE', icon: LayoutGrid, label: 'Workbench' }, 
                   { id: 'GANTT', icon: Calendar, label: 'Precision Gantt' }, 
-                  { id: 'SCOPE', icon: Network, label: 'Live Scope' }, 
                   { id: 'RISKS', icon: ShieldAlert, label: 'Risk Registry' },
-                  { id: 'MATRIX', icon: List, label: 'Matrix' },
-                  { id: 'LOG', icon: ScrollText, label: 'Dev Log' }, 
                   { id: 'ACTIVITY', icon: History, label: 'Stream' }
                 ].map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`h-full px-2 flex items-center gap-2 border-b-2 transition-all group ${activeTab === tab.id ? 'border-blue-600 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
@@ -1836,107 +1622,17 @@ export default function Projects() {
                             assets={devices || []}
                           />
                         ) : (
-                          <div className="max-w-full mx-auto space-y-6">
-                             {/* Portfolio Header */}
-                             <div className="grid grid-cols-5 gap-3">
-                                <div className="bg-blue-600/10 border border-blue-500/20 p-3 rounded-lg">
-                                   <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Portfolio Hours</p>
-                                   <p className="text-xl font-black text-white">+{portfolioMetrics?.totalHours}H</p>
-                                </div>
-                                <div className="bg-emerald-600/10 border border-emerald-500/20 p-3 rounded-lg">
-                                   <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Total Wafers</p>
-                                   <p className="text-xl font-black text-white">{portfolioMetrics?.totalWafers}</p>
-                                </div>
-                                <div className="bg-rose-600/10 border border-rose-500/20 p-3 rounded-lg">
-                                   <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Stoploss Min.</p>
-                                   <p className="text-xl font-black text-white">{portfolioMetrics?.totalStoploss}M</p>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 p-3 rounded-lg">
-                                   <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">In Flight</p>
-                                   <p className="text-xl font-black text-white">{portfolioMetrics?.activeStreams}</p>
-                                </div>
-                                <div className={`p-3 rounded-lg border ${portfolioMetrics?.blockedStreams ? 'bg-rose-600 border-rose-500 animate-pulse' : 'bg-white/5 border-white/10'}`}>
-                                   <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${portfolioMetrics?.blockedStreams ? 'text-white' : 'text-slate-500'}`}>Blocked</p>
-                                   <p className="text-xl font-black text-white">{portfolioMetrics?.blockedStreams}</p>
-                                </div>
-                             </div>
-
-                             {/* Resource Heatmap */}
-                             <section className="space-y-2">
-                                <h4 className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Users size={12} /> Resource Allocation</h4>
-                                <div className="grid grid-cols-5 gap-2">
-                                   {resourceHeatmap.map(([name, count]) => (
-                                     <div key={name} className="bg-white/5 border border-white/10 p-2 rounded flex items-center justify-between group hover:border-blue-500/30 transition-all">
-                                        <div className="flex items-center gap-1.5 overflow-hidden">
-                                           <div className="w-5 h-5 rounded bg-blue-600/20 flex items-center justify-center text-[8px] font-black text-blue-400 shrink-0">{name[0]}</div>
-                                           <span className="text-[9px] font-bold text-slate-300 uppercase truncate">{name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                           <div className="h-1 w-8 bg-white/5 rounded-full overflow-hidden">
-                                              <div className={`h-full ${count > 3 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(count * 25, 100)}%` }} />
-                                           </div>
-                                           <span className="text-[9px] font-black text-white">{count}</span>
-                                        </div>
-                                     </div>
-                                   ))}
-                                </div>
-                             </section>
-
-                             <div className="grid grid-cols-2 gap-6">
-                                <section className="space-y-2">
-                                   <h4 className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Clipboard size={12} /> Problem Statement</h4>
-                                   <div className="bg-white/5 p-4 rounded-lg border border-white/10 min-h-[80px] relative group">
-                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={12}/></button></div>
-                                      <p className="text-[10px] font-bold text-slate-400 leading-snug ">"{selectedProject?.problem_statement || 'No problem statement defined.'}"</p>
-                                   </div>
-                                </section>
-                                <section className="space-y-2">
-                                   <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Target size={12} /> Mission Objective</h4>
-                                   <div className="bg-white/5 p-4 rounded-lg border border-white/10 min-h-[80px] relative group">
-                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-emerald-400 transition-all"><Edit2 size={12}/></button></div>
-                                      <p className="text-[10px] font-bold text-slate-400 leading-snug">{selectedProject?.objective || 'No objective defined.'}</p>
-                                   </div>
-                                </section>
-                                {(selectedProject?.metadata_json?.risks || []).length > 0 && (
-                                   <section className="space-y-2">
-                                      <h4 className="text-[9px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-2"><ShieldAlert size={12} /> Risks</h4>
-                                      <div className="grid grid-cols-2 gap-2">
-                                         {selectedProject.metadata_json.risks.slice(0, 4).map((r:any) => (
-                                           <div key={r.id} className="flex items-center justify-between p-2 bg-rose-600/10 border border-rose-500/20 rounded">
-                                              <span className="text-[9px] font-black text-rose-400 uppercase truncate mr-2">{r.description}</span>
-                                              <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${r.impact === 'Critical' ? 'bg-rose-600 text-white' : 'bg-rose-600/20 text-rose-400'}`}>{r.impact}</span>
-                                           </div>
-                                         ))}
-                                      </div>
-                                   </section>
-                                )}
-                                <section className="space-y-2">
-                                   <h4 className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2"><Layers size={12} /> Infrastructure</h4>
-                                   <div className="grid grid-cols-2 gap-2">
-                                      <div className="p-2 bg-white/5 rounded border border-white/10 space-y-1">
-                                         <p className="text-[7px] font-black text-slate-600 uppercase">Systems</p>
-                                         <div className="flex flex-wrap gap-1">
-                                            {(selectedProject?.target_systems || []).map((s: string, i: number) => (<span key={i} className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded">{s}</span>))}
-                                         </div>
-                                      </div>
-                                      <div className="p-2 bg-white/5 rounded border border-white/10 space-y-1">
-                                         <p className="text-[7px] font-black text-slate-600 uppercase">Assets</p>
-                                         <div className="flex flex-wrap gap-1">
-                                            {(selectedProject?.target_assets || []).map((s: string, i: number) => (<span key={i} className="px-1.5 py-0.5 bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded">{s}</span>))}
-                                         </div>
-                                      </div>
-                                   </div>
-                                </section>
-                             </div>
-                          </div>
+                          <WorkbenchView 
+                            project={selectedProject} 
+                            portfolioMetrics={portfolioMetrics} 
+                            resourceHeatmap={resourceHeatmap}
+                            onEdit={() => setIsEditing(true)}
+                          />
                         )}
                      </motion.div>
                    )}
-                   {activeTab === 'LOG' && <motion.div key="log" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full"><DevLog project={selectedProject} onUpdate={mutation.mutate} /></motion.div>}
                    {activeTab === 'GANTT' && <motion.div key="gantt" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="h-full"><PrecisionGantt project={selectedProject} onUpdate={mutation.mutate} /></motion.div>}
-                   {activeTab === 'SCOPE' && <motion.div key="scope" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="h-full"><LiveScope project={selectedProject} /></motion.div>}
                    {activeTab === 'RISKS' && <motion.div key="risks" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="h-full"><ProjectRisks project={selectedProject} onUpdate={mutation.mutate} /></motion.div>}
-                   {activeTab === 'MATRIX' && <motion.div key="matrix" initial={{ opacity: 0, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} className="h-full"><ProjectMatrix projects={projects || []} onSelect={(id) => { setSelectedProjectId(id); setActiveTab('WORKSPACE'); }} onEdit={(p) => { setSelectedProjectId(p.id); setIsEditing(true); setActiveTab('WORKSPACE'); }} onBulkUpdate={(ids, data) => bulkUpdateMutation.mutate({ ids, data })} /></motion.div>}
                    {activeTab === 'ACTIVITY' && <motion.div key="activity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
                 </AnimatePresence>
              </div>
@@ -1945,7 +1641,6 @@ export default function Projects() {
        </div>
        <AnimatePresence>
          {isCommandPaletteOpen && <ProjectCommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onAction={handleCommand} />}
-         {activeModal?.type === 'REPORT' && <ExecutiveReportModal project={activeModal.project} onClose={() => setActiveModal(null)} />}
          {activeModal?.type === 'DELETE_CONFIRM' && (
            <ConfirmationModal 
              isOpen={true} 
