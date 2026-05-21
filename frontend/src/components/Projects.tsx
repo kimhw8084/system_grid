@@ -44,9 +44,9 @@ const PROJECT_PRIORITIES = [
 ]
 
 export const DEFENSE_LINES = [
-  { value: 0, label: 'LINE 0: BASE' },
-  { value: 1, label: 'LINE 1: FORTIFIED' },
-  { value: 2, label: 'LINE 2: RESILIENT' }
+  { value: '0', label: 'LINE 0: BASE' },
+  { value: '1', label: 'LINE 1: FORTIFIED' },
+  { value: '2', label: 'LINE 2: RESILIENT' }
 ]
 
 // --- Sub-components ---
@@ -1005,7 +1005,7 @@ export default function Projects() {
     {
       headerName: 'REPORT',
       width: 100,
-      pinned: 'right',
+      pinned: 'right' as const,
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center gap-2 h-full">
           <button 

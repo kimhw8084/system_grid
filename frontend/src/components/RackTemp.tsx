@@ -72,32 +72,20 @@ const powerColor = (pct: number) => {
 // ─── Status Breathing Bar ────────────────────────────────────────────────────
 
 const RackStatusBar = ({ rack, siteColor }: { rack: any; siteColor?: string }) => {
-  const hasMaintenance = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Maintenance'), [rack])
-  const hasCritical = useMemo(() => rack.device_locations?.some((l: any) => l.device?.status === 'Critical' || l.device?.status === 'Offline'), [rack])
-  
   // Use siteColor if provided, otherwise default to emerald
-  let colorClass = siteColor ? `bg-[${siteColor}]` : 'bg-emerald-500'
-  let label = 'Nominal'
-  
-  if (hasCritical) {
-    colorClass = 'bg-rose-500'
-    label = 'Asset Critical'
-  } else if (hasMaintenance) {
-    colorClass = 'bg-amber-500'
-    label = 'Maintenance'
-  }
-
-  // Fallback for dynamic tailwind classes if needed, or just use inline style
-  const style = siteColor && !hasCritical && !hasMaintenance ? { backgroundColor: siteColor } : {}
+  // Strict mandate: Site color only, no status indicators.
+  const style = { backgroundColor: siteColor || '#10b981' }
 
   return (
-    <div className="absolute top-0 inset-x-0 h-1.5 z-30 flex">
+    <div className="absolute top-0 inset-x-0 h-2 z-30 flex">
       <div 
-        className={`h-full w-full ${!style.backgroundColor ? colorClass : ''} animate-pulse shadow-[0_0_10px_rgba(0,0,0,0.5)]`} 
+        className="h-full w-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
         style={style}
       />
-      <div className="absolute top-0 right-2 px-1.5 py-0.5 rounded-b bg-black/60 backdrop-blur-md border-x border-b border-white/10">
-        <span className={`text-[7px] font-black uppercase tracking-[0.2em] ${!style.backgroundColor ? colorClass.replace('bg-', 'text-') : 'text-white'}`}>{label}</span>
+      <div className="absolute top-0 right-2 px-2 py-0.5 rounded-b bg-black/60 backdrop-blur-md border-x border-b border-white/10">
+        <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white">
+          {rack.site_name || 'SITE INDICATOR'}
+        </span>
       </div>
     </div>
   )
@@ -220,13 +208,6 @@ const DeviceOptionsMenu = ({ x, y, onClose, onShowConnections, onEdit, onDelete,
           Show Connections
         </button>
 
-        <button onClick={() => { onPatch(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300 rounded-lg flex items-center gap-3 transition-all group">
-          <div className="p-1.5 rounded-lg bg-indigo-500/10 group-hover:bg-indigo-500/20 transition-colors">
-            <Network size={12} />
-          </div>
-          Patch/Cable
-        </button>
-        
         <button onClick={() => { onEdit(); onClose(); }} className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-slate-400 hover:bg-white/5 hover:text-white rounded-lg flex items-center gap-3 transition-all group">
           <div className="p-1.5 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors">
             <Edit2 size={12} />
@@ -682,19 +663,29 @@ const RackElevation = ({
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + ((l.device?.power_typical_w || 0) / 1000), 0),
   [rack.device_locations])
 
+  const effectivePowerCapKw = useMemo(() => {
+    const a = rack.pdu_a_cap_kw || 0
+    const b = rack.pdu_b_cap_kw || 0
+    if (a > 0 && b > 0) return Math.min(a, b)
+    if (a > 0) return a
+    if (b > 0) return b
+    return rack.max_power_kw || 10
+  }, [rack.pdu_a_cap_kw, rack.pdu_b_cap_kw, rack.max_power_kw])
+
   const isHighlighted = (device: any) =>
     !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 
-  const isPowerOver = estimatedPowerKw >= (rack.max_power_kw || 10)
+  const isPowerOver = estimatedPowerKw >= effectivePowerCapKw
   const isFillOver = occupiedU >= totalU
 
   return (
     <div 
-      style={{ width: `${rackWidth}px`, height: 'calc(100vh - 300px)' }}
+      style={{ width: `${rackWidth}px`, maxHeight: 'calc(100vh - 240px)' }}
       className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
       ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
+      h-full
     `}>
       
       <RackStatusBar rack={rack} siteColor={rack.site_color} />
@@ -789,7 +780,7 @@ const RackElevation = ({
         {/* Capacity bars */}
         <div className="space-y-1.5 px-0.5">
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
-          <MiniBar value={estimatedPowerKw} max={rack.max_power_kw || 10} colorFn={powerColor} label="Power" unit="kW" />
+          <MiniBar value={estimatedPowerKw} max={effectivePowerCapKw} colorFn={powerColor} label="Power" unit="kW" />
         </div>
       </div>
 
@@ -854,13 +845,13 @@ const RackElevation = ({
 
 const AssetLegend = () => (
   <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-lg border border-white/[0.06]">
-    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mr-1">Legend:</span>
+    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mr-1">Status Legend:</span>
     {[
-      { label: 'SRV', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-      { label: 'NET', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-      { label: 'STO', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-      { label: 'PHY', color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
-      { label: 'VM',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+      { label: 'Active',         color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+      { label: 'Maintenance',    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+      { label: 'Decommissioned', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+      { label: 'Offline',        color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+      { label: 'Reserved',       color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
     ].map(l => (
       <div key={l.label} className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${l.color}`}>
         <span className="text-[7px] font-black uppercase tracking-tighter">{l.label}</span>
@@ -1322,12 +1313,13 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
 const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackClick: (rack: any) => void; siteColor?: string }) => {
   // Group racks by Aisle and Row
   const aisles = useMemo(() => {
-    const data: Record<string, Record<string, any>> = {}
+    const data: Record<string, Record<string, any[]>> = {}
     racks.forEach(r => {
       const aisle = r.aisle || 'Unknown'
       const row = r.row || '0'
       if (!data[aisle]) data[aisle] = {}
-      data[aisle][row] = r
+      if (!data[aisle][row]) data[aisle][row] = []
+      data[aisle][row].push(r)
     })
     return data
   }, [racks])
@@ -1342,37 +1334,41 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName}</span>
               <div className="h-px flex-1 bg-white/5" />
             </div>
-            <div className="flex flex-wrap gap-4 justify-center">
-              {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rack]) => {
-                const occupiedU = (rack.device_locations || []).reduce((a: number, l: any) => a + (l.size_u || 1), 0)
-                const totalU = rack.total_u || 42
-                const fillPct = Math.round((occupiedU / totalU) * 100)
-                const isOver = fillPct >= 95
+            <div className="flex flex-col gap-6">
+              {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rackList]) => (
+                <div key={rowNum} className="flex flex-wrap gap-4 justify-center">
+                  {rackList.map(rack => {
+                    const occupiedU = (rack.device_locations || []).reduce((a: number, l: any) => a + (l.size_u || 1), 0)
+                    const totalU = rack.total_u || 42
+                    const fillPct = Math.round((occupiedU / totalU) * 100)
+                    const isOver = fillPct >= 95
 
-                return (
-                  <motion.div
-                    key={rack.id}
-                    whileHover={{ scale: 1.05, y: -4 }}
-                    onClick={() => onRackClick(rack)}
-                    className={`w-32 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative overflow-hidden group
-                      ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
-                    `}
-                  >
-                    <div className="absolute top-0 inset-x-0 h-1 bg-emerald-500/40" style={siteColor ? { backgroundColor: siteColor } : {}} />
-                    <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className={`h-full ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
-                      </div>
-                      <span className="text-[8px] font-bold text-slate-500 tabular-nums">{fillPct}%</span>
-                    </div>
-                    {isOver && <div className="absolute inset-0 bg-rose-500/5 animate-pulse" />}
-                    <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <ExternalLink size={10} className="text-blue-400" />
-                    </div>
-                  </motion.div>
-                )
-              })}
+                    return (
+                      <motion.div
+                        key={rack.id}
+                        whileHover={{ scale: 1.05, y: -4 }}
+                        onClick={() => onRackClick(rack)}
+                        className={`w-32 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative overflow-hidden group
+                          ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
+                        `}
+                      >
+                        <div className="absolute top-0 inset-x-0 h-1 bg-emerald-500/40" style={rack.site_color ? { backgroundColor: rack.site_color } : siteColor ? { backgroundColor: siteColor } : {}} />
+                        <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
+                          </div>
+                          <span className="text-[8px] font-bold text-slate-500 tabular-nums">{fillPct}%</span>
+                        </div>
+                        {isOver && <div className="absolute inset-0 bg-rose-500/5 animate-pulse" />}
+                        <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <ExternalLink size={10} className="text-blue-400" />
+                        </div>
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -1559,7 +1555,7 @@ export default function RackTemp() {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setIsAddingSite(false)
       setIsEditingSite(null)
-      setNewSite({ name: '', address: '' })
+      setNewSite({ name: '', address: '', color: '#3b82f6' })
       toast.success('Site saved')
     },
     onError: (e: any) => toast.error(e.message)
@@ -1594,7 +1590,10 @@ export default function RackTemp() {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       setIsAddingRack(false)
       setIsEditingRack(null)
-      setNewRack({ name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '' })
+      setNewRack({ 
+        name: '', aisle: '', row: '', total_u: 42, max_power_kw: 10.0, site_id: '',
+        pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
+      })
       toast.success('Rack saved')
     },
     onError: (e: any) => toast.error(e.message)
@@ -1715,7 +1714,7 @@ export default function RackTemp() {
     return devices.find((d: any) => d.id === focusedConnection.sourceId)?.name || ''
   }, [focusedConnection, devices])
 
-  const [patchSource, setPatchSource] = useState<{ deviceId: number; port: string; rackId: number } | null>(null)
+  const [patchSource, setPatchSource] = useState<{ deviceId: number; port: string; rackId: number; name: string } | null>(null)
 
   const bulkPatchMutation = useMutation({
     mutationFn: async (conns: any[]) => {
@@ -1837,13 +1836,19 @@ export default function RackTemp() {
                 <BarChart3 size={13} /> Audit Logs
               </button>
               <button
-                onClick={() => { setNewRack({ name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0 }); setIsAddingRack(true) }}
+                onClick={() => { 
+                  setNewRack({ 
+                    name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0,
+                    pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
+                  }); 
+                  setIsAddingRack(true) 
+                }}
                 className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
               >
                 <Plus size={13} /> Add Rack
               </button>
               <button
-                onClick={() => { setNewSite({ name: '', address: '' }); setIsAddingSite(true) }}
+                onClick={() => { setNewSite({ name: '', address: '', color: '#3b82f6' }); setIsAddingSite(true) }}
                 className="px-4 py-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
               >
                 <Plus size={13} /> Add Site
