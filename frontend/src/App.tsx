@@ -611,7 +611,7 @@ function MainLayout() {
           </div>
         </header>
 
-        <div className={`flex-1 overflow-hidden relative ${location.pathname === '/architecture' ? '' : 'p-8'}`}>
+        <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' ? '' : 'p-8'}`}>
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />

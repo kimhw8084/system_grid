@@ -82,11 +82,6 @@ const RackStatusBar = ({ rack, siteColor }: { rack: any; siteColor?: string }) =
         className="h-full w-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
         style={style}
       />
-      <div className="absolute top-0 right-2 px-2 py-0.5 rounded-b bg-black/60 backdrop-blur-md border-x border-b border-white/10">
-        <span className="text-[7px] font-black uppercase tracking-[0.2em] text-white">
-          {rack.site_name || 'SITE INDICATOR'}
-        </span>
-      </div>
     </div>
   )
 }
@@ -680,12 +675,12 @@ const RackElevation = ({
 
   return (
     <div 
-      style={{ width: `${rackWidth}px`, maxHeight: 'calc(100vh - 240px)' }}
+      style={{ width: `${rackWidth}px` }}
       className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
       ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
       ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
       ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
-      h-full
+      h-full max-h-full
     `}>
       
       <RackStatusBar rack={rack} siteColor={rack.site_color} />
@@ -848,6 +843,7 @@ const AssetLegend = () => (
     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mr-1">Status Legend:</span>
     {[
       { label: 'Active',         color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+      { label: 'Standby',        color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
       { label: 'Maintenance',    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
       { label: 'Decommissioned', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
       { label: 'Offline',        color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
@@ -1731,7 +1727,7 @@ export default function RackTemp() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col gap-5 min-h-0">
+    <div className="h-full flex flex-col gap-4 min-h-0 overflow-hidden">
 
       {/* ── Page Header ── */}
       <div className="flex items-start justify-between gap-4 shrink-0">
@@ -1951,7 +1947,7 @@ export default function RackTemp() {
       )}
 
       {/* ── Rack Grid ── */}
-      <div id="rack-temp-grid" className="flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
+      <div id="rack-temp-grid" className="h-full flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
         
         {viewMode === 'spatial' ? (
           <SpatialMap 
@@ -2016,13 +2012,13 @@ export default function RackTemp() {
             })
 
             return Object.entries(groups).sort().map(([groupName, groupRacks]) => (
-              <div key={groupName} className="flex flex-col gap-4 shrink-0" data-rack-id={groupRacks[0]?.id}>
-                <div className="flex items-center gap-3 px-2">
+              <div key={groupName} className="flex flex-col gap-4 shrink-0 h-full" data-rack-id={groupRacks[0]?.id}>
+                <div className="flex items-center gap-3 px-2 shrink-0">
                   <div className="h-px w-8 bg-white/10" />
                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] whitespace-nowrap">{groupName}</span>
                   <div className="h-px flex-1 bg-white/5" />
                 </div>
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-1 min-h-0">
                   {groupRacks.map((r: any) => (
                     <RackElevation
                       key={r.id}
@@ -2692,6 +2688,11 @@ export default function RackTemp() {
             onClose={() => setShowingRackInfo(null)}
           />
         )}
+
+        <AuditLogModal
+          isOpen={showAuditLogs}
+          onClose={() => setShowAuditLogs(false)}
+        />
     </div>
   )
 }
