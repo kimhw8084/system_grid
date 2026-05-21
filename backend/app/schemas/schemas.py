@@ -432,6 +432,7 @@ class ProjectBase(BaseModel):
     priority: Optional[str] = "Medium"
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     owner: Optional[str] = None
     
     jira_links: Optional[List[str]] = []
@@ -459,6 +460,10 @@ class ProjectBase(BaseModel):
     metadata_json: Optional[Dict[str, Any]] = {}
 
 class ProjectCreate(ProjectBase): pass
+
+class ProjectUpdate(ProjectBase):
+    tasks: Optional[List[ProjectTaskBase]] = []
+
 class ProjectResponse(ProjectBase, BaseSchema):
     is_deleted: bool = False
     tasks: List[ProjectTaskResponse] = []

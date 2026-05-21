@@ -86,6 +86,8 @@ const ProjectHUD = ({ project }: { project: any }) => {
                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{project.type}</span>
                    <span className="text-slate-700 font-bold">•</span>
                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{project.status}</span>
+                   <span className="text-slate-700 font-bold">•</span>
+                   <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Added: {project.created_at ? format(new Date(project.created_at), 'MMM yyyy') : 'N/A'}</span>
                 </div>
              </div>
           </div>
@@ -137,27 +139,89 @@ const ProjectHUD = ({ project }: { project: any }) => {
   )
 }
 
-const ProjectRail = ({ projects, selectedId, onSelect, onNew, onDelete }: { projects: any[], selectedId: number | null, onSelect: (id: number) => void, onNew: () => void, onDelete: (id: number) => void }) => {
+const ProjectRail = ({ 
+  projects, 
+  selectedId, 
+  onSelect, 
+  onNew, 
+  onDelete,
+  width,
+  onResize,
+  isCollapsed,
+  onToggleCollapse
+}: { 
+  projects: any[], 
+  selectedId: number | null, 
+  onSelect: (id: number) => void, 
+  onNew: () => void, 
+  onDelete: (id: number) => void,
+  width: number,
+  onResize: (width: number) => void,
+  isCollapsed: boolean,
+  onToggleCollapse: () => void
+}) => {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [yearFilter, setYearFilter] = useState('ALL')
+
+  const years = useMemo(() => {
+    const y = new Set<string>()
+    projects.forEach(p => {
+      if (p.created_at) y.add(new Date(p.created_at).getFullYear().toString())
+      if (p.start_date) y.add(new Date(p.start_date).getFullYear().toString())
+    })
+    return Array.from(y).sort((a, b) => b.localeCompare(a))
+  }, [projects])
 
   const filtered = projects.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
     const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
+    const pYear = p.created_at ? new Date(p.created_at).getFullYear().toString() : 'N/A'
+    const matchesYear = yearFilter === 'ALL' || pYear === yearFilter
+    return matchesSearch && matchesStatus && matchesPriority && matchesYear
   })
 
+  if (isCollapsed) {
+    return (
+      <div className="w-12 border-r border-white/5 flex flex-col items-center py-4 bg-[#0a0c14] shrink-0">
+         <button onClick={onToggleCollapse} className="p-2 text-slate-500 hover:text-white transition-all mb-4">
+            <PanelLeft size={18} />
+         </button>
+         <button onClick={onNew} className="p-2 bg-blue-600 text-white rounded-lg mb-4">
+            <Plus size={18} />
+         </button>
+         <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar no-scrollbar">
+            {filtered.map(p => (
+               <button 
+                 key={p.id} 
+                 onClick={() => onSelect(p.id)}
+                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black uppercase transition-all ${selectedId === p.id ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                 title={p.name}
+               >
+                  {p.name[0]}
+               </button>
+            ))}
+         </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="w-64 border-r border-white/5 flex flex-col bg-[#0a0c14] shrink-0">
+    <div className="relative border-r border-white/5 bg-[#0a0c14] shrink-0 flex flex-col group/rail" style={{ width }}>
        <div className="p-4 space-y-4">
-          <button 
-            onClick={onNew}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-          >
-             <Plus size={14} /> New Stream
-          </button>
+          <div className="flex items-center justify-between">
+             <button 
+               onClick={onNew}
+               className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+             >
+                <Plus size={14} /> New Stream
+             </button>
+             <button onClick={onToggleCollapse} className="p-2 ml-2 text-slate-500 hover:text-white transition-all rounded-lg hover:bg-white/5">
+                <PanelRight size={18} />
+             </button>
+          </div>
 
           <div className="space-y-2">
              <div className="relative">
@@ -187,6 +251,14 @@ const ProjectRail = ({ projects, selectedId, onSelect, onNew, onDelete }: { proj
                    {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
              </div>
+             <select 
+                value={yearFilter}
+                onChange={e => setYearFilter(e.target.value)}
+                className="w-full bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-black text-slate-400 outline-none focus:border-blue-500/50 uppercase tracking-widest"
+              >
+                 <option value="ALL">ALL YEARS</option>
+                 {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
           </div>
        </div>
 
@@ -209,10 +281,13 @@ const ProjectRail = ({ projects, selectedId, onSelect, onNew, onDelete }: { proj
                       p.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
                     }`} />
                  </div>
-                 <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{p.type}</span>
-                    <span className="text-slate-800 text-[8px]">•</span>
-                    <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{p.type}</span>
+                       <span className="text-slate-800 text-[8px]">•</span>
+                       <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
+                    </div>
+                    <span className="text-[7px] font-black text-slate-700">{p.created_at ? format(new Date(p.created_at), 'yyyy') : 'N/A'}</span>
                  </div>
               </button>
               <button 
@@ -224,6 +299,25 @@ const ProjectRail = ({ projects, selectedId, onSelect, onNew, onDelete }: { proj
             </div>
           ))}
        </div>
+
+       {/* Resize Handle */}
+       <div 
+         className="absolute top-0 right-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/30 transition-colors z-50"
+         onMouseDown={(e) => {
+           const startX = e.clientX
+           const startWidth = width
+           const onMouseMove = (e: MouseEvent) => {
+             const newWidth = Math.max(160, Math.min(400, startWidth + (e.clientX - startX)))
+             onResize(newWidth)
+           }
+           const onMouseUp = () => {
+             window.removeEventListener('mousemove', onMouseMove)
+             window.removeEventListener('mouseup', onMouseUp)
+           }
+           window.addEventListener('mousemove', onMouseMove)
+           window.addEventListener('mouseup', onMouseUp)
+         }}
+       />
     </div>
   )
 }
@@ -305,17 +399,27 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [showBaseline, setShowBaseline] = useState(false)
 
+  const ROW_HEIGHT = 36 // h-9 equivalent
+  const HEADER_HEIGHT = 40 // h-10 equivalent
+
   const criticalPathIds = useMemo(() => {
     if (tasks.length === 0) return new Set()
     
-    // Simple longest path algorithm for DAG
+    // Cycle detection and longest path
     const memo = new Map<number, number>()
+    const visiting = new Set<number>()
     const getTaskDuration = (t: any) => differenceInDays(new Date(t.end_date), new Date(t.start_date))
     
     const findLongestPath = (taskId: number): number => {
       if (memo.has(taskId)) return memo.get(taskId)!
+      if (visiting.has(taskId)) return 0 // Cycle detected
+      
+      visiting.add(taskId)
       const task = tasks.find(t => t.id === taskId)
-      if (!task) return 0
+      if (!task) {
+        visiting.delete(taskId)
+        return 0
+      }
       
       const dependents = tasks.filter(t => (t.dependencies_json || []).includes(taskId))
       let maxSubPath = 0
@@ -325,6 +429,7 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
       
       const result = getTaskDuration(task) + maxSubPath
       memo.set(taskId, result)
+      visiting.delete(taskId)
       return result
     }
 
@@ -334,8 +439,11 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     const criticalSet = new Set<number>()
     if (maxLength === 0) return criticalSet
 
-    // Backtrack to find all tasks on any path that equals maxLength
+    const isCriticalMemo = new Map<string, boolean>()
     const isCritical = (taskId: number, currentLength: number): boolean => {
+      const key = `${taskId}-${currentLength}`
+      if (isCriticalMemo.has(key)) return isCriticalMemo.get(key)!
+      
       const task = tasks.find(t => t.id === taskId)
       if (!task) return false
       
@@ -346,8 +454,10 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
         for (const dep of dependents) {
           isCritical(dep.id, currentLength - duration)
         }
+        isCriticalMemo.set(key, true)
         return true
       }
+      isCriticalMemo.set(key, false)
       return false
     }
 
@@ -380,20 +490,33 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
 
   const startDate = useMemo(() => {
     if (tasks.length === 0) return startOfMonth(new Date())
-    const min = Math.min(...tasks.map(t => new Date(t.start_date).getTime()))
-    return startOfMonth(new Date(min))
+    const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
+    const min = times.length > 0 ? Math.min(...times) : new Date().getTime()
+    // Cap to 2 years ago to prevent massive arrays
+    const twoYearsAgo = addDays(new Date(), -730).getTime()
+    return startOfMonth(new Date(Math.max(min, twoYearsAgo)))
   }, [tasks])
 
   const endDate = useMemo(() => {
     if (tasks.length === 0) return endOfMonth(addDays(new Date(), 30))
-    const max = Math.max(...tasks.map(t => new Date(t.end_date).getTime()))
-    return endOfMonth(new Date(max))
+    const times = tasks.map(t => new Date(t.end_date).getTime()).filter(t => !isNaN(t))
+    const max = times.length > 0 ? Math.max(...times) : addDays(new Date(), 30).getTime()
+    // Cap to 2 years from now
+    const twoYearsHence = addDays(new Date(), 730).getTime()
+    return endOfMonth(new Date(Math.min(max, twoYearsHence)))
   }, [tasks])
 
-  const days = useMemo(() => eachDayOfInterval({ start: startDate, end: endDate }), [startDate, endDate])
+  const days = useMemo(() => {
+    try {
+      return eachDayOfInterval({ start: startDate, end: endDate })
+    } catch (e) {
+      return [new Date()]
+    }
+  }, [startDate, endDate])
 
   const getPosFromDate = (date: string) => {
     const d = new Date(date)
+    if (isNaN(d.getTime())) return 0
     return differenceInDays(d, startDate) * zoomLevel
   }
 
@@ -451,28 +574,58 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
     toast.success('Timeline Synchronized')
   }
 
+  const dependencyLines = useMemo(() => {
+    return tasks.flatMap(task => (task.dependencies_json || []).map(depId => {
+      const fromTask = tasks.find(t => t.id === depId)
+      if (!fromTask) return null
+      
+      const fromIdx = tasks.indexOf(fromTask)
+      const toIdx = tasks.indexOf(task)
+      
+      const x1 = getPosFromDate(fromTask.end_date)
+      const y1 = fromIdx * ROW_HEIGHT + (ROW_HEIGHT / 2) + 4
+      const x2 = getPosFromDate(task.start_date)
+      const y2 = toIdx * ROW_HEIGHT + (ROW_HEIGHT / 2) + 4
+      
+      const isCritical = criticalPathIds.has(task.id) && criticalPathIds.has(fromTask.id)
+      
+      return (
+        <g key={`${task.id}-${depId}`}>
+           <path 
+             d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`}
+             stroke={isCritical ? '#f43f5e' : (selectedTaskId === task.id ? '#3b82f6' : 'rgba(255,255,255,0.05)')}
+             strokeWidth={isCritical ? "2" : "1"}
+             fill="none"
+             strokeDasharray={isCritical || selectedTaskId === task.id ? "0" : "3,3"}
+           />
+           <circle cx={x2} cy={y2} r={isCritical ? "3" : "2"} fill={isCritical ? '#f43f5e' : (selectedTaskId === task.id ? '#3b82f6' : 'rgba(255,255,255,0.1)')} />
+        </g>
+      )
+    })).filter(Boolean)
+  }, [tasks, zoomLevel, criticalPathIds, selectedTaskId, startDate])
+
   return (
     <div className="h-full flex flex-col bg-[#0d0f17]">
-       <div className="h-12 border-b border-white/5 flex items-center px-6 justify-between bg-[#0a0c14]/50">
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all"><Minimize2 size={14}/></button>
-                <div className="w-px h-3 bg-white/10 mx-1" />
-                <button onClick={() => setZoomLevel(Math.min(100, zoomLevel + 5))} className="text-slate-500 hover:text-white transition-all"><Maximize2 size={14}/></button>
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">Zoom: {zoomLevel}px/d</span>
+       <div className="h-10 border-b border-white/5 flex items-center px-4 justify-between bg-[#0a0c14]/80 backdrop-blur-md z-40">
+          <div className="flex items-center gap-3">
+             <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded border border-white/5">
+                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={12}/></button>
+                <div className="w-px h-2.5 bg-white/10 mx-0.5" />
+                <button onClick={() => setZoomLevel(Math.min(100, zoomLevel + 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={12}/></button>
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1.5">Z: {zoomLevel}PX</span>
              </div>
              {selectedTaskId && (
-               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg animate-pulse">
-                  <Link2 size={12} className="text-blue-400" />
-                  <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Dependency Mode Active</span>
-                  <button onClick={() => setSelectedTaskId(null)} className="ml-2 text-slate-500 hover:text-white"><X size={12}/></button>
+               <div className="flex items-center gap-2 px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded animate-pulse">
+                  <Link2 size={10} className="text-blue-400" />
+                  <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Dependency Mode</span>
+                  <button onClick={() => setSelectedTaskId(null)} className="ml-1 text-slate-500 hover:text-white"><X size={10}/></button>
                </div>
              )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
              <button 
                onClick={() => setShowBaseline(!showBaseline)}
-               className={`px-3 py-1.5 border rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+               className={`px-2 py-1 border rounded text-[8px] font-black uppercase tracking-widest transition-all ${
                  showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'
                }`}
              >
@@ -480,11 +633,11 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
              </button>
              <button 
                onClick={saveBaseline}
-               className="px-3 py-1.5 bg-white/5 border border-white/10 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+               className="px-2 py-1 bg-white/5 border border-white/10 text-slate-400 rounded text-[8px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-1.5"
              >
-                <Camera size={12}/> Snap Baseline
+                <Camera size={10}/> Snap
              </button>
-             <div className="h-6 w-px bg-white/10 mx-1" />
+             <div className="h-4 w-px bg-white/10 mx-1" />
              <button 
                onClick={() => {
                  const name = prompt('NEW TASK IDENTIFIER')
@@ -493,58 +646,32 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                    setTasks([...tasks, newTask])
                  }
                }}
-               className="px-4 py-1.5 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center gap-2"
+               className="px-3 py-1 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded text-[8px] font-black uppercase tracking-widest hover:bg-blue-600/30 transition-all flex items-center gap-1.5"
              >
-                <Plus size={12}/> Append Milestone
+                <Plus size={10}/> Milestone
              </button>
-             <button onClick={commitUpdate} className="px-4 py-1.5 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/30 transition-all">Commit Schedule</button>
+             <button onClick={commitUpdate} className="px-3 py-1 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded text-[8px] font-black uppercase tracking-widest hover:bg-emerald-600/30 transition-all">Synchronize</button>
           </div>
        </div>
 
-       <div ref={containerRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[radial-gradient(#ffffff03_1px,transparent_1px)] [background-size:20px_20px]">
+       <div ref={containerRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[radial-gradient(#ffffff02_1px,transparent_1px)] [background-size:20px_20px]">
           <div className="sticky top-0 z-30 flex bg-[#0a0c14] border-b border-white/10" style={{ width: Math.max(days.length * zoomLevel, 1000) }}>
              {days.map((day, i) => (
-               <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-12 ${isSameDay(day, new Date()) ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
-                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">{format(day, 'MMM')}</span>
-                  <span className={`text-[11px] font-black ${isSameDay(day, new Date()) ? 'text-blue-400' : 'text-slate-300'}`}>{format(day, 'd')}</span>
+               <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-10 ${isSameDay(day, new Date()) ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
+                  <span className="text-[7px] font-black text-slate-500 uppercase tracking-tighter">{format(day, 'MMM')}</span>
+                  <span className={`text-[10px] font-black ${isSameDay(day, new Date()) ? 'text-blue-400' : 'text-slate-300'}`}>{format(day, 'd')}</span>
                </div>
              ))}
           </div>
 
-          <div className="relative pt-4 pb-20" style={{ width: Math.max(days.length * zoomLevel, 1000), minHeight: '100%' }}>
+          <div className="relative pt-1 pb-10" style={{ width: Math.max(days.length * zoomLevel, 1000), minHeight: '100%' }}>
              {/* Dependency Lines SVG */}
              <svg className="absolute inset-0 pointer-events-none z-0" style={{ width: '100%', height: '100%' }}>
-                {tasks.map(task => (task.dependencies_json || []).map(depId => {
-                  const fromTask = tasks.find(t => t.id === depId)
-                  if (!fromTask) return null
-                  
-                  const fromIdx = tasks.indexOf(fromTask)
-                  const toIdx = tasks.indexOf(task)
-                  
-                  const x1 = getPosFromDate(fromTask.end_date)
-                  const y1 = fromIdx * 56 + 28 + 16
-                  const x2 = getPosFromDate(task.start_date)
-                  const y2 = toIdx * 56 + 28 + 16
-                  
-                  const isCritical = criticalPathIds.has(task.id) && criticalPathIds.has(fromTask.id)
-                  
-                  return (
-                    <g key={`${task.id}-${depId}`}>
-                       <path 
-                         d={`M ${x1} ${y1} C ${x1 + 40} ${y1}, ${x2 - 40} ${y2}, ${x2} ${y2}`}
-                         stroke={isCritical ? '#f43f5e' : (selectedTaskId === task.id ? '#3b82f6' : 'rgba(255,255,255,0.1)')}
-                         strokeWidth={isCritical ? "2" : "1.5"}
-                         fill="none"
-                         strokeDasharray={isCritical || selectedTaskId === task.id ? "0" : "4,2"}
-                       />
-                       <circle cx={x2} cy={y2} r={isCritical ? "4" : "3"} fill={isCritical ? '#f43f5e' : (selectedTaskId === task.id ? '#3b82f6' : 'rgba(255,255,255,0.2)')} />
-                    </g>
-                  )
-                }))}
+                {dependencyLines}
              </svg>
 
-             <div className="absolute top-0 bottom-0 w-px bg-blue-500/50 z-10 pointer-events-none" style={{ left: getPosFromDate(new Date().toISOString()) }}>
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" />
+             <div className="absolute top-0 bottom-0 w-px bg-blue-500/30 z-10 pointer-events-none" style={{ left: getPosFromDate(new Date().toISOString()) }}>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
              </div>
 
              {tasks.map((task, idx) => {
@@ -557,13 +684,13 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                const bWidth = baseline ? getPosFromDate(baseline.end) - bLeft : 0
 
                return (
-                 <div key={task.id} className="h-14 flex items-center group relative px-4">
+                 <div key={task.id} className="flex items-center group relative px-4" style={{ height: ROW_HEIGHT }}>
                     <div className="absolute inset-0 border-b border-white/5 pointer-events-none" />
                     
                     {showBaseline && baseline && (
                       <div 
-                        className="absolute h-4 bg-white/5 border border-white/10 rounded-sm z-10 opacity-50 pointer-events-none"
-                        style={{ left: bLeft, width: bWidth, top: '4px' }}
+                        className="absolute h-3 bg-white/5 border border-white/10 rounded-sm z-10 opacity-30 pointer-events-none"
+                        style={{ left: bLeft, width: bWidth, top: '2px' }}
                       />
                     )}
 
@@ -573,12 +700,12 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                       dragMomentum={false}
                       onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
                       onClick={() => selectedTaskId ? toggleDependency(task.id) : null}
-                      className={`absolute h-8 rounded-lg flex items-center px-3 gap-2 border shadow-lg group/bar z-20 transition-all ${
-                        selectedTaskId === task.id ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0d0f17]' : ''
+                      className={`absolute h-6 rounded flex items-center px-2 gap-1.5 border shadow-md group/bar z-20 transition-all ${
+                        selectedTaskId === task.id ? 'ring-1 ring-blue-500 ring-offset-1 ring-offset-[#0d0f17]' : ''
                       } ${
-                        isCritical ? 'border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : ''
+                        isCritical ? 'border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.1)]' : ''
                       } ${
-                        selectedTaskId && selectedTaskId !== task.id ? 'cursor-pointer hover:scale-[1.02]' : 'cursor-grab active:cursor-grabbing'
+                        selectedTaskId && selectedTaskId !== task.id ? 'cursor-pointer hover:scale-[1.01]' : 'cursor-grab active:cursor-grabbing'
                       } ${
                         task.status === 'Completed' ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400' :
                         task.status === 'Blocked' ? 'bg-rose-600/20 border-rose-500/40 text-rose-400 animate-pulse' :
@@ -586,41 +713,40 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
                       }`}
                       style={{ left, width }}
                     >
-                       {/* Resize Handles */}
                        <motion.div 
                          drag="x"
                          dragMomentum={false}
                          onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }}
-                         className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 z-30"
+                         className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/20 z-30"
                        />
                        <motion.div 
                          drag="x"
                          dragMomentum={false}
                          onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }}
-                         className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20 z-30"
+                         className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-white/20 z-30"
                        />
 
-                       <div className="shrink-0 flex items-center gap-1.5 overflow-hidden">
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-400' : task.status === 'Blocked' ? 'bg-rose-400' : 'bg-blue-400'}`} />
-                          <span className="text-[10px] font-black uppercase truncate tracking-widest max-w-[120px]">{task.name}</span>
+                       <div className="shrink-0 flex items-center gap-1 overflow-hidden">
+                          <div className={`w-1 h-1 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-400' : task.status === 'Blocked' ? 'bg-rose-400' : 'bg-blue-400'}`} />
+                          <span className="text-[9px] font-black uppercase truncate tracking-tight max-w-[100px]">{task.name}</span>
                        </div>
-                       <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden mx-2 min-w-[20px]">
+                       <div className="flex-1 h-0.5 bg-white/10 rounded-full overflow-hidden mx-1 min-w-[10px]">
                           <div className="h-full bg-current opacity-50" style={{ width: `${task.progress}%` }} />
                        </div>
-                       <div className="flex items-center gap-2 shrink-0">
+                       <div className="flex items-center gap-1 shrink-0">
                           <button 
                             onClick={(e) => { e.stopPropagation(); setSelectedTaskId(selectedTaskId === task.id ? null : task.id); }}
-                            className={`p-1 rounded hover:bg-white/10 transition-all ${selectedTaskId === task.id ? 'text-white bg-blue-600' : 'text-slate-500'}`}
+                            className={`p-0.5 rounded hover:bg-white/10 transition-all ${selectedTaskId === task.id ? 'text-white bg-blue-600' : 'text-slate-600'}`}
                           >
-                             <Link2 size={10} />
+                             <Link2 size={8} />
                           </button>
-                          <span className="text-[9px] font-black opacity-60">{task.progress}%</span>
+                          <span className="text-[8px] font-black opacity-50">{task.progress}%</span>
                        </div>
-                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/bar:block bg-[#1a1b26] border border-white/10 p-3 rounded-lg shadow-2xl z-50 min-w-[200px] backdrop-blur-xl pointer-events-none">
-                          <p className="text-[10px] font-black text-white uppercase mb-2 border-b border-white/5 pb-1">{task.name}</p>
-                          <div className="grid grid-cols-2 gap-2 text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                             <div>Start: <span className="text-white">{format(new Date(task.start_date), 'MMM d, yyyy')}</span></div>
-                             <div>End: <span className="text-white">{format(new Date(task.end_date), 'MMM d, yyyy')}</span></div>
+                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/bar:block bg-[#1a1b26] border border-white/10 p-2 rounded shadow-2xl z-50 min-w-[150px] backdrop-blur-xl pointer-events-none">
+                          <p className="text-[9px] font-black text-white uppercase mb-1 border-b border-white/5 pb-0.5">{task.name}</p>
+                          <div className="grid grid-cols-2 gap-1 text-[7px] font-black text-slate-500 uppercase tracking-widest">
+                             <div>S: <span className="text-white">{format(new Date(task.start_date), 'MMM d, yy')}</span></div>
+                             <div>E: <span className="text-white">{format(new Date(task.end_date), 'MMM d, yy')}</span></div>
                           </div>
                        </div>
                     </motion.div>
@@ -629,8 +755,8 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
              })}
              {tasks.length === 0 && (
                <div className="py-20 flex flex-col items-center justify-center text-slate-700 opacity-20">
-                  <Calendar size={48} className="mb-4" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.5em]">No Milestones Recorded</p>
+                  <Calendar size={32} className="mb-2" />
+                  <p className="text-[9px] font-black uppercase tracking-[0.4em]">No Roadmap Data</p>
                </div>
              )}
           </div>
@@ -641,42 +767,42 @@ const PrecisionGantt = ({ project, onUpdate }: { project: any, onUpdate: (data: 
 
 const LiveScope = ({ project }: { project: any }) => {
   return (
-    <div className="h-full flex flex-col p-8 space-y-8 overflow-y-auto custom-scrollbar">
+    <div className="h-full flex flex-col p-4 space-y-6 overflow-y-auto custom-scrollbar">
        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-                <Network size={20} className="text-blue-400" />
+          <div className="flex items-center gap-2">
+             <div className="w-8 h-8 bg-blue-500/10 rounded flex items-center justify-center border border-blue-500/20">
+                <Network size={16} className="text-blue-400" />
              </div>
              <div>
-                <h3 className="text-xl font-black uppercase text-white tracking-tighter ">Live Scope Matrix</h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Real-time health of in-scope assets</p>
+                <h3 className="text-sm font-black uppercase text-white tracking-tighter ">Live Scope Matrix</h3>
+                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Health of in-scope assets</p>
              </div>
           </div>
-          <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-lg border border-white/5">
-             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Healthy</span></div>
-             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">At Risk</span></div>
+          <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded border border-white/5">
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Healthy</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" /><span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">At Risk</span></div>
           </div>
        </div>
-       <div className="grid grid-cols-3 gap-6">
+       <div className="grid grid-cols-4 gap-3">
           {(project?.target_assets || []).map((assetId: string, i: number) => (
-            <div key={i} className="bg-[#1a1b26]/40 border border-white/5 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
-               <div className="flex justify-between items-start mb-4">
-                  <div><h4 className="text-sm font-black text-white uppercase tracking-tighter">{assetId}</h4><p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">Physical Asset</p></div>
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-emerald-400"><Cpu size={16} /></div>
+            <div key={i} className="bg-[#1a1b26]/40 border border-white/5 rounded-lg p-3 hover:border-blue-500/30 transition-all group">
+               <div className="flex justify-between items-start mb-3">
+                  <div><h4 className="text-[11px] font-black text-white uppercase tracking-tight truncate max-w-[100px]">{assetId}</h4><p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">Physical Asset</p></div>
+                  <div className="w-6 h-6 rounded bg-white/5 flex items-center justify-center text-emerald-400"><Cpu size={12} /></div>
                </div>
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between"><span className="text-[9px] font-black text-slate-500 uppercase">Operational State</span><span className="text-[10px] font-black text-emerald-400 uppercase">Active</span></div>
-                  <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[95%]" /></div>
-                  <div className="flex gap-2">
-                     <button className="flex-1 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-black uppercase hover:bg-blue-600/20 transition-all">Teleport</button>
-                     <button className="flex-1 py-1.5 bg-white/5 border border-white/10 text-slate-500 rounded text-[9px] font-black uppercase hover:bg-white/10 transition-all">Details</button>
+               <div className="space-y-3">
+                  <div className="flex items-center justify-between"><span className="text-[8px] font-black text-slate-500 uppercase">State</span><span className="text-[9px] font-black text-emerald-400 uppercase">Active</span></div>
+                  <div className="h-0.5 w-full bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 w-[95%]" /></div>
+                  <div className="flex gap-1.5">
+                     <button className="flex-1 py-1 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[8px] font-black uppercase hover:bg-blue-600/20 transition-all">Link</button>
+                     <button className="flex-1 py-1 bg-white/5 border border-white/10 text-slate-500 rounded text-[8px] font-black uppercase hover:bg-white/10 transition-all">Det</button>
                   </div>
                </div>
             </div>
           ))}
           {(project?.target_assets || []).length === 0 && (
-            <div className="col-span-3 py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-2xl text-slate-700">
-               <Binary size={48} className="mb-4 opacity-20" /><p className="text-[11px] font-black uppercase tracking-[0.5em]">No Specific Assets Bound</p>
+            <div className="col-span-4 py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-xl text-slate-700">
+               <Binary size={32} className="mb-2 opacity-20" /><p className="text-[9px] font-black uppercase tracking-[0.4em]">No Assets Bound</p>
             </div>
           )}
        </div>
@@ -694,19 +820,19 @@ const DevLog = ({ project, onUpdate }: { project: any, onUpdate: (data: any) => 
     toast.success('Log Synchronized')
   }
   return (
-    <div className="h-full flex flex-col p-8 space-y-6">
+    <div className="h-full flex flex-col p-4 space-y-4">
        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/20"><ScrollText size={20} className="text-amber-400" /></div>
-             <div><h3 className="text-xl font-black uppercase text-white tracking-tighter ">Engineering Log</h3><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Markdown-First Production Notebook</p></div>
+          <div className="flex items-center gap-2">
+             <div className="w-8 h-8 bg-amber-500/10 rounded flex items-center justify-center border border-amber-500/20"><ScrollText size={16} className="text-amber-400" /></div>
+             <div><h3 className="text-sm font-black uppercase text-white tracking-tighter ">Engineering Log</h3><p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Markdown Production Notebook</p></div>
           </div>
-          <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-600/20">
-             {isSaving ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}Sync Log
+          <button onClick={handleSave} disabled={isSaving} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/20">
+             {isSaving ? <RefreshCcw size={12} className="animate-spin" /> : <Save size={12} />}Sync Log
           </button>
        </div>
-       <div className="flex-1 bg-black/40 rounded-xl border border-white/5 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-4 px-4 py-2 border-b border-white/5 bg-white/5"><div className="flex items-center gap-1.5 border-r border-white/10 pr-4 mr-2"><button className="p-1.5 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><FileText size={14}/></button><button className="p-1.5 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><ImageIcon size={14}/></button><button className="p-1.5 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><Terminal size={14}/></button></div><p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.2em] animate-pulse">CTRL+V TO ATTACH EVIDENCE</p></div>
-          <textarea value={content} onChange={e => setContent(e.target.value)} className="flex-1 bg-transparent p-6 text-sm font-medium text-slate-300 outline-none resize-none font-mono placeholder:text-slate-800 leading-relaxed" placeholder="# Today's Progress..."/>
+       <div className="flex-1 bg-black/40 rounded-lg border border-white/5 flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5 bg-white/5"><div className="flex items-center gap-1 border-r border-white/10 pr-2 mr-1"><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><FileText size={12}/></button><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><ImageIcon size={12}/></button><button className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-all"><Terminal size={12}/></button></div><p className="text-[7px] font-bold text-slate-700 uppercase tracking-widest animate-pulse">CTRL+V TO ATTACH</p></div>
+          <textarea value={content} onChange={e => setContent(e.target.value)} className="flex-1 bg-transparent p-4 text-[12px] font-medium text-slate-300 outline-none resize-none font-mono placeholder:text-slate-800 leading-relaxed" placeholder="# Today's Progress..."/>
        </div>
     </div>
   )
@@ -786,33 +912,33 @@ const ProjectActivityStream = ({ project, allProjects = [] }: { project: any, al
   }, [project, allProjects])
 
   return (
-    <div className="h-full flex flex-col p-8 space-y-6">
-       <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-             <History size={20} className="text-blue-400" />
+    <div className="h-full flex flex-col p-4 space-y-4">
+       <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-500/10 rounded flex items-center justify-center border border-blue-500/20">
+             <History size={16} className="text-blue-400" />
           </div>
           <div>
-             <h3 className="text-xl font-black uppercase text-white tracking-tighter ">{project ? 'Strategic Activity Stream' : 'Portfolio Global Activity'}</h3>
-             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{project ? 'Real-time collaboration feed' : 'Aggregated engineering operations'}</p>
+             <h3 className="text-sm font-black uppercase text-white tracking-tighter ">{project ? 'Strategic Activity Stream' : 'Portfolio Global Activity'}</h3>
+             <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Collaborative feed</p>
           </div>
        </div>
-       <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
+       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
           {activities.map((item: any, i: number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-xl space-y-3 group hover:border-blue-500/30 transition-all">
+            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg space-y-2 group hover:border-blue-500/30 transition-all">
                <div className="flex justify-between items-start">
                   <div className="flex items-center gap-2">
-                     <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-black text-white">{(item.author || item.asked_by || 'U')[0].toUpperCase()}</div>
+                     <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-[8px] font-black text-white">{(item.author || item.asked_by || 'U')[0].toUpperCase()}</div>
                      <div>
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{item.author || item.asked_by || 'System'}</span>
-                        {item.projectName && <span className="ml-2 text-[8px] font-black text-blue-500 uppercase tracking-widest">@ {item.projectName}</span>}
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{item.author || item.asked_by || 'System'}</span>
+                        {item.projectName && <span className="ml-2 text-[7px] font-black text-blue-500 uppercase tracking-widest">@ {item.projectName}</span>}
                      </div>
                   </div>
-                  <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{format(new Date(item.timestamp || item.created_at), 'MMM d, HH:mm')}</span>
+                  <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">{format(new Date(item.timestamp || item.created_at), 'MMM d, HH:mm')}</span>
                </div>
-               <p className="text-[11px] font-bold text-slate-400 leading-relaxed ">"{item.content || item.question || item.message}"</p>
+               <p className="text-[10px] font-bold text-slate-400 leading-tight">"{item.content || item.question || item.message}"</p>
             </div>
           ))}
-          {activities.length === 0 && <div className="py-20 text-center text-slate-700 font-black uppercase tracking-[0.2em] opacity-30">No activity recorded for this vector</div>}
+          {activities.length === 0 && <div className="py-20 text-center text-slate-700 font-black uppercase tracking-[0.2em] opacity-30">No activity recorded</div>}
        </div>
     </div>
   )
@@ -828,6 +954,8 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
     problem_statement: '', 
     objective: '', 
     description: '',
+    start_date: new Date().toISOString(),
+    end_date: addDays(new Date(), 90).toISOString(),
     man_hours_saved: 0, 
     stoploss_minutes_saved: 0, 
     wafers_gained: 0, 
@@ -863,7 +991,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
   const filteredAssets = assets.filter((a: any) => a.name.toLowerCase().includes(assetSearch.toLowerCase()))
 
   return (
-    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-12">
+    <div className="space-y-8 animate-in fade-in zoom-in-95 duration-300 pb-12 max-w-5xl mx-auto">
        <div className="grid grid-cols-2 gap-8">
           <div className="space-y-6">
              <div>
@@ -881,9 +1009,15 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
                    <input value={formData.owner} onChange={e => setFormData({ ...formData, owner: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
                 </div>
              </div>
-             <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Jira References (Comma separated)</label>
-                <input value={jiraInput} onChange={e => handleJiraChange(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="e.g. PROJ-123, PROJ-456"/>
+             <div className="grid grid-cols-2 gap-4">
+                <div>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Start Date</label>
+                   <input type="date" value={formData.start_date ? format(new Date(formData.start_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">End Date (Target)</label>
+                   <input type="date" value={formData.end_date ? format(new Date(formData.end_date), 'yyyy-MM-dd') : ''} onChange={e => setFormData({ ...formData, end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500"/>
+                </div>
              </div>
           </div>
           <div className="space-y-6 bg-white/5 p-6 rounded-2xl border border-white/10">
@@ -893,6 +1027,10 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, systems =
                 <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Man-Hours Saved</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
                 <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Stoploss Min.</label><input type="number" value={formData.stoploss_minutes_saved} onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
                 <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Wafers Gained</label><input type="number" value={formData.wafers_gained} onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
+             </div>
+             <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block px-1">Jira References (Comma separated)</label>
+                <input value={jiraInput} onChange={e => handleJiraChange(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="e.g. PROJ-123, PROJ-456"/>
              </div>
           </div>
        </div>
@@ -1129,16 +1267,23 @@ const ProjectMatrix = ({ projects, onSelect, onEdit, onBulkUpdate }: { projects:
     { 
       field: 'roi_defense_line', 
       headerName: 'LINE', 
-      width: 80, 
+      width: 70, 
       cellClass: 'text-center font-bold text-blue-400',
       valueFormatter: (p: any) => `L${p.value ?? 0}`
     },
     { 
-      field: 'man_hours_saved', 
-      headerName: 'SAVED (H)', 
+      field: 'created_at', 
+      headerName: 'ADDED', 
       width: 100, 
-      cellClass: 'text-center font-bold text-emerald-400',
-      valueFormatter: (p: any) => `+${p.value ?? 0}H`
+      cellClass: 'font-bold text-slate-500 text-[9px] uppercase',
+      valueFormatter: (p: any) => p.value ? format(new Date(p.value), 'MMM d, yyyy') : 'N/A'
+    },
+    { 
+      field: 'completed_at', 
+      headerName: 'COMPLETED', 
+      width: 110, 
+      cellClass: 'font-bold text-emerald-500 text-[9px] uppercase',
+      valueFormatter: (p: any) => p.value ? format(new Date(p.value), 'MMM d, yyyy') : 'N/A'
     },
     {
       headerName: 'ACTIONS',
@@ -1211,6 +1356,10 @@ export default function Projects() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
+
+  // Layout State
+  const [sidebarWidth, setSidebarWidth] = useState(256)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: async () => (await (await apiFetch('/api/v1/projects')).json()) })
   const { data: systems } = useQuery({ queryKey: ['systems'], queryFn: async () => (await (await apiFetch('/api/v1/sites')).json()) })
@@ -1351,6 +1500,10 @@ export default function Projects() {
             onSelect={setSelectedProjectId} 
             onNew={() => { setSelectedProjectId(null); setIsEditing(true); }}
             onDelete={(id) => setActiveModal({ type: 'DELETE_CONFIRM', id })}
+            width={sidebarWidth}
+            onResize={setSidebarWidth}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />
           <div className="flex-1 flex flex-col min-w-0 bg-[#0d0f17]">
              <div className="h-12 border-b border-white/5 flex items-center px-6 gap-6 shrink-0 bg-[#0a0c14]">
@@ -1371,7 +1524,7 @@ export default function Projects() {
              <div className="flex-1 overflow-hidden">
                 <AnimatePresence mode="wait">
                    {activeTab === 'WORKSPACE' && (
-                     <motion.div key="workspace" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full p-8 overflow-y-auto custom-scrollbar">
+                     <motion.div key="workspace" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full p-4 overflow-y-auto custom-scrollbar">
                         {isEditing ? (
                           <ProjectForm 
                             initialData={selectedProject} 
@@ -1382,97 +1535,93 @@ export default function Projects() {
                             assets={devices || []}
                           />
                         ) : (
-                          <div className="max-w-7xl mx-auto space-y-12">
+                          <div className="max-w-full mx-auto space-y-6">
                              {/* Portfolio Header */}
-                             <div className="grid grid-cols-5 gap-4">
-                                <div className="bg-blue-600/10 border border-blue-500/20 p-4 rounded-xl">
-                                   <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Portfolio Hours</p>
-                                   <p className="text-2xl font-black text-white">+{portfolioMetrics?.totalHours}H</p>
+                             <div className="grid grid-cols-5 gap-3">
+                                <div className="bg-blue-600/10 border border-blue-500/20 p-3 rounded-lg">
+                                   <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Portfolio Hours</p>
+                                   <p className="text-xl font-black text-white">+{portfolioMetrics?.totalHours}H</p>
                                 </div>
-                                <div className="bg-emerald-600/10 border border-emerald-500/20 p-4 rounded-xl">
-                                   <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Wafers</p>
-                                   <p className="text-2xl font-black text-white">{portfolioMetrics?.totalWafers}</p>
+                                <div className="bg-emerald-600/10 border border-emerald-500/20 p-3 rounded-lg">
+                                   <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Total Wafers</p>
+                                   <p className="text-xl font-black text-white">{portfolioMetrics?.totalWafers}</p>
                                 </div>
-                                <div className="bg-rose-600/10 border border-rose-500/20 p-4 rounded-xl">
-                                   <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Stoploss Min.</p>
-                                   <p className="text-2xl font-black text-white">{portfolioMetrics?.totalStoploss}M</p>
+                                <div className="bg-rose-600/10 border border-rose-500/20 p-3 rounded-lg">
+                                   <p className="text-[8px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Stoploss Min.</p>
+                                   <p className="text-xl font-black text-white">{portfolioMetrics?.totalStoploss}M</p>
                                 </div>
-                                <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">In Flight</p>
-                                   <p className="text-2xl font-black text-white">{portfolioMetrics?.activeStreams}</p>
+                                <div className="bg-white/5 border border-white/10 p-3 rounded-lg">
+                                   <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">In Flight</p>
+                                   <p className="text-xl font-black text-white">{portfolioMetrics?.activeStreams}</p>
                                 </div>
-                                <div className={`p-4 rounded-xl border ${portfolioMetrics?.blockedStreams ? 'bg-rose-600 border-rose-500 animate-pulse' : 'bg-white/5 border-white/10'}`}>
-                                   <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${portfolioMetrics?.blockedStreams ? 'text-white' : 'text-slate-500'}`}>Blocked</p>
-                                   <p className="text-2xl font-black text-white">{portfolioMetrics?.blockedStreams}</p>
+                                <div className={`p-3 rounded-lg border ${portfolioMetrics?.blockedStreams ? 'bg-rose-600 border-rose-500 animate-pulse' : 'bg-white/5 border-white/10'}`}>
+                                   <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${portfolioMetrics?.blockedStreams ? 'text-white' : 'text-slate-500'}`}>Blocked</p>
+                                   <p className="text-xl font-black text-white">{portfolioMetrics?.blockedStreams}</p>
                                 </div>
                              </div>
 
                              {/* Resource Heatmap */}
-                             <section className="space-y-4">
-                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Users size={14} /> Resource Allocation Heatmap</h4>
-                                <div className="grid grid-cols-5 gap-4">
+                             <section className="space-y-2">
+                                <h4 className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Users size={12} /> Resource Allocation</h4>
+                                <div className="grid grid-cols-5 gap-2">
                                    {resourceHeatmap.map(([name, count]) => (
-                                     <div key={name} className="bg-white/5 border border-white/10 p-3 rounded-lg flex items-center justify-between group hover:border-blue-500/30 transition-all">
-                                        <div className="flex items-center gap-2">
-                                           <div className="w-6 h-6 rounded-md bg-blue-600/20 flex items-center justify-center text-[10px] font-black text-blue-400">{name[0]}</div>
-                                           <span className="text-[10px] font-bold text-slate-300 uppercase truncate max-w-[80px]">{name}</span>
+                                     <div key={name} className="bg-white/5 border border-white/10 p-2 rounded flex items-center justify-between group hover:border-blue-500/30 transition-all">
+                                        <div className="flex items-center gap-1.5 overflow-hidden">
+                                           <div className="w-5 h-5 rounded bg-blue-600/20 flex items-center justify-center text-[8px] font-black text-blue-400 shrink-0">{name[0]}</div>
+                                           <span className="text-[9px] font-bold text-slate-300 uppercase truncate">{name}</span>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                           <div className="h-1.5 w-12 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                           <div className="h-1 w-8 bg-white/5 rounded-full overflow-hidden">
                                               <div className={`h-full ${count > 3 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(count * 25, 100)}%` }} />
                                            </div>
-                                           <span className="text-[10px] font-black text-white">{count}</span>
+                                           <span className="text-[9px] font-black text-white">{count}</span>
                                         </div>
                                      </div>
                                    ))}
                                 </div>
                              </section>
 
-                             <div className="grid grid-cols-2 gap-8">
-                                <section className="space-y-4">
-                                   <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
-                                   <div className="bg-white/5 p-6 rounded-xl border border-white/10 min-h-[120px] relative group">
-                                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={14}/></button></div>
-                                      <p className="text-[11px] font-bold text-slate-300 leading-relaxed ">"{selectedProject?.problem_statement || 'No problem statement defined.'}"</p>
+                             <div className="grid grid-cols-2 gap-6">
+                                <section className="space-y-2">
+                                   <h4 className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Clipboard size={12} /> Problem Statement</h4>
+                                   <div className="bg-white/5 p-4 rounded-lg border border-white/10 min-h-[80px] relative group">
+                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-blue-400 transition-all"><Edit2 size={12}/></button></div>
+                                      <p className="text-[10px] font-bold text-slate-400 leading-snug ">"{selectedProject?.problem_statement || 'No problem statement defined.'}"</p>
                                    </div>
                                 </section>
-                                <section className="space-y-4">
-                                   <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Target size={14} /> Mission Objective</h4>
-                                   <div className="bg-white/5 p-6 rounded-xl border border-white/10 min-h-[120px] relative group">
-                                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-emerald-400 transition-all"><Edit2 size={14}/></button></div>
-                                      <p className="text-[11px] font-bold text-slate-300 leading-relaxed">{selectedProject?.objective || 'No objective defined.'}</p>
+                                <section className="space-y-2">
+                                   <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Target size={12} /> Mission Objective</h4>
+                                   <div className="bg-white/5 p-4 rounded-lg border border-white/10 min-h-[80px] relative group">
+                                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setIsEditing(true)} className="p-1 hover:bg-white/10 rounded text-slate-500 hover:text-emerald-400 transition-all"><Edit2 size={12}/></button></div>
+                                      <p className="text-[10px] font-bold text-slate-400 leading-snug">{selectedProject?.objective || 'No objective defined.'}</p>
                                    </div>
                                 </section>
                                 {(selectedProject?.metadata_json?.risks || []).length > 0 && (
-                                   <section className="space-y-4">
-                                      <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-2"><ShieldAlert size={14} /> Active Risk Flags</h4>
-                                      <div className="space-y-2">
-                                         {selectedProject.metadata_json.risks.map((r:any) => (
-                                           <div key={r.id} className="flex items-center justify-between p-3 bg-rose-600/10 border border-rose-500/20 rounded-lg">
-                                              <span className="text-[10px] font-black text-rose-400 uppercase truncate mr-4">{r.description}</span>
-                                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${r.impact === 'Critical' ? 'bg-rose-600 text-white' : 'bg-rose-600/20 text-rose-400'}`}>{r.impact}</span>
+                                   <section className="space-y-2">
+                                      <h4 className="text-[9px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-2"><ShieldAlert size={12} /> Risks</h4>
+                                      <div className="grid grid-cols-2 gap-2">
+                                         {selectedProject.metadata_json.risks.slice(0, 4).map((r:any) => (
+                                           <div key={r.id} className="flex items-center justify-between p-2 bg-rose-600/10 border border-rose-500/20 rounded">
+                                              <span className="text-[9px] font-black text-rose-400 uppercase truncate mr-2">{r.description}</span>
+                                              <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${r.impact === 'Critical' ? 'bg-rose-600 text-white' : 'bg-rose-600/20 text-rose-400'}`}>{r.impact}</span>
                                            </div>
                                          ))}
                                       </div>
                                    </section>
                                 )}
-                             </div>
-                             <div className="space-y-8">
-                                <section className="space-y-4">
-                                   <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2"><Layers size={14} /> Target Infrastructure</h4>
-                                   <div className="grid grid-cols-1 gap-4">
-                                      <div className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3">
-                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Systems</p>
-                                         <div className="flex flex-wrap gap-2">
-                                            {(selectedProject?.target_systems || []).map((s: string, i: number) => (<span key={i} className="px-3 py-1 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[9px] font-black uppercase rounded-md">{s}</span>))}
-                                            {(!selectedProject?.target_systems || selectedProject.target_systems.length === 0) && <span className="text-[9px] font-bold text-slate-700 uppercase">Global Scope</span>}
+                                <section className="space-y-2">
+                                   <h4 className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2"><Layers size={12} /> Infrastructure</h4>
+                                   <div className="grid grid-cols-2 gap-2">
+                                      <div className="p-2 bg-white/5 rounded border border-white/10 space-y-1">
+                                         <p className="text-[7px] font-black text-slate-600 uppercase">Systems</p>
+                                         <div className="flex flex-wrap gap-1">
+                                            {(selectedProject?.target_systems || []).map((s: string, i: number) => (<span key={i} className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[8px] font-black uppercase rounded">{s}</span>))}
                                          </div>
                                       </div>
-                                      <div className="p-4 bg-white/5 rounded-lg border border-white/10 space-y-3">
-                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Assets</p>
-                                         <div className="flex flex-wrap gap-2">
-                                            {(selectedProject?.target_assets || []).map((s: string, i: number) => (<span key={i} className="px-3 py-1 bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase rounded-md">{s}</span>))}
-                                            {(!selectedProject?.target_assets || selectedProject.target_assets.length === 0) && <span className="text-[9px] font-bold text-slate-700 uppercase">No Physical Binding</span>}
+                                      <div className="p-2 bg-white/5 rounded border border-white/10 space-y-1">
+                                         <p className="text-[7px] font-black text-slate-600 uppercase">Assets</p>
+                                         <div className="flex flex-wrap gap-1">
+                                            {(selectedProject?.target_assets || []).map((s: string, i: number) => (<span key={i} className="px-1.5 py-0.5 bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded">{s}</span>))}
                                          </div>
                                       </div>
                                    </div>

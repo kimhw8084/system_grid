@@ -49,18 +49,50 @@ async def get_project(project_id: int, db: AsyncSession = Depends(get_db)):
     return project
 
 @router.put("/{project_id}", response_model=schemas.ProjectResponse)
-async def update_project(project_id: int, data: schemas.ProjectBase, db: AsyncSession = Depends(get_db)):
-    db_project = await db.get(models.Project, project_id)
+async def update_project(project_id: int, data: schemas.ProjectUpdate, db: AsyncSession = Depends(get_db)):
+    query = select(models.Project).filter(models.Project.id == project_id).options(
+        selectinload(models.Project.tasks)
+    )
+    result = await db.execute(query)
+    db_project = result.scalar_one_or_none()
+    
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
     
     update_data = data.model_dump(exclude_unset=True)
+    tasks_data = update_data.pop("tasks", None)
+    
+    # Auto-set completed_at if status changed to Completed
+    if update_data.get("status") == "Completed" and not db_project.completed_at and not update_data.get("completed_at"):
+        db_project.completed_at = func.now()
+
     for key, value in update_data.items():
         setattr(db_project, key, value)
     
+    # Handle Nested Tasks
+    if tasks_data is not None:
+        # Simple implementation: Sync tasks
+        # In a real production app, you'd match by ID, update existing, add new, and potentially delete removed.
+        # For this interactive engineering tool, we'll do a basic sync.
+        existing_tasks = {t.id: t for t in db_project.tasks}
+        new_tasks = []
+        for t_data in tasks_data:
+            t_id = t_data.get("id")
+            if t_id and t_id in existing_tasks:
+                task = existing_tasks[t_id]
+                for k, v in t_data.items():
+                    if k != "id": setattr(task, k, v)
+            else:
+                # Create new task
+                clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
+                new_task = models.ProjectTask(**clean_task_data, project_id=project_id)
+                db.add(new_task)
+        
     await db.commit()
     await db.refresh(db_project)
-    return db_project
+    
+    # Re-fetch with all relations for response
+    return await get_project(project_id, db)
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: int, db: AsyncSession = Depends(get_db)):

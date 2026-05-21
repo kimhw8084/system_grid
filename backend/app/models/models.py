@@ -731,6 +731,9 @@ class Project(Base, BaseMixin):
     stoploss_minutes_saved = Column(Float, default=0.0)
     wafers_gained = Column(Float, default=0.0)
     
+    # Timing
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    
     appendix_json = Column(JSON, default=dict) # {glossary: [], images: []}
     
     team_members = Column(JSON, default=list)
