@@ -152,7 +152,7 @@ const PduBar = ({ side, isOver, name, capacity, load, onClick }: { side: 'A' | '
                 <span>CAPACITY</span>
                 <span>{capacity || 10}kW</span>
               </div>
-              <p className="text-[6px] text-slate-500 italic mt-2 border-t border-white/5 pt-1.5 text-center">Click to configure mapping</p>
+              <p className="text-[6px] text-slate-500 mt-2 border-t border-white/5 pt-1.5 text-center">Click to configure mapping</p>
             </div>
           </div>
         </div>
@@ -387,7 +387,7 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               {hoveredLine.connection.purpose && (
                 <div className="bg-black/20 rounded-md px-2 py-1 border border-white/5 mb-1.5">
                   <p className="text-[7px] text-slate-500 font-black uppercase mb-0.5">PURPOSE</p>
-                  <p className="text-[8px] text-slate-300 italic">{hoveredLine.connection.purpose}</p>
+                  <p className="text-[8px] text-slate-300 ">{hoveredLine.connection.purpose}</p>
                 </div>
               )}
               <div className="flex justify-between items-center gap-4">
@@ -599,7 +599,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             ))}
                           </div>
                         ) : (
-                          <span className="text-[8px] text-slate-700 italic">No diff</span>
+                          <span className="text-[8px] text-slate-700 ">No diff</span>
                         )}
                       </td>
                     </tr>
@@ -1271,7 +1271,7 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
                 <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em] border-l-2 border-blue-500 pl-3 leading-none">{category} Distribution</h3>
                 <div className="space-y-1">
                   {Object.entries(data).length === 0 ? (
-                    <p className="text-[10px] text-slate-600 italic">No assets mounted</p>
+                    <p className="text-[10px] text-slate-600">No assets mounted</p>
                   ) : (
                     Object.entries(data).sort((a,b) => b[1] - a[1]).map(([label, count]) => (
                       <div key={label} className="flex justify-between items-center py-2 border-b border-white/[0.03]">
@@ -1730,7 +1730,7 @@ export default function RackTemp() {
       <div className="flex items-start justify-between gap-4 shrink-0">
         <div className="flex items-center gap-6">
           <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight italic leading-none">Racks</h1>
+            <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Racks</h1>
             <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
           </div>
           <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] self-start">
@@ -2185,7 +2185,7 @@ export default function RackTemp() {
               </div>
             </div>
             <div className="h-6 w-px bg-white/10" />
-            <p className="text-[10px] font-bold text-slate-400 uppercase italic">Select target asset to patch...</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase ">Select target asset to patch...</p>
             <button 
               onClick={() => setPatchSource(null)}
               className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-[9px] font-black uppercase transition-all"
@@ -2294,7 +2294,7 @@ export default function RackTemp() {
                         >
                           <div className="min-w-0">
                             <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'group-hover:text-blue-400'}`}>{d.name}</p>
-                            <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>{d.type} · {d.system || 'N/A'}{locInfo && <span className="italic ml-1 text-rose-400/80">[{locInfo}]</span>}</p>
+                            <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>{d.type} · {d.system || 'N/A'}{locInfo && <span className="ml-1 text-rose-400/80">[{locInfo}]</span>}</p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-4">
                             <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{d.size_u || 1}U</span>

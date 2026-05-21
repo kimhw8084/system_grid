@@ -468,27 +468,28 @@ def seed():
         for i in range(150):
             s_type = random.choice(["Device", "Subnet", "Custom", "Any"])
             d_type = random.choice(["Device", "Subnet", "Custom", "Any"])
-            rule = FirewallRule(
-                name=f"RULE-SEC-{i:04d}",
-                risk="High" if i % 10 == 0 else "Medium",
-                protocol=random.choice(["TCP", "UDP", "ICMP", "ANY"]),
-                port_range=random.choice(["443", "80,8080", "1024-65535", "22", "3389"]),
-                direction=random.choice(["Inbound", "Outbound"]),
-                action=random.choice(["Allow", "Deny"]),
-                status="Active",
+            src_dev = random.choice(all_workers) if s_type == "Device" else None
+            dst_dev = random.choice(all_workers) if d_type == "Device" else None
+            src_sub = random.choice(subnets) if s_type == "Subnet" else None
+            dst_sub = random.choice(subnets) if d_type == "Subnet" else None
+            
+            db.add(FirewallRule(
+                name=f"RULE-{i:03d}",
+                risk="Potential lateral movement if compromised" if i % 10 == 0 else "Standard Access",
                 source_type=s_type,
-                dest_type=d_type
-            )
-            if s_type == "Device": rule.source_device_id = random.choice(all_workers).id
-            elif s_type == "Subnet": rule.source_subnet_id = random.choice(subnets).id
-            elif s_type == "Custom": rule.source_custom_ip = fake.ipv4()
-            
-            if d_type == "Device": rule.dest_device_id = random.choice(all_workers).id
-            elif d_type == "Subnet": rule.dest_subnet_id = random.choice(subnets).id
-            elif d_type == "Custom": rule.dest_custom_ip = fake.ipv4()
-            
-            db.add(rule)
-
+                source_device_id=src_dev.id if src_dev else None,
+                source_subnet_id=src_sub.id if src_sub else None,
+                source_custom_ip=f"172.20.1.{random.randint(1,254)}" if s_type == "Custom" else None,
+                dest_type=d_type,
+                dest_device_id=dst_dev.id if dst_dev else None,
+                dest_subnet_id=dst_sub.id if dst_sub else None,
+                dest_custom_ip=f"10.50.1.{random.randint(1,254)}" if d_type == "Custom" else None,
+                protocol=random.choice(["TCP", "UDP", "ICMP", "Any"]),
+                port_range=random.choice(["443", "80,8080", "1433", "1-65535", "Any"]),
+                direction=random.choice(["Inbound", "Outbound"]),
+                action=random.choices(["Allow", "Deny"], weights=[90, 10])[0],
+                status="Active"
+            ))
         # 11. Operations: Incident Logs & Audits
         print("Simulating Operational History (Incidents & Audits)...")
         for i in range(15):
@@ -758,7 +759,32 @@ def seed():
                     role=random.choice(cats["MonitoringOwnerRole"])
                 ))
 
-        # 16. Project Matrix (Strategic Streams)
+        # 16. Data Flows
+        print("Seeding Data Flows (Visual Topology)...")
+        for i in range(5):
+            df = DataFlow(
+                name=f"Flow: {random.choice(cats['LogicalSystem'])} {i+1}",
+                description="End-to-end data flow mapping for core services.",
+                category="System",
+                status="Up to date",
+                nodes_json=[
+                    {"id": "node-1", "type": "input", "data": {"label": "Client"}, "position": {"x": 0, "y": 0}},
+                    {"id": "node-2", "data": {"label": "API Gateway"}, "position": {"x": 200, "y": 0}},
+                    {"id": "node-3", "data": {"label": "Auth Service"}, "position": {"x": 400, "y": -100}},
+                    {"id": "node-4", "data": {"label": "Worker"}, "position": {"x": 400, "y": 100}},
+                    {"id": "node-5", "type": "output", "data": {"label": "Database"}, "position": {"x": 600, "y": 100}}
+                ],
+                edges_json=[
+                    {"id": "e1-2", "source": "node-1", "target": "node-2", "animated": True, "label": "HTTPS/443"},
+                    {"id": "e2-3", "source": "node-2", "target": "node-3", "label": "gRPC/50051"},
+                    {"id": "e2-4", "source": "node-2", "target": "node-4", "label": "AMQP/5672"},
+                    {"id": "e4-5", "source": "node-4", "target": "node-5", "animated": True, "label": "SQL/5432"}
+                ]
+            )
+            db.add(df)
+        db.flush()
+
+        # 17. Project Matrix (Strategic Streams)
         print("Seeding Strategic Project Matrix (Streams & Tasks)...")
         project_scenarios = [
             ("Project Aegis: Zero Trust Overhaul", "Strategic", "Highest", "PLATFORM", "Overhaul facility networking to Zero Trust architecture."),
@@ -767,18 +793,24 @@ def seed():
             ("GreenGrid: Power Optimization", "Operational", "Low", "FACILITY", "Reduce idle power consumption across all server rooms.")
         ]
         
+        all_svcs = db.query(LogicalService).all()
         for name, ptype, priority, owner, objective in project_scenarios:
+            p_assets = random.sample([w.name for w in all_workers], random.randint(3, 8))
+            p_services = random.sample([s.name for s in all_svcs], random.randint(5, 12))
+            
             p = Project(
                 name=name,
                 type=ptype,
                 priority=priority,
-                status="In Progress" if priority != "Critical" else "Planning",
+                status="In Progress" if priority != "Highest" else "Planning",
                 owner=owner,
                 objective=objective,
                 problem_statement=f"Current systems lack the {name.split(':')[0]} capabilities required for 2026 throughput goals.",
                 start_date=datetime.now() - timedelta(days=random.randint(30, 90)),
                 end_date=datetime.now() + timedelta(days=random.randint(180, 365)),
                 target_systems=random.sample(cats["LogicalSystem"], 2),
+                target_assets=p_assets,
+                target_services=p_services,
                 roi_defense_line=random.randint(0, 2),
                 man_hours_saved=random.uniform(500, 5000),
                 wafers_gained=random.uniform(10, 100) if ptype == "Strategic" else 0,
