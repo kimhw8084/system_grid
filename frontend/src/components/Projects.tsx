@@ -548,6 +548,81 @@ const ProjectLedger = ({
   )
 }
 
+const TaskRow = ({ 
+  task, 
+  rowIndex, 
+  isPackingMode, 
+  showBaseline, 
+  startDate, 
+  zoomLevel, 
+  selectedTaskIds, 
+  dragInfo, 
+  setDragInfo, 
+  handleTaskMove, 
+  handleTaskResize, 
+  setSelectedTaskId, 
+  handleSelectTask,
+  ROW_HEIGHT 
+}: any) => {
+  const dragControls = useDragControls()
+  const left = Math.floor(differenceInDays(new Date(task?.start_date), startDate) * zoomLevel)
+  const width = Math.max(zoomLevel, Math.floor(differenceInDays(new Date(task?.end_date), startDate) * zoomLevel) - left)
+  const baseline = task?.metadata_json?.baseline
+
+  return (
+    <div className="h-[32px] relative group/row" style={{ top: isPackingMode ? rowIndex * ROW_HEIGHT : 0 }}>
+       <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
+       {showBaseline && baseline && (
+         <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel), width: Math.max(10, Math.floor(differenceInDays(new Date(baseline.end), startDate) * zoomLevel) - Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel)) }} />
+       )}
+       <motion.div
+         layout
+         drag="x"
+         dragControls={dragControls}
+         dragListener={false}
+         dragMomentum={false}
+         onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
+         onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
+         onDragEnd={() => handleTaskMove(task.id, 0, true)}
+         onDoubleClick={() => setSelectedTaskId(task.id)}
+         onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
+         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 'border-blue-500/40 bg-[#0d1425]'}`}
+         style={{ left, width }}
+       >
+          <div 
+            onPointerDown={(e) => dragControls.start(e)}
+            className="flex-1 h-full flex items-center px-3 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
+          >
+             <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
+             <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
+             <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>
+          </div>
+
+          <motion.div 
+            drag="x" 
+            dragMomentum={false} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} 
+            onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} 
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
+          />
+          <motion.div 
+            drag="x" 
+            dragMomentum={false} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} 
+            onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} 
+            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
+          />
+          
+          {dragInfo?.id === task.id && (
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xl whitespace-nowrap pointer-events-none z-[100]">
+              {dragInfo.date}
+            </div>
+          )}
+       </motion.div>
+    </div>
+  )
+}
+
 const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
   const [zoomLevel, setZoomLevel] = useState(60)
@@ -804,64 +879,25 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                    ))}
                 </div>
                 {renderDependencies()}
-                {packedTasks.map((task) => {
-                  const left = Math.floor(differenceInDays(new Date(task?.start_date), startDate) * zoomLevel)
-                  const width = Math.max(zoomLevel, Math.floor(differenceInDays(new Date(task?.end_date), startDate) * zoomLevel) - left)
-                  const baseline = task?.metadata_json?.baseline
-                  const dragControls = useDragControls()
-                  
-                  return (
-                    <div key={task.id} className="h-[32px] relative group/row" style={{ top: isPackingMode ? task.rowIndex * ROW_HEIGHT : 0 }}>
-                       <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
-                       {showBaseline && baseline && (
-                         <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel), width: Math.max(10, Math.floor(differenceInDays(new Date(baseline.end), startDate) * zoomLevel) - Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel)) }} />
-                       )}
-                       <motion.div
-                         layout
-                         drag="x"
-                         dragControls={dragControls}
-                         dragListener={false}
-                         dragMomentum={false}
-                         onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
-                         onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
-                         onDragEnd={() => handleTaskMove(task.id, 0, true)}
-                         onDoubleClick={() => setSelectedTaskId(task.id)}
-                         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 'border-blue-500/40 bg-[#0d1425]'}`}
-                         style={{ left, width }}
-                       >
-                          <div 
-                            onPointerDown={(e) => dragControls.start(e)}
-                            className="flex-1 h-full flex items-center px-3 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
-                          >
-                             <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
-                             <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-                             <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>
-                          </div>
-
-                          <motion.div 
-                            drag="x" 
-                            dragMomentum={false} 
-                            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} 
-                            onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} 
-                            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
-                          />
-                          <motion.div 
-                            drag="x" 
-                            dragMomentum={false} 
-                            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} 
-                            onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} 
-                            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
-                          />
-                          
-                          {dragInfo?.id === task.id && (
-                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xl whitespace-nowrap pointer-events-none z-[100]">
-                              {dragInfo.date}
-                            </div>
-                          )}
-                       </motion.div>
-                    </div>
-                  )
-                })}
+                {packedTasks.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    rowIndex={task.rowIndex}
+                    isPackingMode={isPackingMode}
+                    showBaseline={showBaseline}
+                    startDate={startDate}
+                    zoomLevel={zoomLevel}
+                    selectedTaskIds={selectedTaskIds}
+                    dragInfo={dragInfo}
+                    setDragInfo={setDragInfo}
+                    handleTaskMove={handleTaskMove}
+                    handleTaskResize={handleTaskResize}
+                    setSelectedTaskId={setSelectedTaskId}
+                    handleSelectTask={handleSelectTask}
+                    ROW_HEIGHT={ROW_HEIGHT}
+                  />
+                ))}
              </div>
           </div>
        </div>
@@ -1078,19 +1114,12 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     }
   }, [project, onUpdate, isEditing])
 
-  if (!project) return (
-    <div className="h-full flex flex-col items-center justify-center opacity-20">
-       <Briefcase size={64} className="mb-4" />
-       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
-    </div>
-  )
-
   const handleFieldChange = (field: string, value: any) => {
-    if (project[field] !== value) onUpdate({ ...project, [field]: value })
+    if (project && project[field] !== value) onUpdate({ ...project, [field]: value })
   }
 
   const addLink = () => {
-    if (!newLinkLabel || !newLinkUrl) return
+    if (!project || !newLinkLabel || !newLinkUrl) return
     const metadata = project?.metadata_json || {}
     const updatedLinks = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
     onUpdate({ ...project, metadata_json: { ...metadata, links: updatedLinks } })
@@ -1098,19 +1127,26 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     toast.success('Intelligence Link Established')
   }
 
-  const diagrams = project?.metadata_json?.diagrams || []
-
   // Cascading Logic
-  const systemOptions = options?.filter((o:any) => o.category === 'LogicalSystem') || []
+  const systemOptions = useMemo(() => options?.filter((o:any) => o.category === 'LogicalSystem') || [], [options])
   const filteredAssets = useMemo(() => {
-    if (!project.target_systems?.length) return devices || []
+    if (!project?.target_systems?.length) return devices || []
     return devices?.filter((d:any) => project.target_systems.includes(d.system)) || []
-  }, [devices, project.target_systems])
+  }, [devices, project?.target_systems])
 
   const filteredServices = useMemo(() => {
-    if (!project.target_assets?.length) return services || []
+    if (!project?.target_assets?.length) return services || []
     return services?.filter((s:any) => project.target_assets.includes(s.device_id)) || []
-  }, [services, project.target_assets])
+  }, [services, project?.target_assets])
+
+  if (!project) return (
+    <div className="h-full flex flex-col items-center justify-center opacity-20">
+       <Briefcase size={64} className="mb-4" />
+       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
+    </div>
+  )
+
+  const diagrams = project?.metadata_json?.diagrams || []
 
   const years = Array.from({ length: 11 }, (_, i) => 2024 + i)
   const months = [
