@@ -18,6 +18,7 @@ import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
+import { ConfigRegistryModal } from './ConfigRegistry'
 import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import ReactFlow, { 
@@ -549,7 +550,7 @@ const TaskRow = ({
   const baseline = task?.metadata_json?.baseline
 
   return (
-    <div className="h-[32px] relative group/row" style={{ top: isPackingMode ? rowIndex * ROW_HEIGHT : 0 }}>
+    <div className="absolute w-full h-[32px] group/row" style={{ top: rowIndex * ROW_HEIGHT }}>
        <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
        {showBaseline && baseline && (
          <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel), width: Math.max(10, Math.floor(differenceInDays(new Date(baseline.end), startDate) * zoomLevel) - Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel)) }} />
@@ -561,8 +562,8 @@ const TaskRow = ({
          dragListener={false}
          dragMomentum={false}
          onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
-         onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
-         onDragEnd={() => handleTaskMove(task.id, 0, true)}
+         onDrag={(e, info) => handleTaskMove(task.id, info.offset.x)}
+         onDragEnd={(e, info) => handleTaskMove(task.id, info.offset.x, true)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
          className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 'border-blue-500/40 bg-[#0d1425]'}`}
@@ -580,15 +581,15 @@ const TaskRow = ({
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} 
-            onDragEnd={() => handleTaskResize(task.id, 0, 'start', true)} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
+            onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
             className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} 
-            onDragEnd={() => handleTaskResize(task.id, 0, 'end', true)} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
+            onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
             className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
           />
           
@@ -618,8 +619,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const HEADER_HEIGHT = 44
 
   useEffect(() => {
-    setTasks(project?.tasks || [])
-  }, [project?.tasks])
+    if (!selectedTaskId) {
+      setTasks(project?.tasks || [])
+    }
+  }, [project?.tasks, selectedTaskId])
 
   const handleSelectTask = (id: number, isShift: boolean) => {
     if (isShift) {
@@ -632,10 +635,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     }
   }
 
-  const handleTaskMove = (id: number, delta: number, isFinal = false) => {
+  const handleTaskMove = (id: number, offset: number, isFinal = false) => {
     const task = tasks.find(t => t.id === id)
     if (!task) return
-    const daysMoved = Math.round(delta / zoomLevel)
+    const daysMoved = Math.round(offset / zoomLevel)
     
     const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
     const updatedTasks = tasks.map(t => {
@@ -658,10 +661,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     }
   }
 
-  const handleTaskResize = (id: number, delta: number, type: 'start' | 'end', isFinal = false) => {
+  const handleTaskResize = (id: number, offset: number, type: 'start' | 'end', isFinal = false) => {
     const task = tasks.find(t => t.id === id)
     if (!task) return
-    const daysMoved = Math.round(delta / zoomLevel)
+    const daysMoved = Math.round(offset / zoomLevel)
     
     let updatedTask = { ...task }
     if (type === 'start') {
@@ -729,24 +732,24 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     onUpdate({ ...project, tasks: updatedTasks })
   }
 
+  const maxRow = packedTasks.reduce((max, t) => Math.max(max, t.rowIndex), 0)
+
   const renderDependencies = () => {
-    if (isPackingMode) return null 
     return (
-      <svg className="absolute inset-0 pointer-events-none" style={{ width: days.length * zoomLevel, height: tasks.length * ROW_HEIGHT + 100 }}>
+      <svg className="absolute inset-0 pointer-events-none" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" />
           </marker>
         </defs>
-        {tasks.map((task, taskIdx) => {
+        {packedTasks.map((task) => {
           return (task.dependencies_json || []).map((depId: number) => {
-            const depIdx = tasks.findIndex(t => t.id === depId)
-            if (depIdx === -1) return null
-            const fromTask = tasks[depIdx]
+            const fromTask = packedTasks.find(t => t.id === depId)
+            if (!fromTask) return null
             const startX = Math.floor(differenceInDays(new Date(fromTask.end_date), startDate) * zoomLevel)
-            const startY = depIdx * ROW_HEIGHT + ROW_HEIGHT / 2
+            const startY = fromTask.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
             const endX = Math.floor(differenceInDays(new Date(task.start_date), startDate) * zoomLevel)
-            const endY = taskIdx * ROW_HEIGHT + ROW_HEIGHT / 2
+            const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
             const cp1X = startX + (endX - startX) / 2
             const cp2X = startX + (endX - startX) / 2
             return (
@@ -851,7 +854,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                   )
                 })}
              </div>
-             <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, minHeight: '100%' }}>
+             <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
                 <div className="absolute inset-0 pointer-events-none opacity-20">
                    {days.map((_, i) => (
                      <div key={i} className="absolute top-0 bottom-0 border-r border-white/5" style={{ left: i * zoomLevel, width: zoomLevel }} />
@@ -898,7 +901,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Strategic Vector Milestone</p>
                               </div>
                            </div>
-                           <button onClick={() => setSelectedTaskId(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
+                           <button onClick={() => { onUpdate({ ...project, tasks }); setSelectedTaskId(null); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all flex items-center gap-2 px-4"><Save size={16}/> <span className="text-[10px] font-bold uppercase tracking-widest">Commit Changes</span></button>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-10">
                            <div className="grid grid-cols-2 gap-10">
@@ -926,8 +929,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                         </div>
                         <div className="p-8 border-t border-white/10 bg-[#0a0c14] flex gap-4">
                            <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...(task.metadata_json || {}), baseline: { start: task.start_date, end: task.end_date } } })} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"><Camera size={16}/> Snapshot Baseline</button>
-                           <button onClick={() => { if(confirm('Decommission this vector?')) { onUpdate({ ...project, tasks: tasks.filter(t => t.id !== task.id) }); setSelectedTaskId(null); } }} className="px-6 py-3 bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600 hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all">Decommission</button>
-                        </div>
+                           <button onClick={() => { if(confirm('Decommission this vector?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }} className="px-6 py-3 bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600 hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all">Decommission</button>                        </div>
                       </>
                     )
                   })()}
