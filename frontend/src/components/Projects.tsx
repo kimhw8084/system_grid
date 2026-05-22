@@ -67,6 +67,13 @@ const DEFENSE_LINES = [
   { value: '2', label: 'LINE 2: RESILIENT' }
 ]
 
+const ROI_TYPES = [
+  { value: 'defense_line', label: 'Defense Line' },
+  { value: 'man_hours', label: 'Man-Hours' },
+  { value: 'stoploss', label: 'Stoploss' },
+  { value: 'wpd', label: 'WPD' }
+]
+
 // --- Workspace Components ---
 
 export const ProjectHUD = ({ 
@@ -1588,7 +1595,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
   const [formData, setFormData] = useState({ 
     name: '', type: 'Strategic', status: 'Planning', priority: 'Medium', owner: '', 
     problem_statement: '', objective: '', description: '', start_date: new Date().toISOString(), end_date: addDays(new Date(), 90).toISOString(),
-    man_hours_saved: 0, stoploss_minutes_saved: 0, wafers_gained: 0, roi_defense_line: 0, jira_links: [], 
+    man_hours_saved: 0, stoploss_minutes_saved: 0, wafers_gained: 0, roi_defense_line: 0, roi_types: [], jira_links: [], 
     target_systems: [], target_assets: [], target_services: [], ...initialData 
   })
   const [jiraInput, setJiraInput] = useState((formData.jira_links || []).join(', '))
