@@ -569,11 +569,17 @@ const TaskRow = ({
          dragListener={false}
          dragMomentum={false}
          onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
-         onDrag={(e, info) => handleTaskMove(task.id, info.offset.x)}
+         onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
          onDragEnd={(e, info) => handleTaskMove(task.id, info.offset.x, true)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 'border-blue-500/40 bg-[#0d1425]'}`}
+         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${
+           task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : 
+           task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 
+           task.status === 'In Progress' ? 'border-blue-500/50 bg-[#0d1425]' :
+           task.status === 'Review' ? 'border-amber-500/50 bg-amber-950/20' :
+           'border-slate-700 bg-slate-900/60'
+         }`}
          style={{ left, width }}
        >
           <div 
@@ -582,26 +588,27 @@ const TaskRow = ({
           >
              <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
              <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-             <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>
+             {width > 100 && <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>}
           </div>
 
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
             className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
             className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
           />
           
           {dragInfo?.id === task.id && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-xl whitespace-nowrap pointer-events-none z-[100]">
+            <div className="fixed top-[10%] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded shadow-2xl whitespace-nowrap pointer-events-none z-[1000] border border-blue-400/30 backdrop-blur-md">
+              <Calendar size={12} className="inline mr-2" />
               {dragInfo.date}
             </div>
           )}
@@ -612,7 +619,8 @@ const TaskRow = ({
 
 const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
-  const [zoomLevel, setZoomLevel] = useState(60)
+  const [dragStartTasks, setDragStartTasks] = useState<any[] | null>(null)
+  const [zoomLevel, setZoomLevel] = useState(30)
   const timelineRef = useRef<HTMLDivElement>(null)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
@@ -621,15 +629,17 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [showExecutiveChart, setShowExecutiveChart] = useState(false)
   const [isPackingMode, setIsPackingMode] = useState(false)
   const [dragInfo, setDragInfo] = useState<{ id: number, date: string } | null>(null)
+  const [dayTasksPopup, setDayTasksPopup] = useState<{ date: Date, tasks: any[] } | null>(null)
 
   const ROW_HEIGHT = 32
   const HEADER_HEIGHT = 44
 
+  // Sync tasks from project when it updates, but not while editing
   useEffect(() => {
-    if (!selectedTaskId) {
+    if (!selectedTaskId && !dragStartTasks) {
       setTasks(project?.tasks || [])
     }
-  }, [project?.tasks, selectedTaskId])
+  }, [project?.tasks, selectedTaskId, dragStartTasks])
 
   const handleSelectTask = (id: number, isShift: boolean) => {
     if (isShift) {
@@ -643,75 +653,94 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   }
 
   const handleTaskMove = (id: number, offset: number, isFinal = false) => {
-    const task = tasks.find(t => t.id === id)
-    if (!task) return
-    const daysMoved = Math.round(offset / zoomLevel)
-    
-    const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
-    const updatedTasks = tasks.map(t => {
-      if (idsToMove.includes(t.id)) {
-        const newStart = addDays(new Date(t.start_date), daysMoved).toISOString()
-        const duration = differenceInDays(new Date(t.end_date), new Date(t.start_date))
-        const newEnd = addDays(new Date(newStart), duration).toISOString()
-        return { ...t, start_date: newStart, end_date: newEnd }
-      }
-      return t
-    })
-
     if (!isFinal) {
+      const baseTasks = dragStartTasks || tasks
+      if (!dragStartTasks) setDragStartTasks([...tasks])
+
+      const daysMoved = Math.round(offset / zoomLevel)
+      const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
+      
+      const updatedTasks = tasks.map(t => {
+        const startTask = baseTasks.find(bt => bt.id === t.id)
+        if (startTask && idsToMove.includes(t.id)) {
+          const newStart = addDays(new Date(startTask.start_date), daysMoved).toISOString()
+          const duration = differenceInDays(new Date(startTask.end_date), new Date(startTask.start_date))
+          const newEnd = addDays(new Date(newStart), duration).toISOString()
+          return { ...t, start_date: newStart, end_date: newEnd }
+        }
+        return t
+      })
+      
       const movedTask = updatedTasks.find(t => t.id === id)
-      if (movedTask) setDragInfo({ id, date: format(new Date(movedTask.start_date), 'MMM d, yyyy') })
+      if (movedTask) {
+        setDragInfo({ id, date: format(new Date(movedTask.start_date), 'MMM d, yyyy') })
+        setTasks(updatedTasks)
+      }
     } else {
       setDragInfo(null)
-      setTasks(updatedTasks)
-      onUpdate({ ...project, tasks: updatedTasks })
+      setDragStartTasks(null)
+      onUpdate({ ...project, tasks: tasks })
     }
   }
 
   const handleTaskResize = (id: number, offset: number, type: 'start' | 'end', isFinal = false) => {
-    const task = tasks.find(t => t.id === id)
-    if (!task) return
-    const daysMoved = Math.round(offset / zoomLevel)
-    
-    let updatedTask = { ...task }
-    if (type === 'start') {
-      const newStart = addDays(new Date(task.start_date), daysMoved)
-      if (newStart < new Date(task.end_date)) updatedTask.start_date = newStart.toISOString()
-    } else {
-      const newEnd = addDays(new Date(task.end_date), daysMoved)
-      if (newEnd > new Date(task.start_date)) updatedTask.end_date = newEnd.toISOString()
-    }
-
     if (!isFinal) {
-      setDragInfo({ id, date: format(new Date(type === 'start' ? updatedTask.start_date : updatedTask.end_date), 'MMM d, yyyy') })
+      const baseTasks = dragStartTasks || tasks
+      if (!dragStartTasks) setDragStartTasks([...tasks])
+
+      const daysMoved = Math.round(offset / zoomLevel)
+      const updatedTasks = tasks.map(t => {
+        const startTask = baseTasks.find(bt => bt.id === t.id)
+        if (startTask && t.id === id) {
+          let updatedTask = { ...t }
+          if (type === 'start') {
+            const newStart = addDays(new Date(startTask.start_date), daysMoved)
+            if (newStart < new Date(startTask.end_date)) updatedTask.start_date = newStart.toISOString()
+          } else {
+            const newEnd = addDays(new Date(startTask.end_date), daysMoved)
+            if (newEnd > new Date(startTask.start_date)) updatedTask.end_date = newEnd.toISOString()
+          }
+          return updatedTask
+        }
+        return t
+      })
+
+      const target = updatedTasks.find(t => t.id === id)
+      if (target) {
+        setDragInfo({ id, date: format(new Date(type === 'start' ? target.start_date : target.end_date), 'MMM d, yyyy') })
+        setTasks(updatedTasks)
+      }
     } else {
       setDragInfo(null)
-      const updatedTasks = tasks.map(t => t.id === id ? updatedTask : t)
-      setTasks(updatedTasks)
-      onUpdate({ ...project, tasks: updatedTasks })
+      setDragStartTasks(null)
+      onUpdate({ ...project, tasks: tasks })
     }
   }
 
   const startDate = useMemo(() => {
-    if (tasks.length === 0) return startOfMonth(new Date())
+    if (!tasks || tasks.length === 0) return startOfMonth(new Date())
     const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
     const min = times.length > 0 ? Math.min(...times) : new Date().getTime()
-    return addDays(new Date(min), -7) 
+    return addDays(new Date(min), -14) 
   }, [tasks])
 
   const endDate = useMemo(() => {
-    if (tasks.length === 0) return endOfMonth(addDays(new Date(), 90))
+    if (!tasks || tasks.length === 0) return endOfMonth(addDays(new Date(), 90))
     const times = tasks.map(t => new Date(t.end_date).getTime()).filter(t => !isNaN(t))
     const max = times.length > 0 ? Math.max(...times) : addDays(new Date(), 90).getTime()
-    return endOfMonth(addDays(new Date(max), 45))
+    return endOfMonth(addDays(new Date(max), 60))
   }, [tasks])
 
   const days = useMemo(() => {
-    try { return eachDayOfInterval({ start: startDate, end: endDate }).slice(0, 2000) }
+    try { 
+      const interval = eachDayOfInterval({ start: startDate, end: endDate })
+      return interval.length > 3000 ? interval.slice(0, 3000) : interval
+    }
     catch (e) { return [new Date()] }
   }, [startDate, endDate])
 
   const packedTasks = useMemo(() => {
+    if (!tasks || tasks.length === 0) return []
     if (!isPackingMode) return tasks.map((t, i) => ({ ...t, rowIndex: i }))
     
     const sorted = [...tasks].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
@@ -736,7 +765,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const handleTaskUpdate = (id: number, updates: any) => {
     const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
     setTasks(updatedTasks)
-    onUpdate({ ...project, tasks: updatedTasks })
+    // Don't sync to project yet if it's just local detail edits - the 'Save' button in modal will do it
   }
 
   const maxRow = packedTasks.reduce((max, t) => Math.max(max, t.rowIndex), 0)
@@ -783,7 +812,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
              <button onClick={() => setShowExecutiveChart(!showExecutiveChart)} className={`p-1.5 rounded-lg transition-all border ${showExecutiveChart ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`} title="Performance Graph"><BarChart3 size={16}/></button>
              <button onClick={() => setIsPackingMode(!isPackingMode)} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${isPackingMode ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`} title="Optimize Row Packing">Visualize Gantt</button>
              <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(20, zoomLevel - 10))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
+                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
                 <div className="w-px h-3 bg-white/10 mx-1" />
                 <button onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
                 <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel}PX/D</span>
@@ -854,7 +883,15 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                   const isFirstOfMonth = format(day, 'd') === '1'
                   const isToday = isSameDay(day, new Date())
                   return (
-                    <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors ${isToday ? 'bg-blue-600/10' : ''}`} style={{ width: zoomLevel }}>
+                    <div 
+                      key={i} 
+                      onClick={() => {
+                        const tasksEnding = tasks.filter(t => isSameDay(new Date(t.end_date), day))
+                        setDayTasksPopup({ date: day, tasks: tasksEnding })
+                      }}
+                      className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/10' : ''}`} 
+                      style={{ width: zoomLevel }}
+                    >
                        <span className={`text-[8px] font-bold uppercase tracking-tighter ${isFirstOfMonth ? 'text-blue-400' : 'text-slate-600'}`}>{format(day, 'MMM')}</span>
                        <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : isFirstOfMonth ? 'text-blue-200' : 'text-slate-400'}`}>{format(day, 'd')}</span>
                     </div>
@@ -889,54 +926,222 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                 ))}
              </div>
           </div>
+
+          <AnimatePresence>
+            {dayTasksPopup && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="fixed top-24 left-1/2 -translate-x-1/2 w-80 bg-[#0d0f17] border border-blue-500/30 rounded-lg shadow-2xl z-[200] overflow-hidden"
+              >
+                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-blue-600/10">
+                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{format(dayTasksPopup.date, 'MMMM d, yyyy')}</h4>
+                  <button onClick={() => setDayTasksPopup(null)} className="text-slate-500 hover:text-white transition-all"><X size={14}/></button>
+                </div>
+                <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {dayTasksPopup.tasks.length > 0 ? dayTasksPopup.tasks.map((t: any) => (
+                    <div 
+                      key={t.id} 
+                      className="p-3 bg-white/5 border border-white/5 rounded-lg group cursor-pointer hover:bg-white/10 transition-all"
+                      onClick={() => { setSelectedTaskId(t.id); setDayTasksPopup(null); }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-white truncate">{t.name}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[8px] font-bold text-slate-500 uppercase">{t.status}</span>
+                        <span className="text-[8px] font-bold text-blue-400">{t.progress}%</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="py-8 text-center">
+                      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">No milestones ending on this date</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
        </div>
 
        <AnimatePresence>
           {selectedTaskId && (
             <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-[#0d0f17] w-[900px] h-[85vh] border border-white/10 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-[#0d0f17] w-[1000px] h-[85vh] border border-white/10 rounded-lg shadow-2xl flex flex-col overflow-hidden">
                   {(() => {
                     const task = tasks.find(t => t.id === selectedTaskId)
                     if (!task) return null
+
+                    const subtasks = task.metadata_json?.subtasks || []
+                    const calculateProgress = () => {
+                      if (subtasks.length === 0) {
+                        if (task.status === 'Completed') return 100
+                        if (task.status === 'In Progress') return 50
+                        return 0
+                      }
+                      const completed = subtasks.filter((s: any) => s.completed).length
+                      return Math.round((completed / subtasks.length) * 100)
+                    }
+
+                    const autoProgress = calculateProgress()
+                    const autoStatus = autoProgress === 100 ? 'Completed' : (autoProgress > 0 ? 'In Progress' : task.status)
+
+                    const updateSubtask = (idx: number, updates: any) => {
+                      const newSubtasks = [...subtasks]
+                      newSubtasks[idx] = { ...newSubtasks[idx], ...updates }
+                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
+                    }
+
+                    const addSubtask = () => {
+                      const label = prompt('Subtask Description')
+                      if (!label) return
+                      const newSubtasks = [...subtasks, { label, completed: false }]
+                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
+                    }
+
+                    const removeSubtask = (idx: number) => {
+                      const newSubtasks = subtasks.filter((_: any, i: number) => i !== idx)
+                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
+                    }
+
                     return (
                       <>
                         <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 flex items-center justify-between">
                            <div className="flex items-center gap-4">
-                              <div className={`w-4 h-4 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                              <div className={`w-4 h-4 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
                               <div>
                                  <h2 className="text-2xl font-bold text-white tracking-tighter leading-none">{task.name}</h2>
-                                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">Strategic Vector Milestone</p>
+                                 <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Strategic Vector Milestone</p>
+                                    <span className="text-slate-800">•</span>
+                                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{autoProgress}% Maturity</span>
+                                 </div>
                               </div>
                            </div>
-                           <button onClick={() => { onUpdate({ ...project, tasks }); setSelectedTaskId(null); }} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all flex items-center gap-2 px-4"><Save size={16}/> <span className="text-[10px] font-bold uppercase tracking-widest">Commit Changes</span></button>
+                           <div className="flex items-center gap-3">
+                              <button 
+                                onClick={() => { if(confirm('Decommission this vector?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }} 
+                                className="p-2.5 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
+                                title="Decommission Task"
+                              >
+                                 <Trash2 size={18}/>
+                              </button>
+                              <div className="w-px h-8 bg-white/10 mx-2" />
+                              <button 
+                                onClick={() => { 
+                                  const finalTask = { ...task, progress: autoProgress, status: autoStatus }
+                                  const updatedTasks = tasks.map(t => t.id === task.id ? finalTask : t)
+                                  onUpdate({ ...project, tasks: updatedTasks })
+                                  setSelectedTaskId(null)
+                                }} 
+                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
+                              >
+                                 <Save size={16}/> 
+                                 <span className="text-[10px] font-bold uppercase tracking-widest">Commit Milestone</span>
+                              </button>
+                              <button onClick={() => setSelectedTaskId(null)} className="p-2.5 bg-white/5 text-slate-500 hover:text-white rounded-lg transition-all"><X size={20}/></button>
+                           </div>
                         </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-10">
-                           <div className="grid grid-cols-2 gap-10">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-10 grid grid-cols-12 gap-10">
+                           <div className="col-span-7 space-y-10">
                               <section className="space-y-4">
                                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14}/> Technical Mission</h4>
-                                 <textarea value={task.description || ''} onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} className="w-full h-48 bg-black/40 border border-white/10 rounded-lg p-5 text-sm font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" placeholder="Define core objectives..." />
+                                 <textarea value={task.description || ''} onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} className="w-full h-40 bg-black/40 border border-white/10 rounded-lg p-5 text-sm font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" placeholder="Define core objectives..." />
                               </section>
-                              <div className="space-y-8">
-                                 <section className="space-y-4">
-                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Timeline Parameters</h4>
+
+                              <section className="space-y-6">
+                                 <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ListTodo size={14}/> Tactical Subtasks</h4>
+                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-emerald-600/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-600 hover:text-white rounded text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> New Subtask</button>
+                                 </div>
+                                 <div className="space-y-2">
+                                    {subtasks.map((s: any, idx: number) => (
+                                      <div key={idx} className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg hover:border-emerald-500/30 transition-all">
+                                         <input 
+                                           type="checkbox" 
+                                           checked={s.completed} 
+                                           onChange={e => updateSubtask(idx, { completed: e.target.checked })}
+                                           className="w-4 h-4 rounded border-white/10 bg-black/40 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                         />
+                                         <input 
+                                           value={s.label} 
+                                           onChange={e => updateSubtask(idx, { label: e.target.value })}
+                                           className={`flex-1 bg-transparent border-none outline-none text-xs font-bold transition-all ${s.completed ? 'text-slate-600 line-through' : 'text-slate-300'}`}
+                                         />
+                                         <button onClick={() => removeSubtask(idx)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
+                                      </div>
+                                    ))}
+                                    {subtasks.length === 0 && (
+                                      <div className="py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-20">
+                                         <ListTodo size={32} className="mb-2" />
+                                         <p className="text-[10px] font-bold uppercase tracking-widest">No tactical subtasks defined</p>
+                                      </div>
+                                    )}
+                                 </div>
+                              </section>
+                           </div>
+
+                           <div className="col-span-5 space-y-10">
+                              <section className="space-y-4">
+                                 <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Shield size={14}/> Deployment Parameters</h4>
+                                 <div className="bg-white/5 p-6 rounded-lg border border-white/5 space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
-                                       <div><label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Vector Initialization</label><input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
-                                       <div><label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Vector Termination</label><input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" /></div>
+                                       <div className="space-y-1.5">
+                                          <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Current State</label>
+                                          <select value={task.status} onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
+                                       </div>
+                                       <div className="space-y-1.5">
+                                          <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Priority</label>
+                                          <select value={task.priority || 'Medium'} onChange={e => handleTaskUpdate(task.id, { priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}</select>
+                                       </div>
                                     </div>
-                                 </section>
-                                 <section className="space-y-4">
-                                    <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Shield size={14}/> Strategic State</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div><label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Status</label><select value={task.status} onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500">{['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}</select></div>
-                                       <div><label className="text-[8px] font-bold text-slate-600 uppercase mb-1 block">Maturity ({task.progress}%)</label><input type="range" value={task.progress} onChange={e => handleTaskUpdate(task.id, { progress: parseInt(e.target.value) })} className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500" /></div>
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Resource / Owner</label>
+                                       <input value={task.owner || ''} onChange={e => handleTaskUpdate(task.id, { owner: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" placeholder="Assignee identifier..." />
                                     </div>
-                                 </section>
-                              </div>
+                                 </div>
+                              </section>
+
+                              <section className="space-y-4">
+                                 <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Execution Window</h4>
+                                    <button 
+                                      onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...(task.metadata_json || {}), baseline: { start: task.start_date, end: task.end_date } } })} 
+                                      className="flex items-center gap-2 px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
+                                    >
+                                       <Camera size={12}/> Snapshot Baseline
+                                    </button>
+                                 </div>
+                                 <div className="bg-white/5 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Start Date</label>
+                                       <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">End Date</label>
+                                       <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
+                                 </div>
+                              </section>
+
+                              <section className="space-y-4 pt-4 border-t border-white/5">
+                                 <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2"><History size={14}/> Audit History</h4>
+                                    <span className="text-[8px] font-bold text-slate-700 uppercase tracking-widest">v1.2.0</span>
+                                 </div>
+                                 <div className="space-y-3">
+                                    {(task.metadata_json?.history || []).slice(-3).reverse().map((h: any, i: number) => (
+                                      <div key={i} className="text-[10px] font-bold text-slate-500 italic px-2">
+                                         • {h.content} <span className="text-[8px] text-slate-700 not-italic ml-2 uppercase">({format(new Date(h.timestamp), 'MMM d')})</span>
+                                      </div>
+                                    ))}
+                                    {(!task.metadata_json?.history || task.metadata_json.history.length === 0) && <p className="text-[9px] font-bold text-slate-800 uppercase text-center py-4">No audit logs</p>}
+                                 </div>
+                              </section>
                            </div>
                         </div>
-                        <div className="p-8 border-t border-white/10 bg-[#0a0c14] flex gap-4">
-                           <button onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...(task.metadata_json || {}), baseline: { start: task.start_date, end: task.end_date } } })} className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-900/20"><Camera size={16}/> Snapshot Baseline</button>
-                           <button onClick={() => { if(confirm('Decommission this vector?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }} className="px-6 py-3 bg-rose-600/10 border border-rose-500/20 text-rose-500 hover:bg-rose-600 hover:text-white text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all">Decommission</button>                        </div>
                       </>
                     )
                   })()}
@@ -952,28 +1157,31 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
   const [selectedPoint, setSelectedPoint] = useState<any>(null)
 
   const data = useMemo(() => {
-    if (tasks.length === 0) return []
-    const start = startOfMonth(new Date(Math.min(...tasks.map(t => new Date(t.start_date).getTime()))))
-    const end = endOfMonth(new Date(Math.max(...tasks.map(t => new Date(t.end_date).getTime()))))
+    if (!tasks || tasks.length === 0) return []
+    const times = tasks.flatMap(t => [new Date(t.start_date).getTime(), new Date(t.end_date).getTime()]).filter(t => !isNaN(t))
+    if (times.length === 0) return []
+    
+    const start = startOfMonth(new Date(Math.min(...times)))
+    const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
     const interval = eachDayOfInterval({ start, end })
+    
+    // Calculate velocity based on weekly completion rate
     return interval.filter((_, i) => i % 7 === 0).map(date => {
+      const totalTasks = tasks.length
       const scheduledTasks = tasks.filter(t => new Date(t.end_date) <= date).length
-      const scheduledPercent = Math.round((scheduledTasks / tasks.length) * 100)
-      const actualProgress = Math.round(tasks.reduce((acc, t) => {
-        if (new Date(t.start_date) > date) return acc
-        const taskDuration = differenceInDays(new Date(t.end_date), new Date(t.start_date)) || 1
-        const elapsed = Math.max(0, Math.min(taskDuration, differenceInDays(date, new Date(t.start_date))))
-        const taskProgressAtDate = (elapsed / taskDuration) * (t.progress / 100) * 100
-        return acc + taskProgressAtDate
-      }, 0) / tasks.length)
+      const completedTasks = tasks.filter(t => t.status === 'Completed' && new Date(t.end_date) <= date).length
       
+      const scheduledPercent = Math.round((scheduledTasks / totalTasks) * 100)
+      const actualPercent = Math.round((completedTasks / totalTasks) * 100)
+      
+      // Calculate momentum (slope of completion)
       const tasksToComplete = tasks.filter(t => isSameDay(new Date(t.end_date), date))
 
       return { 
         date: format(date, 'MMM d'), 
         fullDate: date,
         scheduled: scheduledPercent, 
-        actual: actualProgress,
+        actual: actualPercent,
         tasks: tasksToComplete
       }
     })
@@ -982,16 +1190,34 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
   return (
     <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6 overflow-hidden">
        <div className="flex items-center justify-between shrink-0">
-          <div><h3 className="text-xl font-bold text-white uppercase tracking-tighter">Strategic Velocity Vector</h3><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Scheduled vs Actual Execution Performance</p></div>
-          <div className="flex gap-6"><div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-blue-500" /><span className="text-[10px] font-bold text-slate-400 uppercase">Scheduled</span></div><div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-emerald-500" /><span className="text-[10px] font-bold text-slate-400 uppercase">Actual</span></div></div>
+          <div>
+             <h3 className="text-xl font-bold text-white uppercase tracking-tighter flex items-center gap-3">
+                <TrendingUp className="text-emerald-500" size={24} />
+                Strategic Velocity Vector
+             </h3>
+             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Real-time execution momentum vs theoretical plan</p>
+          </div>
+          <div className="flex gap-6">
+             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-blue-500/50 border border-blue-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">Target Velocity</span></div>
+             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-emerald-500/50 border border-emerald-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">Actual Momentum</span></div>
+          </div>
        </div>
        <div className="flex-1 min-h-0 relative">
           <ResponsiveContainer width="100%" height="100%">
              <AreaChart data={data} onClick={(e: any) => e?.activePayload && setSelectedPoint(e.activePayload[0].payload)}>
-                <defs><linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient><linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} /><XAxis dataKey="date" stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} /><YAxis stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} itemStyle={{ color: '#fff' }} />
-                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSched)" activeDot={{ r: 6, strokeWidth: 0 }} /><Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                <defs>
+                   <linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                   <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="date" stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                <YAxis stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                <RechartsTooltip 
+                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} 
+                   itemStyle={{ color: '#fff' }}
+                />
+                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSched)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" activeDot={{ r: 6, strokeWidth: 0 }} />
              </AreaChart>
           </ResponsiveContainer>
 
@@ -1720,48 +1946,6 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
   )
 }
 
-const ProjectsGrid = ({ projects, onSelect }: any) => {
-  const columnDefs = useMemo(() => [
-    { 
-      field: 'name', 
-      headerName: 'Project Name', 
-      checkboxSelection: true, 
-      headerCheckboxSelection: true,
-      cellClass: 'text-blue-400 font-bold',
-      flex: 2
-    },
-    { field: 'type', headerName: 'Type', cellClass: 'font-bold uppercase text-slate-400' },
-    { field: 'status', headerName: 'Status', cellRenderer: (p:any) => <div className="flex items-center h-full"><StatusPill status={p.value} /></div> },
-    { field: 'priority', headerName: 'Priority', cellClass: 'font-bold uppercase text-amber-500' },
-    { field: 'owner', headerName: 'Lead Owner', cellClass: 'font-bold' },
-    { 
-      field: 'start_date', 
-      headerName: 'Timeline', 
-      valueGetter: (p:any) => `${p.data.start_date ? format(new Date(p.data.start_date), 'MMM d, yyyy') : 'N/A'} - ${p.data.end_date ? format(new Date(p.data.end_date), 'MMM d, yyyy') : 'N/A'}`,
-      cellClass: 'font-bold text-slate-500' 
-    }
-  ], [])
-
-  return (
-    <div className="h-full ag-theme-alpine-dark w-full">
-      <AgGridReact
-        rowData={projects}
-        columnDefs={columnDefs}
-        rowSelection="multiple"
-        onSelectionChanged={(event:any) => {
-          const selectedNodes = event.api.getSelectedNodes()
-          if (selectedNodes.length > 0) {
-            onSelect(selectedNodes[0].data.id)
-          }
-        }}
-        animateRows={true}
-        headerHeight={40}
-        rowHeight={45}
-      />
-    </div>
-  )
-}
-
 export default function Projects() {
   const queryClient = useQueryClient()
   const { data: projects, isLoading } = useQuery({ 
@@ -1777,7 +1961,6 @@ export default function Projects() {
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY'>('WORKSPACE')
-  const [viewMode, setViewMode] = useState<'grid' | 'workbench'>('workbench')
   const [isGlobalEditing, setIsGlobalEditing] = useState(false)
   const [draftProject, setDraftProject] = useState<any>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -1863,8 +2046,11 @@ export default function Projects() {
 
   const confirmNav = () => {
     if (!pendingNav) return
-    if (pendingNav.type === 'TAB') setActiveTab(pendingNav.id)
-    else if (pendingNav.type === 'PROJECT') {
+    if (pendingNav.type === 'TAB') {
+      setActiveTab(pendingNav.id)
+      setIsGlobalEditing(false)
+      setDraftProject(null)
+    } else if (pendingNav.type === 'PROJECT') {
       setSelectedProjectId(pendingNav.id)
       setIsGlobalEditing(false)
       setDraftProject(null)
@@ -1898,10 +2084,6 @@ export default function Projects() {
 
        <div className="h-12 border-b border-white/5 bg-[#0a0c14] flex items-center px-6 justify-between shrink-0">
           <div className="flex items-center h-full">
-             <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg mr-6">
-                <button onClick={() => setViewMode('workbench')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'workbench' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Workbench View"><LayoutGrid size={14}/></button>
-                <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Inventory Grid"><List size={14}/></button>
-             </div>
              {[
                { id: 'WORKSPACE', icon: Target, label: 'Workbench' }, 
                { id: 'GANTT', icon: Calendar, label: 'Precision Gantt' }, 
@@ -1937,34 +2119,28 @@ export default function Projects() {
        </div>
 
        <div className="flex-1 flex overflow-hidden">
-          {viewMode === 'workbench' && (
-            <ProjectRail 
-              projects={projects || []} 
-              selectedId={selectedProjectId} 
-              onSelect={requestProjectChange} 
-              onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
-              onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
-              width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            />
-          )}
+          <ProjectRail 
+            projects={projects || []} 
+            selectedId={selectedProjectId} 
+            onSelect={requestProjectChange} 
+            onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
+            onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
+            width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
           <div className="flex-1 flex flex-col min-w-0 bg-[#0f111a] shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]">
              <div className="flex-1 overflow-hidden relative">
                 <AnimatePresence mode="wait">
                    {activeTab === 'WORKSPACE' && (
                      <motion.div key="workspace" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full p-10 overflow-y-auto custom-scrollbar bg-[#0a0c14]/30 backdrop-blur-sm">
-                        {viewMode === 'grid' ? (
-                          <ProjectsGrid projects={projects} onSelect={requestProjectChange} />
-                        ) : (
-                          <WorkbenchView 
-                            project={isGlobalEditing ? draftProject : selectedProject} 
-                            onUpdate={setDraftProject} 
-                            isEditing={isGlobalEditing}
-                            devices={devices || []}
-                            services={services || []}
-                            options={options || []}
-                            users={users || []}
-                          />
-                        )}
+                        <WorkbenchView 
+                          project={isGlobalEditing ? draftProject : selectedProject} 
+                          onUpdate={setDraftProject} 
+                          isEditing={isGlobalEditing}
+                          devices={devices || []}
+                          services={services || []}
+                          options={options || []}
+                          users={users || []}
+                        />
                      </motion.div>
                    )}
                    {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
