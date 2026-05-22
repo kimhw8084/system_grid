@@ -864,21 +864,18 @@ def seed():
         db.add_all([admin_role, view_role, eng_role])
         db.flush()
 
+        # Only two accounts: haewon.kim and haewonkim
         db.add(Operator(
-            external_id="ADM-001", username="sys_admin", full_name="System Admin", 
-            email="admin@sysgrid.net", department="IT", team="Infrastructure", 
-            role_id=admin_role.id, registration_status="Active"
-        ))
-        db.add(Operator(
-            external_id="haewon.kim", username="haewonkim", full_name="Haewon Kim", 
-            email="haewonkim@sysgrid.net", department="Engineering", team="SRE", 
+            external_id="haewon.kim", username="haewon.kim", full_name="Haewon Kim", 
+            email="haewon.kim@sysgrid.net", department="Engineering", team="SRE", 
             role_id=admin_role.id, is_admin=True, registration_status="Active",
             custom_permissions={"all": 3}
         ))
         db.add(Operator(
-            external_id="ENG-042", username="hkim", full_name="HK Specialist", 
-            email="hkim@sysgrid.net", department="Engineering", team="SRE", 
-            role_id=eng_role.id, registration_status="Active"
+            external_id="haewonkim", username="haewonkim", full_name="Haewon Kim", 
+            email="haewonkim@sysgrid.net", department="Engineering", team="SRE", 
+            role_id=admin_role.id, is_admin=True, registration_status="Active",
+            custom_permissions={"all": 3}
         ))
 
         # 18. External Secrets & User Preferences
@@ -892,8 +889,8 @@ def seed():
                 note="Auto-generated seed secret"
             ))
         
-        db.add(UserPreference(user_id="sys_admin", key="dashboard_layout", value="compact"))
-        db.add(UserPreference(user_id="sys_admin", key="notifications_enabled", value="true"))
+        db.add(UserPreference(user_id="haewon.kim", key="dashboard_layout", value="compact"))
+        db.add(UserPreference(user_id="haewon.kim", key="notifications_enabled", value="true"))
 
         # 19. Monitoring History (Versioning)
         print("Seeding Monitoring History (Versioning)...")
@@ -908,11 +905,11 @@ def seed():
 
         # 20. Environmental History & User Pool Versioning
         print("Seeding History & Versioning Matrix...")
-        db.add(EnvHistory(field="ENVIRONMENT", old_value="development", new_value="production", user="sys_admin"))
+        db.add(EnvHistory(field="ENVIRONMENT", old_value="development", new_value="production", user="haewon.kim"))
         db.add(UserPoolVersion(
             version_label="v20260430_initial",
-            snapshot_data=[{"username": "sys_admin", "role": "Administrator"}, {"username": "hkim", "role": "Engineer"}],
-            diff_summary={"added": ["sys_admin", "hkim"], "removed": []},
+            snapshot_data=[{"username": "haewon.kim", "role": "Administrator"}, {"username": "haewonkim", "role": "Administrator"}],
+            diff_summary={"added": ["haewon.kim", "haewonkim"], "removed": []},
             created_by="system",
             is_active=True
         ))
