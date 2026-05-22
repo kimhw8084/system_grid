@@ -198,7 +198,6 @@ const ProjectRail = ({
     const y = new Set<string>()
     projects.forEach((p:any) => {
       if (p.created_at) y.add(new Date(p.created_at).getFullYear().toString())
-      if (p.start_date) y.add(new Date(p.start_date).getFullYear().toString())
     })
     return Array.from(y).sort((a, b) => b.localeCompare(a))
   }, [projects])
@@ -245,7 +244,7 @@ const ProjectRail = ({
                onClick={onNew}
                className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
              >
-                <Plus size={14} /> New Stream
+                <Plus size={14} /> New Vector
              </button>
              <button onClick={onToggleCollapse} className="p-2 ml-2 text-slate-500 hover:text-white transition-all rounded-lg hover:bg-white/5">
                 <PanelRight size={18} />
@@ -259,7 +258,7 @@ const ProjectRail = ({
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full bg-white/5 border border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 uppercase tracking-widest transition-all"
-                  placeholder="Search Matrix..."
+                  placeholder="Filter vectors..."
                 />
              </div>
              <div className="grid grid-cols-2 gap-2">
@@ -310,13 +309,19 @@ const ProjectRail = ({
                       p.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
                     }`} />
                  </div>
-                 <div className="flex items-center justify-between">
+                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                       <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{p.type}</span>
+                       <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{p.type || 'N/A'}</span>
                        <span className="text-slate-800 text-[8px]">•</span>
                        <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
                     </div>
                     <span className="text-[7px] font-bold text-slate-700">{p.created_at ? format(new Date(p.created_at), 'yyyy') : 'N/A'}</span>
+                 </div>
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                       <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 rounded text-[7px] font-bold text-blue-400 uppercase truncate max-w-[60px]">{p.owner || 'UNASSIGNED'}</div>
+                    </div>
+                    <span className="text-[7px] font-bold text-slate-800 uppercase tracking-tighter">{p.created_at ? format(new Date(p.created_at), 'MMM dd') : ''}</span>
                  </div>
               </button>
             </div>
@@ -364,8 +369,6 @@ const ProjectLedger = ({
          </button>
          <div className="flex-1 flex flex-col gap-6 items-center">
             <BarChart3 size={18} className="text-blue-500 opacity-50" />
-            <LinkIcon size={18} className="text-amber-500 opacity-50" />
-            <Users size={18} className="text-emerald-500 opacity-50" />
          </div>
       </div>
     )
@@ -374,6 +377,8 @@ const ProjectLedger = ({
   const handleChange = (field: string, value: any) => {
     onUpdate({ ...project, [field]: value })
   }
+
+  const activeROI = project.roi_types || []
 
   return (
     <div className="relative border-l border-white/5 bg-[#0a0c14] shrink-0 flex flex-col overflow-hidden" style={{ width }}>
@@ -398,7 +403,7 @@ const ProjectLedger = ({
 
        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#0d0f17]">
           <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-             <LayoutGrid size={14} /> Project Ledger
+             <BarChart3 size={14} /> ROI Metrics
           </h4>
           <button onClick={onToggleCollapse} className="p-1.5 text-slate-500 hover:text-white transition-all rounded-lg hover:bg-white/5">
              <PanelLeft size={18} />
@@ -406,140 +411,114 @@ const ProjectLedger = ({
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                <BarChart3 size={14} /> Strategic ROI
-             </h4>
-             <div className="grid grid-cols-1 gap-3">
-                <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
-                   {isEditing ? (
-                     <select 
-                       value={project.roi_defense_line || 0}
-                       onChange={e => handleChange('roi_defense_line', parseInt(e.target.value))}
-                       className="w-full bg-transparent text-xl font-bold text-white outline-none"
-                     >
-                       {DEFENSE_LINES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                     </select>
-                   ) : (
-                     <p className="text-xl font-bold text-white uppercase tracking-tighter">LEVEL {project.roi_defense_line || 0}</p>
-                   )}
-                </div>
-                <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimization</p>
-                   {isEditing ? (
-                     <div className="flex items-center gap-2">
-                       <span className="text-xl font-bold text-blue-400">+</span>
-                       <input 
-                         type="number"
-                         value={project.man_hours_saved || 0}
-                         onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value))}
-                         className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                       />
-                       <span className="text-xs font-bold text-blue-400">H</span>
-                     </div>
-                   ) : (
-                     <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0}H</p>
-                   )}
-                </div>
-                <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
-                   {isEditing ? (
-                     <div className="flex items-center gap-2">
-                       <span className="text-xl font-bold text-blue-400">+</span>
-                       <input 
-                         type="number"
-                         value={project.stoploss_minutes_saved || 0}
-                         onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value))}
-                         className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                       />
-                       <span className="text-xs font-bold text-blue-400">m</span>
-                     </div>
-                   ) : (
-                     <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0}m</p>
-                   )}
-                </div>
-                <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
-                   {isEditing ? (
-                     <div className="flex items-center gap-2">
-                       <span className="text-xl font-bold text-blue-400">+</span>
-                       <input 
-                         type="number"
-                         value={project.wafers_gained || 0}
-                         onChange={e => handleChange('wafers_gained', parseFloat(e.target.value))}
-                         className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                       />
-                     </div>
-                   ) : (
-                     <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0}</p>
-                   )}
-                </div>
-             </div>
-          </section>
+          <section className="space-y-6">
+             {isEditing && (
+               <div className="space-y-3">
+                  <h4 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Select ROI Streams</h4>
+                  <div className="grid grid-cols-1 gap-1">
+                     {ROI_TYPES.map(t => (
+                       <label key={t.value} className={`flex items-center gap-2 px-3 py-2 rounded transition-all cursor-pointer ${activeROI.includes(t.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={activeROI.includes(t.value)}
+                            onChange={e => {
+                              const updated = e.target.checked ? [...activeROI, t.value] : activeROI.filter((v:any) => v !== t.value)
+                              handleChange('roi_types', updated)
+                            }}
+                            className="rounded border-white/10 bg-black/40 text-blue-600"
+                          />
+                          <span className="text-[10px] font-bold uppercase tracking-tight">{t.label}</span>
+                       </label>
+                     ))}
+                  </div>
+               </div>
+             )}
 
-          <section className="space-y-4">
-             <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                   <LinkIcon size={14} /> Jira Reference
-                </h4>
-             </div>
-             <div className="space-y-2">
-                {isEditing ? (
-                  <input 
-                    value={(project.jira_links || []).join(', ')}
-                    onChange={e => handleChange('jira_links', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-bold text-white outline-none focus:border-amber-500 transition-all"
-                    placeholder="PROJ-123, PROJ-456..."
-                  />
-                ) : (
-                  <>
-                    {(project.jira_links || []).map((link: string, i: number) => (
-                      <a
-                        key={i}
-                        href={link.startsWith('http') ? link : `#`}
-                        target={link.startsWith('http') ? "_blank" : "_self"}
-                        rel="noreferrer"
-                        className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all group"
-                      >
-                         <span className="text-[11px] font-bold text-blue-400 truncate mr-2">{link}</span>
-                         <ExternalLink size={12} className="text-slate-600 group-hover:text-blue-400 shrink-0" />
-                      </a>
-                    ))}
-                    {(!project.jira_links || project.jira_links.length === 0) && (
-                       <p className="text-[10px] font-bold text-slate-600 uppercase px-1">No linked records</p>
-                    )}
-                  </>
+             <div className="space-y-4">
+                {activeROI.includes('defense_line') && (
+                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
+                     {isEditing ? (
+                       <select 
+                         value={project.roi_defense_line || 'DL0'}
+                         onChange={e => handleChange('roi_defense_line', e.target.value)}
+                         className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded p-1"
+                       >
+                         <option value="DL0">DL0: BASE</option>
+                         <option value="DL1">DL1: FORTIFIED</option>
+                         <option value="DL2">DL2: RESILIENT</option>
+                       </select>
+                     ) : (
+                       <p className="text-xl font-bold text-white uppercase tracking-tighter">{project.roi_defense_line || 'DL0'}</p>
+                     )}
+                  </div>
                 )}
-             </div>
-          </section>
 
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                <Users size={14} /> Stakeholders
-             </h4>
-             <div className="space-y-3">
-                {isEditing ? (
-                  <input 
-                    value={project.owner || ''}
-                    onChange={e => handleChange('owner', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-bold text-white outline-none focus:border-emerald-500 transition-all"
-                    placeholder="Lead, Member-A, Member-B..."
-                  />
-                ) : (
-                  <>
-                    {(project.owner || "Unassigned").split(',').map((o: string, i: number) => (
-                      <div key={i} className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-[10px] font-bold text-blue-400 uppercase">
-                            {o.trim()[0]}
-                         </div>
-                         <div>
-                            <p className="text-[11px] font-bold text-white">{o.trim()}</p>
-                            <p className="text-[9px] font-bold text-slate-600 uppercase">Primary Lead</p>
-                         </div>
-                      </div>
-                    ))}
-                  </>
+                {activeROI.includes('man_hours') && (
+                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimization</p>
+                     {isEditing ? (
+                       <div className="flex items-center gap-2">
+                         <span className="text-xl font-bold text-blue-400">+</span>
+                         <input 
+                           type="number"
+                           value={project.man_hours_saved || 0}
+                           onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value))}
+                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                         />
+                         <span className="text-[10px] font-bold text-blue-400 uppercase">hr/yr</span>
+                       </div>
+                     ) : (
+                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0} <span className="text-xs">hr/yr</span></p>
+                     )}
+                  </div>
+                )}
+
+                {activeROI.includes('stoploss') && (
+                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
+                     {isEditing ? (
+                       <div className="flex items-center gap-2">
+                         <span className="text-xl font-bold text-blue-400">+</span>
+                         <input 
+                           type="number"
+                           value={project.stoploss_minutes_saved || 0}
+                           onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value))}
+                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                         />
+                         <span className="text-[10px] font-bold text-blue-400 uppercase">min/yr</span>
+                       </div>
+                     ) : (
+                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0} <span className="text-xs">min/yr</span></p>
+                     )}
+                  </div>
+                )}
+
+                {activeROI.includes('wpd') && (
+                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
+                     {isEditing ? (
+                       <div className="flex items-center gap-2">
+                         <span className="text-xl font-bold text-blue-400">+</span>
+                         <input 
+                           type="number"
+                           value={project.wafers_gained || 0}
+                           onChange={e => handleChange('wafers_gained', parseFloat(e.target.value))}
+                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                         />
+                         <span className="text-[10px] font-bold text-blue-400 uppercase">WPD</span>
+                       </div>
+                     ) : (
+                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0} <span className="text-xs font-bold">WPD</span></p>
+                     )}
+                  </div>
+                )}
+
+                {activeROI.length === 0 && (
+                  <div className="py-20 text-center opacity-20 flex flex-col items-center gap-4">
+                     <BarChart3 size={32} />
+                     <p className="text-[10px] font-bold uppercase tracking-widest">No ROI streams selected</p>
+                  </div>
                 )}
              </div>
           </section>
@@ -1076,7 +1055,7 @@ const DiagramBuilder = ({ data, onChange, onSave }: any) => {
   )
 }
 
-const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, options }: any) => {
+const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, options, users }: any) => {
   const [name, setName] = useState(project?.name || '')
   const [problemStatement, setProblemStatement] = useState(project?.problem_statement || '')
   const [objective, setObjective] = useState(project?.objective || '')
@@ -1091,6 +1070,57 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     setProblemStatement(project?.problem_statement || '')
     setObjective(project?.objective || '')
   }, [project])
+
+  const handleFieldChange = (field: string, value: any) => {
+    if (project && project[field] !== value) onUpdate({ ...project, [field]: value })
+  }
+
+  // Cascading Logic & Option Prioritization
+  const systemOptions = useMemo(() => options?.filter((o:any) => o.category === 'LogicalSystem') || [], [options])
+  const typeOptions = useMemo(() => options?.filter((o:any) => o.category === 'ProjectType') || [{ value: '1', label: '1' }, { value: '2', label: '2' }], [options])
+  const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.id.toString(), label: u.full_name || u.username })) || [], [users])
+
+  const sortedSystemOptions = useMemo(() => {
+    const selected = project?.target_systems || []
+    return [...systemOptions].sort((a, b) => {
+      const aSel = selected.includes(a.value)
+      const bSel = selected.includes(b.value)
+      if (aSel && !bSel) return -1
+      if (!aSel && bSel) return 1
+      return 0
+    })
+  }, [systemOptions, project?.target_systems])
+
+  const filteredAssets = useMemo(() => {
+    const base = !project?.target_systems?.length ? devices : devices?.filter((d:any) => project.target_systems.includes(d.system))
+    const selected = project?.target_assets || []
+    return [...(base || [])].sort((a, b) => {
+      const aSel = selected.includes(a.id)
+      const bSel = selected.includes(b.id)
+      if (aSel && !bSel) return -1
+      if (!aSel && bSel) return 1
+      return 0
+    })
+  }, [devices, project?.target_systems, project?.target_assets])
+
+  const filteredServices = useMemo(() => {
+    const base = !project?.target_assets?.length ? services : services?.filter((s:any) => project.target_assets.includes(s.device_id))
+    const selected = project?.target_services || []
+    return [...(base || [])].sort((a, b) => {
+      const aSel = selected.includes(a.id)
+      const bSel = selected.includes(b.id)
+      if (aSel && !bSel) return -1
+      if (!aSel && bSel) return 1
+      return 0
+    })
+  }, [services, project?.target_assets, project?.target_services])
+
+  if (!project) return (
+    <div className="h-full flex flex-col items-center justify-center opacity-20">
+       <Briefcase size={64} className="mb-4" />
+       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
+    </div>
+  )
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     if (!project || !isEditing) return
@@ -1114,57 +1144,6 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     }
   }, [project, onUpdate, isEditing])
 
-  const handleFieldChange = (field: string, value: any) => {
-    if (project && project[field] !== value) onUpdate({ ...project, [field]: value })
-  }
-
-  const addLink = () => {
-    if (!project || !newLinkLabel || !newLinkUrl) return
-    const metadata = project?.metadata_json || {}
-    const updatedLinks = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
-    onUpdate({ ...project, metadata_json: { ...metadata, links: updatedLinks } })
-    setNewLinkLabel(''); setNewLinkUrl(''); setIsAddingLink(false)
-    toast.success('Intelligence Link Established')
-  }
-
-  // Cascading Logic
-  const systemOptions = useMemo(() => options?.filter((o:any) => o.category === 'LogicalSystem') || [], [options])
-  const filteredAssets = useMemo(() => {
-    if (!project?.target_systems?.length) return devices || []
-    return devices?.filter((d:any) => project.target_systems.includes(d.system)) || []
-  }, [devices, project?.target_systems])
-
-  const filteredServices = useMemo(() => {
-    if (!project?.target_assets?.length) return services || []
-    return services?.filter((s:any) => project.target_assets.includes(s.device_id)) || []
-  }, [services, project?.target_assets])
-
-  if (!project) return (
-    <div className="h-full flex flex-col items-center justify-center opacity-20">
-       <Briefcase size={64} className="mb-4" />
-       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
-    </div>
-  )
-
-  const diagrams = project?.metadata_json?.diagrams || []
-
-  const years = Array.from({ length: 11 }, (_, i) => 2024 + i)
-  const months = [
-    { v: 0, l: 'JAN' }, { v: 1, l: 'FEB' }, { v: 2, l: 'MAR' }, { v: 3, l: 'APR' },
-    { v: 4, l: 'MAY' }, { v: 5, l: 'JUN' }, { v: 6, l: 'JUL' }, { v: 7, l: 'AUG' },
-    { v: 8, l: 'SEP' }, { v: 9, l: 'OCT' }, { v: 10, l: 'NOV' }, { v: 11, l: 'DEC' }
-  ]
-
-  const handleDateChange = (type: 'start' | 'end', part: 'month' | 'year', val: number) => {
-    const d = new Date(project[`${type}_date`] || new Date())
-    if (part === 'month') d.setMonth(val)
-    else d.setFullYear(val)
-    onUpdate({ ...project, [`${type}_date`]: d.toISOString() })
-  }
-
-  const startDate = new Date(project.start_date || new Date())
-  const endDate = new Date(project.end_date || new Date())
-
   return (
     <div className="max-w-full mx-auto space-y-10 pb-20" onPaste={handlePaste}>
        <section className="bg-white/5 rounded-lg border border-white/5 overflow-hidden shadow-2xl">
@@ -1172,344 +1151,404 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
              <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
                 <Target size={14} /> Strategic Identity
              </h4>
-             <div className="grid grid-cols-4 gap-8">
-                <div className="col-span-2 space-y-2">
+             <div className="grid grid-cols-3 gap-8">
+                <div className="col-span-1 space-y-2">
                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vector Title</label>
                    {isEditing ? (
                      <input 
                        value={name} 
                        onChange={e => setName(e.target.value)}
                        onBlur={() => handleFieldChange('name', name)}
-                       className="w-full bg-white/5 border border-white/10 rounded-lg px-5 py-3 text-lg font-bold text-white outline-none focus:border-blue-500 transition-all"
+                       className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
                      />
                    ) : (
                      <p className="text-xl font-bold text-white tracking-tighter px-1">{project.name}</p>
                    )}
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Status</label>
                    {isEditing ? (
-                     <select 
+                     <StyledSelect 
+                       label="Status"
                        value={project.status}
                        onChange={e => handleFieldChange('status', e.target.value)}
-                       className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all uppercase"
-                     >
-                       {PROJECT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                     </select>
+                       options={PROJECT_STATUSES}
+                     />
                    ) : (
-                     <div className="flex items-center gap-2 px-1">
-                        <div className={`w-2 h-2 rounded-full ${project.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                        <span className="text-sm font-bold text-white uppercase">{project.status}</span>
+                     <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
+                        <div className="flex items-center gap-2 px-1">
+                           <StatusPill status={project.status} />
+                        </div>
                      </div>
                    )}
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Priority</label>
                    {isEditing ? (
-                     <select 
+                     <StyledSelect 
+                       label="Priority"
                        value={project.priority}
                        onChange={e => handleFieldChange('priority', e.target.value)}
-                       className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all uppercase"
-                     >
-                       {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                     </select>
+                       options={PROJECT_PRIORITIES}
+                     />
                    ) : (
-                     <p className="text-sm font-bold text-slate-400 uppercase tracking-widest px-1">{project.priority}</p>
+                     <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Priority</label>
+                        <p className="text-xs font-bold text-amber-500 uppercase tracking-widest px-1">{project.priority}</p>
+                     </div>
                    )}
                 </div>
              </div>
           </div>
 
-          <div className="p-8 grid grid-cols-3 gap-10 bg-[#0a0c14]/30 border-b border-white/5">
-             <div className="space-y-4">
-                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                   <Calendar size={14} /> Timeline Alignment
-                </label>
-                <div className="space-y-4">
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Vector Initialization</label>
-                      <div className="flex gap-2">
-                         <select 
-                           value={startDate.getMonth()} 
-                           onChange={e => handleDateChange('start', 'month', parseInt(e.target.value))}
-                           disabled={!isEditing}
-                           className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none"
-                         >
-                            {months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
-                         </select>
-                         <select 
-                           value={startDate.getFullYear()} 
-                           onChange={e => handleDateChange('start', 'year', parseInt(e.target.value))}
-                           disabled={!isEditing}
-                           className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none"
-                         >
-                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                         </select>
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Vector Termination</label>
-                      <div className="flex gap-2">
-                         <select 
-                           value={endDate.getMonth()} 
-                           onChange={e => handleDateChange('end', 'month', parseInt(e.target.value))}
-                           disabled={!isEditing}
-                           className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none"
-                         >
-                            {months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
-                         </select>
-                         <select 
-                           value={endDate.getFullYear()} 
-                           onChange={e => handleDateChange('end', 'year', parseInt(e.target.value))}
-                           disabled={!isEditing}
-                           className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none"
-                         >
-                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                         </select>
-                      </div>
-                   </div>
-                </div>
-             </div>
-
-             <div className="col-span-2 space-y-4">
-                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                   <Sliders size={14} /> Context & Target Boundaries
-                </label>
-                <div className="grid grid-cols-3 gap-6">
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Strategic Systems</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {systemOptions.map((o:any) => (
-                            <label key={o.value} className="flex items-center gap-2 group cursor-pointer">
-                               <input 
-                                 type="checkbox" 
-                                 checked={project.target_systems?.includes(o.value)} 
-                                 onChange={e => {
-                                    const current = project.target_systems || []
-                                    const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                    onUpdate({ ...project, target_systems: updated })
-                                 }}
-                                 disabled={!isEditing}
-                                 className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                               />
-                               <span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase">{o.label}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Impacted Assets</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {filteredAssets.map((d:any) => (
-                            <label key={d.id} className="flex items-center gap-2 group cursor-pointer">
-                               <input 
-                                 type="checkbox" 
-                                 checked={project.target_assets?.includes(d.id)} 
-                                 onChange={e => {
-                                    const current = project.target_assets || []
-                                    const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                    onUpdate({ ...project, target_assets: updated })
-                                 }}
-                                 disabled={!isEditing}
-                                 className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                               />
-                               <span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{d.name}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Core Services</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {filteredServices.map((s:any) => (
-                            <label key={s.id} className="flex items-center gap-2 group cursor-pointer">
-                               <input 
-                                 type="checkbox" 
-                                 checked={project.target_services?.includes(s.id)} 
-                                 onChange={e => {
-                                    const current = project.target_services || []
-                                    const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
-                                    onUpdate({ ...project, target_services: updated })
-                                 }}
-                                 disabled={!isEditing}
-                                 className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                               />
-                               <span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{s.name}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-          
           <div className="p-8 grid grid-cols-2 gap-10">
+             <section className="space-y-3">
+                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
+                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                   {isEditing ? (
+                     <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define strategic friction..." />
+                   ) : (
+                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.problem_statement || 'No problem statement defined.'}</p>
+                   )}
+                </div>
+             </section>
+             <section className="space-y-3">
+                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Mission Objective</h4>
+                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-emerald-500/30' : 'border-white/5'}`}>
+                   {isEditing ? (
+                     <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define target end state..." />
+                   ) : (
+                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.objective || 'No mission objective defined.'}</p>
+                   )}
+                </div>
+             </section>
+          </div>
+
+          <div className="p-8 grid grid-cols-2 gap-10 bg-[#0a0c14]/30 border-t border-white/5">
              <div className="space-y-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                   <Users size={12} /> Lead Architect
-                </label>
                 {isEditing ? (
-                  <input 
+                  <StyledSelect 
+                    label="Lead Architect"
                     value={project.owner || ''}
                     onChange={e => handleFieldChange('owner', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-5 py-3 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all"
+                    options={userOptions}
                     placeholder="Assign lead..."
                   />
                 ) : (
-                  <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                     <span className="text-sm font-bold text-slate-300">{project.owner || 'Unassigned'}</span>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Lead Architect</label>
+                    <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
+                       <span className="text-xs font-bold text-slate-300">{userOptions.find(o => o.value === project.owner)?.label || project.owner || 'Unassigned'}</span>
+                    </div>
                   </div>
                 )}
              </div>
              <div className="space-y-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                   <Layers size={12} /> Classification
-                </label>
                 {isEditing ? (
-                  <select 
-                    value={project.type}
+                  <StyledSelect 
+                    label="Classification"
+                    value={project.type || ''}
                     onChange={e => handleFieldChange('type', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all uppercase"
-                  >
-                    {PROJECT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
+                    options={typeOptions}
+                    placeholder="Select classification..."
+                  />
                 ) : (
-                  <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                     <span className="text-sm font-bold text-blue-400 uppercase tracking-widest">{project.type}</span>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Classification</label>
+                    <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
+                       <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">{project.type || 'N/A'}</span>
+                    </div>
                   </div>
                 )}
+             </div>
+          </div>
+
+          <div className="p-8 border-t border-white/5">
+             <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                <Sliders size={14} /> Context & Target Boundaries
+             </label>
+             <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Strategic Systems</label>
+                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
+                      {isEditing ? (
+                        sortedSystemOptions.map((o:any) => (
+                           <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_systems?.includes(o.value)} 
+                                onChange={e => {
+                                   const current = project.target_systems || []
+                                   const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+                                   onUpdate({ ...project, target_systems: updated })
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
+                           </label>
+                        ))
+                      ) : (
+                        project.target_systems?.length > 0 ? (
+                          project.target_systems.map((id: string) => {
+                            const label = systemOptions.find(o => o.value === id)?.label || id
+                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{label}</div>
+                          })
+                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
+                      )}
+                   </div>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Impacted Assets</label>
+                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
+                      {isEditing ? (
+                        filteredAssets.map((d:any) => (
+                           <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_assets?.includes(d.id)} 
+                                onChange={e => {
+                                   const current = project.target_assets || []
+                                   const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
+                                   onUpdate({ ...project, target_assets: updated })
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{d.name}</span>
+                           </label>
+                        ))
+                      ) : (
+                        project.target_assets?.length > 0 ? (
+                          project.target_assets.map((id: number) => {
+                            const name = devices?.find((d:any) => d.id === id)?.name || `Asset #${id}`
+                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{name}</div>
+                          })
+                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
+                      )}
+                   </div>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Core Services</label>
+                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
+                      {isEditing ? (
+                        filteredServices.map((s:any) => (
+                           <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_services?.includes(s.id)} 
+                                onChange={e => {
+                                   const current = project.target_services || []
+                                   const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
+                                   onUpdate({ ...project, target_services: updated })
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{s.name}</span>
+                           </label>
+                        ))
+                      ) : (
+                        project.target_services?.length > 0 ? (
+                          project.target_services.map((id: number) => {
+                            const name = services?.find((s:any) => s.id === id)?.name || `Service #${id}`
+                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{name}</div>
+                          })
+                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
+                      )}
+                   </div>
+                </div>
              </div>
           </div>
        </section>
 
-       <div className="grid grid-cols-2 gap-8">
-          <section className="space-y-3">
-             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
-             <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[160px] ${isEditing ? 'border-blue-500/30 ring-1 ring-blue-500/10' : 'border-white/5'}`}>
+       <div className="grid grid-cols-2 gap-10">
+          <section className="space-y-4">
+             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> Jira Link(s)</h4>
+             <div className="space-y-2">
                 {isEditing ? (
-                  <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-sm font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define strategic friction..." />
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input 
+                        value={newLinkLabel} 
+                        onChange={e => setNewLinkLabel(e.target.value)} 
+                        className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
+                        placeholder="Label (e.g. PROJ-123)"
+                      />
+                      <input 
+                        value={newLinkUrl} 
+                        onChange={e => setNewLinkUrl(e.target.value)} 
+                        className="flex-[2] bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
+                        placeholder="Link URL"
+                      />
+                      <button 
+                        onClick={() => {
+                          if (!newLinkLabel || !newLinkUrl) return
+                          const metadata = project?.metadata_json || {}
+                          const links = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
+                          onUpdate({ ...project, metadata_json: { ...metadata, links } })
+                          setNewLinkLabel(''); setNewLinkUrl('')
+                        }}
+                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"
+                      ><Plus size={16}/></button>
+                    </div>
+                    <div className="space-y-1">
+                      {(project.metadata_json?.links || []).map((link: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5">
+                          <span className="text-[9px] font-bold text-slate-300">{link.label}</span>
+                          <button onClick={() => {
+                            const metadata = project.metadata_json || {}
+                            const links = metadata.links.filter((_:any, idx:number) => idx !== i)
+                            onUpdate({ ...project, metadata_json: { ...metadata, links } })
+                          }} className="text-rose-500 hover:text-rose-400"><Trash2 size={12}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
-                  <p className="text-sm font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.problem_statement || 'No problem statement defined.'}</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(project.metadata_json?.links || []).map((link: any, i: number) => (
+                      <a key={i} href={link.url} target="_blank" rel="noreferrer" className="p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between items-center group">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase">{link.label}</span>
+                        <ExternalLink size={12} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
+                      </a>
+                    ))}
+                    {(!project.metadata_json?.links || project.metadata_json.links.length === 0) && <p className="text-[10px] font-bold text-slate-600 uppercase px-1">No linked records</p>}
+                  </div>
                 )}
              </div>
           </section>
-          <section className="space-y-3">
-             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Mission Objective</h4>
-             <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[160px] ${isEditing ? 'border-emerald-500/30 ring-1 ring-emerald-500/10' : 'border-white/5'}`}>
-                {isEditing ? (
-                  <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-sm font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define target end state..." />
-                ) : (
-                  <p className="text-sm font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.objective || 'No mission objective defined.'}</p>
+
+          <section className="space-y-4">
+             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Users size={14} /> Stakeholders</h4>
+             {isEditing ? (
+               <div className="space-y-2">
+                 <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Comma-separated team names</label>
+                 <input 
+                   value={project.stakeholders || ''}
+                   onChange={e => handleFieldChange('stakeholders', e.target.value)}
+                   className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all"
+                   placeholder="Security, Infra, DevOps..."
+                 />
+               </div>
+             ) : (
+               <div className="flex flex-wrap gap-2">
+                 {(project.stakeholders || "None").split(',').map((s: string, i: number) => (
+                   <div key={i} className="px-3 py-1.5 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                      {s.trim()}
+                   </div>
+                 ))}
+               </div>
+             )}
+          </section>
+       </div>
+
+       <div className="space-y-8">
+          <div className="flex items-center justify-between">
+             <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Workflow size={14} /> Designs</h4>
+             {isEditing && (
+               <button 
+                 onClick={() => {
+                   const metadata = project?.metadata_json || {}
+                   const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Design v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]
+                   onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
+                   setActiveDiagramIndex(newDiagrams.length - 1)
+                 }}
+                 className="px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
+               >+ New Design</button>
+             )}
+          </div>
+          <div className="space-y-4">
+             {(project?.metadata_json?.diagrams || []).map((d: any, idx: number) => (
+               <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden">
+                  <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="w-full px-6 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-all">
+                     <div className="flex items-center gap-3"><GitBranch size={14} className="text-amber-400" /><span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">{d.name}</span></div>
+                     <ChevronRight size={14} className={`text-slate-500 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                     {activeDiagramIndex === idx && (
+                       <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                          <DiagramBuilder data={d} onChange={(updated: any) => {
+                            if (!isEditing) return
+                            const metadata = project?.metadata_json || {}
+                            const newDiagrams = [...(metadata.diagrams || [])]
+                            newDiagrams[idx] = { ...newDiagrams[idx], ...updated }
+                            onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
+                          }} onSave={isEditing ? () => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); } : undefined} />
+                       </motion.div>
+                     )}
+                  </AnimatePresence>
+               </div>
+             ))}
+             {(!project?.metadata_json?.diagrams || project.metadata_json.diagrams.length === 0) && (
+               <div className="py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-30">
+                  <Workflow size={32} className="mb-2" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest">No designs created</p>
+               </div>
+             )}
+          </div>
+       </div>
+
+       <div className="grid grid-cols-1 gap-8">
+          <section className="space-y-4">
+             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ImageIcon size={14} /> Images</h4>
+             <div className="grid grid-cols-4 gap-4">
+                {(project?.metadata_json?.images || []).map((img: string, i: number) => (
+                  <div key={i} className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative">
+                     <img src={img} alt="Artifact" className="w-full h-full object-cover" />
+                     {isEditing && (
+                       <button onClick={() => {
+                         const metadata = project?.metadata_json || {}
+                         const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
+                         onUpdate({ ...project, metadata_json: { ...metadata, images: updated } })
+                       }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
+                     )}
+                  </div>
+                ))}
+                {isEditing && (
+                  <button 
+                    onClick={() => setIsPasting(true)}
+                    className={`aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-slate-700 hover:text-blue-500'}`}
+                  >
+                     <Camera size={24} className="mb-2 opacity-30" />
+                     <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
+                  </button>
                 )}
              </div>
           </section>
        </div>
 
-       <div className="grid grid-cols-3 gap-8">
-          <div className="col-span-2 space-y-6">
-             <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Workflow size={14} /> Architecture Overhaul</h4>
+       <div className="grid grid-cols-1 gap-8">
+          <section className="space-y-4">
+             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> References</h4>
+             <div className="grid grid-cols-2 gap-4">
+                {(project?.metadata_json?.references || []).map((ref: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2 group">
+                     <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{ref.label}</span>
+                        <ExternalLink size={12} className="text-slate-600" />
+                     </a>
+                     {isEditing && (
+                       <button onClick={() => {
+                         const metadata = project?.metadata_json || {}
+                         const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
+                         onUpdate({ ...project, metadata_json: { ...metadata, references: updated } })
+                       }} className="p-3 bg-rose-600/10 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
+                     )}
+                  </div>
+                ))}
                 {isEditing && (
                   <button 
                     onClick={() => {
-                      const metadata = project?.metadata_json || {}
-                      const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Vector v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]
-                      onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
-                      setActiveDiagramIndex(newDiagrams.length - 1)
+                      const label = prompt('Reference Label')
+                      const url = prompt('Reference URL')
+                      if (label && url) {
+                        const metadata = project?.metadata_json || {}
+                        const references = [...(metadata.references || []), { label, url }]
+                        onUpdate({ ...project, metadata_json: { ...metadata, references } })
+                      }
                     }}
-                    className="px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
-                  >+ New Vector</button>
+                    className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-blue-500 transition-all"
+                  >Establish Reference Link</button>
                 )}
              </div>
-             <div className="space-y-4">
-                {diagrams.map((d: any, idx: number) => (
-                  <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden">
-                     <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="w-full px-6 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-all">
-                        <div className="flex items-center gap-3"><GitBranch size={14} className="text-amber-400" /><span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">{d.name}</span></div>
-                        <ChevronRight size={14} className={`text-slate-500 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
-                     </button>
-                     <AnimatePresence>
-                        {activeDiagramIndex === idx && (
-                          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                             <DiagramBuilder data={d} onChange={(updated: any) => {
-                               if (!isEditing) return
-                               const metadata = project?.metadata_json || {}
-                               const newDiagrams = [...(metadata.diagrams || [])]
-                               newDiagrams[idx] = { ...newDiagrams[idx], ...updated }
-                               onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
-                             }} onSave={isEditing ? () => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); } : undefined} />
-                          </motion.div>
-                        )}
-                     </AnimatePresence>
-                  </div>
-                ))}
-                {diagrams.length === 0 && (
-                  <div className="py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-30">
-                     <Workflow size={32} className="mb-2" />
-                     <p className="text-[10px] font-bold uppercase tracking-widest">No architecture diagrams</p>
-                  </div>
-                )}
-             </div>
-          </div>
-          <div className="space-y-8">
-             <section className="space-y-4">
-                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ImageIcon size={14} /> Design Artifacts</h4>
-                <div className="grid grid-cols-2 gap-3">
-                   {(project?.metadata_json?.images || []).map((img: string, i: number) => (
-                     <div key={i} className="aspect-square bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative">
-                        <img src={img} alt="Artifact" className="w-full h-full object-cover" />
-                        {isEditing && (
-                          <button onClick={() => {
-                            const metadata = project?.metadata_json || {}
-                            const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
-                            onUpdate({ ...project, metadata_json: { ...metadata, images: updated } })
-                          }} className="absolute top-1 right-1 p-1 bg-rose-600 rounded text-white opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={10}/></button>
-                        )}
-                     </div>
-                   ))}
-                   {isEditing && (
-                     <button 
-                       onClick={() => setIsPasting(true)}
-                       className={`aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-slate-700 hover:text-blue-500'}`}
-                     >
-                        <Camera size={24} className="mb-2 opacity-30" />
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
-                     </button>
-                   )}
-                </div>
-             </section>
-             <section className="space-y-4">
-                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> Intelligence Links</h4>
-                <div className="space-y-2">
-                   {(project?.metadata_json?.links || []).map((link: any, i: number) => (
-                     <div key={i} className="flex items-center gap-2 group">
-                        <a href={link.url} target="_blank" rel="noreferrer" className="flex-1 p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{link.label}</span>
-                           <ExternalLink size={12} className="text-slate-600" />
-                        </a>
-                        {isEditing && (
-                          <button onClick={() => {
-                            const metadata = project?.metadata_json || {}
-                            const updated = metadata.links.filter((_:any, idx:number) => idx !== i)
-                            onUpdate({ ...project, metadata_json: { ...metadata, links: updated } })
-                          }} className="p-3 bg-rose-600/10 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
-                        )}
-                     </div>
-                   ))}
-                   {isEditing && (
-                     isAddingLink ? (
-                        <div className="p-4 bg-[#12141f] border border-blue-500/30 rounded-lg space-y-3">
-                           <input autoFocus value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-[10px] font-bold text-white outline-none" placeholder="Label"/>
-                           <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-[10px] font-bold text-white outline-none" placeholder="URL"/>
-                           <div className="flex gap-2"><button onClick={addLink} className="flex-1 py-2 bg-blue-600 text-white rounded text-[8px] font-bold uppercase">Link</button><button onClick={() => setIsAddingLink(false)} className="flex-1 py-2 bg-white/5 text-slate-500 rounded text-[8px] font-bold uppercase">Abort</button></div>
-                        </div>
-                     ) : (
-                        <button onClick={() => setIsAddingLink(true)} className="w-full py-2 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-blue-500 transition-all">Establish Reference Link</button>
-                     )
-                   )}
-                </div>
-             </section>
-          </div>
+          </section>
        </div>
     </div>
   )
@@ -1725,6 +1764,7 @@ export default function Projects() {
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: () => apiFetch('/api/v1/devices').then(r => r.json()) })
   const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
+  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/operators').then(r => r.json()) })
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY'>('WORKSPACE')
@@ -1737,6 +1777,7 @@ export default function Projects() {
   const [railWidth, setRailWidth] = useState(260)
   const [ledgerWidth, setLedgerWidth] = useState(300)
   const [pendingNav, setPendingNav] = useState<any>(null)
+  const [showConfig, setShowConfig] = useState(false)
 
   const selectedProject = useMemo(() => {
     return projects?.find((p:any) => p.id === selectedProjectId)
@@ -1865,6 +1906,13 @@ export default function Projects() {
 
           <div className="flex items-center gap-2">
              <button 
+               onClick={() => setShowConfig(true)}
+               className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all border border-white/5"
+               title="Project Configuration"
+             >
+                <Settings size={16} />
+             </button>
+             <button 
                onClick={toggleFullScreen}
                className={`p-1.5 rounded-lg transition-all border ${isFullScreen ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'}`}
                title={isFullScreen ? "Exit Full Screen" : "Full Screen View"}
@@ -1885,7 +1933,7 @@ export default function Projects() {
               projects={projects || []} 
               selectedId={selectedProjectId} 
               onSelect={requestProjectChange} 
-              onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Stream', type: 'Strategic', status: 'Planning', priority: 'Medium' }); }}
+              onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
               onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
               width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             />
@@ -1905,6 +1953,7 @@ export default function Projects() {
                             devices={devices || []}
                             services={services || []}
                             options={options || []}
+                            users={users || []}
                           />
                         )}
                      </motion.div>
@@ -1939,6 +1988,15 @@ export default function Projects() {
            />
          )}
        </AnimatePresence>
+
+       <ConfigRegistryModal
+         isOpen={showConfig}
+         onClose={() => setShowConfig(false)}
+         title="Project Configuration"
+         sections={[
+             { title: "Project Types", category: "ProjectType", icon: Layers }
+         ]}
+       />
 
        <style>{`
          .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } 
