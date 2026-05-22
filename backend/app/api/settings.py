@@ -29,11 +29,11 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
     
     if not operator:
         # Auto-register new user with no permissions by default (except for haewon.kim)
-        is_haewon = user_id == "haewon.kim"
+        is_haewon = user_id in ["haewon.kim", "haewonkim"]
         operator = models.Operator(
-            external_id=user_id,
+            external_id="haewon.kim" if is_haewon else user_id,
             username=user_id,
-            full_name=user_id.replace("_", " ").replace(".", " ").title(),
+            full_name="Haewon Kim" if is_haewon else user_id.replace("_", " ").replace(".", " ").title(),
             registration_status="Registered",
             is_admin=is_haewon,
             custom_permissions={"all": 3} if is_haewon else {}
@@ -41,8 +41,10 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
         db.add(operator)
         await db.commit()
         await db.refresh(operator)
-    elif user_id == "haewon.kim" and not operator.is_admin:
-        # Ensure haewon.kim always has admin/full access
+    elif user_id in ["haewon.kim", "haewonkim"] and not operator.is_admin:
+        # Ensure haewonkim always has admin/full access
+        operator.external_id = "haewon.kim"
+        operator.full_name = "Haewon Kim"
         operator.is_admin = True
         operator.custom_permissions = {"all": 3}
         await db.commit()

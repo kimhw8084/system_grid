@@ -870,7 +870,13 @@ def seed():
             role_id=admin_role.id, registration_status="Active"
         ))
         db.add(Operator(
-            external_id="ENG-042", username="hkim", full_name="Haewon Kim", 
+            external_id="haewon.kim", username="haewonkim", full_name="Haewon Kim", 
+            email="haewonkim@sysgrid.net", department="Engineering", team="SRE", 
+            role_id=admin_role.id, is_admin=True, registration_status="Active",
+            custom_permissions={"all": 3}
+        ))
+        db.add(Operator(
+            external_id="ENG-042", username="hkim", full_name="HK Specialist", 
             email="hkim@sysgrid.net", department="Engineering", team="SRE", 
             role_id=eng_role.id, registration_status="Active"
         ))
