@@ -1117,13 +1117,6 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     })
   }, [services, project?.target_assets, project?.target_services])
 
-  if (!project) return (
-    <div className="h-full flex flex-col items-center justify-center opacity-20">
-       <Briefcase size={64} className="mb-4" />
-       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
-    </div>
-  )
-
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     if (!project || !isEditing) return
     const items = e.clipboardData.items
@@ -1145,6 +1138,13 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
       }
     }
   }, [project, onUpdate, isEditing])
+
+  if (!project) return (
+    <div className="h-full flex flex-col items-center justify-center opacity-20">
+       <Briefcase size={64} className="mb-4" />
+       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
+    </div>
+  )
 
   return (
     <div className="max-w-full mx-auto space-y-10 pb-20" onPaste={handlePaste}>
