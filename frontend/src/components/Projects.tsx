@@ -9,7 +9,7 @@ import {
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown,
   Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle, BookOpen, Filter,
-  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical
+  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical, Layout
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -18,7 +18,7 @@ import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
-import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns'
+import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import ReactFlow, { 
   Background, 
@@ -1589,7 +1589,7 @@ const DiagramBuilder = ({ data, onChange, onSave }: any) => {
 
   return (
     <div className="h-[600px] bg-[#0a0c14] border border-white/5 rounded-xl overflow-hidden relative group">
-      <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView theme="dark">
+      <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView>
         <Background color="#1e293b" gap={20} /><Controls /><MiniMap nodeStrokeColor="#3b82f6" nodeColor="#1e293b" maskColor="rgba(0,0,0,0.5)" />
       </ReactFlow>
       <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -1729,7 +1729,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                      <div className="space-y-1">
                         <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
                         <div className="flex items-center gap-2 px-1">
-                           <StatusPill status={project.status} />
+                           <StatusPill value={project.status} />
                         </div>
                      </div>
                    )}
@@ -2390,7 +2390,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
                      >
                         <div className="flex items-center justify-between mb-4">
                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest bg-blue-600/10 px-2 py-0.5 rounded-full border border-blue-500/20">{task.projectName}</span>
-                           <StatusPill status={task.status} />
+                           <StatusPill value={task.status} />
                         </div>
                         <h3 className="text-sm font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">{task.name}</h3>
                         <div className="flex items-center gap-4 mb-5">
@@ -2460,7 +2460,15 @@ export default function Projects() {
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY'>('WORKSPACE')
-
+  const [isGlobalEditing, setIsGlobalEditing] = useState(false)
+  const [draftProject, setDraftProject] = useState<any>(null)
+  const [pendingNav, setPendingNav] = useState<any>(null)
+  const [showConfig, setShowConfig] = useState(false)
+  const [isFullScreen, setIsFullScreen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isLedgerCollapsed, setIsLedgerCollapsed] = useState(false)
+  const [railWidth, setRailWidth] = useState(320)
+  const [ledgerWidth, setLedgerWidth] = useState(380)
   const selectedProject = useMemo(() => {
     if (selectedProjectId === 'HUDDLE') return null
     return projects?.find((p:any) => p.id === selectedProjectId)
@@ -2669,7 +2677,7 @@ export default function Projects() {
              message={pendingNav.type === 'DELETE' ? "Are you certain? This action permanently removes all milestones and ROI data." : "You have uncommitted changes in the strategic matrix. Leaving now will discard these updates."}
              onConfirm={confirmNav} 
              onClose={() => setPendingNav(null)} 
-             variant={pendingNav.type === 'DELETE' ? "danger" : "default"}
+             variant={pendingNav.type === 'DELETE' ? "danger" : "info"}
              confirmText={pendingNav.type === 'DELETE' ? "Decommission" : "Discard Changes"}
            />
          )}
