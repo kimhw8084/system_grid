@@ -793,10 +793,11 @@ def seed():
             ("GreenGrid: Power Optimization", "Operational", "Low", "FACILITY", "Reduce idle power consumption across all server rooms.")
         ]
         
+        all_workers_list = db.query(Device).all()
         all_svcs = db.query(LogicalService).all()
         for name, ptype, priority, owner, objective in project_scenarios:
-            p_assets = random.sample([w.name for w in all_workers], random.randint(3, 8))
-            p_services = random.sample([s.name for s in all_svcs], random.randint(5, 12))
+            p_assets = [a.id for a in random.sample(all_workers_list, random.randint(3, 8))]
+            p_services = [s.id for s in random.sample(all_svcs, random.randint(5, 12))]
             
             p = Project(
                 name=name,
@@ -804,6 +805,7 @@ def seed():
                 priority=priority,
                 status="In Progress" if priority != "Highest" else "Planning",
                 owner=owner,
+                owners=[owner, fake.name()], # Multi-owner support
                 objective=objective,
                 problem_statement=f"Current systems lack the {name.split(':')[0]} capabilities required for 2026 throughput goals.",
                 start_date=datetime.now() - timedelta(days=random.randint(30, 90)),
@@ -812,8 +814,16 @@ def seed():
                 target_assets=p_assets,
                 target_services=p_services,
                 roi_defense_line=random.randint(0, 2),
+                roi_defense_line_desc="Primary defense against infrastructure-driven wafer scrap." if random.random() > 0.5 else "Secondary optimization for OEE.",
                 man_hours_saved=random.uniform(500, 5000),
+                man_hours_saved_math="(Tasks/Day * 2.5 Hours/Task) * 250 Days",
+                man_hours_saved_desc="Automating manual log reviews for all cluster nodes.",
+                stoploss_minutes_saved=random.uniform(10, 100),
+                stoploss_minutes_saved_math="(Incidents/Year * 15 Mins Reduced Recovery)",
+                stoploss_minutes_saved_desc="Faster isolation of network jitter spikes.",
                 wafers_gained=random.uniform(10, 100) if ptype == "Strategic" else 0,
+                wafers_gained_math="(Uptime Increase * Wafer Throughput/Hour)",
+                wafers_gained_desc="Reduction in system-induced line stoppages.",
                 team_members=[fake.name() for _ in range(5)],
                 appendix_json={"glossary": [{"term": "MTBF", "definition": "Mean Time Between Failures"}], "images": []}
             )
