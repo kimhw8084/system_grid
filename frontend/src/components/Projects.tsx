@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
-import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
@@ -192,6 +191,7 @@ const ProjectRail = ({
   onSelect, 
   onNew, 
   onDelete,
+  onReorder,
   width,
   onResize,
   isCollapsed,
@@ -202,6 +202,18 @@ const ProjectRail = ({
   const [priorityFilter, setPriorityFilter] = useState('ALL')
   const [yearFilter, setYearFilter] = useState('ALL')
 
+  const sortedAndFiltered = useMemo(() => {
+    const base = [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+    return base.filter((p:any) => {
+      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
+      const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
+      const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
+      const pYear = p.created_at ? new Date(p.created_at).getFullYear().toString() : 'N/A'
+      const matchesYear = yearFilter === 'ALL' || pYear === yearFilter
+      return matchesSearch && matchesStatus && matchesPriority && matchesYear
+    })
+  }, [projects, search, statusFilter, priorityFilter, yearFilter])
+
   const years = useMemo(() => {
     const y = new Set<string>()
     projects.forEach((p:any) => {
@@ -209,15 +221,6 @@ const ProjectRail = ({
     })
     return Array.from(y).sort((a, b) => b.localeCompare(a))
   }, [projects])
-
-  const filtered = projects.filter((p:any) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
-    const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
-    const pYear = p.created_at ? new Date(p.created_at).getFullYear().toString() : 'N/A'
-    const matchesYear = yearFilter === 'ALL' || pYear === yearFilter
-    return matchesSearch && matchesStatus && matchesPriority && matchesYear
-  })
 
   if (isCollapsed) {
     return (
@@ -229,7 +232,7 @@ const ProjectRail = ({
             <Plus size={18} />
          </button>
          <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar no-scrollbar">
-            {filtered.map((p:any) => (
+            {sortedAndFiltered.map((p:any) => (
                <button 
                  key={p.id} 
                  onClick={() => onSelect(p.id)}
@@ -259,7 +262,19 @@ const ProjectRail = ({
              </button>
           </div>
 
-          <div className="space-y-2">
+          <button 
+            onClick={() => onSelect('HUDDLE')}
+            className={`w-full h-11 rounded-lg flex items-center px-4 gap-3 transition-all border ${
+              selectedId === 'HUDDLE' 
+                ? 'bg-blue-600 border-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.2)] text-white' 
+                : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+             <Users size={16} />
+             <span className="text-[10px] font-black uppercase tracking-widest">Daily Huddle</span>
+          </button>
+
+          <div className="space-y-2 pt-2 border-t border-white/5">
              <div className="relative">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input 
@@ -287,53 +302,49 @@ const ProjectRail = ({
                    {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
              </div>
-             <select 
-                value={yearFilter}
-                onChange={e => setYearFilter(e.target.value)}
-                className="w-full bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/50 uppercase tracking-widest"
-              >
-                 <option value="ALL">ALL YEARS</option>
-                 {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
           </div>
        </div>
 
-       <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
-          {filtered.map((p:any) => (
-            <div key={p.id} className="relative group">
-              <button
-                onClick={() => onSelect(p.id)}
-                className={`w-full text-left p-3 rounded-lg transition-all border ${
-                  selectedId === p.id 
-                    ? 'bg-blue-600/10 border-blue-500/40' 
-                    : 'border-transparent hover:bg-white/5'
-                }`}
-              >
-                 <div className="flex justify-between items-start mb-1">
-                    <h3 className={`text-[11px] font-bold truncate transition-colors ${selectedId === p.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{p.name}</h3>
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                      p.status === 'Completed' ? 'bg-emerald-500' :
-                      p.status === 'Blocked' ? 'bg-rose-500' :
-                      p.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
-                    }`} />
-                 </div>
-                 <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                       <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{p.type || 'N/A'}</span>
-                       <span className="text-slate-800 text-[8px]">•</span>
-                       <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
-                    </div>
-                    <span className="text-[7px] font-bold text-slate-700">{p.created_at ? format(new Date(p.created_at), 'yyyy') : 'N/A'}</span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                       <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 rounded text-[7px] font-bold text-blue-400 uppercase truncate max-w-[60px]">{p.owner || 'UNASSIGNED'}</div>
-                    </div>
-                    <span className="text-[7px] font-bold text-slate-800 uppercase tracking-tighter">{p.created_at ? format(new Date(p.created_at), 'MMM dd') : ''}</span>
-                 </div>
-              </button>
-            </div>
-          ))}
+       <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-10">
+          <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={onReorder} className="space-y-1">
+             {sortedAndFiltered.map((p: any) => (
+                <Reorder.Item 
+                  key={p.id} 
+                  value={p}
+                  className="group"
+                >
+                   <button
+                     onClick={() => onSelect(p.id)}
+                     className={`w-full text-left p-3 rounded-lg transition-all border flex items-start justify-between cursor-grab active:cursor-grabbing ${
+                       selectedId === p.id 
+                         ? 'bg-blue-600/10 border-blue-500/40' 
+                         : 'border-transparent hover:bg-white/5'
+                     }`}
+                   >
+                      <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start mb-1">
+                            <h3 className={`text-[11px] font-bold truncate transition-colors ${selectedId === p.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{p.name}</h3>
+                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${
+                              p.status === 'Completed' ? 'bg-emerald-500' :
+                              p.status === 'Blocked' ? 'bg-rose-500' :
+                              p.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
+                            }`} />
+                         </div>
+                         <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{p.type || 'N/A'}</span>
+                            <span className="text-slate-800 text-[8px]">•</span>
+                            <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 rounded text-[7px] font-bold text-blue-400 uppercase truncate max-w-[60px]">{p.owner || 'UNASSIGNED'}</div>
+                            <span className="text-[7px] font-bold text-slate-800 uppercase tracking-tighter">{p.created_at ? format(new Date(p.created_at), 'MMM dd') : ''}</span>
+                         </div>
+                      </div>
+                      <GripVertical size={14} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0 mt-1" />
+                   </button>
+                </Reorder.Item>
+             ))}
+          </Reorder.Group>
        </div>
 
        {/* Resize Handle */}
@@ -471,7 +482,7 @@ const ProjectLedger = ({
                          <input 
                            type="number"
                            value={project.man_hours_saved || 0}
-                           onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value))}
+                           onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value) || 0)}
                            className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
                          />
                          <span className="text-[10px] font-bold text-blue-400 uppercase">hr/yr</span>
@@ -491,7 +502,7 @@ const ProjectLedger = ({
                          <input 
                            type="number"
                            value={project.stoploss_minutes_saved || 0}
-                           onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value))}
+                           onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value) || 0)}
                            className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
                          />
                          <span className="text-[10px] font-bold text-blue-400 uppercase">min/yr</span>
@@ -511,7 +522,7 @@ const ProjectLedger = ({
                          <input 
                            type="number"
                            value={project.wafers_gained || 0}
-                           onChange={e => handleChange('wafers_gained', parseFloat(e.target.value))}
+                           onChange={e => handleChange('wafers_gained', parseFloat(e.target.value) || 0)}
                            className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
                          />
                          <span className="text-[10px] font-bold text-blue-400 uppercase">WPD</span>
@@ -549,18 +560,33 @@ const TaskRow = ({
   handleTaskResize, 
   setSelectedTaskId, 
   handleSelectTask,
-  ROW_HEIGHT 
-}: any) => {
+  onDependencyStart,
+  isSource,
+  isCritical,
+  ghost,
+  diagram,
+  ROW_HEIGHT,
+  getDayOffset,
+  getDayWidth
+  }: any) => {
   const dragControls = useDragControls()
-  const left = Math.floor(differenceInDays(new Date(task?.start_date), startDate) * zoomLevel)
-  const width = Math.max(zoomLevel, Math.floor(differenceInDays(new Date(task?.end_date), startDate) * zoomLevel) - left)
+  const [showHologram, setShowHologram] = useState(false)
+  const left = Math.floor(getDayOffset(task?.start_date) * zoomLevel)
+  const width = Math.max(zoomLevel, Math.floor(getDayWidth(task?.start_date, task?.end_date) * zoomLevel))
   const baseline = task?.metadata_json?.baseline
+  const taggedNodes = useMemo(() => {
+    if (!task.metadata_json?.tagged_nodes?.length || !diagram?.nodes) return []
+    return diagram.nodes.filter((n: any) => task.metadata_json.tagged_nodes.includes(n.id))
+  }, [task.metadata_json?.tagged_nodes, diagram?.nodes])
 
   return (
     <div className="absolute w-full h-[32px] group/row" style={{ top: rowIndex * ROW_HEIGHT }}>
        <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
        {showBaseline && baseline && (
-         <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel), width: Math.max(10, Math.floor(differenceInDays(new Date(baseline.end), startDate) * zoomLevel) - Math.floor(differenceInDays(new Date(baseline.start), startDate) * zoomLevel)) }} />
+         <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(getDayOffset(baseline.start) * zoomLevel), width: Math.max(10, Math.floor(getDayWidth(baseline.start, baseline.end) * zoomLevel)) }} />
+       )}
+       {ghost && (
+         <div className="absolute h-3 bg-rose-500/10 border border-dashed border-rose-500/30 rounded-full top-2.5 opacity-40 animate-pulse z-10" style={{ left: Math.floor(getDayOffset(ghost.start) * zoomLevel), width: Math.max(10, Math.floor(getDayWidth(ghost.start, ghost.end) * zoomLevel)) }} />
        )}
        <motion.div
          layout
@@ -569,11 +595,16 @@ const TaskRow = ({
          dragListener={false}
          dragMomentum={false}
          onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
-         onDrag={(e, info) => handleTaskMove(task.id, info.delta.x)}
+         onDrag={(e, info) => handleTaskMove(task.id, info.offset.x)}
          onDragEnd={(e, info) => handleTaskMove(task.id, info.offset.x, true)}
+         onMouseEnter={() => setShowHologram(true)}
+         onMouseLeave={() => setShowHologram(false)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} ${
+         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all 
+           ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} 
+           ${isCritical ? 'shadow-[0_0_15px_rgba(244,63,94,0.3)] border-rose-500/60' : ''}
+           ${
            task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : 
            task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 
            task.status === 'In Progress' ? 'border-blue-500/50 bg-[#0d1425]' :
@@ -582,29 +613,69 @@ const TaskRow = ({
          }`}
          style={{ left, width }}
        >
+          {isCritical && <div className="absolute -inset-[1px] rounded-lg bg-rose-500/20 animate-pulse pointer-events-none" />}
+
+          <AnimatePresence>
+            {showHologram && taggedNodes.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.9 }} className="absolute bottom-full mb-3 left-0 bg-[#0d0f17]/90 backdrop-blur-xl border border-blue-500/30 rounded-lg p-3 shadow-2xl z-[100] min-w-[160px]">
+                 <div className="flex items-center gap-2 mb-2 border-b border-white/5 pb-2">
+                    <LayoutGrid size={12} className="text-blue-400" />
+                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Architecture Context</span>
+                 </div>
+                 <div className="space-y-1.5">
+                    {taggedNodes.map((n: any) => (
+                       <div key={n.id} className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tight">{n.data?.label}</span>
+                       </div>
+                    ))}
+                 </div>
+                 <div className="mt-3 pt-2 border-t border-white/5 flex justify-center">
+                    <div className="w-full h-12 bg-black/40 rounded border border-white/5 flex items-center justify-center">
+                       <Workflow size={16} className="text-slate-700 animate-pulse" />
+                    </div>
+                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           <div 
             onPointerDown={(e) => dragControls.start(e)}
             className="flex-1 h-full flex items-center px-3 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
           >
-             <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
-             <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
+             <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-blue-500'}`} />
+             <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
              {width > 100 && <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>}
           </div>
 
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'start'); }} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
             className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.delta.x, 'end'); }} 
+            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
             className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
           />
+
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleSelectTask(task.id, false); setSelectedTaskId(task.id); }}
+            className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1 text-slate-500 hover:text-white transition-opacity"
+          >
+             <Info size={12} />
+          </button>
+          
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDependencyStart(task.id); }}
+            className={`opacity-0 group-hover:opacity-100 absolute -right-14 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-500 hover:text-blue-400'}`}
+          >
+             <LinkIcon size={12} />
+          </button>
           
           {dragInfo?.id === task.id && (
             <div className="fixed top-[10%] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded shadow-2xl whitespace-nowrap pointer-events-none z-[1000] border border-blue-400/30 backdrop-blur-md">
@@ -634,6 +705,95 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const ROW_HEIGHT = 32
   const HEADER_HEIGHT = 44
 
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const handleScroll = (e: any) => {
+    if (e.target === listRef.current && timelineRef.current) {
+      timelineRef.current.scrollTop = e.target.scrollTop
+    } else if (e.target === timelineRef.current && listRef.current) {
+      listRef.current.scrollTop = e.target.scrollTop
+    }
+  }
+
+  // Kinetic Propagation Engine
+  const isCircular = (taskId: number, depId: number, currentTasks: any[]): boolean => {
+    const dep = currentTasks.find(t => t.id === depId)
+    if (!dep) return false
+    if (dep.dependencies_json?.includes(taskId)) return true
+    return (dep.dependencies_json || []).some((d: number) => isCircular(taskId, d, currentTasks))
+  }
+
+  const propagateChanges = (taskId: number, newEnd: string, currentTasks: any[]): any[] => {
+    let updated = [...currentTasks]
+    const successors = updated.filter(t => t.dependencies_json?.includes(taskId))
+    
+    successors.forEach(succ => {
+      const succStart = new Date(succ.start_date)
+      const predEnd = new Date(newEnd)
+      
+      if (succStart < predEnd) {
+        const duration = differenceInDays(new Date(succ.end_date), succStart)
+        const updatedSuccStart = predEnd.toISOString()
+        const updatedSuccEnd = addDays(predEnd, duration).toISOString()
+        
+        updated = updated.map(t => t.id === succ.id ? { ...t, start_date: updatedSuccStart, end_date: updatedSuccEnd } : t)
+        updated = propagateChanges(succ.id, updatedSuccEnd, updated)
+      }
+    })
+    return updated
+  }
+
+  // Predictive Analytics
+  const criticalPath = useMemo(() => {
+    if (!tasks.length) return new Set<number>()
+    const sorted = [...tasks].filter(t => t.end_date).sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())
+    if (!sorted.length) return new Set<number>()
+
+    const lastTask = sorted[sorted.length - 1]
+    const path = new Set<number>([lastTask.id])
+
+    const findCritical = (taskId: number) => {
+      const task = tasks.find(t => t.id === taskId)
+      if (!task || !task.dependencies_json?.length) return
+
+      const deps = task.dependencies_json.map((id: number) => tasks.find(t => t.id === id)).filter((d: any) => d && d.end_date)
+      if (deps.length === 0) return
+      const maxEnd = Math.max(...deps.map((d: any) => new Date(d.end_date).getTime()))
+      const critDeps = deps.filter((d: any) => new Date(d.end_date).getTime() === maxEnd)
+
+      critDeps.forEach((d: any) => {
+        if (!path.has(d.id)) {
+          path.add(d.id)
+          findCritical(d.id)
+        }
+      })
+    }
+
+    findCritical(lastTask.id)
+    return path
+  }, [tasks])
+  const driftGhosts = useMemo(() => {
+    const ghosts: Record<number, { start: string, end: string }> = {}
+    const now = new Date()
+    
+    tasks.forEach(t => {
+      if (t.progress > 0 && t.progress < 100) {
+        const start = new Date(t.start_date)
+        const elapsed = differenceInDays(now, start)
+        if (elapsed > 0) {
+          const projectedDuration = (elapsed / t.progress) * 100
+          if (isFinite(projectedDuration)) {
+            const projectedEnd = addDays(start, Math.round(projectedDuration))
+            if (projectedEnd > new Date(t.end_date)) {
+              ghosts[t.id] = { start: t.end_date, end: projectedEnd.toISOString() }
+            }
+          }
+        }
+      }
+    })
+    return ghosts
+  }, [tasks])
+
   // Sync tasks from project when it updates, but not while editing
   useEffect(() => {
     if (!selectedTaskId && !dragStartTasks) {
@@ -641,12 +801,36 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     }
   }, [project?.tasks, selectedTaskId, dragStartTasks])
 
-  const handleSelectTask = (id: number, isShift: boolean) => {
-    if (isShift) {
-      const next = new Set(selectedTaskIds)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      setSelectedTaskIds(next)
+  const handleSelectTask = (id: number, shift: boolean) => {
+    if (dependencySourceId) {
+      if (dependencySourceId === id) {
+        setDependencySourceId(null)
+        return
+      }
+      
+      if (isCircular(dependencySourceId, id, tasks)) {
+        toast.error('Circular Dependency Blocked')
+        setDependencySourceId(null)
+        return
+      }
+
+      const targetTask = tasks.find(t => t.id === id)
+      if (targetTask) {
+        const currentDeps = targetTask.dependencies_json || []
+        if (!currentDeps.includes(dependencySourceId)) {
+          handleTaskUpdate(id, { dependencies_json: [...currentDeps, dependencySourceId] })
+          toast.success('Strategic Dependency Linked')
+        }
+      }
+      setDependencySourceId(null)
+      return
+    }
+
+    if (shift) {
+      const newIds = new Set(selectedTaskIds)
+      if (newIds.has(id)) newIds.delete(id)
+      else newIds.add(id)
+      setSelectedTaskIds(newIds)
     } else {
       setSelectedTaskIds(new Set([id]))
     }
@@ -660,7 +844,8 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       const daysMoved = Math.round(offset / zoomLevel)
       const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
       
-      const updatedTasks = tasks.map(t => {
+      let updatedTasks = [...tasks]
+      updatedTasks = updatedTasks.map(t => {
         const startTask = baseTasks.find(bt => bt.id === t.id)
         if (startTask && idsToMove.includes(t.id)) {
           const newStart = addDays(new Date(startTask.start_date), daysMoved).toISOString()
@@ -669,6 +854,12 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
           return { ...t, start_date: newStart, end_date: newEnd }
         }
         return t
+      })
+      
+      // Kinetic Propagation
+      idsToMove.forEach(mid => {
+        const moved = updatedTasks.find(t => t.id === mid)
+        if (moved) updatedTasks = propagateChanges(mid, moved.end_date, updatedTasks)
       })
       
       const movedTask = updatedTasks.find(t => t.id === id)
@@ -689,7 +880,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       if (!dragStartTasks) setDragStartTasks([...tasks])
 
       const daysMoved = Math.round(offset / zoomLevel)
-      const updatedTasks = tasks.map(t => {
+      let updatedTasks = [...tasks]
+      
+      updatedTasks = updatedTasks.map(t => {
         const startTask = baseTasks.find(bt => bt.id === t.id)
         if (startTask && t.id === id) {
           let updatedTask = { ...t }
@@ -704,6 +897,12 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
         }
         return t
       })
+
+      // Kinetic Propagation
+      if (type === 'end') {
+        const resized = updatedTasks.find(t => t.id === id)
+        if (resized) updatedTasks = propagateChanges(id, resized.end_date, updatedTasks)
+      }
 
       const target = updatedTasks.find(t => t.id === id)
       if (target) {
@@ -731,13 +930,54 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     return endOfMonth(addDays(new Date(max), 60))
   }, [tasks])
 
+  const [granularity, setGranularity] = useState<'D' | 'W' | 'M'>('D')
+
+  const zoomLevels = {
+    'D': 30,
+    'W': 6,
+    'M': 1.5
+  }
+
+  useEffect(() => {
+    setZoomLevel(zoomLevels[granularity])
+  }, [granularity])
+
   const days = useMemo(() => {
     try { 
-      const interval = eachDayOfInterval({ start: startDate, end: endDate })
-      return interval.length > 3000 ? interval.slice(0, 3000) : interval
+      let interval: Date[] = []
+      if (granularity === 'D') {
+        interval = eachDayOfInterval({ start: startDate, end: endDate })
+      } else if (granularity === 'W') {
+        interval = eachWeekOfInterval({ start: startDate, end: endDate })
+      } else {
+        interval = eachMonthOfInterval({ start: startDate, end: endDate })
+      }
+      return interval.length > 5000 ? interval.slice(0, 5000) : interval
     }
     catch (e) { return [new Date()] }
-  }, [startDate, endDate])
+  }, [startDate, endDate, granularity])
+
+  const formatHeaderDate = (date: Date) => {
+    if (granularity === 'D') return format(date, 'MMM dd')
+    if (granularity === 'W') return `Week of ${format(date, 'MMM dd')}`
+    return format(date, 'MMMM yyyy')
+  }
+
+  const getDayOffset = (date: string) => {
+    const d = new Date(date)
+    if (granularity === 'D') return differenceInDays(d, startDate)
+    if (granularity === 'W') return differenceInDays(d, startDate) / 7
+    return differenceInDays(d, startDate) / 30.44 // Average month length
+  }
+
+  const getDayWidth = (start: string, end: string) => {
+    const s = new Date(start)
+    const e = new Date(end)
+    const diff = Math.max(1, differenceInDays(e, s))
+    if (granularity === 'D') return diff
+    if (granularity === 'W') return diff / 7
+    return diff / 30.44
+  }
 
   const packedTasks = useMemo(() => {
     if (!tasks || tasks.length === 0) return []
@@ -763,10 +1003,34 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   }, [tasks, isPackingMode])
 
   const handleTaskUpdate = (id: number, updates: any) => {
-    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+    const task = tasks.find(t => t.id === id)
+    if (!task) return
+    
+    // Automatic Audit Logging
+    const changes: string[] = []
+    if (updates.name && updates.name !== task.name) changes.push(`Renamed to "${updates.name}"`)
+    if (updates.status && updates.status !== task.status) changes.push(`Status changed to ${updates.status}`)
+    if (updates.progress && updates.progress !== task.progress) changes.push(`Progress updated to ${updates.progress}%`)
+    if (updates.start_date || updates.end_date) changes.push('Timeline adjusted')
+    if (updates.metadata_json?.baseline) changes.push('Baseline snapshot established')
+
+    let finalUpdates = { ...updates }
+    if (changes.length > 0) {
+      const historyEntry = { content: changes.join(', '), timestamp: new Date().toISOString() }
+      const existingHistory = task.metadata_json?.history || []
+      finalUpdates.metadata_json = { 
+        ...(updates.metadata_json || task.metadata_json || {}), 
+        history: [...existingHistory, historyEntry] 
+      }
+    }
+
+    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...finalUpdates } : t)
     setTasks(updatedTasks)
-    // Don't sync to project yet if it's just local detail edits - the 'Save' button in modal will do it
   }
+
+  useEffect(() => {
+    if (project?.tasks) setTasks(project.tasks)
+  }, [project?.tasks])
 
   const maxRow = packedTasks.reduce((max, t) => Math.max(max, t.rowIndex), 0)
 
@@ -777,26 +1041,37 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
           <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" />
           </marker>
+          <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" opacity="0.8" />
+          </marker>
         </defs>
         {packedTasks.map((task) => {
           return (task.dependencies_json || []).map((depId: number) => {
             const fromTask = packedTasks.find(t => t.id === depId)
             if (!fromTask) return null
-            const startX = Math.floor(differenceInDays(new Date(fromTask.end_date), startDate) * zoomLevel)
+            
+            const startX = Math.floor(getDayOffset(fromTask.end_date) * zoomLevel)
             const startY = fromTask.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-            const endX = Math.floor(differenceInDays(new Date(task.start_date), startDate) * zoomLevel)
+            const endX = Math.floor(getDayOffset(task.start_date) * zoomLevel)
             const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-            const cp1X = startX + (endX - startX) / 2
-            const cp2X = startX + (endX - startX) / 2
+            
+            const distance = Math.abs(endX - startX)
+            const cp1X = startX + Math.min(distance / 2, 100)
+            const cp2X = endX - Math.min(distance / 2, 100)
+            
+            const isCriticalLink = criticalPath.has(task.id) && criticalPath.has(fromTask.id)
+            
             return (
-              <path
+              <motion.path
                 key={`${fromTask.id}-${task.id}`}
                 d={`M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}`}
-                stroke="#3b82f6"
-                strokeWidth="1.5"
+                stroke={isCriticalLink ? "#f43f5e" : "#3b82f6"}
+                strokeWidth={isCriticalLink ? "2" : "1.5"}
                 fill="none"
-                opacity="0.3"
-                markerEnd="url(#arrow)"
+                animate={{ d: `M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}` }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
+                opacity={isCriticalLink ? "0.6" : "0.3"}
+                markerEnd={isCriticalLink ? "url(#arrow-red)" : "url(#arrow)"}
               />
             )
           })
@@ -810,12 +1085,27 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
        <div className="h-11 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] z-40">
           <div className="flex items-center gap-6">
              <button onClick={() => setShowExecutiveChart(!showExecutiveChart)} className={`p-1.5 rounded-lg transition-all border ${showExecutiveChart ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`} title="Performance Graph"><BarChart3 size={16}/></button>
+             
+             <div className="flex items-center bg-white/5 p-1 rounded-lg border border-white/5">
+                {(['D', 'W', 'M'] as const).map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setGranularity(g)}
+                    className={`px-3 py-1 rounded text-[9px] font-bold transition-all ${
+                      granularity === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {g === 'D' ? 'DAYS' : g === 'W' ? 'WEEKS' : 'MONTHS'}
+                  </button>
+                ))}
+             </div>
+
              <button onClick={() => setIsPackingMode(!isPackingMode)} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${isPackingMode ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`} title="Optimize Row Packing">Visualize Gantt</button>
              <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(10, zoomLevel - 5))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
+                <button onClick={() => setZoomLevel(Math.max(1, zoomLevel - (granularity === 'D' ? 5 : 1)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
                 <div className="w-px h-3 bg-white/10 mx-1" />
-                <button onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel}PX/D</span>
+                <button onClick={() => setZoomLevel(Math.min(500, zoomLevel + (granularity === 'D' ? 10 : 2)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
+                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel.toFixed(1)}PX/UNIT</span>
              </div>
              {dependencySourceId && (
                <div className="flex items-center gap-3 px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg animate-pulse">
@@ -853,34 +1143,36 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                <div className="h-11 border-b border-white/10 flex items-center px-5 shrink-0 bg-[#0a0c14]/80">
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">Vector Stack</span>
                </div>
-               <Reorder.Group axis="y" values={tasks} onReorder={(newOrder) => { setTasks(newOrder); onUpdate({ ...project, tasks: newOrder }); }} className="flex-1 overflow-y-auto no-scrollbar">
-                  {tasks.map((task) => (
-                    <Reorder.Item 
-                      key={task.id} 
-                      value={task}
-                      onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-                      onDoubleClick={() => setSelectedTaskId(task.id)}
-                      className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
-                    >
-                       <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${
-                         task.status === 'Completed' ? 'bg-emerald-500' : 
-                         task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'
-                       }`} />
-                       <p className={`text-[10px] font-bold truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{task.name}</p>
-                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }} className="p-1 text-slate-500 hover:text-white"><Info size={12}/></button>
-                         <GripVertical size={12} className="text-slate-800" />
-                       </div>
-                    </Reorder.Item>
-                  ))}
-               </Reorder.Group>
+               <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar">
+                  <Reorder.Group axis="y" values={tasks} onReorder={(newOrder) => { setTasks(newOrder); onUpdate({ ...project, tasks: newOrder }); }} className="w-full">
+                     {tasks.map((task) => (
+                       <Reorder.Item 
+                         key={task.id} 
+                         value={task}
+                         onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
+                         onDoubleClick={() => setSelectedTaskId(task.id)}
+                         className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
+                       >
+                          <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${
+                            task.status === 'Completed' ? 'bg-emerald-500' : 
+                            task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 
+                            criticalPath.has(task.id) ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-blue-500'
+                          }`} />
+                          <p className={`text-[10px] font-bold truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{task.name}</p>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }} className="p-1 text-slate-500 hover:text-white"><Info size={12}/></button>
+                            <GripVertical size={12} className="text-slate-800" />
+                          </div>
+                       </Reorder.Item>
+                     ))}
+                  </Reorder.Group>
+               </div>
             </div>
           )}
 
-          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]">
+          <div ref={timelineRef} onScroll={handleScroll} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]">
              <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
                 {days.map((day, i) => {
-                  const isFirstOfMonth = format(day, 'd') === '1'
                   const isToday = isSameDay(day, new Date())
                   return (
                     <div 
@@ -892,8 +1184,12 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                       className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/10' : ''}`} 
                       style={{ width: zoomLevel }}
                     >
-                       <span className={`text-[8px] font-bold uppercase tracking-tighter ${isFirstOfMonth ? 'text-blue-400' : 'text-slate-600'}`}>{format(day, 'MMM')}</span>
-                       <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : isFirstOfMonth ? 'text-blue-200' : 'text-slate-400'}`}>{format(day, 'd')}</span>
+                       <span className={`text-[8px] font-bold uppercase tracking-tighter ${granularity !== 'D' ? 'text-blue-400' : 'text-slate-600'}`}>
+                          {granularity === 'D' ? format(day, 'MMM') : granularity === 'W' ? 'WEEK' : format(day, 'yyyy')}
+                       </span>
+                       <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>
+                          {granularity === 'D' ? format(day, 'd') : granularity === 'W' ? format(day, 'w') : format(day, 'MMM')}
+                       </span>
                     </div>
                   )
                 })}
@@ -906,10 +1202,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                 </div>
                 {renderDependencies()}
                 {packedTasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    rowIndex={task.rowIndex}
+                  <TaskRow 
+                    key={task.id} 
+                    task={task} 
+                    rowIndex={task.rowIndex} 
                     isPackingMode={isPackingMode}
                     showBaseline={showBaseline}
                     startDate={startDate}
@@ -921,9 +1217,15 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                     handleTaskResize={handleTaskResize}
                     setSelectedTaskId={setSelectedTaskId}
                     handleSelectTask={handleSelectTask}
+                    onDependencyStart={setDependencySourceId}
+                    isSource={dependencySourceId === task.id}
+                    isCritical={criticalPath.has(task.id)}
+                    ghost={driftGhosts[task.id]}
+                    diagram={project.metadata_json?.diagram}
                     ROW_HEIGHT={ROW_HEIGHT}
-                  />
-                ))}
+                    getDayOffset={getDayOffset}
+                    getDayWidth={getDayWidth}
+                  />                ))}
              </div>
           </div>
 
@@ -986,10 +1288,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                     }
 
                     const autoProgress = calculateProgress()
-                    const autoStatus = autoProgress === 100 ? 'Completed' : (autoProgress > 0 ? 'In Progress' : task.status)
+                    const autoStatus = task.status === 'Blocked' ? 'Blocked' : (autoProgress === 100 ? 'Completed' : (autoProgress > 0 ? 'In Progress' : task.status))
 
-                    const updateSubtask = (idx: number, updates: any) => {
-                      const newSubtasks = [...subtasks]
+                    const updateSubtask = (idx: number, updates: any) => {                      const newSubtasks = [...subtasks]
                       newSubtasks[idx] = { ...newSubtasks[idx], ...updates }
                       handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
                     }
@@ -1022,8 +1323,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                            </div>
                            <div className="flex items-center gap-3">
                               <button 
-                                onClick={() => { if(confirm('Decommission this vector?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }} 
-                                className="p-2.5 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
+                                onClick={() => { if(confirm('Decommission this strategic milestone?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }}                                className="p-2.5 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
                                 title="Decommission Task"
                               >
                                  <Trash2 size={18}/>
@@ -1097,9 +1397,26 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
                                           <select value={task.priority || 'Medium'} onChange={e => handleTaskUpdate(task.id, { priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}</select>
                                        </div>
                                     </div>
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Resource / Owner</label>
-                                       <input value={task.owner || ''} onChange={e => handleTaskUpdate(task.id, { owner: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" placeholder="Assignee identifier..." />
+                                    <div className="space-y-1.5 pt-4 border-t border-white/5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1 flex items-center gap-2"><Layout size={10}/> Architectural Context</label>
+                                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-black/40 rounded-lg border border-white/5 custom-scrollbar">
+                                          {(project.metadata_json?.diagram?.nodes || []).map((node: any) => (
+                                            <label key={node.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${task.metadata_json?.tagged_nodes?.includes(node.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                                              <input 
+                                                type="checkbox" 
+                                                checked={task.metadata_json?.tagged_nodes?.includes(node.id)} 
+                                                onChange={e => {
+                                                  const current = task.metadata_json?.tagged_nodes || []
+                                                  const updated = e.target.checked ? [...current, node.id] : current.filter((id: string) => id !== node.id)
+                                                  handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, tagged_nodes: updated } })
+                                                }}
+                                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                                              />
+                                              <span className="text-[9px] font-bold uppercase truncate">{node.data?.label || 'UNNAMED NODE'}</span>
+                                            </label>
+                                          ))}
+                                          {(!project.metadata_json?.diagram?.nodes || project.metadata_json.diagram.nodes.length === 0) && <p className="col-span-2 text-[8px] font-bold text-slate-800 uppercase text-center py-2">No nodes in design</p>}
+                                       </div>
                                     </div>
                                  </div>
                               </section>
@@ -1164,28 +1481,27 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
     const start = startOfMonth(new Date(Math.min(...times)))
     const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
     const interval = eachDayOfInterval({ start, end })
-    
-    // Calculate velocity based on weekly completion rate
-    return interval.filter((_, i) => i % 7 === 0).map(date => {
+
+    // Dynamic granularity: Weekly for long projects, daily for short ones
+    const step = interval.length > 30 ? 7 : 1
+
+    return interval.filter((_, i) => i % step === 0).map(date => {
       const totalTasks = tasks.length
       const scheduledTasks = tasks.filter(t => new Date(t.end_date) <= date).length
       const completedTasks = tasks.filter(t => t.status === 'Completed' && new Date(t.end_date) <= date).length
-      
-      const scheduledPercent = Math.round((scheduledTasks / totalTasks) * 100)
-      const actualPercent = Math.round((completedTasks / totalTasks) * 100)
-      
-      // Calculate momentum (slope of completion)
+
+      const scheduledPercent = totalTasks > 0 ? Math.round((scheduledTasks / totalTasks) * 100) : 0
+      const actualPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
       const tasksToComplete = tasks.filter(t => isSameDay(new Date(t.end_date), date))
 
-      return { 
-        date: format(date, 'MMM d'), 
+      return {
+        date: format(date, 'MMM d'),
         fullDate: date,
-        scheduled: scheduledPercent, 
+        scheduled: scheduledPercent,
         actual: actualPercent,
         tasks: tasksToComplete
       }
-    })
-  }, [tasks])
+    })  }, [tasks])
 
   return (
     <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6 overflow-hidden">
@@ -1257,11 +1573,12 @@ const DiagramBuilder = ({ data, onChange, onSave }: any) => {
   }
 
   const addNode = (type: string, label: string, color: string) => {
-    setNodes([...nodes, { 
-      id: Date.now().toString(), 
-      type, 
-      data: { label }, 
-      position: { x: Math.random() * 400, y: Math.random() * 400 },
+    const count = nodes.length
+    setNodes([...nodes, {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      data: { label },
+      position: { x: 100 + (count % 5) * 40, y: 100 + Math.floor(count / 5) * 40 },
       style: { background: '#1a1b26', color: '#fff', border: `2px solid ${color}`, fontSize: '10px', fontWeight: 'bold', borderRadius: type === 'circle' ? '50%' : '8px', width: 120, height: type === 'circle' ? 120 : 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 15px ${color}40` }
     }])
   }
@@ -1847,10 +2164,18 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
 
   const handleDateChange = (type: 'start' | 'end', part: 'month' | 'year', val: number) => {
     const d = new Date(formData[`${type}_date`] || new Date())
+    d.setDate(1)
     if (part === 'month') d.setMonth(val)
     else d.setFullYear(val)
     setFormData({ ...formData, [`${type}_date`]: d.toISOString() })
   }
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({ ...prev, ...initialData }))
+      setJiraInput((initialData.jira_links || []).join(', '))
+    }
+  }, [initialData])
 
   const startDate = new Date(formData.start_date || new Date())
   const endDate = new Date(formData.end_date || new Date())
@@ -1888,7 +2213,28 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
           <div className="space-y-5">
              <div className="bg-white/[0.02] p-5 rounded-lg border border-white/5 space-y-4">
                 <h4 className="text-[9px] font-bold text-blue-400 uppercase mb-1 flex items-center gap-2"><BarChart3 size={12} /> Strategic Impact Metrics</h4>
-                <div className="grid grid-cols-2 gap-4"><StyledSelect label="Defense Line" value={formData.roi_defense_line} onChange={e => setFormData({...formData, roi_defense_line: parseInt(e.target.value)})} options={DEFENSE_LINES} /><div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Man-Hours Saved</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value)})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div></div>
+                <div className="space-y-3 mb-4">
+                   <h5 className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Active ROI Streams</h5>
+                   <div className="grid grid-cols-2 gap-2">
+                      {ROI_TYPES.map(t => (
+                        <label key={t.value} className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer ${formData.roi_types?.includes(t.value) ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-600'}`}>
+                           <input type="checkbox" checked={formData.roi_types?.includes(t.value)} onChange={e => {
+                             const current = formData.roi_types || []
+                             const updated = e.target.checked ? [...current, t.value] : current.filter((v:any) => v !== t.value)
+                             setFormData({ ...formData, roi_types: updated })
+                           }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold uppercase tracking-tight">{t.label}</span>
+                        </label>
+                      ))}
+                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <StyledSelect label="Defense Line" value={formData.roi_defense_line} onChange={e => setFormData({...formData, roi_defense_line: parseInt(e.target.value)})} options={DEFENSE_LINES} />
+                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Man-Hours Saved (hr/yr)</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Stoploss (min/yr)</label><input type="number" value={formData.stoploss_minutes_saved} onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
+                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Wafer Yield (WPD)</label><input type="number" value={formData.wafers_gained} onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
+                </div>
                 <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Jira References</label><input value={jiraInput} onChange={e => { setJiraInput(e.target.value); setFormData({ ...formData, jira_links: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }) }} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" placeholder="e.g. PROJ-123, PROJ-456"/></div>
              </div>
 
@@ -1903,7 +2249,16 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                                <input type="checkbox" checked={formData.target_systems?.includes(o.value)} onChange={e => {
                                   const current = formData.target_systems || []
                                   const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                  setFormData({ ...formData, target_systems: updated })
+                                  
+                                  // Prune assets that no longer belong to selected systems
+                                  const validAssets = devices?.filter((d:any) => updated.includes(d.system)).map((d:any) => d.id) || []
+                                  const prunedAssets = (formData.target_assets || []).filter((id:any) => validAssets.includes(id))
+                                  
+                                  // Prune services that no longer belong to valid assets
+                                  const validServices = services?.filter((s:any) => prunedAssets.includes(s.device_id)).map((s:any) => s.id) || []
+                                  const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
+
+                                  setFormData({ ...formData, target_systems: updated, target_assets: prunedAssets, target_services: prunedServices })
                                }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase">{o.label}</span>
                             </label>
                          ))}
@@ -1917,7 +2272,12 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                                <input type="checkbox" checked={formData.target_assets?.includes(d.id)} onChange={e => {
                                   const current = formData.target_assets || []
                                   const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                  setFormData({ ...formData, target_assets: updated })
+                                  
+                                  // Prune services that no longer belong to selected assets
+                                  const validServices = services?.filter((s:any) => updated.includes(s.device_id)).map((s:any) => s.id) || []
+                                  const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
+
+                                  setFormData({ ...formData, target_assets: updated, target_services: prunedServices })
                                }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{d.name}</span>
                             </label>
                          ))}
@@ -1941,37 +2301,168 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
              </div>
           </div>
        </div>
-       <div className="flex gap-4 pt-4"><button onClick={onCancel} className="flex-1 py-3 bg-white/5 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">Abort</button><button disabled={isSaving || !formData.name} onClick={() => onSave(formData)} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">{isSaving ? 'Establishing Link...' : 'Commit Strategic Vector'}</button></div>
+       <div className="flex gap-4 pt-4">
+          <button onClick={onCancel} className="flex-1 py-3 bg-white/5 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">Abort</button>
+          <button 
+            disabled={isSaving || !formData.name || new Date(formData.start_date) >= new Date(formData.end_date)} 
+            onClick={() => onSave(formData)} 
+            className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+             {isSaving ? 'Establishing Link...' : 'Commit Strategic Vector'}
+          </button>
+       </div>
+    </div>
+  )
+}
+
+const DailyHuddleView = ({ projects, users }: any) => {
+  const currentUserId = 1 // Placeholder for auth context
+  
+  const huddleTasks = useMemo(() => {
+    if (!projects) return []
+    const tasks: any[] = []
+    projects.forEach((p: any) => {
+      (p.tasks || []).forEach((t: any) => {
+        // Find if task is assigned to current user in metadata
+        const isAssigned = t.owner_id === currentUserId || t.metadata_json?.assigned_to === currentUserId
+        if (isAssigned && t.status !== 'Completed') {
+          tasks.push({ ...t, projectName: p.name, projectId: p.id })
+        }
+      })
+    })
+    return tasks.sort((a, b) => {
+      // Sort by end date, then by priority (status: Blocked > In Progress > To Do)
+      const dateA = new Date(a.end_date).getTime()
+      const dateB = new Date(b.end_date).getTime()
+      if (dateA !== dateB) return dateA - dateB
+      return 0
+    })
+  }, [projects, currentUserId])
+
+  const stats = useMemo(() => {
+    return {
+      total: huddleTasks.length,
+      blocked: huddleTasks.filter(t => t.status === 'Blocked').length,
+      approaching: huddleTasks.filter(t => differenceInDays(new Date(t.end_date), new Date()) < 3).length
+    }
+  }, [huddleTasks])
+
+  return (
+    <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
+       <div className="h-16 border-b border-white/5 flex items-center px-8 justify-between bg-[#0a0c14]/50 backdrop-blur-xl">
+          <div className="flex items-center gap-6">
+             <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20 shadow-[0_0_20px_rgba(37,99,235,0.15)]">
+                <Users size={20} className="text-blue-400" />
+             </div>
+             <div>
+                <h2 className="text-base font-bold text-white tracking-tight uppercase">Daily Huddle Dashboard</h2>
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Aggregated tactical vectors for current cycle</p>
+             </div>
+          </div>
+          <div className="flex items-center gap-8">
+             <div className="text-center">
+                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Active Stream</p>
+                <p className="text-sm font-black text-white leading-none">{stats.total}</p>
+             </div>
+             <div className="w-px h-6 bg-white/5" />
+             <div className="text-center">
+                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Blocked Vectors</p>
+                <p className="text-sm font-black text-rose-500 leading-none">{stats.blocked}</p>
+             </div>
+             <div className="w-px h-6 bg-white/5" />
+             <div className="text-center">
+                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Critical 72H</p>
+                <p className="text-sm font-black text-amber-500 leading-none">{stats.approaching}</p>
+             </div>
+          </div>
+       </div>
+
+       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="max-w-5xl mx-auto">
+             {huddleTasks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {huddleTasks.map((task) => (
+                     <div 
+                       key={task.id}
+                       className={`group bg-[#0d0f17] border rounded-xl p-5 transition-all hover:scale-[1.02] hover:shadow-2xl ${
+                         task.status === 'Blocked' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.1)]' : 'border-white/5'
+                       }`}
+                     >
+                        <div className="flex items-center justify-between mb-4">
+                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest bg-blue-600/10 px-2 py-0.5 rounded-full border border-blue-500/20">{task.projectName}</span>
+                           <StatusPill status={task.status} />
+                        </div>
+                        <h3 className="text-sm font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">{task.name}</h3>
+                        <div className="flex items-center gap-4 mb-5">
+                           <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${task.progress}%` }} />
+                           </div>
+                           <span className="text-[10px] font-black text-slate-500">{task.progress}%</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                           <div className="flex items-center gap-2 text-slate-500">
+                              <Calendar size={12} />
+                              <span className="text-[9px] font-bold uppercase">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
+                           </div>
+                           <button className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1.5">
+                              Launch Workspace <ArrowRight size={12} />
+                           </button>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+             ) : (
+                <div className="py-40 text-center">
+                   <div className="w-20 h-20 bg-blue-600/5 rounded-full flex items-center justify-center mx-auto border border-blue-500/10 mb-6">
+                      <Target size={32} className="text-blue-500/20" />
+                   </div>
+                   <h3 className="text-lg font-bold text-slate-400 uppercase tracking-tighter">Strategic Deck Clear</h3>
+                   <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-2">All assigned tactical vectors have reached terminal state</p>
+                </div>
+             )}
+          </div>
+       </div>
     </div>
   )
 }
 
 export default function Projects() {
   const queryClient = useQueryClient()
-  const { data: projects, isLoading } = useQuery({ 
-    queryKey: ['projects'], 
+  const { data: projects, isLoading } = useQuery({
+    queryKey: ['projects'],
     queryFn: () => apiFetch('/api/v1/projects').then(r => r.json()),
     placeholderData: (prev) => prev
   })
 
+  const reorderMutation = useMutation({
+    mutationFn: (newOrder: any[]) => apiFetch('/api/v1/projects/reorder', {
+      method: 'POST',
+      body: JSON.stringify(newOrder.map((p, i) => ({ id: p.id, order_index: i })))
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    }
+  })
+
+  const handleReorder = (newOrder: any[]) => {
+    queryClient.setQueryData(['projects'], newOrder)
+    reorderMutation.mutate(newOrder)
+  }
+
+  const sortedProjects = useMemo(() => {
+    if (!projects) return []
+    return [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+  }, [projects])
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: () => apiFetch('/api/v1/devices').then(r => r.json()) })
   const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/operators').then(r => r.json()) })
 
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY'>('WORKSPACE')
-  const [isGlobalEditing, setIsGlobalEditing] = useState(false)
-  const [draftProject, setDraftProject] = useState<any>(null)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [isLedgerCollapsed, setIsLedgerCollapsed] = useState(false)
-  const [isFullScreen, setIsFullScreen] = useState(false)
-  const [railWidth, setRailWidth] = useState(260)
-  const [ledgerWidth, setLedgerWidth] = useState(300)
-  const [pendingNav, setPendingNav] = useState<any>(null)
-  const [showConfig, setShowConfig] = useState(false)
 
   const selectedProject = useMemo(() => {
+    if (selectedProjectId === 'HUDDLE') return null
     return projects?.find((p:any) => p.id === selectedProjectId)
   }, [projects, selectedProjectId])
 
@@ -2035,7 +2526,7 @@ export default function Projects() {
     else setActiveTab(tab)
   }
 
-  const requestProjectChange = (id: number) => {
+  const requestProjectChange = (id: number | 'HUDDLE') => {
     if (isDirty) setPendingNav({ type: 'PROJECT', id })
     else {
       setSelectedProjectId(id)
@@ -2123,6 +2614,7 @@ export default function Projects() {
             projects={projects || []} 
             selectedId={selectedProjectId} 
             onSelect={requestProjectChange} 
+            onReorder={handleReorder}
             onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
             onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
             width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -2130,21 +2622,30 @@ export default function Projects() {
           <div className="flex-1 flex flex-col min-w-0 bg-[#0f111a] shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]">
              <div className="flex-1 overflow-hidden relative">
                 <AnimatePresence mode="wait">
-                   {activeTab === 'WORKSPACE' && (
-                     <motion.div key="workspace" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full p-10 overflow-y-auto custom-scrollbar bg-[#0a0c14]/30 backdrop-blur-sm">
-                        <WorkbenchView 
-                          project={isGlobalEditing ? draftProject : selectedProject} 
-                          onUpdate={setDraftProject} 
-                          isEditing={isGlobalEditing}
-                          devices={devices || []}
-                          services={services || []}
-                          options={options || []}
-                          users={users || []}
-                        />
+                   {selectedProjectId === 'HUDDLE' ? (
+                     <motion.div key="huddle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+                        <DailyHuddleView projects={projects} users={users} />
                      </motion.div>
+                   ) : (
+                     <>
+                        {activeTab === 'WORKSPACE' && (
+                          <motion.div key={`workspace-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full p-10 overflow-y-auto custom-scrollbar bg-[#0a0c14]/30 backdrop-blur-sm">
+                             <WorkbenchView 
+                               key={selectedProjectId}
+                               project={isGlobalEditing ? draftProject : selectedProject} 
+                               onUpdate={setDraftProject} 
+                               isEditing={isGlobalEditing}
+                               devices={devices || []}
+                               services={services || []}
+                               options={options || []}
+                               users={users || []}
+                             />
+                          </motion.div>
+                        )}
+                        {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
+                        {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
+                     </>
                    )}
-                   {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
-                   {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
                 </AnimatePresence>
              </div>
           </div>

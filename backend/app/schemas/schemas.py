@@ -417,8 +417,14 @@ class ProjectTaskBase(BaseModel):
     assigned_objects: Optional[List[Any]] = []
     project_id: int
     parent_task_id: Optional[int] = None
+    dependencies_json: Optional[List[int]] = []
+    metadata_json: Optional[Dict[str, Any]] = {}
 
 class ProjectTaskCreate(ProjectTaskBase): pass
+
+class ProjectTaskUpdate(ProjectTaskBase):
+    id: Optional[int] = None
+
 class ProjectTaskResponse(ProjectTaskBase, BaseSchema):
     comments: List[ProjectCommentResponse] = []
     qa_items: List[ProjectQAResponse] = []
@@ -457,12 +463,13 @@ class ProjectBase(BaseModel):
     team_members: Optional[List[str]] = []
     budget: float = 0.0
     currency: str = "USD"
+    order_index: int = 0
     metadata_json: Optional[Dict[str, Any]] = {}
 
 class ProjectCreate(ProjectBase): pass
 
 class ProjectUpdate(ProjectBase):
-    tasks: Optional[List[ProjectTaskBase]] = []
+    tasks: Optional[List[ProjectTaskUpdate]] = []
 
 class ProjectResponse(ProjectBase, BaseSchema):
     is_deleted: bool = False

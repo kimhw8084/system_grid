@@ -739,7 +739,8 @@ class Project(Base, BaseMixin):
     team_members = Column(JSON, default=list)
     budget = Column(Float, default=0.0)
     currency = Column(String, default="USD")
-    
+    order_index = Column(Integer, default=0)
+
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
 
@@ -763,6 +764,7 @@ class ProjectTask(Base, BaseMixin):
     
     dependencies_json = Column(JSON, default=list) # List of task IDs this task depends on
     estimate_hours = Column(Float, default=0.0)
+    metadata_json = Column(JSON, default=dict)
     
     project = relationship("Project", back_populates="tasks")
     subtasks = relationship("ProjectTask", backref=backref("parent_task", remote_side="ProjectTask.id"), cascade="all, delete-orphan")

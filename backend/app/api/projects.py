@@ -18,12 +18,25 @@ async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends
         selectinload(models.Project.tasks).selectinload(models.ProjectTask.qa_items),
         selectinload(models.Project.comments),
         selectinload(models.Project.qa_items)
-    )
+    ).order_by(models.Project.order_index.asc(), models.Project.created_at.desc())
     if not include_deleted:
         query = query.filter(models.Project.is_deleted == False)
     
     result = await db.execute(query)
     return result.scalars().all()
+
+@router.post("/reorder")
+async def reorder_projects(order_data: List[dict], db: AsyncSession = Depends(get_db)):
+    # Expected format: [{"id": 1, "order_index": 0}, {"id": 2, "order_index": 1}]
+    for item in order_data:
+        if "id" in item and "order_index" in item:
+            await db.execute(
+                update(models.Project)
+                .where(models.Project.id == item["id"])
+                .values(order_index=item["order_index"])
+            )
+    await db.commit()
+    return {"message": "Order updated successfully"}
 
 @router.post("", response_model=schemas.ProjectResponse)
 async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
