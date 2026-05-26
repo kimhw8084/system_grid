@@ -440,11 +440,12 @@ class ProjectBase(BaseModel):
     end_date: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     owner: Optional[str] = None
+    owners: Optional[List[str]] = []
     
     jira_links: Optional[List[str]] = []
     target_systems: Optional[List[str]] = []
-    target_assets: Optional[List[str]] = []
-    target_services: Optional[List[str]] = []
+    target_assets: Optional[List[int]] = []
+    target_services: Optional[List[int]] = []
     beneficiaries: Optional[List[str]] = []
     
     problem_statement: Optional[str] = None
@@ -455,9 +456,16 @@ class ProjectBase(BaseModel):
     parent_project_id: Optional[int] = None
     
     roi_defense_line: int = 0
+    roi_defense_line_desc: Optional[str] = None
     man_hours_saved: float = 0.0
+    man_hours_saved_math: Optional[str] = None
+    man_hours_saved_desc: Optional[str] = None
     stoploss_minutes_saved: float = 0.0
+    stoploss_minutes_saved_math: Optional[str] = None
+    stoploss_minutes_saved_desc: Optional[str] = None
     wafers_gained: float = 0.0
+    wafers_gained_math: Optional[str] = None
+    wafers_gained_desc: Optional[str] = None
     
     appendix_json: Optional[Dict[str, Any]] = {}
     team_members: Optional[List[str]] = []

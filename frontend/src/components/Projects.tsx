@@ -37,27 +37,27 @@ import 'reactflow/dist/style.css'
 // --- Types & Constants ---
 
 const PROJECT_TYPES = [
-  { value: 'Strategic', label: 'STRATEGIC' },
-  { value: 'Tactical', label: 'TACTICAL' },
-  { value: 'Operational', label: 'OPERATIONAL' },
-  { value: 'Research', label: 'RESEARCH' }
+  { value: 'Strategic', label: 'Strategic' },
+  { value: 'Tactical', label: 'Tactical' },
+  { value: 'Operational', label: 'Operational' },
+  { value: 'Research', label: 'Research' }
 ]
 
 const PROJECT_STATUSES = [
-  { value: 'Not Started', label: 'NOT STARTED' },
-  { value: 'Planning', label: 'PLANNING' },
-  { value: 'In Progress', label: 'IN PROGRESS' },
-  { value: 'Paused', label: 'PAUSED' },
-  { value: 'Blocked', label: 'BLOCKED' },
-  { value: 'Cancelled', label: 'CANCELLED' },
-  { value: 'Completed', label: 'COMPLETED' }
+  { value: 'Not Started', label: 'Not Started' },
+  { value: 'Planning', label: 'Planning' },
+  { value: 'In Progress', label: 'In Progress' },
+  { value: 'Paused', label: 'Paused' },
+  { value: 'Blocked', label: 'Blocked' },
+  { value: 'Cancelled', label: 'Cancelled' },
+  { value: 'Completed', label: 'Completed' }
 ]
 
 const PROJECT_PRIORITIES = [
-  { value: 'Low', label: 'LOW' },
-  { value: 'Medium', label: 'MEDIUM' },
-  { value: 'High', label: 'HIGH' },
-  { value: 'Highest', label: 'HIGHEST' }
+  { value: 'Low', label: 'Low' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'High', label: 'High' },
+  { value: 'Highest', label: 'Highest' }
 ]
 
 const DEFENSE_LINES = [
@@ -200,7 +200,6 @@ const ProjectRail = ({
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
-  const [yearFilter, setYearFilter] = useState('ALL')
 
   const sortedAndFiltered = useMemo(() => {
     const base = [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
@@ -208,19 +207,9 @@ const ProjectRail = ({
       const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
       const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
       const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
-      const pYear = p.created_at ? new Date(p.created_at).getFullYear().toString() : 'N/A'
-      const matchesYear = yearFilter === 'ALL' || pYear === yearFilter
-      return matchesSearch && matchesStatus && matchesPriority && matchesYear
+      return matchesSearch && matchesStatus && matchesPriority
     })
-  }, [projects, search, statusFilter, priorityFilter, yearFilter])
-
-  const years = useMemo(() => {
-    const y = new Set<string>()
-    projects.forEach((p:any) => {
-      if (p.created_at) y.add(new Date(p.created_at).getFullYear().toString())
-    })
-    return Array.from(y).sort((a, b) => b.localeCompare(a))
-  }, [projects])
+  }, [projects, search, statusFilter, priorityFilter])
 
   if (isCollapsed) {
     return (
@@ -271,7 +260,7 @@ const ProjectRail = ({
             }`}
           >
              <Users size={16} />
-             <span className="text-[10px] font-black uppercase tracking-widest">Daily Huddle</span>
+             <span className="text-[10px] font-black uppercase tracking-widest">Tactical Huddle</span>
           </button>
 
           <div className="space-y-2 pt-2 border-t border-white/5">
@@ -306,7 +295,7 @@ const ProjectRail = ({
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-10">
-          <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={onReorder} className="space-y-1">
+          <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={onReorder} className="space-y-2">
              {sortedAndFiltered.map((p: any) => (
                 <Reorder.Item 
                   key={p.id} 
@@ -315,32 +304,51 @@ const ProjectRail = ({
                 >
                    <button
                      onClick={() => onSelect(p.id)}
-                     className={`w-full text-left p-3 rounded-lg transition-all border flex items-start justify-between cursor-grab active:cursor-grabbing ${
+                     className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-3 cursor-grab active:cursor-grabbing ${
                        selectedId === p.id 
-                         ? 'bg-blue-600/10 border-blue-500/40' 
-                         : 'border-transparent hover:bg-white/5'
+                         ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
+                         : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'
                      }`}
                    >
-                      <div className="flex-1 min-w-0">
-                         <div className="flex justify-between items-start mb-1">
-                            <h3 className={`text-[11px] font-bold truncate transition-colors ${selectedId === p.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{p.name}</h3>
-                            <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${
-                              p.status === 'Completed' ? 'bg-emerald-500' :
-                              p.status === 'Blocked' ? 'bg-rose-500' :
-                              p.status === 'In Progress' ? 'bg-blue-500' : 'bg-slate-700'
-                            }`} />
-                         </div>
-                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{p.type || 'N/A'}</span>
-                            <span className="text-slate-800 text-[8px]">•</span>
-                            <span className="text-[8px] font-bold text-slate-500">{p.priority}</span>
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <div className="px-1.5 py-0.5 bg-blue-600/10 border border-blue-500/20 rounded text-[7px] font-bold text-blue-400 uppercase truncate max-w-[60px]">{p.owner || 'UNASSIGNED'}</div>
-                            <span className="text-[7px] font-bold text-slate-800 uppercase tracking-tighter">{p.created_at ? format(new Date(p.created_at), 'MMM dd') : ''}</span>
+                      <div className="flex justify-between items-start gap-2">
+                         <h3 className={`text-[11px] font-bold truncate transition-colors flex-1 ${selectedId === p.id ? 'text-white' : 'text-slate-300 group-hover:text-blue-400'}`}>{p.name}</h3>
+                         <div className={`w-2 h-2 rounded-full shrink-0 mt-1 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
+                           p.status === 'Completed' ? 'bg-emerald-500 shadow-emerald-500/20' :
+                           p.status === 'Blocked' ? 'bg-rose-500 shadow-rose-500/20 animate-pulse' :
+                           p.status === 'In Progress' ? 'bg-blue-500 shadow-blue-500/20' : 
+                           p.status === 'Planning' ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-700'
+                         }`} />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                         <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{p.type || 'N/A'}</span>
+                         <span className="text-slate-800 text-[8px]">•</span>
+                         <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter ${
+                            p.priority === 'High' || p.priority === 'Highest' ? 'bg-rose-600/10 text-rose-500 border border-rose-500/20' :
+                            p.priority === 'Medium' ? 'bg-amber-600/10 text-amber-500 border border-amber-500/20' :
+                            'bg-slate-800 text-slate-500 border border-white/5'
+                         }`}>
+                            {p.priority}
                          </div>
                       </div>
-                      <GripVertical size={14} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0 mt-1" />
+
+                      <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
+                         <div className="flex items-center justify-between text-[7px] font-bold uppercase tracking-widest">
+                            <span className="text-slate-600 flex items-center gap-1"><PlusCircle size={8} /> Created</span>
+                            <span className="text-slate-400">{p.created_at ? format(new Date(p.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
+                         </div>
+                         <div className="flex items-center justify-between text-[7px] font-bold uppercase tracking-widest">
+                            <span className="text-slate-600 flex items-center gap-1"><RefreshCcw size={8} /> Updated</span>
+                            <span className="text-blue-400/60">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd, HH:mm') : 'N/A'}</span>
+                         </div>
+                      </div>
+                      
+                      <div className="mt-1 flex items-center justify-between">
+                         <div className="px-2 py-0.5 bg-white/5 rounded-full text-[7px] font-black text-slate-500 uppercase truncate max-w-[120px]">
+                            {p.owners?.length > 0 ? p.owners.join(', ') : (p.owner || 'Unassigned')}
+                         </div>
+                         <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                    </button>
                 </Reorder.Item>
              ))}
@@ -453,83 +461,182 @@ const ProjectLedger = ({
                </div>
              )}
 
-             <div className="space-y-4">
+             <div className="space-y-6">
                 {activeROI.includes('defense_line') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
-                     {isEditing ? (
-                       <select 
-                         value={project.roi_defense_line || 'DL0'}
-                         onChange={e => handleChange('roi_defense_line', e.target.value)}
-                         className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded p-1"
-                       >
-                         <option value="DL0">DL0: BASE</option>
-                         <option value="DL1">DL1: FORTIFIED</option>
-                         <option value="DL2">DL2: RESILIENT</option>
-                       </select>
-                     ) : (
-                       <p className="text-xl font-bold text-white uppercase tracking-tighter">{project.roi_defense_line || 'DL0'}</p>
-                     )}
+                  <div className={`p-4 bg-white/5 rounded-lg border space-y-3 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
+                        {isEditing ? (
+                          <select 
+                            value={project.roi_defense_line || 'DL0'}
+                            onChange={e => handleChange('roi_defense_line', e.target.value)}
+                            className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded p-1"
+                          >
+                            <option value="DL0">DL0: BASE</option>
+                            <option value="DL1">DL1: FORTIFIED</option>
+                            <option value="DL2">DL2: RESILIENT</option>
+                          </select>
+                        ) : (
+                          <p className="text-xl font-bold text-white uppercase tracking-tighter">{project.roi_defense_line || 'DL0'}</p>
+                        )}
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Justification</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.roi_defense_line_desc || ''} 
+                            onChange={e => handleChange('roi_defense_line_desc', e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            placeholder="Why this DL level?"
+                          />
+                        ) : (
+                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.roi_defense_line_desc || 'No justification provided.'}</p>
+                        )}
+                     </div>
                   </div>
                 )}
 
                 {activeROI.includes('man_hours') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimization</p>
-                     {isEditing ? (
-                       <div className="flex items-center gap-2">
-                         <span className="text-xl font-bold text-blue-400">+</span>
-                         <input 
-                           type="number"
-                           value={project.man_hours_saved || 0}
-                           onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value) || 0)}
-                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                         />
-                         <span className="text-[10px] font-bold text-blue-400 uppercase">hr/yr</span>
-                       </div>
-                     ) : (
-                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0} <span className="text-xs">hr/yr</span></p>
-                     )}
+                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimization</p>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl font-bold text-blue-400">+</span>
+                            <input 
+                              type="number"
+                              value={project.man_hours_saved || 0}
+                              onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value) || 0)}
+                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                            />
+                            <span className="text-[10px] font-bold text-blue-400 uppercase">hr/yr</span>
+                          </div>
+                        ) : (
+                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0} <span className="text-xs">hr/yr</span></p>
+                        )}
+                     </div>
+                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.man_hours_saved_math || ''} 
+                            onChange={e => handleChange('man_hours_saved_math', e.target.value)}
+                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
+                            placeholder="(Tasks/Day * Hours/Task) * 250 Days..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.man_hours_saved_math || 'Calculation not documented.'}</p>
+                        )}
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.man_hours_saved_desc || ''} 
+                            onChange={e => handleChange('man_hours_saved_desc', e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            placeholder="Context for these hours..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.man_hours_saved_desc || 'No context provided.'}</p>
+                        )}
+                     </div>
                   </div>
                 )}
 
                 {activeROI.includes('stoploss') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
-                     {isEditing ? (
-                       <div className="flex items-center gap-2">
-                         <span className="text-xl font-bold text-blue-400">+</span>
-                         <input 
-                           type="number"
-                           value={project.stoploss_minutes_saved || 0}
-                           onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value) || 0)}
-                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                         />
-                         <span className="text-[10px] font-bold text-blue-400 uppercase">min/yr</span>
-                       </div>
-                     ) : (
-                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0} <span className="text-xs">min/yr</span></p>
-                     )}
+                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl font-bold text-blue-400">+</span>
+                            <input 
+                              type="number"
+                              value={project.stoploss_minutes_saved || 0}
+                              onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value) || 0)}
+                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                            />
+                            <span className="text-[10px] font-bold text-blue-400 uppercase">min/yr</span>
+                          </div>
+                        ) : (
+                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0} <span className="text-xs">min/yr</span></p>
+                        )}
+                     </div>
+                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.stoploss_minutes_saved_math || ''} 
+                            onChange={e => handleChange('stoploss_minutes_saved_math', e.target.value)}
+                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
+                            placeholder="(Downtime Events/Year * Mean Time To Recover)..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.stoploss_minutes_saved_math || 'Calculation not documented.'}</p>
+                        )}
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.stoploss_minutes_saved_desc || ''} 
+                            onChange={e => handleChange('stoploss_minutes_saved_desc', e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            placeholder="Business impact context..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.stoploss_minutes_saved_desc || 'No context provided.'}</p>
+                        )}
+                     </div>
                   </div>
                 )}
 
                 {activeROI.includes('wpd') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
-                     {isEditing ? (
-                       <div className="flex items-center gap-2">
-                         <span className="text-xl font-bold text-blue-400">+</span>
-                         <input 
-                           type="number"
-                           value={project.wafers_gained || 0}
-                           onChange={e => handleChange('wafers_gained', parseFloat(e.target.value) || 0)}
-                           className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                         />
-                         <span className="text-[10px] font-bold text-blue-400 uppercase">WPD</span>
-                       </div>
-                     ) : (
-                       <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0} <span className="text-xs font-bold">WPD</span></p>
-                     )}
+                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                     <div>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl font-bold text-blue-400">+</span>
+                            <input 
+                              type="number"
+                              value={project.wafers_gained || 0}
+                              onChange={e => handleChange('wafers_gained', parseFloat(e.target.value) || 0)}
+                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
+                            />
+                            <span className="text-[10px] font-bold text-blue-400 uppercase">WPD</span>
+                          </div>
+                        ) : (
+                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0} <span className="text-xs font-bold">WPD</span></p>
+                        )}
+                     </div>
+                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.wafers_gained_math || ''} 
+                            onChange={e => handleChange('wafers_gained_math', e.target.value)}
+                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
+                            placeholder="Yield % increase * Wafers/Day..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.wafers_gained_math || 'Calculation not documented.'}</p>
+                        )}
+                     </div>
+                     <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
+                        {isEditing ? (
+                          <textarea 
+                            value={project.wafers_gained_desc || ''} 
+                            onChange={e => handleChange('wafers_gained_desc', e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            placeholder="Yield optimization details..."
+                          />
+                        ) : (
+                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.wafers_gained_desc || 'No context provided.'}</p>
+                        )}
+                     </div>
                   </div>
                 )}
 
@@ -644,9 +751,22 @@ const TaskRow = React.memo(({
             className="flex-1 h-full flex items-center px-3 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
           >
              <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-blue-500'}`} />
-             <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-             {width > 100 && <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>}
+             {width > 120 ? (
+               <>
+                 <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
+                 <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>
+               </>
+             ) : null}
           </div>
+
+          {width <= 120 && (
+            <div className="absolute left-full ml-3 flex items-center gap-2 whitespace-nowrap pointer-events-none">
+               <span className={`text-[9px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/60' : task.status === 'Blocked' ? 'text-rose-500/60' : isCritical ? 'text-rose-500/60' : 'text-slate-500/60'}`}>
+                  {task.name}
+               </span>
+               <span className="text-[8px] font-bold text-white/20">{task.progress}%</span>
+            </div>
+          )}
 
           <motion.div 
             drag="x" 
@@ -1645,6 +1765,9 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
   const [newLinkUrl, setNewLinkUrl] = useState('')
   const [isAddingLink, setIsAddingLink] = useState(false)
   const [activeDiagramIndex, setActiveDiagramIndex] = useState<number | null>(null)
+  const [systemSearch, setSystemSearch] = useState('')
+  const [assetSearch, setAssetSearch] = useState('')
+  const [serviceSearch, setServiceSearch] = useState('')
 
   useEffect(() => {
     setName(project?.name || '')
@@ -1658,46 +1781,48 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
   // Cascading Logic & Option Prioritization
   const systemOptions = useMemo(() => options?.filter((o:any) => o.category === 'LogicalSystem') || [], [options])
-  const typeOptions = useMemo(() => options?.filter((o:any) => o.category === 'ProjectType') || [{ value: '1', label: '1' }, { value: '2', label: '2' }], [options])
-  const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.id.toString(), label: u.full_name || u.username })) || [], [users])
+  const typeOptions = useMemo(() => options?.filter((o:any) => o.category === 'ProjectType') || PROJECT_TYPES, [options])
+  const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.username, label: u.full_name || u.username })) || [], [users])
 
-  const sortedSystemOptions = useMemo(() => {
+  const filteredSystems = useMemo(() => {
+    const base = systemOptions.filter((o:any) => o.label.toLowerCase().includes(systemSearch.toLowerCase()))
     const selected = project?.target_systems || []
-    return [...systemOptions].sort((a, b) => {
+    return [...base].sort((a, b) => {
       const aSel = selected.includes(a.value)
       const bSel = selected.includes(b.value)
       if (aSel && !bSel) return -1
       if (!aSel && bSel) return 1
       return 0
     })
-  }, [systemOptions, project?.target_systems])
+  }, [systemOptions, project?.target_systems, systemSearch])
 
   const filteredAssets = useMemo(() => {
-    const base = !project?.target_systems?.length ? devices : devices?.filter((d:any) => project.target_systems.includes(d.system))
+    const base = (!project?.target_systems?.length ? devices : devices?.filter((d:any) => project.target_systems.includes(d.system))) || []
+    const searched = base.filter((d:any) => d.name.toLowerCase().includes(assetSearch.toLowerCase()))
     const selected = project?.target_assets || []
-    return [...(base || [])].sort((a, b) => {
+    return [...searched].sort((a, b) => {
       const aSel = selected.includes(a.id)
       const bSel = selected.includes(b.id)
       if (aSel && !bSel) return -1
       if (!aSel && bSel) return 1
       return 0
     })
-  }, [devices, project?.target_systems, project?.target_assets])
+  }, [devices, project?.target_systems, project?.target_assets, assetSearch])
 
   const filteredServices = useMemo(() => {
-    const base = !project?.target_assets?.length ? services : services?.filter((s:any) => project.target_assets.includes(s.device_id))
+    const base = (!project?.target_assets?.length ? services : services?.filter((s:any) => project.target_assets.includes(s.device_id))) || []
+    const searched = base.filter((s:any) => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
     const selected = project?.target_services || []
-    return [...(base || [])].sort((a, b) => {
+    return [...searched].sort((a, b) => {
       const aSel = selected.includes(a.id)
       const bSel = selected.includes(b.id)
       if (aSel && !bSel) return -1
       if (!aSel && bSel) return 1
       return 0
     })
-  }, [services, project?.target_assets, project?.target_services])
+  }, [services, project?.target_assets, project?.target_services, serviceSearch])
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    if (!project || !isEditing) return
     const items = e.clipboardData.items
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
@@ -1716,7 +1841,15 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
         }
       }
     }
-  }, [project, onUpdate, isEditing])
+  }, [project, onUpdate])
+
+  useEffect(() => {
+    const handleClickOutside = () => setIsPasting(false)
+    if (isPasting) {
+      window.addEventListener('click', handleClickOutside)
+      return () => window.removeEventListener('click', handleClickOutside)
+    }
+  }, [isPasting])
 
   if (!project) return (
     <div className="h-full flex flex-col items-center justify-center opacity-20">
@@ -1729,12 +1862,9 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
     <div className="max-w-full mx-auto space-y-10 pb-20" onPaste={handlePaste}>
        <section className="bg-white/5 rounded-lg border border-white/5 overflow-hidden shadow-2xl">
           <div className="p-8 border-b border-white/5 bg-[#0a0c14]/50">
-             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                <Target size={14} /> Strategic Identity
-             </h4>
              <div className="grid grid-cols-3 gap-8">
                 <div className="col-span-1 space-y-2">
-                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vector Title</label>
+                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Project Title</label>
                    {isEditing ? (
                      <input 
                        value={name} 
@@ -1783,7 +1913,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
           <div className="p-8 grid grid-cols-2 gap-10">
              <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
                 <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define strategic friction..." />
@@ -1793,12 +1923,12 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                 </div>
              </section>
              <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Mission Objective</h4>
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Objective</h4>
                 <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-emerald-500/30' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define target end state..." />
                    ) : (
-                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.objective || 'No mission objective defined.'}</p>
+                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.objective || 'No objective defined.'}</p>
                    )}
                 </div>
              </section>
@@ -1806,35 +1936,37 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
           <div className="p-8 grid grid-cols-2 gap-10 bg-[#0a0c14]/30 border-t border-white/5">
              <div className="space-y-2">
-                {isEditing ? (
-                  <StyledSelect 
-                    label="Lead Architect"
-                    value={project.owner || ''}
-                    onChange={e => handleFieldChange('owner', e.target.value)}
-                    options={userOptions}
-                    placeholder="Assign lead..."
-                  />
-                ) : (
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Lead Architect</label>
-                    <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                       <span className="text-xs font-bold text-slate-300">{userOptions.find(o => o.value === project.owner)?.label || project.owner || 'Unassigned'}</span>
-                    </div>
-                  </div>
-                )}
+                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner(s)</label>
+                <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
+                   {userOptions.map((o:any) => (
+                      <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                         <input 
+                           type="checkbox" 
+                           checked={(project.owners || []).includes(o.value)} 
+                           onChange={e => {
+                              const current = project.owners || []
+                              const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+                              handleFieldChange('owners', updated)
+                           }}
+                           className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                         />
+                         <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
+                      </label>
+                   ))}
+                </div>
              </div>
              <div className="space-y-2">
                 {isEditing ? (
                   <StyledSelect 
-                    label="Classification"
+                    label="Type"
                     value={project.type || ''}
                     onChange={e => handleFieldChange('type', e.target.value)}
                     options={typeOptions}
-                    placeholder="Select classification..."
+                    placeholder="Select type..."
                   />
                 ) : (
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Classification</label>
+                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Type</label>
                     <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
                        <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">{project.type || 'N/A'}</span>
                     </div>
@@ -1849,90 +1981,81 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
              </label>
              <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
-                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Strategic Systems</label>
+                   <div className="flex items-center justify-between px-1">
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Strategic Systems</label>
+                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                         <Search size={8} className="text-slate-600" />
+                         <input value={systemSearch} onChange={e => setSystemSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                      </div>
+                   </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {isEditing ? (
-                        sortedSystemOptions.map((o:any) => (
-                           <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_systems?.includes(o.value)} 
-                                onChange={e => {
-                                   const current = project.target_systems || []
-                                   const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                   onUpdate({ ...project, target_systems: updated })
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
-                           </label>
-                        ))
-                      ) : (
-                        project.target_systems?.length > 0 ? (
-                          project.target_systems.map((id: string) => {
-                            const label = systemOptions.find(o => o.value === id)?.label || id
-                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{label}</div>
-                          })
-                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
-                      )}
+                      {filteredSystems.map((o:any) => (
+                         <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={project.target_systems?.includes(o.value)} 
+                              onChange={e => {
+                                 const current = project.target_systems || []
+                                 const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+                                 handleFieldChange('target_systems', updated)
+                              }}
+                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                            />
+                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
+                         </label>
+                      ))}
                    </div>
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Impacted Assets</label>
+                   <div className="flex items-center justify-between px-1">
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Impacted Assets</label>
+                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                         <Search size={8} className="text-slate-600" />
+                         <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                      </div>
+                   </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {isEditing ? (
-                        filteredAssets.map((d:any) => (
-                           <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_assets?.includes(d.id)} 
-                                onChange={e => {
-                                   const current = project.target_assets || []
-                                   const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                   onUpdate({ ...project, target_assets: updated })
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{d.name}</span>
-                           </label>
-                        ))
-                      ) : (
-                        project.target_assets?.length > 0 ? (
-                          project.target_assets.map((id: number) => {
-                            const name = devices?.find((d:any) => d.id === id)?.name || `Asset #${id}`
-                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{name}</div>
-                          })
-                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
-                      )}
+                      {filteredAssets.map((d:any) => (
+                         <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={project.target_assets?.includes(d.id)} 
+                              onChange={e => {
+                                 const current = project.target_assets || []
+                                 const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
+                                 handleFieldChange('target_assets', updated)
+                              }}
+                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                            />
+                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{d.name}</span>
+                         </label>
+                      ))}
                    </div>
                 </div>
                 <div className="space-y-2">
-                   <label className="text-[8px] font-bold text-slate-500 uppercase px-1">Core Services</label>
+                   <div className="flex items-center justify-between px-1">
+                      <label className="text-[8px] font-bold text-slate-500 uppercase">Core Services</label>
+                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                         <Search size={8} className="text-slate-600" />
+                         <input value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                      </div>
+                   </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {isEditing ? (
-                        filteredServices.map((s:any) => (
-                           <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_services?.includes(s.id)} 
-                                onChange={e => {
-                                   const current = project.target_services || []
-                                   const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
-                                   onUpdate({ ...project, target_services: updated })
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                              <span className="text-[9px] font-bold uppercase tracking-tight truncate">{s.name}</span>
-                           </label>
-                        ))
-                      ) : (
-                        project.target_services?.length > 0 ? (
-                          project.target_services.map((id: number) => {
-                            const name = services?.find((s:any) => s.id === id)?.name || `Service #${id}`
-                            return <div key={id} className="px-2 py-1.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded text-[9px] font-bold uppercase truncate">{name}</div>
-                          })
-                        ) : <div className="p-4 text-center text-[9px] font-bold text-slate-700 uppercase">None selected</div>
-                      )}
+                      {filteredServices.map((s:any) => (
+                         <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={project.target_services?.includes(s.id)} 
+                              onChange={e => {
+                                 const current = project.target_services || []
+                                 const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
+                                 handleFieldChange('target_services', updated)
+                              }}
+                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                            />
+                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{s.name}</span>
+                         </label>
+                      ))}
                    </div>
                 </div>
              </div>
@@ -1943,115 +2066,104 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
           <section className="space-y-4">
              <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> Jira Link(s)</h4>
              <div className="space-y-2">
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <input 
-                        value={newLinkLabel} 
-                        onChange={e => setNewLinkLabel(e.target.value)} 
-                        className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
-                        placeholder="Label (e.g. PROJ-123)"
-                      />
-                      <input 
-                        value={newLinkUrl} 
-                        onChange={e => setNewLinkUrl(e.target.value)} 
-                        className="flex-[2] bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
-                        placeholder="Link URL"
-                      />
-                      <button 
-                        onClick={() => {
-                          if (!newLinkLabel || !newLinkUrl) return
-                          const metadata = project?.metadata_json || {}
-                          const links = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
-                          onUpdate({ ...project, metadata_json: { ...metadata, links } })
-                          setNewLinkLabel(''); setNewLinkUrl('')
-                        }}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"
-                      ><Plus size={16}/></button>
-                    </div>
-                    <div className="space-y-1">
-                      {(project.metadata_json?.links || []).map((link: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5">
-                          <span className="text-[9px] font-bold text-slate-300">{link.label}</span>
-                          <button onClick={() => {
-                            const metadata = project.metadata_json || {}
-                            const links = metadata.links.filter((_:any, idx:number) => idx !== i)
-                            onUpdate({ ...project, metadata_json: { ...metadata, links } })
-                          }} className="text-rose-500 hover:text-rose-400"><Trash2 size={12}/></button>
-                        </div>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      value={newLinkLabel} 
+                      onChange={e => setNewLinkLabel(e.target.value)} 
+                      className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
+                      placeholder="Label (e.g. PROJ-123)"
+                    />
+                    <input 
+                      value={newLinkUrl} 
+                      onChange={e => setNewLinkUrl(e.target.value)} 
+                      className="flex-[2] bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
+                      placeholder="Link URL"
+                    />
+                    <button 
+                      onClick={() => {
+                        if (!newLinkLabel || !newLinkUrl) return
+                        const metadata = project?.metadata_json || {}
+                        const links = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
+                        handleFieldChange('metadata_json', { ...metadata, links })
+                        setNewLinkLabel(''); setNewLinkUrl('')
+                      }}
+                      className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"
+                    ><Plus size={16}/></button>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="space-y-1">
                     {(project.metadata_json?.links || []).map((link: any, i: number) => (
-                      <a key={i} href={link.url} target="_blank" rel="noreferrer" className="p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between items-center group">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase">{link.label}</span>
-                        <ExternalLink size={12} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
-                      </a>
+                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5">
+                        <a href={link.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-blue-400 uppercase hover:underline">{link.label}</a>
+                        <button onClick={() => {
+                          const metadata = project.metadata_json || {}
+                          const links = metadata.links.filter((_:any, idx:number) => idx !== i)
+                          handleFieldChange('metadata_json', { ...metadata, links })
+                        }} className="text-rose-500 hover:text-rose-400"><Trash2 size={12}/></button>
+                      </div>
                     ))}
-                    {(!project.metadata_json?.links || project.metadata_json.links.length === 0) && <p className="text-[10px] font-bold text-slate-600 uppercase px-1">No linked records</p>}
                   </div>
-                )}
+                </div>
              </div>
           </section>
 
           <section className="space-y-4">
              <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Users size={14} /> Stakeholders</h4>
-             {isEditing ? (
-               <div className="space-y-2">
-                 <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Comma-separated team names</label>
-                 <input 
+             <div className="space-y-2">
+                <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Comma-separated team names</label>
+                <input 
                    value={project.stakeholders || ''}
                    onChange={e => handleFieldChange('stakeholders', e.target.value)}
                    className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all"
                    placeholder="Security, Infra, DevOps..."
-                 />
-               </div>
-             ) : (
-               <div className="flex flex-wrap gap-2">
-                 {(project.stakeholders || "None").split(',').map((s: string, i: number) => (
-                   <div key={i} className="px-3 py-1.5 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                      {s.trim()}
-                   </div>
-                 ))}
-               </div>
-             )}
+                />
+             </div>
           </section>
        </div>
 
        <div className="space-y-8">
           <div className="flex items-center justify-between">
              <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Workflow size={14} /> Designs</h4>
-             {isEditing && (
-               <button 
-                 onClick={() => {
-                   const metadata = project?.metadata_json || {}
-                   const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Design v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]
-                   onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
-                   setActiveDiagramIndex(newDiagrams.length - 1)
-                 }}
-                 className="px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
-               >+ New Design</button>
-             )}
+             <button 
+               onClick={() => {
+                 const metadata = project?.metadata_json || {}
+                 const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Design v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]
+                 handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
+                 setActiveDiagramIndex(newDiagrams.length - 1)
+               }}
+               className="px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
+             >+ New Design</button>
           </div>
           <div className="space-y-4">
              {(project?.metadata_json?.diagrams || []).map((d: any, idx: number) => (
-               <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden">
-                  <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="w-full px-6 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-all">
-                     <div className="flex items-center gap-3"><GitBranch size={14} className="text-amber-400" /><span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">{d.name}</span></div>
-                     <ChevronRight size={14} className={`text-slate-500 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
-                  </button>
+               <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden group/design">
+                  <div className="w-full flex items-center justify-between bg-white/5 pr-4">
+                     <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="flex-1 px-6 py-3 flex items-center gap-3 hover:bg-white/5 transition-all">
+                        <GitBranch size={14} className="text-amber-400" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">{d.name}</span>
+                        <ChevronRight size={14} className={`text-slate-500 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
+                     </button>
+                     <button 
+                       onClick={() => {
+                         if (confirm('Decommission this design?')) {
+                           const metadata = project.metadata_json || {}
+                           const updated = metadata.diagrams.filter((_:any, i:number) => i !== idx)
+                           handleFieldChange('metadata_json', { ...metadata, diagrams: updated })
+                           if (activeDiagramIndex === idx) setActiveDiagramIndex(null)
+                         }
+                       }}
+                       className="p-1.5 text-rose-500 hover:bg-rose-600 hover:text-white rounded transition-all opacity-0 group-hover/design:opacity-100"
+                     ><Trash2 size={14} /></button>
+                  </div>
                   <AnimatePresence>
                      {activeDiagramIndex === idx && (
                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
                           <DiagramBuilder data={d} onChange={(updated: any) => {
-                            if (!isEditing) return
                             const metadata = project?.metadata_json || {}
                             const newDiagrams = [...(metadata.diagrams || [])]
                             newDiagrams[idx] = { ...newDiagrams[idx], ...updated }
-                            onUpdate({ ...project, metadata_json: { ...metadata, diagrams: newDiagrams } })
-                          }} onSave={isEditing ? () => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); } : undefined} />
+                            handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
+                          }} onSave={() => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); }} />
                        </motion.div>
                      )}
                   </AnimatePresence>
@@ -2073,24 +2185,20 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                 {(project?.metadata_json?.images || []).map((img: string, i: number) => (
                   <div key={i} className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative">
                      <img src={img} alt="Artifact" className="w-full h-full object-cover" />
-                     {isEditing && (
-                       <button onClick={() => {
-                         const metadata = project?.metadata_json || {}
-                         const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
-                         onUpdate({ ...project, metadata_json: { ...metadata, images: updated } })
-                       }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
-                     )}
+                     <button onClick={() => {
+                        const metadata = project?.metadata_json || {}
+                        const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
+                        handleFieldChange('metadata_json', { ...metadata, images: updated })
+                     }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
                   </div>
                 ))}
-                {isEditing && (
-                  <button 
-                    onClick={() => setIsPasting(true)}
-                    className={`aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-slate-700 hover:text-blue-500'}`}
-                  >
-                     <Camera size={24} className="mb-2 opacity-30" />
-                     <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
-                  </button>
-                )}
+                <button 
+                  onClick={() => setIsPasting(true)}
+                  className={`aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-slate-700 hover:text-blue-500'}`}
+                >
+                   <Camera size={24} className="mb-2 opacity-30" />
+                   <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
+                </button>
              </div>
           </section>
        </div>
@@ -2105,29 +2213,25 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                         <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{ref.label}</span>
                         <ExternalLink size={12} className="text-slate-600" />
                      </a>
-                     {isEditing && (
-                       <button onClick={() => {
-                         const metadata = project?.metadata_json || {}
-                         const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
-                         onUpdate({ ...project, metadata_json: { ...metadata, references: updated } })
-                       }} className="p-3 bg-rose-600/10 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
-                     )}
+                     <button onClick={() => {
+                        const metadata = project?.metadata_json || {}
+                        const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
+                        handleFieldChange('metadata_json', { ...metadata, references: updated })
+                     }} className="p-3 bg-rose-600/10 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
                   </div>
                 ))}
-                {isEditing && (
-                  <button 
-                    onClick={() => {
-                      const label = prompt('Reference Label')
-                      const url = prompt('Reference URL')
-                      if (label && url) {
-                        const metadata = project?.metadata_json || {}
-                        const references = [...(metadata.references || []), { label, url }]
-                        onUpdate({ ...project, metadata_json: { ...metadata, references } })
-                      }
-                    }}
-                    className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-blue-500 transition-all"
-                  >Establish Reference Link</button>
-                )}
+                <button 
+                  onClick={() => {
+                    const label = prompt('Reference Label')
+                    const url = prompt('Reference URL')
+                    if (label && url) {
+                      const metadata = project?.metadata_json || {}
+                      const references = [...(metadata.references || []), { label, url }]
+                      handleFieldChange('metadata_json', { ...metadata, references })
+                    }
+                  }}
+                  className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-blue-500 transition-all"
+                >Establish Reference Link</button>
              </div>
           </section>
        </div>
@@ -2345,28 +2449,26 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
 }
 
 const DailyHuddleView = ({ projects, users }: any) => {
-  const currentUserId = 1 // Placeholder for auth context
-  
   const huddleTasks = useMemo(() => {
     if (!projects) return []
     const tasks: any[] = []
     projects.forEach((p: any) => {
       (p.tasks || []).forEach((t: any) => {
-        // Find if task is assigned to current user in metadata
-        const isAssigned = t.owner_id === currentUserId || t.metadata_json?.assigned_to === currentUserId
-        if (isAssigned && t.status !== 'Completed') {
-          tasks.push({ ...t, projectName: p.name, projectId: p.id })
+        if (t.status !== 'Completed') {
+          tasks.push({ ...t, projectName: p.name, projectId: p.id, projectPriority: p.priority })
         }
       })
     })
     return tasks.sort((a, b) => {
-      // Sort by end date, then by priority (status: Blocked > In Progress > To Do)
+      // Prioritize Blocked tasks, then by date
+      if (a.status === 'Blocked' && b.status !== 'Blocked') return -1
+      if (a.status !== 'Blocked' && b.status === 'Blocked') return 1
+      
       const dateA = new Date(a.end_date).getTime()
       const dateB = new Date(b.end_date).getTime()
-      if (dateA !== dateB) return dateA - dateB
-      return 0
+      return dateA - dateB
     })
-  }, [projects, currentUserId])
+  }, [projects])
 
   const stats = useMemo(() => {
     return {
@@ -2378,77 +2480,225 @@ const DailyHuddleView = ({ projects, users }: any) => {
 
   return (
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
-       <div className="h-16 border-b border-white/5 flex items-center px-8 justify-between bg-[#0a0c14]/50 backdrop-blur-xl">
+       <div className="h-20 border-b border-white/5 flex items-center px-8 justify-between bg-[#0a0c14]/80 backdrop-blur-xl">
           <div className="flex items-center gap-6">
-             <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20 shadow-[0_0_20px_rgba(37,99,235,0.15)]">
-                <Users size={20} className="text-blue-400" />
+             <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
+                <Users size={24} className="text-blue-400" />
              </div>
              <div>
-                <h2 className="text-base font-bold text-white tracking-tight uppercase">Daily Huddle Dashboard</h2>
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">Aggregated tactical vectors for current cycle</p>
+                <h2 className="text-xl font-black text-white tracking-tighter uppercase">Tactical Huddle</h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Aggregated live execution stream</p>
              </div>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-12">
              <div className="text-center">
-                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Active Stream</p>
-                <p className="text-sm font-black text-white leading-none">{stats.total}</p>
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Active Deck</p>
+                <p className="text-2xl font-black text-white leading-none tracking-tighter">{stats.total}</p>
              </div>
-             <div className="w-px h-6 bg-white/5" />
+             <div className="w-px h-10 bg-white/5" />
              <div className="text-center">
-                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Blocked Vectors</p>
-                <p className="text-sm font-black text-rose-500 leading-none">{stats.blocked}</p>
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Blocked</p>
+                <p className="text-2xl font-black text-rose-500 leading-none tracking-tighter">{stats.blocked}</p>
              </div>
-             <div className="w-px h-6 bg-white/5" />
+             <div className="w-px h-10 bg-white/5" />
              <div className="text-center">
-                <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Critical 72H</p>
-                <p className="text-sm font-black text-amber-500 leading-none">{stats.approaching}</p>
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Critical (72H)</p>
+                <p className="text-2xl font-black text-amber-500 leading-none tracking-tighter">{stats.approaching}</p>
              </div>
           </div>
        </div>
 
-       <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <div className="max-w-5xl mx-auto">
+       <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-[#0a0c14]/30">
+          <div className="max-w-6xl mx-auto">
              {huddleTasks.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {huddleTasks.map((task) => (
                      <div 
                        key={task.id}
-                       className={`group bg-[#0d0f17] border rounded-xl p-5 transition-all hover:scale-[1.02] hover:shadow-2xl ${
-                         task.status === 'Blocked' ? 'border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.1)]' : 'border-white/5'
+                       className={`group bg-[#0d0f17]/80 backdrop-blur-sm border rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
+                         task.status === 'Blocked' ? 'border-rose-500/30 shadow-[0_0_25px_rgba(244,63,94,0.1)]' : 'border-white/5'
                        }`}
                      >
-                        <div className="flex items-center justify-between mb-4">
-                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest bg-blue-600/10 px-2 py-0.5 rounded-full border border-blue-500/20">{task.projectName}</span>
+                        <div className="flex items-center justify-between mb-5">
+                           <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest truncate max-w-[150px]">{task.projectName}</span>
+                              <div className={`text-[7px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded w-fit ${
+                                 task.projectPriority === 'High' || task.projectPriority === 'Highest' ? 'bg-rose-600/20 text-rose-500' : 'bg-slate-800 text-slate-500'
+                              }`}>
+                                 {task.projectPriority} Priority
+                              </div>
+                           </div>
                            <StatusPill value={task.status} />
                         </div>
-                        <h3 className="text-sm font-bold text-white mb-2 leading-tight group-hover:text-blue-400 transition-colors">{task.name}</h3>
-                        <div className="flex items-center gap-4 mb-5">
-                           <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                              <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${task.progress}%` }} />
+                        <h3 className="text-base font-bold text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[44px]">{task.name}</h3>
+                        <div className="space-y-2 mb-6">
+                           <div className="flex items-center justify-between text-[10px] font-bold">
+                              <span className="text-slate-500 uppercase tracking-widest">Maturity</span>
+                              <span className="text-blue-400">{task.progress}%</span>
                            </div>
-                           <span className="text-[10px] font-black text-slate-500">{task.progress}%</span>
+                           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div 
+                                className={`h-full transition-all duration-1000 ${task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]'}`} 
+                                style={{ width: `${task.progress}%` }} 
+                              />
+                           </div>
                         </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between pt-5 border-t border-white/5">
                            <div className="flex items-center gap-2 text-slate-500">
-                              <Calendar size={12} />
-                              <span className="text-[9px] font-bold uppercase">{format(new Date(task.end_date), 'MMM dd, yyyy')}</span>
+                              <Calendar size={12} className={differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500 animate-pulse' : ''} />
+                              <span className={`text-[9px] font-black uppercase tracking-widest ${differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500' : ''}`}>
+                                 {format(new Date(task.end_date), 'MMM dd')}
+                              </span>
                            </div>
-                           <button className="text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1.5">
-                              Launch Workspace <ArrowRight size={12} />
-                           </button>
+                           <div className="flex items-center gap-2">
+                              <div className="px-2 py-1 bg-white/5 rounded text-[8px] font-black text-slate-500 uppercase">
+                                 {task.owner || 'Unassigned'}
+                              </div>
+                           </div>
                         </div>
                      </div>
                    ))}
                 </div>
              ) : (
-                <div className="py-40 text-center">
-                   <div className="w-20 h-20 bg-blue-600/5 rounded-full flex items-center justify-center mx-auto border border-blue-500/10 mb-6">
-                      <Target size={32} className="text-blue-500/20" />
+                <div className="py-60 text-center">
+                   <div className="w-24 h-24 bg-blue-600/5 rounded-full flex items-center justify-center mx-auto border border-blue-500/10 mb-8 relative">
+                      <Target size={40} className="text-blue-500/10" />
+                      <div className="absolute inset-0 border border-blue-500/20 rounded-full animate-ping opacity-20" />
                    </div>
-                   <h3 className="text-lg font-bold text-slate-400 uppercase tracking-tighter">Strategic Deck Clear</h3>
-                   <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-2">All assigned tactical vectors have reached terminal state</p>
+                   <h3 className="text-2xl font-black text-slate-400 uppercase tracking-tighter">Strategic Deck Clear</h3>
+                   <p className="text-[11px] font-bold text-slate-600 uppercase tracking-[0.3em] mt-3">All tactical vectors have reached terminal state</p>
                 </div>
              )}
+          </div>
+       </div>
+    </div>
+  )
+}
+
+const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
+  const [newLog, setNewLog] = useState('')
+  const [newScore, setNewLogScore] = useState(5)
+
+  const logs = useMemo(() => project?.metadata_json?.adoption_logs || [], [project])
+
+  const handleAddLog = () => {
+    if (!newLog.trim()) return
+    const metadata = project?.metadata_json || {}
+    const log = {
+      id: Date.now(),
+      content: newLog,
+      score: newScore,
+      author: 'Current User', // Placeholder
+      timestamp: new Date().toISOString()
+    }
+    const updatedLogs = [log, ...logs]
+    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
+    setNewLog('')
+  }
+
+  const handleDeleteLog = (id: number) => {
+    const metadata = project?.metadata_json || {}
+    const updatedLogs = logs.filter((l: any) => l.id !== id)
+    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
+  }
+
+  return (
+    <div className="h-full flex flex-col p-8 space-y-10">
+       <div className="flex items-center justify-between bg-emerald-600/5 p-6 rounded-2xl border border-emerald-500/10">
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-emerald-600/10 rounded-xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+                <TrendingUp size={24} className="text-emerald-400" />
+             </div>
+             <div>
+                <h2 className="text-xl font-black text-white tracking-tighter uppercase">Adoption & Utilization</h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Measuring strategic reach and stakeholder impact</p>
+             </div>
+          </div>
+          <div className="flex items-center gap-8">
+             <div className="text-center">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Mean Sentiment</p>
+                <p className="text-2xl font-black text-emerald-500 leading-none tracking-tighter">
+                   {(logs.reduce((acc: number, l: any) => acc + (l.score || 0), 0) / (logs.length || 1)).toFixed(1)}/10
+                </p>
+             </div>
+             <div className="w-px h-10 bg-white/5" />
+             <div className="text-center">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Signal Count</p>
+                <p className="text-2xl font-black text-white leading-none tracking-tighter">{logs.length}</p>
+             </div>
+          </div>
+       </div>
+
+       <div className="grid grid-cols-12 gap-10">
+          <div className="col-span-4 space-y-6">
+             <div className="bg-[#0d0f17] border border-white/5 rounded-2xl p-6 space-y-6 shadow-2xl">
+                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                   <PlusCircle size={14} /> Log Adoption Signal
+                </h4>
+                <div className="space-y-4">
+                   <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest px-1">Engagement Level (1-10)</label>
+                      <input 
+                        type="range" min="1" max="10" step="1"
+                        value={newScore}
+                        onChange={e => setNewLogScore(parseInt(e.target.value))}
+                        className="w-full h-1 bg-white/5 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                      />
+                      <div className="flex justify-between text-[9px] font-black text-slate-700">
+                         <span>RESISTANT</span>
+                         <span className="text-emerald-500">{newScore}</span>
+                         <span>CHAMPION</span>
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest px-1">Evidence / Feedback</label>
+                      <textarea 
+                        value={newLog}
+                        onChange={e => setNewLog(e.target.value)}
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed"
+                        placeholder="Stakeholder mentioned X, system Y used for Z..."
+                      />
+                   </div>
+                   <button 
+                     onClick={handleAddLog}
+                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20"
+                   >
+                      Commit Adoption Signal
+                   </button>
+                </div>
+             </div>
+          </div>
+
+          <div className="col-span-8 space-y-4">
+             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] px-1">Adoption History</h4>
+             <div className="space-y-3">
+                {logs.map((log: any) => (
+                  <div key={log.id} className="group bg-[#0d0f17]/50 border border-white/5 rounded-xl p-5 hover:border-emerald-500/20 transition-all">
+                     <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                           <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
+                              log.score >= 8 ? 'bg-emerald-600/20 text-emerald-400' :
+                              log.score >= 5 ? 'bg-blue-600/20 text-blue-400' : 'bg-rose-600/20 text-rose-400'
+                           }`}>
+                              SCORE {log.score}
+                           </div>
+                           <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{log.author}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                           <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm')}</span>
+                           <button onClick={() => handleDeleteLog(log.id)} className="text-slate-800 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
+                        </div>
+                     </div>
+                     <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{log.content}"</p>
+                  </div>
+                ))}
+                {logs.length === 0 && (
+                  <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl opacity-20">
+                     <TrendingUp size={48} className="mx-auto mb-4" />
+                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No adoption metrics recorded</p>
+                  </div>
+                )}
+             </div>
           </div>
        </div>
     </div>
@@ -2488,7 +2738,7 @@ export default function Projects() {
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/operators').then(r => r.json()) })
 
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
-  const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY'>('WORKSPACE')
+  const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY' | 'ADOPTION'>('WORKSPACE')
   const [isGlobalEditing, setIsGlobalEditing] = useState(false)
   const [draftProject, setDraftProject] = useState<any>(null)
   const [pendingNav, setPendingNav] = useState<any>(null)
@@ -2498,6 +2748,15 @@ export default function Projects() {
   const [isLedgerCollapsed, setIsLedgerCollapsed] = useState(false)
   const [railWidth, setRailWidth] = useState(320)
   const [ledgerWidth, setLedgerWidth] = useState(380)
+
+  useEffect(() => {
+    if (projects?.length > 0 && selectedProjectId === 'HUDDLE') {
+      // Find latest created project
+      const latest = [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      if (latest) setSelectedProjectId(latest.id)
+    }
+  }, [projects])
+
   const selectedProject = useMemo(() => {
     if (selectedProjectId === 'HUDDLE') return null
     return projects?.find((p:any) => p.id === selectedProjectId)
@@ -2553,10 +2812,6 @@ export default function Projects() {
       toast.success('Project Decommissioned')
     }
   })
-
-  useEffect(() => { 
-    if (projects?.length > 0 && !selectedProjectId) setSelectedProjectId(projects[0].id) 
-  }, [projects])
 
   const requestTabChange = (tab: any) => {
     if (isDirty) setPendingNav({ type: 'TAB', id: tab })
@@ -2615,7 +2870,8 @@ export default function Projects() {
              {[
                { id: 'WORKSPACE', icon: Target, label: 'Workbench' }, 
                { id: 'GANTT', icon: Calendar, label: 'Precision Gantt' }, 
-               { id: 'ACTIVITY', icon: History, label: 'Stream' }
+               { id: 'ACTIVITY', icon: History, label: 'Stream' },
+               { id: 'ADOPTION', icon: TrendingUp, label: 'Adoption' }
              ].map(tab => (
                <button key={tab.id} onClick={() => requestTabChange(tab.id as any)} className={`h-full px-6 flex items-center gap-2 border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
                   <tab.icon size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
@@ -2681,6 +2937,11 @@ export default function Projects() {
                         )}
                         {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
                         {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
+                        {activeTab === 'ADOPTION' && (
+                          <motion.div key={`adoption-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto custom-scrollbar">
+                             <ProjectAdoptionView project={isGlobalEditing ? draftProject : selectedProject} onUpdate={setDraftProject} isEditing={isGlobalEditing} />
+                          </motion.div>
+                        )}
                      </>
                    )}
                 </AnimatePresence>

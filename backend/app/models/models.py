@@ -711,6 +711,7 @@ class Project(Base, BaseMixin):
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     owner = Column(String)
+    owners = Column(JSON, default=list) # Multi-owner support
     
     jira_links = Column(JSON, default=list)
     target_systems = Column(JSON, default=list)
@@ -727,9 +728,16 @@ class Project(Base, BaseMixin):
     
     # ROI Metrics
     roi_defense_line = Column(Integer, default=0) # 0, 1, 2
+    roi_defense_line_desc = Column(Text)
     man_hours_saved = Column(Float, default=0.0)
+    man_hours_saved_math = Column(Text)
+    man_hours_saved_desc = Column(Text)
     stoploss_minutes_saved = Column(Float, default=0.0)
+    stoploss_minutes_saved_math = Column(Text)
+    stoploss_minutes_saved_desc = Column(Text)
     wafers_gained = Column(Float, default=0.0)
+    wafers_gained_math = Column(Text)
+    wafers_gained_desc = Column(Text)
     
     # Timing
     completed_at = Column(DateTime(timezone=True), nullable=True)
