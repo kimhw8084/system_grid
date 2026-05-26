@@ -822,35 +822,31 @@ def seed():
             
             # Tasks for project
             tasks = []
-            for i in range(5):
+            num_tasks = random.randint(8, 15)
+            current_date = p.start_date
+            
+            for i in range(num_tasks):
+                duration = random.randint(3, 15)
+                gap = random.randint(0, 5)
+                start = current_date + timedelta(days=gap)
+                end = start + timedelta(days=duration)
+                
                 t = ProjectTask(
                     project_id=p.id,
-                    name=f"Phase {i+1}: {fake.bs().upper()}",
+                    name=fake.bs().upper(),
                     description=fake.paragraph(),
-                    start_date=p.start_date + timedelta(days=i*20),
-                    end_date=p.start_date + timedelta(days=(i+1)*20),
+                    start_date=start,
+                    end_date=end,
                     progress=random.randint(0, 100),
-                    status=random.choice(["Completed", "In Progress", "To Do"]),
+                    status=random.choice(["Completed", "In Progress", "To Do", "Blocked"]),
                     owner=random.choice(p.team_members),
-                    estimate_hours=float(random.randint(20, 100)),
-                    dependencies_json=[tasks[i-1].id] if i > 0 and random.random() > 0.3 else []
+                    estimate_hours=float(duration * random.randint(4, 8)),
+                    dependencies_json=[tasks[random.randint(0, len(tasks)-1)].id] if tasks and random.random() > 0.6 else []
                 )
                 db.add(t)
                 db.flush()
                 tasks.append(t)
-                
-                # Subtasks
-                for j in range(2):
-                    st = ProjectTask(
-                        project_id=p.id,
-                        parent_task_id=t.id,
-                        name=f"Subtask {i+1}.{j+1}: {fake.catch_phrase()}",
-                        progress=random.randint(0, 100),
-                        status=random.choice(["Completed", "In Progress", "To Do"]),
-                        owner=t.owner,
-                        estimate_hours=float(random.randint(4, 16))
-                    )
-                    db.add(st)
+                current_date = end # Sequentialish but with some overlap/gaps
             
             # Comments & QA
             db.add(ProjectComment(project_id=p.id, author=fake.name(), content="Baseline metrics look promising. Proceeding with phase 1."))

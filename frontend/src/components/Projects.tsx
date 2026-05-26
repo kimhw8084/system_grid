@@ -546,7 +546,7 @@ const ProjectLedger = ({
   )
 }
 
-const TaskRow = ({ 
+const TaskRow = React.memo(({ 
   task, 
   rowIndex, 
   isPackingMode, 
@@ -686,7 +686,7 @@ const TaskRow = ({
        </motion.div>
     </div>
   )
-}
+})
 
 const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
@@ -723,7 +723,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     return (dep.dependencies_json || []).some((d: number) => isCircular(taskId, d, currentTasks))
   }
 
-  const propagateChanges = (taskId: number, newEnd: string, currentTasks: any[]): any[] => {
+  const propagateChanges = useCallback((taskId: number, newEnd: string, currentTasks: any[]): any[] => {
     let updated = [...currentTasks]
     const successors = updated.filter(t => t.dependencies_json?.includes(taskId))
     
@@ -741,7 +741,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       }
     })
     return updated
-  }
+  }, [])
 
   // Predictive Analytics
   const criticalPath = useMemo(() => {
@@ -801,7 +801,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     }
   }, [project?.tasks, selectedTaskId, dragStartTasks])
 
-  const handleSelectTask = (id: number, shift: boolean) => {
+  const handleSelectTask = useCallback((id: number, shift: boolean) => {
     if (dependencySourceId) {
       if (dependencySourceId === id) {
         setDependencySourceId(null)
@@ -834,9 +834,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     } else {
       setSelectedTaskIds(new Set([id]))
     }
-  }
+  }, [dependencySourceId, tasks, selectedTaskIds])
 
-  const handleTaskMove = (id: number, offset: number, isFinal = false) => {
+  const handleTaskMove = useCallback((id: number, offset: number, isFinal = false) => {
     if (!isFinal) {
       const baseTasks = dragStartTasks || tasks
       if (!dragStartTasks) setDragStartTasks([...tasks])
@@ -872,9 +872,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       setDragStartTasks(null)
       onUpdate({ ...project, tasks: tasks })
     }
-  }
+  }, [tasks, dragStartTasks, zoomLevel, selectedTaskIds, project, onUpdate])
 
-  const handleTaskResize = (id: number, offset: number, type: 'start' | 'end', isFinal = false) => {
+  const handleTaskResize = useCallback((id: number, offset: number, type: 'start' | 'end', isFinal = false) => {
     if (!isFinal) {
       const baseTasks = dragStartTasks || tasks
       if (!dragStartTasks) setDragStartTasks([...tasks])
@@ -914,7 +914,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       setDragStartTasks(null)
       onUpdate({ ...project, tasks: tasks })
     }
-  }
+  }, [tasks, dragStartTasks, zoomLevel, project, onUpdate])
 
   const startDate = useMemo(() => {
     if (!tasks || tasks.length === 0) return startOfMonth(new Date())
@@ -952,7 +952,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       } else {
         interval = eachMonthOfInterval({ start: startDate, end: endDate })
       }
-      return interval.length > 5000 ? interval.slice(0, 5000) : interval
+      return interval.length > 2000 ? interval.slice(0, 2000) : interval
     }
     catch (e) { return [new Date()] }
   }, [startDate, endDate, granularity])
@@ -963,21 +963,21 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     return format(date, 'MMMM yyyy')
   }
 
-  const getDayOffset = (date: string) => {
+  const getDayOffset = useCallback((date: string) => {
     const d = new Date(date)
     if (granularity === 'D') return differenceInDays(d, startDate)
     if (granularity === 'W') return differenceInDays(d, startDate) / 7
     return differenceInDays(d, startDate) / 30.44 // Average month length
-  }
+  }, [startDate, granularity])
 
-  const getDayWidth = (start: string, end: string) => {
+  const getDayWidth = useCallback((start: string, end: string) => {
     const s = new Date(start)
     const e = new Date(end)
     const diff = Math.max(1, differenceInDays(e, s))
     if (granularity === 'D') return diff
     if (granularity === 'W') return diff / 7
     return diff / 30.44
-  }
+  }, [granularity])
 
   const packedTasks = useMemo(() => {
     if (!tasks || tasks.length === 0) return []
@@ -1034,51 +1034,87 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
 
   const maxRow = packedTasks.reduce((max, t) => Math.max(max, t.rowIndex), 0)
 
-  const renderDependencies = () => {
-    return (
-      <svg className="absolute inset-0 pointer-events-none" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" />
-          </marker>
-          <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" opacity="0.8" />
-          </marker>
-        </defs>
-        {packedTasks.map((task) => {
-          return (task.dependencies_json || []).map((depId: number) => {
-            const fromTask = packedTasks.find(t => t.id === depId)
-            if (!fromTask) return null
-            
-            const startX = Math.floor(getDayOffset(fromTask.end_date) * zoomLevel)
-            const startY = fromTask.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-            const endX = Math.floor(getDayOffset(task.start_date) * zoomLevel)
-            const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-            
-            const distance = Math.abs(endX - startX)
-            const cp1X = startX + Math.min(distance / 2, 100)
-            const cp2X = endX - Math.min(distance / 2, 100)
-            
-            const isCriticalLink = criticalPath.has(task.id) && criticalPath.has(fromTask.id)
-            
-            return (
-              <motion.path
-                key={`${fromTask.id}-${task.id}`}
-                d={`M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}`}
-                stroke={isCriticalLink ? "#f43f5e" : "#3b82f6"}
-                strokeWidth={isCriticalLink ? "2" : "1.5"}
-                fill="none"
-                animate={{ d: `M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}` }}
-                transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-                opacity={isCriticalLink ? "0.6" : "0.3"}
-                markerEnd={isCriticalLink ? "url(#arrow-red)" : "url(#arrow)"}
-              />
-            )
-          })
-        })}
-      </svg>
-    )
-  }
+  const dependencyLines = useMemo(() => {
+    const lines: any[] = []
+    packedTasks.forEach((task) => {
+      (task.dependencies_json || []).forEach((depId: number) => {
+        const fromTask = packedTasks.find(t => t.id === depId)
+        if (!fromTask) return
+        
+        const startX = Math.floor(getDayOffset(fromTask.end_date) * zoomLevel)
+        const startY = fromTask.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
+        const endX = Math.floor(getDayOffset(task.start_date) * zoomLevel)
+        const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
+        
+        const distance = Math.abs(endX - startX)
+        const cp1X = startX + Math.min(distance / 2, 100)
+        const cp2X = endX - Math.min(distance / 2, 100)
+        
+        const isCriticalLink = criticalPath.has(task.id) && criticalPath.has(fromTask.id)
+        
+        lines.push({
+          key: `${fromTask.id}-${task.id}`,
+          d: `M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}`,
+          isCritical: isCriticalLink
+        })
+      })
+    })
+    return lines
+  }, [packedTasks, getDayOffset, zoomLevel, criticalPath])
+
+const GanttHeader = React.memo(({ days, zoomLevel, granularity, onDayClick }: any) => {
+  const today = useMemo(() => new Date(), [])
+  return (
+    <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
+      {days.map((day: Date, i: number) => {
+        const isToday = isSameDay(day, today)
+        return (
+          <div 
+            key={i} 
+            onClick={() => onDayClick(day)}
+            className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/10' : ''}`} 
+            style={{ width: zoomLevel }}
+          >
+             <span className={`text-[8px] font-bold uppercase tracking-tighter ${granularity !== 'D' ? 'text-blue-400' : 'text-slate-600'}`}>
+                {granularity === 'D' ? format(day, 'MMM') : granularity === 'W' ? 'WEEK' : format(day, 'yyyy')}
+             </span>
+             <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>
+                {granularity === 'D' ? format(day, 'd') : granularity === 'W' ? format(day, 'w') : format(day, 'MMM')}
+             </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+})
+
+const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_HEIGHT }: any) => {
+  return (
+    <svg className="absolute inset-0 pointer-events-none" style={{ width: daysCount * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" />
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" opacity="0.8" />
+        </marker>
+      </defs>
+      {lines.map((line: any) => (
+        <motion.path
+          key={line.key}
+          d={line.d}
+          stroke={line.isCritical ? "#f43f5e" : "#3b82f6"}
+          strokeWidth={line.isCritical ? "2" : "1.5"}
+          fill="none"
+          animate={{ d: line.d }}
+          transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
+          opacity={line.isCritical ? "0.6" : "0.3"}
+          markerEnd={line.isCritical ? "url(#arrow-red)" : "url(#arrow)"}
+        />
+      ))}
+    </svg>
+  )
+})
 
   return (
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
@@ -1171,36 +1207,29 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
           )}
 
           <div ref={timelineRef} onScroll={handleScroll} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]">
-             <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
-                {days.map((day, i) => {
-                  const isToday = isSameDay(day, new Date())
-                  return (
-                    <div 
-                      key={i} 
-                      onClick={() => {
-                        const tasksEnding = tasks.filter(t => isSameDay(new Date(t.end_date), day))
-                        setDayTasksPopup({ date: day, tasks: tasksEnding })
-                      }}
-                      className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/10' : ''}`} 
-                      style={{ width: zoomLevel }}
-                    >
-                       <span className={`text-[8px] font-bold uppercase tracking-tighter ${granularity !== 'D' ? 'text-blue-400' : 'text-slate-600'}`}>
-                          {granularity === 'D' ? format(day, 'MMM') : granularity === 'W' ? 'WEEK' : format(day, 'yyyy')}
-                       </span>
-                       <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>
-                          {granularity === 'D' ? format(day, 'd') : granularity === 'W' ? format(day, 'w') : format(day, 'MMM')}
-                       </span>
-                    </div>
-                  )
-                })}
-             </div>
+             <GanttHeader 
+               days={days} 
+               zoomLevel={zoomLevel} 
+               granularity={granularity} 
+               onDayClick={(day: Date) => {
+                 const tasksEnding = tasks.filter(t => isSameDay(new Date(t.end_date), day))
+                 setDayTasksPopup({ date: day, tasks: tasksEnding })
+               }} 
+             />
              <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
-                <div className="absolute inset-0 pointer-events-none opacity-20">
-                   {days.map((_, i) => (
-                     <div key={i} className="absolute top-0 bottom-0 border-r border-white/5" style={{ left: i * zoomLevel, width: zoomLevel }} />
-                   ))}
-                </div>
-                {renderDependencies()}
+                <div 
+                  className="absolute inset-0 pointer-events-none opacity-10" 
+                  style={{ 
+                    backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel}px)` 
+                  }} 
+                />
+                <DependencyLines 
+                  lines={dependencyLines} 
+                  zoomLevel={zoomLevel} 
+                  daysCount={days.length} 
+                  maxRow={maxRow} 
+                  ROW_HEIGHT={ROW_HEIGHT} 
+                />
                 {packedTasks.map((task) => (
                   <TaskRow 
                     key={task.id} 
