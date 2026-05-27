@@ -182,7 +182,7 @@ export const ProjectHUD = ({ project, isEditing, isDirty, onEdit, onSave, onCanc
 const ProjectRail = ({ projects, selectedId, onSelect, onNew, onReorder, width, onResize, isCollapsed, onToggleCollapse }: any) => {
   const [search, setSearch] = useState('')
   const sortedAndFiltered = useMemo(() => {
-    return [...projects].filter(p => p.name.toLowerCase().includes(search.toLowerCase())).sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+    return [...projects].filter(p => p && p.name && p.name.toLowerCase().includes(search.toLowerCase())).sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
   }, [projects, search])
 
   if (isCollapsed) return <div className="w-12 bg-[#0a0c14] border-r border-white/5 flex flex-col items-center py-4 shrink-0"><button onClick={onToggleCollapse} className="p-2 text-slate-500"><PanelLeft size={18}/></button></div>
@@ -258,6 +258,12 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
      document.addEventListener('mousedown', handleClickOutside)
      return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  if (!project) return (
+     <div className="h-full flex items-center justify-center">
+        <p className="text-xs font-black text-slate-700 uppercase tracking-widest italic">No project context established</p>
+     </div>
+  )
 
   const handleFieldChange = (field: string, value: any) => { if (project && project[field] !== value) onUpdate({ ...project, [field]: value }) }
   const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.username, label: u.full_name || u.username })) || [], [users])
@@ -794,9 +800,16 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
     const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
     const interval = eachDayOfInterval({ start, end })
     return interval.filter((_, i) => i % 5 === 0).map(date => {
-      const scheduledCount = tasks.filter(t => new Date(t.end_date) <= date).length
-      const actualCount = tasks.filter(t => t.actual_end_date && new Date(t.actual_end_date) <= date).length
-      return { date: format(date, 'MMM d'), fullDate: date, scheduled: Math.round((scheduledCount / (tasks.length || 1)) * 100), actual: Math.round((actualCount / (tasks.length || 1)) * 100), plannedTasks: tasks.filter(t => isSameDay(new Date(t.end_date), date)), actualTasks: tasks.filter(t => t.actual_end_date && isSameDay(new Date(t.actual_end_date), date)) }
+      const scheduledCount = tasks.filter(t => t && t.end_date && new Date(t.end_date) <= date).length
+      const actualCount = tasks.filter(t => t && t.actual_end_date && new Date(t.actual_end_date) <= date).length
+      return { 
+        date: format(date, 'MMM d'), 
+        fullDate: date, 
+        scheduled: Math.round((scheduledCount / (tasks.length || 1)) * 100), 
+        actual: Math.round((actualCount / (tasks.length || 1)) * 100), 
+        plannedTasks: tasks.filter(t => t && t.end_date && isSameDay(new Date(t.end_date), date)), 
+        actualTasks: tasks.filter(t => t && t.actual_end_date && isSameDay(new Date(t.actual_end_date), date)) 
+      }
     })
   }, [tasks])
   return (
@@ -855,7 +868,7 @@ const TaskRow = ({ task, rowIndex, startDate, zoomLevel, selectedTaskIds, onTask
 }
 
 const PrecisionGantt = ({ project, onUpdate }: any) => {
-  const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
+  const [tasks, setTasks] = useState<any[]>(project?.tasks?.filter((t:any) => !!t) || [])
   const [zoomLevel, setZoomLevel] = useState(30)
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
@@ -1014,13 +1027,24 @@ export default function Projects() {
           <div className="flex-1 overflow-hidden relative">
              <AnimatePresence mode="wait">
                 <motion.div key={activeTab + (selectedId || '')} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
-                   {activeTab === 'WORKBENCH' && <div className="h-full overflow-y-auto p-12 custom-scrollbar"><WorkbenchView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} isEditing={isEditing} devices={devices} services={services} options={options} users={operators} /></div>}
-                   {activeTab === 'GANTT' && <PrecisionGantt project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
-                   {activeTab === 'ADOPTION' && <ProjectAdoptionView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
+                   {activeTab === 'WORKBENCH' && project && <div className="h-full overflow-y-auto p-12 custom-scrollbar"><WorkbenchView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} isEditing={isEditing} devices={devices} services={services} options={options} users={operators} /></div>}
+                   {activeTab === 'GANTT' && project && <PrecisionGantt project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
+                   {activeTab === 'ADOPTION' && project && <ProjectAdoptionView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
                    {activeTab === 'STREAM' && <ProjectActivityStream project={project} allProjects={projects} />}
+                   {(!project && activeTab !== 'STREAM') && (
+                      <div className="h-full flex items-center justify-center">
+                         <div className="text-center space-y-4">
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10">
+                               <Search size={24} className="text-slate-700" />
+                            </div>
+                            <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] italic">Select a strategic vector from the rail</p>
+                         </div>
+                      </div>
+                   )}
                 </motion.div>
              </AnimatePresence>
           </div>
+
        </div>
        <style>{` .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; } .no-scrollbar::-webkit-scrollbar { display: none; } `}</style>
     </div>
