@@ -88,3 +88,11 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   return response;
 }
+
+export const apiClient = {
+  get: (endpoint: string, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'GET' }).then(r => r.json()),
+  post: (endpoint: string, body: any, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }).then(r => r.json()),
+  put: (endpoint: string, body: any, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }).then(r => r.json()),
+  delete: (endpoint: string, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'DELETE' }).then(r => r.json()),
+  patch: (endpoint: string, body: any, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) }).then(r => r.json()),
+};

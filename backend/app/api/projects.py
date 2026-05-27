@@ -101,6 +101,23 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
             
             if t_id and t_id in existing_tasks:
                 task = existing_tasks[t_id]
+                # Check for significant changes to log
+                changes = []
+                if clean_task_data.get("status") and clean_task_data["status"] != task.status:
+                    changes.append(f"Status: {task.status} -> {clean_task_data['status']}")
+                if clean_task_data.get("progress") is not None and clean_task_data["progress"] != task.progress:
+                    changes.append(f"Progress: {task.progress}% -> {clean_task_data['progress']}%")
+                
+                if changes:
+                    meta = task.metadata_json or {}
+                    history = meta.get("history", [])
+                    history.append({
+                        "content": f"Updated: {', '.join(changes)}",
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "author": "system"
+                    })
+                    clean_task_data["metadata_json"] = {**meta, "history": history}
+
                 for k, v in clean_task_data.items():
                     setattr(task, k, v)
             else:
@@ -108,6 +125,20 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
                 new_task = models.ProjectTask(**clean_task_data, project_id=project_id)
                 db.add(new_task)
         
+    # Log Project Level Activity
+    if update_data:
+        meta = db_project.metadata_json or {}
+        audit_log = meta.get("audit_log", [])
+        sig_keys = ["status", "priority", "name", "type"]
+        changes = [f"{k}: {db_project.__dict__.get(k)} -> {update_data[k]}" for k in sig_keys if k in update_data and update_data[k] != getattr(db_project, k)]
+        if changes:
+            audit_log.append({
+                "content": f"Project Modified: {', '.join(changes)}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "author": "system"
+            })
+            db_project.metadata_json = {**meta, "audit_log": audit_log}
+
     await db.commit()
     # Re-fetch with all relations for response
     return await get_project(project_id, db)
@@ -142,10 +173,29 @@ async def update_task(task_id: int, data: dict, db: AsyncSession = Depends(get_d
     result = await db.execute(query)
     task = result.scalar_one_or_none()
     if not task: raise HTTPException(404, "Task not found")
+    
     clean_data = filter_valid_columns(models.ProjectTask, data)
+    
+    # Log changes
+    changes = []
+    if "status" in clean_data and clean_data["status"] != task.status:
+        changes.append(f"Status: {task.status} -> {clean_data['status']}")
+    if "progress" in clean_data and clean_data["progress"] != task.progress:
+        changes.append(f"Progress: {task.progress}% -> {clean_data['progress']}%")
+    
+    if changes:
+        meta = task.metadata_json or {}
+        history = meta.get("history", [])
+        history.append({
+            "content": f"Updated: {', '.join(changes)}",
+            "timestamp": datetime.utcnow().isoformat(),
+            "author": "system"
+        })
+        clean_data["metadata_json"] = {**meta, "history": history}
+
     for k, v in clean_data.items(): setattr(task, k, v)
     await db.commit()
-    await db.refresh(task) # This is safe now because relations are loaded
+    await db.refresh(task)
     return task
 
 # --- Comments ---

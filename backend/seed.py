@@ -67,7 +67,8 @@ def seed():
             "DetectionType": ["Automated Alert", "Manual Observation", "Customer Report", "Log Analysis", "Security Scanner", "External Intelligence"],
             "ImpactType": ["Service Unavailable", "Data Loss", "Performance Degradation", "Internal Only", "Regulatory Non-compliance"],
             "EventType": ["Detection", "Investigation", "Mitigation", "Resolution", "Post-Mortem", "Communication"],
-            "VendorCountry": ["South Korea", "USA", "Japan", "Germany", "Taiwan", "Netherlands"]
+            "VendorCountry": ["South Korea", "USA", "Japan", "Germany", "Taiwan", "Netherlands"],
+            "ProjectType": ["Strategic", "Tactical", "Operational", "Research"]
         }
         for cat, vals in cats.items():
             for v in vals:
@@ -825,7 +826,22 @@ def seed():
                 wafers_gained_math="(Uptime Increase * Wafer Throughput/Hour)",
                 wafers_gained_desc="Reduction in system-induced line stoppages.",
                 team_members=[fake.name() for _ in range(5)],
-                appendix_json={"glossary": [{"term": "MTBF", "definition": "Mean Time Between Failures"}], "images": []}
+                metadata_json={
+                    "glossary": [{"term": "MTBF", "definition": "Mean Time Between Failures"}], 
+                    "images": [],
+                    "adoption": [
+                        {
+                            "team": "SRE-CORE",
+                            "current": {
+                                "description": "Utilizing for predictive failure analysis in FAB-2.",
+                                "benefit": "Reduced unplaned downtime by 12% in Q1.",
+                                "timestamp": (datetime.now() - timedelta(days=5)).isoformat(),
+                                "author": "haewonkim"
+                            },
+                            "history": []
+                        }
+                    ]
+                }
             )
             db.add(p)
             db.flush()

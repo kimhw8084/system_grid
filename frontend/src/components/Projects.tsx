@@ -3,49 +3,28 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
   ListTodo, History, ShieldAlert, Globe, 
-  Zap, Save, X, PlusCircle, User, MessageSquare,
+  Zap, Save, X, PlusCircle, MessageSquare,
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown,
-  Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle, BookOpen, Filter,
+  Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, BookOpen, Filter,
   Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical, Layout,
   Projector, Tag
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
-import { apiFetch } from '../api/apiClient'
+import { apiClient } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
-import { ConfirmationModal } from './shared/ConfirmationModal'
-import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
-import { ConfigRegistryModal } from './ConfigRegistry'
+import StyledSelect from './shared/StyledSelect'
 import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import ReactFlow, { 
-  Background, 
-  Controls, 
-  MiniMap, 
-  useNodesState, 
-  useEdgesState, 
-  addEdge,
-  Connection,
-  Edge,
-  Node,
-  MarkerType
-} from 'reactflow'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState, addEdge, Connection, MarkerType, Handle, Position } from 'reactflow'
 import 'reactflow/dist/style.css'
 
-// --- Types & Constants ---
-
-const PROJECT_TYPES = [
-  { value: 'Strategic', label: 'Strategic' },
-  { value: 'Tactical', label: 'Tactical' },
-  { value: 'Operational', label: 'Operational' },
-  { value: 'Research', label: 'Research' }
-]
+// --- Constants ---
 
 const PROJECT_STATUSES = [
-  { value: 'Not Started', label: 'Not Started' },
   { value: 'Planning', label: 'Planning' },
   { value: 'In Progress', label: 'In Progress' },
   { value: 'Paused', label: 'Paused' },
@@ -61,10 +40,11 @@ const PROJECT_PRIORITIES = [
   { value: 'Highest', label: 'Highest' }
 ]
 
-const DEFENSE_LINES = [
-  { value: '0', label: 'LINE 0: BASE' },
-  { value: '1', label: 'LINE 1: FORTIFIED' },
-  { value: '2', label: 'LINE 2: RESILIENT' }
+const PROJECT_TYPES = [
+  { value: 'Strategic', label: 'Strategic' },
+  { value: 'Tactical', label: 'Tactical' },
+  { value: 'Operational', label: 'Operational' },
+  { value: 'Research', label: 'Research' }
 ]
 
 const ROI_TYPES = [
@@ -74,1681 +54,184 @@ const ROI_TYPES = [
   { value: 'wpd', label: 'WPD' }
 ]
 
-// --- Workspace Components ---
+// --- Custom Node Types ---
 
-export const ProjectHUD = ({ 
-  project, 
-  isEditing, 
-  isDirty, 
-  onEdit, 
-  onSave, 
-  onCancel,
-  onDelete,
-  isSaving
-}: { 
-  project: any, 
-  isEditing: boolean, 
-  isDirty: boolean, 
-  onEdit: () => void, 
-  onSave: () => void, 
-  onCancel: () => void,
-  onDelete: () => void,
-  isSaving?: boolean
-}) => {
-  if (!project) return (
-    <div className="h-16 bg-[#0a0c14] border-b border-white/5 flex items-center px-6 gap-6">
-       <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-             <Briefcase size={20} className="text-blue-400" />
-          </div>
-          <div>
-             <h1 className="text-lg font-bold tracking-tighter text-slate-500">Workshop Baseline</h1>
-             <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Select a strategic stream to begin</p>
-          </div>
+const ProcessNode = ({ data }: any) => (
+  <div className="px-8 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-xl bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[160px] flex items-center justify-center relative overflow-hidden group">
+     <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+     <div className="absolute left-0 top-0 w-1 h-full bg-blue-500" />
+     <span className="text-[10px] font-black italic uppercase tracking-widest relative z-10 font-inter">{data.label}</span>
+     <Handle type="target" position={Position.Top} className="w-2.5 h-2.5 bg-blue-500 border-2 border-[#0a0c14] !top-[-6px]" />
+     <Handle type="source" position={Position.Bottom} className="w-2.5 h-2.5 bg-blue-500 border-2 border-[#0a0c14] !bottom-[-6px]" />
+  </div>
+)
+
+const DiamondNode = ({ data }: any) => (
+  <div className="w-28 h-28 rotate-45 bg-[#0a0c14] border-2 border-amber-500/50 flex items-center justify-center relative group overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+     <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+     <span className="-rotate-45 text-[9px] font-black italic uppercase tracking-tighter text-amber-400 text-center px-3 font-inter leading-tight">{data.label}</span>
+     <Handle type="target" position={Position.Top} className="w-2.5 h-2.5 bg-amber-500 border-2 border-[#0a0c14] !top-[-5px] !left-1/2 !-translate-x-1/2" />
+     <Handle type="source" position={Position.Bottom} className="w-2.5 h-2.5 bg-amber-500 border-2 border-[#0a0c14] !bottom-[-5px] !left-1/2 !-translate-x-1/2" />
+     <Handle type="source" position={Position.Left} className="w-2.5 h-2.5 bg-amber-500 border-2 border-[#0a0c14] !left-[-5px] !top-1/2 !-translate-y-1/2" />
+     <Handle type="source" position={Position.Right} className="w-2.5 h-2.5 bg-amber-500 border-2 border-[#0a0c14] !right-[-5px] !top-1/2 !-translate-y-1/2" />
+  </div>
+)
+
+const InfrastructureNode = ({ data, type }: any) => {
+  const Icon = type === 'db' ? Database : type === 'cloud' ? Globe : type === 'storage' ? Layers : Server
+  const color = type === 'db' ? 'emerald' : type === 'cloud' ? 'sky' : type === 'storage' ? 'purple' : 'blue'
+  const colorHex = type === 'db' ? '#10b981' : type === 'cloud' ? '#0ea5e9' : type === 'storage' ? '#a855f7' : '#3b82f6'
+  
+  return (
+    <div className={`px-5 py-4 rounded-2xl bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[140px] flex flex-col items-center gap-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] group transition-all hover:border-${color}-500`}>
+       <div className={`w-12 h-12 bg-${color}-600/10 rounded-xl flex items-center justify-center border border-${color}-500/20 group-hover:scale-110 transition-transform`}>
+          <Icon size={22} className={`text-${color}-400`} />
        </div>
+       <span className="text-[9px] font-black italic uppercase tracking-widest text-slate-300 font-inter">{data.label}</span>
+       <Handle type="target" position={Position.Top} className={`w-2.5 h-2.5 bg-${color}-500 border-2 border-[#0a0c14] !top-[-6px]`} />
+       <Handle type="source" position={Position.Bottom} className={`w-2.5 h-2.5 bg-${color}-500 border-2 border-[#0a0c14] !bottom-[-6px]`} />
     </div>
   )
+}
 
+const nodeTypes = {
+  process: ProcessNode,
+  diamond: DiamondNode,
+  server: (props: any) => <InfrastructureNode {...props} type="server" />,
+  storage: (props: any) => <InfrastructureNode {...props} type="storage" />,
+  db: (props: any) => <InfrastructureNode {...props} type="db" />,
+  cloud: (props: any) => <InfrastructureNode {...props} type="cloud" />
+}
+
+// --- Form Component ---
+
+export const ProjectForm = ({ initialData, onSave, onCancel, isSaving }: any) => {
+  const [formData, setFormData] = useState(initialData || { name: '', status: 'Planning', priority: 'Medium', type: 'Strategic' })
   return (
-    <div className="h-16 bg-[#0a0c14] border-b border-white/10 flex items-center px-6 justify-between shrink-0 z-50 shadow-2xl">
-       <div className="flex items-center gap-6 overflow-hidden">
-          <div className="flex items-center gap-3 shrink-0">
-             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)]">
-                <Workflow size={20} className="text-white" />
-             </div>
-             <div>
-                <h1 className="text-lg font-bold tracking-tighter text-white leading-none truncate max-w-[300px]">{project.name}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                   <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{project.type}</span>
-                   <span className="text-slate-700 font-bold">•</span>
-                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{project.status}</span>
-                   {isDirty && (
-                     <>
-                       <span className="text-slate-700 font-bold">•</span>
-                       <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest animate-pulse">Unsaved Changes</span>
-                     </>
-                   )}
-                </div>
+    <div className="space-y-8">
+       <div className="grid grid-cols-2 gap-8">
+          <div className="col-span-2 space-y-2">
+             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Project Name</label>
+             <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Enter tactical identifier..." />
+          </div>
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Initial Status</label>
+             <div className="relative">
+                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none appearance-none cursor-pointer">
+                   {PROJECT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" size={18} />
              </div>
           </div>
-
-          <div className="h-8 w-px bg-white/5 mx-2 shrink-0" />
+          <div className="space-y-2">
+             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Priority Vector</label>
+             <div className="relative">
+                <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white outline-none appearance-none cursor-pointer">
+                   {PROJECT_PRIORITIES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" size={18} />
+             </div>
+          </div>
        </div>
-
-       <div className="flex items-center gap-4 shrink-0">
-          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
-             {isEditing ? (
-               <>
-                 <button 
-                   onClick={onCancel}
-                   className="px-4 py-2 text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all"
-                 >
-                   Discard
-                 </button>
-                 <button 
-                   onClick={onSave}
-                   disabled={isSaving || !isDirty}
-                   className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${
-                     isDirty 
-                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                       : 'bg-white/5 text-slate-600 cursor-not-allowed'
-                   }`}
-                 >
-                   <Save size={14} /> {isSaving ? 'Syncing...' : 'Commit Changes'}
-                 </button>
-               </>
-             ) : (
-               <button 
-                 onClick={onEdit}
-                 className="px-6 py-2 bg-white/5 hover:bg-white/10 text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-blue-500/20 flex items-center gap-2"
-               >
-                 <Edit2 size={14} /> Unlock Editor
-               </button>
-             )}
-          </div>
-          
-          <div className="w-px h-8 bg-white/5 mx-2" />
-
-          <div className="flex items-center gap-2">
-             <button 
-               onClick={onDelete}
-               className="p-2 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white rounded-lg transition-all border border-rose-500/20"
-               title="Decommission Project"
-             >
-                <Trash2 size={18} />
-             </button>
-             <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all border border-white/5">
-                <Settings size={18} />
-             </button>
-          </div>
+       <div className="flex justify-end gap-6 pt-6 items-center">
+          <button onClick={onCancel} className="text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-all font-inter italic">Cancel Initiation</button>
+          <button onClick={() => onSave(formData)} disabled={isSaving || !formData.name} className="px-10 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-blue-900/40 hover:scale-105 active:scale-95 transition-all font-inter italic">
+             {isSaving ? 'Synchronizing Vector...' : 'Commit Project Vector'}
+          </button>
        </div>
     </div>
   )
 }
 
-const ProjectRail = ({ 
-  projects, 
-  selectedId, 
-  onSelect, 
-  onNew, 
-  onDelete,
-  onReorder,
-  width,
-  onResize,
-  isCollapsed,
-  onToggleCollapse
-}: any) => {
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [priorityFilter, setPriorityFilter] = useState('ALL')
+// --- HUD Component ---
 
-  const sortedAndFiltered = useMemo(() => {
-    const base = [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-    return base.filter((p:any) => {
-      const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase())
-      const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
-      const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
-      return matchesSearch && matchesStatus && matchesPriority
-    })
-  }, [projects, search, statusFilter, priorityFilter])
-
-  if (isCollapsed) {
-    return (
-      <div className="w-12 border-r border-white/5 flex flex-col items-center py-4 bg-[#0a0c14] shrink-0">
-         <button onClick={onToggleCollapse} className="p-2 text-slate-500 hover:text-white transition-all mb-4">
-            <PanelLeft size={18} />
-         </button>
-         <button onClick={onNew} className="p-2 bg-blue-600 text-white rounded-lg mb-4">
-            <Plus size={18} />
-         </button>
-         <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar no-scrollbar">
-            {sortedAndFiltered.map((p:any) => (
-               <button 
-                 key={p.id} 
-                 onClick={() => onSelect(p.id)}
-                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${selectedId === p.id ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                 title={p.name}
-               >
-                  {p.name[0]}
-               </button>
-            ))}
-         </div>
-      </div>
-    )
-  }
-
+export const ProjectHUD = ({ project, isEditing, isDirty, onEdit, onSave, onCancel, onDelete, isSaving }: any) => {
+  if (!project) return null
   return (
-    <div className="relative border-r border-white/5 bg-[#0a0c14] shrink-0 flex flex-col group/rail" style={{ width }}>
-       <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between">
-             <button 
-               onClick={onNew}
-               className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-             >
-                <Plus size={14} /> New Vector
-             </button>
-             <button onClick={onToggleCollapse} className="p-2 ml-2 text-slate-500 hover:text-white transition-all rounded-lg hover:bg-white/5">
-                <PanelRight size={18} />
-             </button>
-          </div>
-
-          <button 
-            onClick={() => onSelect('HUDDLE')}
-            className={`w-full h-11 rounded-lg flex items-center px-4 gap-3 transition-all border ${
-              selectedId === 'HUDDLE' 
-                ? 'bg-blue-600 border-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.2)] text-white' 
-                : 'bg-white/5 border-white/5 text-slate-500 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-             <Users size={16} />
-             <span className="text-[10px] font-black uppercase tracking-widest">Tactical Huddle</span>
-          </button>
-
-          <div className="space-y-2 pt-2 border-t border-white/5">
-             <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-                <input 
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full bg-white/5 border border-white/5 rounded-lg pl-9 pr-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500/50 uppercase tracking-widest transition-all"
-                  placeholder="Filter vectors..."
-                />
-             </div>
-             <div className="grid grid-cols-2 gap-2">
-                <select 
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/50 uppercase tracking-widest"
-                >
-                   <option value="ALL">ALL STATUS</option>
-                   {PROJECT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-                <select 
-                  value={priorityFilter}
-                  onChange={e => setPriorityFilter(e.target.value)}
-                  className="bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/50 uppercase tracking-widest"
-                >
-                   <option value="ALL">ALL PRIORITY</option>
-                   {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
+    <div className="h-16 bg-[#0a0c14] border-b border-white/10 flex items-center px-6 justify-between shrink-0 z-50 shadow-2xl">
+       <div className="flex items-center gap-6 overflow-hidden">
+          <div className="flex items-center gap-3 shrink-0">
+             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.3)]"><Workflow size={20} className="text-white" /></div>
+             <div>
+                <h1 className="text-lg font-bold tracking-tighter text-white leading-none truncate max-w-[300px]">{project.name}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{project.type}</span>
+                  <span className="text-slate-700 font-bold">•</span>
+                  <StatusPill value={project.status} />
+                </div>
              </div>
           </div>
        </div>
+       <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
+             {isEditing ? (
+               <><button onClick={onCancel} className="px-4 py-2 text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-all">Discard</button><button onClick={onSave} disabled={isSaving || !isDirty} className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${isDirty ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-600'}`}><Save size={14} /> {isSaving ? 'Syncing...' : 'Commit Changes'}</button></>
+             ) : (
+               <button onClick={onEdit} className="px-6 py-2 bg-white/5 hover:bg-white/10 text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-blue-500/20 flex items-center gap-2"><Edit2 size={14} /> Unlock Editor</button>
+             )}
+          </div>
+          <button onClick={() => window.print()} className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg transition-all border border-blue-500/20"><Camera size={18} /></button>
+          <button onClick={onDelete} className="p-2 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white rounded-lg transition-all border border-rose-500/20"><Trash2 size={18} /></button>
+       </div>
+    </div>
+  )
+}
 
-       <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-10">
+// --- Rail Component ---
+
+const ProjectRail = ({ projects, selectedId, onSelect, onNew, onReorder, width, onResize, isCollapsed, onToggleCollapse }: any) => {
+  const [search, setSearch] = useState('')
+  const sortedAndFiltered = useMemo(() => {
+    return [...projects].filter(p => p.name.toLowerCase().includes(search.toLowerCase())).sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+  }, [projects, search])
+
+  if (isCollapsed) return <div className="w-12 bg-[#0a0c14] border-r border-white/5 flex flex-col items-center py-4 shrink-0"><button onClick={onToggleCollapse} className="p-2 text-slate-500"><PanelLeft size={18}/></button></div>
+
+  return (
+    <div className="relative border-r border-white/5 bg-[#0a0c14] shrink-0 flex flex-col" style={{ width }}>
+       <div className="p-4 space-y-4">
+          <div className="flex gap-2"><button onClick={onNew} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2"><Plus size={14}/> New Vector</button><button onClick={onToggleCollapse} className="p-2 text-slate-500"><PanelRight size={18}/></button></div>
+          <input value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-white/5 border border-white/5 rounded-lg px-4 py-2 text-[10px] font-bold text-white outline-none" placeholder="Filter vectors..." />
+       </div>
+       <div className="flex-1 overflow-y-auto custom-scrollbar px-2">
           <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={onReorder} className="space-y-2">
-             {sortedAndFiltered.map((p: any) => (
-                <Reorder.Item 
-                  key={p.id} 
-                  value={p}
-                  className="group"
-                >
-                   <button
-                     onClick={() => onSelect(p.id)}
-                     className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-3 cursor-grab active:cursor-grabbing ${
-                       selectedId === p.id 
-                         ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
-                         : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'
-                     }`}
-                   >
-                      <div className="flex justify-between items-start gap-2">
-                         <h3 className={`text-[13px] font-bold truncate transition-colors flex-1 leading-tight ${selectedId === p.id ? 'text-white' : 'text-slate-300 group-hover:text-blue-400'}`}>{p.name}</h3>
-                         <div className="shrink-0">
-                            <StatusPill value={p.status} />
-                         </div>
+             {sortedAndFiltered.map(p => (
+                <Reorder.Item key={p.id} value={p}>
+                   <button onClick={() => onSelect(p.id)} className={`w-full text-left p-4 rounded-xl border transition-all ${selectedId === p.id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/[0.02] border-white/5'}`}>
+                      <div className="flex justify-between items-start"><h3 className="text-[13px] font-bold text-white truncate">{p.name}</h3><StatusPill value={p.status}/></div>
+                      <div className="mt-2 space-y-1">
+                        <div className="text-[9px] font-bold text-blue-400 uppercase tracking-widest truncate">{p.owners?.length ? p.owners.join(', ') : (p.owner || 'Unassigned')}</div>
+                        <div className="flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase">
+                          <span>Created: {format(new Date(p.created_at), 'MM/dd/yy')}</span>
+                          <span>Updated: {format(new Date(p.updated_at), 'MM/dd/yy')}</span>
+                        </div>
                       </div>
-
-                      <div className="flex items-center gap-2">
-                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{p.type || 'N/A'}</span>
-                         <span className="text-slate-800 text-[9px]">•</span>
-                         <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${
-                            p.priority === 'High' || p.priority === 'Highest' ? 'bg-rose-600/10 text-rose-500 border border-rose-500/20' :
-                            p.priority === 'Medium' ? 'bg-amber-600/10 text-amber-500 border border-amber-500/20' :
-                            'bg-slate-800 text-slate-500 border border-white/5'
-                         }`}>
-                            {p.priority}
-                         </div>
-                      </div>
-
-                      <div className="mt-1 flex items-center justify-between gap-4">
-                         <div className="flex-1 px-2 py-1 bg-white/5 rounded-md text-[9px] font-bold text-blue-400/80 uppercase truncate border border-white/5">
-                            {p.owners?.length > 0 ? p.owners.join(', ') : (p.owner || 'Unassigned')}
-                         </div>
-                         <div className="flex items-center gap-1.5 shrink-0 opacity-40">
-                            <Clock size={10} className="text-slate-500" />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd') : 'N/A'}</span>
-                         </div>
-                         <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </div>
+                      <div className="mt-2 flex justify-end"><GripVertical size={12} className="text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
                    </button>
                 </Reorder.Item>
              ))}
           </Reorder.Group>
        </div>
-
-       {/* Resize Handle */}
-       <div 
-         className="absolute top-0 right-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/30 transition-colors z-50"
-         onMouseDown={(e) => {
-           const startX = e.clientX
-           const startWidth = width
-           const onMouseMove = (ev: MouseEvent) => {
-             const newWidth = Math.max(160, Math.min(400, startWidth + (ev.clientX - startX)))
-             onResize(newWidth)
-           }
-           const onMouseUp = () => {
-             window.removeEventListener('mousemove', onMouseMove)
-             window.removeEventListener('mouseup', onMouseUp)
-           }
-           window.addEventListener('mousemove', onMouseMove)
-           window.addEventListener('mouseup', onMouseUp)
-         }}
-       />
     </div>
   )
 }
 
-const ProjectLedger = ({ 
-  project, 
-  width, 
-  onResize, 
-  isCollapsed, 
-  onToggleCollapse,
-  isEditing,
-  onUpdate
-}: any) => {
-  if (!project) return null
-
-  if (isCollapsed) {
-    return (
-      <div className="w-12 border-l border-white/5 flex flex-col items-center py-4 bg-[#0a0c14] shrink-0">
-         <button onClick={onToggleCollapse} className="p-2 text-slate-500 hover:text-white transition-all mb-4">
-            <PanelRight size={18} />
-         </button>
-         <div className="flex-1 flex flex-col gap-6 items-center">
-            <BarChart3 size={18} className="text-blue-500 opacity-50" />
-         </div>
-      </div>
-    )
-  }
-
-  const handleChange = (field: string, value: any) => {
-    onUpdate({ ...project, [field]: value })
-  }
-
-  const activeROI = project.roi_types || []
-
-  return (
-    <div className="relative border-l border-white/5 bg-[#0a0c14] shrink-0 flex flex-col overflow-hidden" style={{ width }}>
-       {/* Resize Handle */}
-       <div 
-         className="absolute top-0 left-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/30 transition-colors z-50"
-         onMouseDown={(e) => {
-           const startX = e.clientX
-           const startWidth = width
-           const onMouseMove = (ev: MouseEvent) => {
-             const newWidth = Math.max(160, Math.min(500, startWidth - (ev.clientX - startX)))
-             onResize(newWidth)
-           }
-           const onMouseUp = () => {
-             window.removeEventListener('mousemove', onMouseMove)
-             window.removeEventListener('mouseup', onMouseUp)
-           }
-           window.addEventListener('mousemove', onMouseMove)
-           window.addEventListener('mouseup', onMouseUp)
-         }}
-       />
-
-       <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#0d0f17]">
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-             <BarChart3 size={14} /> ROI Metrics
-          </h4>
-          <button onClick={onToggleCollapse} className="p-1.5 text-slate-500 hover:text-white transition-all rounded-lg hover:bg-white/5">
-             <PanelLeft size={18} />
-          </button>
-       </div>
-
-       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
-          <section className="space-y-6">
-             {isEditing && (
-               <div className="space-y-3">
-                  <h4 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Select ROI Streams</h4>
-                  <div className="grid grid-cols-1 gap-1">
-                     {ROI_TYPES.map(t => (
-                       <label key={t.value} className={`flex items-center gap-2 px-3 py-2 rounded transition-all cursor-pointer ${activeROI.includes(t.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
-                          <input 
-                            type="checkbox" 
-                            checked={activeROI.includes(t.value)}
-                            onChange={e => {
-                              const updated = e.target.checked ? [...activeROI, t.value] : activeROI.filter((v:any) => v !== t.value)
-                              handleChange('roi_types', updated)
-                            }}
-                            className="rounded border-white/10 bg-black/40 text-blue-600"
-                          />
-                          <span className="text-[10px] font-bold uppercase tracking-tight">{t.label}</span>
-                       </label>
-                     ))}
-                  </div>
-               </div>
-             )}
-
-             <div className="space-y-6">
-                {activeROI.includes('defense_line') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border space-y-3 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Defense Line</p>
-                        {isEditing ? (
-                          <select 
-                            value={project.roi_defense_line || 'DL0'}
-                            onChange={e => handleChange('roi_defense_line', e.target.value)}
-                            className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded p-1"
-                          >
-                            <option value="DL0">DL0: BASE</option>
-                            <option value="DL1">DL1: FORTIFIED</option>
-                            <option value="DL2">DL2: RESILIENT</option>
-                          </select>
-                        ) : (
-                          <p className="text-xl font-bold text-white uppercase tracking-tighter">{project.roi_defense_line || 'DL0'}</p>
-                        )}
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Justification</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.roi_defense_line_desc || ''} 
-                            onChange={e => handleChange('roi_defense_line_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
-                            placeholder="Why this DL level?"
-                          />
-                        ) : (
-                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.roi_defense_line_desc || 'No justification provided.'}</p>
-                        )}
-                     </div>
-                  </div>
-                )}
-
-                {activeROI.includes('man_hours') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Man-Hours Optimization</p>
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold text-blue-400">+</span>
-                            <input 
-                              type="number"
-                              value={project.man_hours_saved || 0}
-                              onChange={e => handleChange('man_hours_saved', parseFloat(e.target.value) || 0)}
-                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                            />
-                            <span className="text-[10px] font-bold text-blue-400 uppercase">hr/yr</span>
-                          </div>
-                        ) : (
-                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0} <span className="text-xs">hr/yr</span></p>
-                        )}
-                     </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
-                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.man_hours_saved_math || ''} 
-                            onChange={e => handleChange('man_hours_saved_math', e.target.value)}
-                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
-                            placeholder="(Tasks/Day * Hours/Task) * 250 Days..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.man_hours_saved_math || 'Calculation not documented.'}</p>
-                        )}
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.man_hours_saved_desc || ''} 
-                            onChange={e => handleChange('man_hours_saved_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
-                            placeholder="Context for these hours..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.man_hours_saved_desc || 'No context provided.'}</p>
-                        )}
-                     </div>
-                  </div>
-                )}
-
-                {activeROI.includes('stoploss') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Stoploss Revenue</p>
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold text-blue-400">+</span>
-                            <input 
-                              type="number"
-                              value={project.stoploss_minutes_saved || 0}
-                              onChange={e => handleChange('stoploss_minutes_saved', parseFloat(e.target.value) || 0)}
-                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                            />
-                            <span className="text-[10px] font-bold text-blue-400 uppercase">min/yr</span>
-                          </div>
-                        ) : (
-                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0} <span className="text-xs">min/yr</span></p>
-                        )}
-                     </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
-                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.stoploss_minutes_saved_math || ''} 
-                            onChange={e => handleChange('stoploss_minutes_saved_math', e.target.value)}
-                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
-                            placeholder="(Downtime Events/Year * Mean Time To Recover)..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.stoploss_minutes_saved_math || 'Calculation not documented.'}</p>
-                        )}
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.stoploss_minutes_saved_desc || ''} 
-                            onChange={e => handleChange('stoploss_minutes_saved_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
-                            placeholder="Business impact context..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.stoploss_minutes_saved_desc || 'No context provided.'}</p>
-                        )}
-                     </div>
-                  </div>
-                )}
-
-                {activeROI.includes('wpd') && (
-                  <div className={`p-4 bg-white/5 rounded-lg border space-y-4 transition-all ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                     <div>
-                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Wafer Yield Gained</p>
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold text-blue-400">+</span>
-                            <input 
-                              type="number"
-                              value={project.wafers_gained || 0}
-                              onChange={e => handleChange('wafers_gained', parseFloat(e.target.value) || 0)}
-                              className="w-full bg-transparent text-xl font-bold text-blue-400 outline-none"
-                            />
-                            <span className="text-[10px] font-bold text-blue-400 uppercase">WPD</span>
-                          </div>
-                        ) : (
-                          <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0} <span className="text-xs font-bold">WPD</span></p>
-                        )}
-                     </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
-                        <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.wafers_gained_math || ''} 
-                            onChange={e => handleChange('wafers_gained_math', e.target.value)}
-                            className="w-full bg-transparent border-none p-1 text-[10px] font-mono font-bold text-emerald-400/80 outline-none h-12 resize-none"
-                            placeholder="Yield % increase * Wafers/Day..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-mono font-bold text-emerald-500/60 px-1">{project.wafers_gained_math || 'Calculation not documented.'}</p>
-                        )}
-                     </div>
-                     <div className="space-y-1">
-                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Description</p>
-                        {isEditing ? (
-                          <textarea 
-                            value={project.wafers_gained_desc || ''} 
-                            onChange={e => handleChange('wafers_gained_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
-                            placeholder="Yield optimization details..."
-                          />
-                        ) : (
-                          <p className="text-[10px] font-medium text-slate-500 leading-relaxed px-1">{project.wafers_gained_desc || 'No context provided.'}</p>
-                        )}
-                     </div>
-                  </div>
-                )}
-
-                {activeROI.length === 0 && (
-                  <div className="py-20 text-center opacity-20 flex flex-col items-center gap-4">
-                     <BarChart3 size={32} />
-                     <p className="text-[10px] font-bold uppercase tracking-widest">No ROI streams selected</p>
-                  </div>
-                )}
-             </div>
-          </section>
-       </div>
-    </div>
-  )
-}
-
-const TaskRow = React.memo(({ 
-  task, 
-  rowIndex, 
-  isPackingMode, 
-  startDate, 
-  zoomLevel, 
-  selectedTaskIds, 
-  handleTaskMove, 
-  handleTaskResize, 
-  setSelectedTaskId, 
-  handleSelectTask,
-  onDependencyStart,
-  isSource,
-  isCritical,
-  diagram,
-  ROW_HEIGHT,
-  getDayOffset,
-  getDayWidth
-  }: any) => {
-  const dragControls = useDragControls()
-  const [showHologram, setShowHologram] = useState(false)
-  const left = Math.floor(getDayOffset(task?.start_date) * zoomLevel)
-  const width = Math.max(zoomLevel, Math.floor(getDayWidth(task?.start_date, task?.end_date) * zoomLevel))
-  
-  // Actual progress visualization
-  const actualLeft = task.actual_start_date ? Math.floor(getDayOffset(task.actual_start_date) * zoomLevel) : null
-  const actualWidth = (task.actual_start_date && task.actual_end_date) 
-    ? Math.max(zoomLevel, Math.floor(getDayWidth(task.actual_start_date, task.actual_end_date) * zoomLevel)) 
-    : (task.actual_start_date ? Math.max(zoomLevel, Math.floor(getDayWidth(task.actual_start_date, new Date().toISOString()) * zoomLevel)) : null)
-
-  const taggedNodes = useMemo(() => {
-    if (!task.metadata_json?.tagged_nodes?.length || !diagram?.nodes) return []
-    return diagram.nodes.filter((n: any) => task.metadata_json.tagged_nodes.includes(n.id))
-  }, [task.metadata_json?.tagged_nodes, diagram?.nodes])
-
-  return (
-    <div className="absolute w-full group/row" style={{ top: rowIndex * ROW_HEIGHT, height: ROW_HEIGHT }}>
-       <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
-       
-       {/* Actual Execution Bar (Overlapping) */}
-       {actualLeft !== null && (
-         <div 
-           className="absolute h-1.5 top-[28px] bg-emerald-500/30 rounded-full z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
-           style={{ left: actualLeft, width: actualWidth || 0 }} 
-         />
-       )}
-
-       <motion.div
-         layout
-         drag="x"
-         dragControls={dragControls}
-         dragListener={false}
-         dragMomentum={false}
-         onDrag={(e, info) => handleTaskMove(task.id, info.offset.x)}
-         onDragEnd={(e, info) => handleTaskMove(task.id, info.offset.x, true)}
-         onMouseEnter={() => setShowHologram(true)}
-         onMouseLeave={() => setShowHologram(false)}
-         onDoubleClick={() => setSelectedTaskId(task.id)}
-         onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-6 top-2 rounded-md flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow
-           ${selectedTaskIds.has(task.id) ? 'shadow-[0_0_0_2px_rgba(59,130,246,0.5)] z-40' : ''} 
-           ${isCritical ? 'shadow-[0_0_15px_rgba(244,63,94,0.3)] border-rose-500/60' : ''}
-           ${
-           task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : 
-           task.status === 'Blocked' ? 'border-rose-600 bg-rose-950/40' : 
-           task.status === 'In Progress' ? 'border-blue-500/50 bg-[#0d1425]' :
-           task.status === 'Review' ? 'border-amber-500/50 bg-amber-950/20' :
-           'border-slate-700 bg-slate-900/60'
-         }`}
-         style={{ left, width }}
-       >
-          {isCritical && <div className="absolute -inset-[1px] rounded-md bg-rose-500/20 animate-pulse pointer-events-none" />}
-
-          <div 
-            onPointerDown={(e) => dragControls.start(e)}
-            className="flex-1 h-full flex items-center px-2 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
-          >
-             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500' : 'bg-blue-500'}`} />
-             {width > 120 ? (
-               <span className={`text-[10px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-             ) : null}
-             <span className="text-[9px] font-black text-white/60 shrink-0 ml-auto">{task.progress}%</span>
-          </div>
-
-          {width <= 120 && (
-            <div className={`absolute left-full ml-3 flex items-center gap-2 whitespace-nowrap pointer-events-none ${isPackingMode ? 'top-6' : 'top-0'}`}>
-               <span className={`text-[10px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/80' : task.status === 'Blocked' ? 'text-rose-500/80' : isCritical ? 'text-rose-500/80' : 'text-slate-400'}`}>
-                  {task.name}
-               </span>
-            </div>
-          )}
-
-          <motion.div 
-            drag="x" 
-            dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
-            onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-md hover:bg-white/10" 
-          />
-          <motion.div 
-            drag="x" 
-            dragMomentum={false} 
-            onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
-            onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
-            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-md hover:bg-white/10" 
-          />
-
-          <button 
-            onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
-            className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1 text-slate-600 hover:text-white transition-opacity"
-          >
-             <Info size={14} />
-          </button>
-          
-          <button 
-            onClick={(e) => { e.stopPropagation(); onDependencyStart(task.id); }}
-            className={`opacity-0 group-hover:opacity-100 absolute -right-16 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-600 hover:text-blue-400'}`}
-          >
-             <LinkIcon size={14} />
-          </button>
-       </motion.div>
-    </div>
-  )
-})
-
-const PrecisionGantt = ({ project, onUpdate }: any) => {
-  const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
-  const [dragStartTasks, setDragStartTasks] = useState<any[] | null>(null)
-  const [zoomLevel, setZoomLevel] = useState(30)
-  const timelineRef = useRef<HTMLDivElement>(null)
-  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
-  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
-  const [dependencySourceId, setDependencySourceId] = useState<number | null>(null)
-  const [showExecutiveChart, setShowExecutiveChart] = useState(false)
-  const [isPackingMode, setIsPackingMode] = useState(false)
-  const [dayTasksPopup, setDayTasksPopup] = useState<{ date: Date, tasks: any[] } | null>(null)
-  const [cursorDate, setCursorDate] = useState<{ date: string, x: number, y: number } | null>(null)
-  const [dragStatus, setDragStatus] = useState<{ type: 'move' | 'resize-start' | 'resize-end', taskId: number, date: string } | null>(null)
-
-  const ROW_HEIGHT = 44 // Increased from 32
-  const HEADER_HEIGHT = 44
-
-  const listRef = useRef<HTMLDivElement>(null)
-
-  const handleScroll = (e: any) => {
-    if (e.target === listRef.current && timelineRef.current) {
-      timelineRef.current.scrollTop = e.target.scrollTop
-    } else if (e.target === timelineRef.current && listRef.current) {
-      listRef.current.scrollTop = e.target.scrollTop
-    }
-  }
-
-  const handleTimelineMouseMove = (e: React.MouseEvent) => {
-    if (!timelineRef.current) return
-    const rect = timelineRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left + timelineRef.current.scrollLeft
-    const y = e.clientY - rect.top
-    const daysOffset = x / zoomLevel
-    const date = addDays(startDate, daysOffset)
-    setCursorDate({ date: format(date, 'MMM dd, yyyy'), x: e.clientX, y: e.clientY })
-  }
-
-  const scrollToTask = (taskId: number) => {
-    const task = tasks.find(t => t.id === taskId)
-    if (task && timelineRef.current) {
-      const offset = getDayOffset(task.start_date) * zoomLevel
-      timelineRef.current.scrollTo({ left: offset - 100, behavior: 'smooth' })
-    }
-  }
-
-  // Kinetic Propagation Engine
-  const isCircular = (taskId: number, depId: number, currentTasks: any[]): boolean => {
-    const dep = currentTasks.find(t => t.id === depId)
-    if (!dep) return false
-    if (dep.dependencies_json?.includes(taskId)) return true
-    return (dep.dependencies_json || []).some((d: number) => isCircular(taskId, d, currentTasks))
-  }
-
-  const propagateChanges = useCallback((taskId: number, newEnd: string, currentTasks: any[]): any[] => {
-    let updated = [...currentTasks]
-    const successors = updated.filter(t => t.dependencies_json?.includes(taskId))
-    
-    successors.forEach(succ => {
-      const succStart = new Date(succ.start_date)
-      const predEnd = new Date(newEnd)
-      
-      if (succStart < predEnd) {
-        const duration = differenceInDays(new Date(succ.end_date), succStart)
-        const updatedSuccStart = predEnd.toISOString()
-        const updatedSuccEnd = addDays(predEnd, duration).toISOString()
-        
-        updated = updated.map(t => t.id === succ.id ? { ...t, start_date: updatedSuccStart, end_date: updatedSuccEnd } : t)
-        updated = propagateChanges(succ.id, updatedSuccEnd, updated)
-      }
-    })
-    return updated
-  }, [])
-
-  // Predictive Analytics
-  const criticalPath = useMemo(() => {
-    if (!tasks.length) return new Set<number>()
-    const sorted = [...tasks].filter(t => t.end_date).sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())
-    if (!sorted.length) return new Set<number>()
-
-    const lastTask = sorted[sorted.length - 1]
-    const path = new Set<number>([lastTask.id])
-
-    const findCritical = (taskId: number) => {
-      const task = tasks.find(t => t.id === taskId)
-      if (!task || !task.dependencies_json?.length) return
-
-      const deps = task.dependencies_json.map((id: number) => tasks.find(t => t.id === id)).filter((d: any) => d && d.end_date)
-      if (deps.length === 0) return
-      const maxEnd = Math.max(...deps.map((d: any) => new Date(d.end_date).getTime()))
-      const critDeps = deps.filter((d: any) => new Date(d.end_date).getTime() === maxEnd)
-
-      critDeps.forEach((d: any) => {
-        if (!path.has(d.id)) {
-          path.add(d.id)
-          findCritical(d.id)
-        }
-      })
-    }
-
-    findCritical(lastTask.id)
-    return path
-  }, [tasks])
-
-  // Sync tasks from project when it updates, but not while editing
-  useEffect(() => {
-    if (!selectedTaskId && !dragStartTasks) {
-      setTasks(project?.tasks || [])
-    }
-  }, [project?.tasks, selectedTaskId, dragStartTasks])
-
-  const handleSelectTask = useCallback((id: number, shift: boolean) => {
-    if (dependencySourceId) {
-      if (dependencySourceId === id) {
-        setDependencySourceId(null)
-        return
-      }
-      
-      if (isCircular(dependencySourceId, id, tasks)) {
-        toast.error('Circular Dependency Blocked')
-        setDependencySourceId(null)
-        return
-      }
-
-      const targetTask = tasks.find(t => t.id === id)
-      if (targetTask) {
-        const currentDeps = targetTask.dependencies_json || []
-        if (!currentDeps.includes(dependencySourceId)) {
-          handleTaskUpdate(id, { dependencies_json: [...currentDeps, dependencySourceId] })
-          toast.success('Strategic Dependency Linked')
-        }
-      }
-      setDependencySourceId(null)
-      return
-    }
-
-    if (shift) {
-      const newIds = new Set(selectedTaskIds)
-      if (newIds.has(id)) newIds.delete(id)
-      else newIds.add(id)
-      setSelectedTaskIds(newIds)
-    } else {
-      setSelectedTaskIds(new Set([id]))
-    }
-  }, [dependencySourceId, tasks, selectedTaskIds])
-
-  const handleTaskMove = useCallback((id: number, offset: number, isFinal = false) => {
-    if (!isFinal) {
-      const baseTasks = dragStartTasks || tasks
-      if (!dragStartTasks) setDragStartTasks([...tasks])
-
-      const daysMoved = Math.round(offset / zoomLevel)
-      const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
-      
-      let updatedTasks = [...tasks]
-      let newStartDateStr = ''
-      updatedTasks = updatedTasks.map(t => {
-        const startTask = baseTasks.find(bt => bt.id === t.id)
-        if (startTask && idsToMove.includes(t.id)) {
-          const newStart = addDays(new Date(startTask.start_date), daysMoved).toISOString()
-          const duration = differenceInDays(new Date(startTask.end_date), new Date(startTask.start_date))
-          const newEnd = addDays(new Date(newStart), duration).toISOString()
-          if (t.id === id) newStartDateStr = format(new Date(newStart), 'MMM dd, yyyy')
-          return { ...t, start_date: newStart, end_date: newEnd }
-        }
-        return t
-      })
-      
-      // Kinetic Propagation
-      idsToMove.forEach(mid => {
-        const moved = updatedTasks.find(t => t.id === mid)
-        if (moved) updatedTasks = propagateChanges(mid, moved.end_date, updatedTasks)
-      })
-      
-      setTasks(updatedTasks)
-      setDragStatus({ type: 'move', taskId: id, date: newStartDateStr })
-    } else {
-      setDragStartTasks(null)
-      setDragStatus(null)
-      onUpdate({ ...project, tasks: tasks })
-    }
-  }, [tasks, dragStartTasks, zoomLevel, selectedTaskIds, project, onUpdate])
-
-  const handleTaskResize = useCallback((id: number, offset: number, type: 'start' | 'end', isFinal = false) => {
-    if (!isFinal) {
-      const baseTasks = dragStartTasks || tasks
-      if (!dragStartTasks) setDragStartTasks([...tasks])
-
-      const daysMoved = Math.round(offset / zoomLevel)
-      let updatedTasks = [...tasks]
-      let newDateStr = ''
-      
-      updatedTasks = updatedTasks.map(t => {
-        const startTask = baseTasks.find(bt => bt.id === t.id)
-        if (startTask && t.id === id) {
-          let updatedTask = { ...t }
-          if (type === 'start') {
-            const newStart = addDays(new Date(startTask.start_date), daysMoved)
-            if (newStart < new Date(startTask.end_date)) {
-              updatedTask.start_date = newStart.toISOString()
-              newDateStr = format(newStart, 'MMM dd, yyyy')
-            }
-          } else {
-            const newEnd = addDays(new Date(startTask.end_date), daysMoved)
-            if (newEnd > new Date(startTask.start_date)) {
-              updatedTask.end_date = newEnd.toISOString()
-              newDateStr = format(newEnd, 'MMM dd, yyyy')
-            }
-          }
-          return updatedTask
-        }
-        return t
-      })
-
-      // Kinetic Propagation
-      if (type === 'end') {
-        const resized = updatedTasks.find(t => t.id === id)
-        if (resized) updatedTasks = propagateChanges(id, resized.end_date, updatedTasks)
-      }
-
-      setTasks(updatedTasks)
-      setDragStatus({ type: type === 'start' ? 'resize-start' : 'resize-end', taskId: id, date: newDateStr })
-    } else {
-      setDragStartTasks(null)
-      setDragStatus(null)
-      onUpdate({ ...project, tasks: tasks })
-    }
-  }, [tasks, dragStartTasks, zoomLevel, project, onUpdate])
-
-  const startDate = useMemo(() => {
-    if (!tasks || tasks.length === 0) return startOfMonth(new Date())
-    const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
-    const min = times.length > 0 ? Math.min(...times) : new Date().getTime()
-    return addDays(new Date(min), -14) 
-  }, [tasks])
-
-  const endDate = useMemo(() => {
-    if (!tasks || tasks.length === 0) return endOfMonth(addDays(new Date(), 90))
-    const times = tasks.map(t => new Date(t.end_date).getTime()).filter(t => !isNaN(t))
-    const max = times.length > 0 ? Math.max(...times) : addDays(new Date(), 90).getTime()
-    return endOfMonth(addDays(new Date(max), 60))
-  }, [tasks])
-
-  const [granularity, setGranularity] = useState<'D' | 'W' | 'M'>('D')
-
-  const zoomLevels = {
-    'D': 20,
-    'W': 20,
-    'M': 50
-  }
-
-  useEffect(() => {
-    setZoomLevel(zoomLevels[granularity])
-  }, [granularity])
-
-  const days = useMemo(() => {
-    try { 
-      let interval: Date[] = []
-      if (granularity === 'D') {
-        interval = eachDayOfInterval({ start: startDate, end: endDate })
-      } else if (granularity === 'W') {
-        interval = eachWeekOfInterval({ start: startDate, end: endDate })
-      } else {
-        interval = eachMonthOfInterval({ start: startDate, end: endDate })
-      }
-      return interval.length > 2000 ? interval.slice(0, 2000) : interval
-    }
-    catch (e) { return [new Date()] }
-  }, [startDate, endDate, granularity])
-
-  const getDayOffset = useCallback((date: string) => {
-    const d = new Date(date)
-    if (granularity === 'D') return differenceInDays(d, startDate)
-    if (granularity === 'W') return differenceInDays(d, startDate) / 7
-    return differenceInDays(d, startDate) / 30.44 // Average month length
-  }, [startDate, granularity])
-
-  const getDayWidth = useCallback((start: string, end: string) => {
-    const s = new Date(start)
-    const e = new Date(end)
-    const diff = Math.max(1, differenceInDays(e, s))
-    if (granularity === 'D') return diff
-    if (granularity === 'W') return diff / 7
-    return diff / 30.44
-  }, [granularity])
-
-  const packedTasks = useMemo(() => {
-    if (!tasks || tasks.length === 0) return []
-    if (!isPackingMode) return tasks.map((t, i) => ({ ...t, rowIndex: i }))
-    
-    const sorted = [...tasks].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-    const rows: any[][] = []
-    
-    sorted.forEach(task => {
-      let assigned = false
-      for (let i = 0; i < rows.length; i++) {
-        const lastInRow = rows[i][rows[i].length - 1]
-        if (new Date(task.start_date) >= new Date(lastInRow.end_date)) {
-          rows[i].push(task)
-          assigned = true
-          break
-        }
-      }
-      if (!assigned) rows.push([task])
-    })
-    
-    return rows.flatMap((row, rowIndex) => row.map(task => ({ ...task, rowIndex })))
-  }, [tasks, isPackingMode])
-
-  const handleTaskUpdate = (id: number, updates: any) => {
-    const task = tasks.find(t => t.id === id)
-    if (!task) return
-    
-    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
-    setTasks(updatedTasks)
-  }
-
-  useEffect(() => {
-    if (project?.tasks) setTasks(project.tasks)
-  }, [project?.tasks])
-
-  const maxRow = packedTasks.reduce((max, t) => Math.max(max, t.rowIndex), 0)
-
-  const dependencyLines = useMemo(() => {
-    const lines: any[] = []
-    packedTasks.forEach((task) => {
-      (task.dependencies_json || []).forEach((depId: number) => {
-        const fromTask = packedTasks.find(t => t.id === depId)
-        if (!fromTask) return
-        
-        const startX = Math.floor(getDayOffset(fromTask.end_date) * zoomLevel)
-        const startY = fromTask.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-        const endX = Math.floor(getDayOffset(task.start_date) * zoomLevel)
-        const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
-        
-        const isCriticalLink = criticalPath.has(task.id) && criticalPath.has(fromTask.id)
-        
-        lines.push({
-          key: `${fromTask.id}-${task.id}`,
-          startX, startY, endX, endY,
-          isCritical: isCriticalLink
-        })
-      })
-    })
-    return lines
-  }, [packedTasks, getDayOffset, zoomLevel, criticalPath])
-
-const GanttHeader = React.memo(({ days, zoomLevel, granularity, onDayClick }: any) => {
-  const today = useMemo(() => new Date(), [])
-  return (
-    <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10" style={{ width: days.length * zoomLevel }}>
-      {days.map((day: Date, i: number) => {
-        const isToday = isSameDay(day, today)
-        return (
-          <div 
-            key={i} 
-            onClick={() => onDayClick(day)}
-            className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/5' : ''}`} 
-            style={{ width: zoomLevel }}
-          >
-             <span className={`text-[8px] font-bold uppercase tracking-tighter ${isToday ? 'text-blue-400' : 'text-slate-600'}`}>
-                {granularity === 'D' ? format(day, 'MMM') : granularity === 'W' ? 'WEEK' : format(day, 'yyyy')}
-             </span>
-             <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>
-                {granularity === 'D' ? format(day, 'd') : granularity === 'W' ? format(day, 'w') : format(day, 'MMM')}
-             </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-})
-
-const DependencyLines = React.memo(({ lines }: any) => {
-  return (
-    <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
-      <defs>
-        <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
-          <polygon points="0 0, 6 3, 0 6" fill="#3b82f6" fillOpacity="0.4" />
-        </marker>
-        <marker id="arrowhead-crit" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
-          <polygon points="0 0, 6 3, 0 6" fill="#f43f5e" fillOpacity="0.8" />
-        </marker>
-      </defs>
-      {lines.map((line: any) => {
-        const dx = line.endX - line.startX
-        const dy = line.endY - line.startY
-        const controlX = line.startX + dx * 0.5
-        const d = `M ${line.startX} ${line.startY} C ${controlX} ${line.startY}, ${controlX} ${line.endY}, ${line.endX - 4} ${line.endY}`
-        return (
-          <path
-            key={line.key}
-            d={d}
-            stroke={line.isCritical ? "#f43f5e" : "#3b82f6"}
-            strokeWidth={line.isCritical ? "1.5" : "1"}
-            fill="none"
-            opacity={line.isCritical ? "0.6" : "0.3"}
-            markerEnd={line.isCritical ? "url(#arrowhead-crit)" : "url(#arrowhead)"}
-          />
-        )
-      })}
-    </svg>
-  )
-})
-
-  const todayX = getDayOffset(new Date().toISOString()) * zoomLevel
-
-  return (
-    <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
-       <div className="h-11 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] z-40">
-          <div className="flex items-center gap-6">
-             <button onClick={() => setShowExecutiveChart(!showExecutiveChart)} className={`p-1.5 rounded-lg transition-all border ${showExecutiveChart ? 'bg-blue-600 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`} title="Performance Graph"><BarChart3 size={16}/></button>
-             
-             <div className="flex items-center bg-white/5 p-1 rounded-lg border border-white/5">
-                {(['D', 'W', 'M'] as const).map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setGranularity(g)}
-                    className={`px-3 py-1 rounded text-[9px] font-bold transition-all ${
-                      granularity === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {g === 'D' ? 'DAYS' : g === 'W' ? 'WEEKS' : 'MONTHS'}
-                  </button>
-                ))}
-             </div>
-
-             <button onClick={() => setIsPackingMode(!isPackingMode)} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${isPackingMode ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`} title="Optimize Row Packing">{isPackingMode ? 'Compact Mode' : 'Standard Mode'}</button>
-             
-             <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(5, zoomLevel - (granularity === 'D' ? 5 : 1)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
-                <div className="w-px h-3 bg-white/10 mx-1" />
-                <button onClick={() => setZoomLevel(Math.min(500, zoomLevel + (granularity === 'D' ? 10 : 2)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel.toFixed(1)}PX</span>
-             </div>
-          </div>
-          <div className="flex items-center gap-4">
-             <button 
-               onClick={() => {
-                 const name = prompt('New task identifier')
-                 if (!name) return
-                 const newTask = { id: Date.now(), name: name, start_date: new Date().toISOString(), end_date: addDays(new Date(), 7).toISOString(), progress: 0, status: 'To Do', dependencies_json: [], metadata_json: {} }
-                 const updated = [...tasks, newTask]
-                 setTasks(updated)
-                 onUpdate({ ...project, tasks: updated })
-               }}
-               className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2"
-             ><Plus size={14}/> New Task</button>
-          </div>
-       </div>
-
-       {showExecutiveChart && (
-         <div className="h-[300px] border-b border-white/10 shrink-0">
-            <ExecutiveChart tasks={tasks} />
-         </div>
-       )}
-
-       <div className="flex-1 flex overflow-hidden relative">
-          {!isPackingMode && (
-            <div className="w-[240px] flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-2xl">
-               <div className="h-11 border-b border-white/10 flex items-center px-5 shrink-0 bg-[#0a0c14]/80">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">Execution Vectors</span>
-               </div>
-               <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar">
-                  <Reorder.Group axis="y" values={tasks} onReorder={(newOrder) => { setTasks(newOrder); onUpdate({ ...project, tasks: newOrder }); }} className="w-full">
-                     {tasks.map((task) => (
-                       <Reorder.Item 
-                         key={task.id} 
-                         value={task}
-                         onClick={() => { scrollToTask(task.id); handleSelectTask(task.id, false); }}
-                         onDoubleClick={() => setSelectedTaskId(task.id)}
-                         className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/10' : 'hover:bg-white/5'}`}
-                       >
-                          <div className={`w-1 h-1 rounded-full mr-3 shrink-0 ${
-                            task.status === 'Completed' ? 'bg-emerald-500' : 
-                            task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 
-                            criticalPath.has(task.id) ? 'bg-rose-500' : 'bg-blue-500'
-                          }`} />
-                          <p className={`text-[10px] font-bold truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`}>{task.name}</p>
-                          <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100" />
-                       </Reorder.Item>
-                     ))}
-                  </Reorder.Group>
-               </div>
-            </div>
-          )}
-
-          <div 
-            ref={timelineRef} 
-            onScroll={handleScroll} 
-            onMouseMove={handleTimelineMouseMove}
-            onMouseLeave={() => setCursorDate(null)}
-            className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]"
-          >
-             <GanttHeader 
-               days={days} 
-               zoomLevel={zoomLevel} 
-               granularity={granularity} 
-               onDayClick={(day: Date) => {
-                 const tasksEnding = tasks.filter(t => isSameDay(new Date(t.end_date), day))
-                 setDayTasksPopup({ date: day, tasks: tasksEnding })
-               }} 
-             />
-             <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
-                {/* Today Line */}
-                <div className="absolute top-0 bottom-0 w-px bg-blue-500/40 z-10 pointer-events-none" style={{ left: todayX }}>
-                   <div className="absolute top-[-44px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-[0_0_20px_rgba(37,99,235,0.4)] uppercase tracking-widest z-[60] border border-blue-400/30">TODAY</div>
-                   <div className="h-full w-full border-l border-dashed border-blue-500/40" />
-                </div>
-
-                <div 
-                  className="absolute inset-0 pointer-events-none opacity-5" 
-                  style={{ 
-                    backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel}px)` 
-                  }} 
-                />
-                
-                <DependencyLines lines={dependencyLines} />
-                
-                {packedTasks.map((task) => (
-                  <TaskRow 
-                    key={task.id} 
-                    task={task} 
-                    rowIndex={task.rowIndex} 
-                    isPackingMode={isPackingMode}
-                    startDate={startDate}
-                    zoomLevel={zoomLevel}
-                    selectedTaskIds={selectedTaskIds}
-                    handleTaskMove={handleTaskMove}
-                    handleTaskResize={handleTaskResize}
-                    setSelectedTaskId={setSelectedTaskId}
-                    handleSelectTask={handleSelectTask}
-                    onDependencyStart={setDependencySourceId}
-                    isSource={dependencySourceId === task.id}
-                    isCritical={criticalPath.has(task.id)}
-                    diagram={project.metadata_json?.diagram}
-                    ROW_HEIGHT={ROW_HEIGHT}
-                    getDayOffset={getDayOffset}
-                    getDayWidth={getDayWidth}
-                  />
-                ))}
-             </div>
-          </div>
-
-          {dragStatus && cursorDate && (
-            <div 
-              className="fixed pointer-events-none z-[1000] bg-white text-black text-[10px] font-black px-3 py-1.5 rounded shadow-2xl border border-white/20 whitespace-nowrap flex flex-col gap-1"
-              style={{ left: cursorDate.x + 15, top: cursorDate.y + 15 }}
-            >
-              <span className="text-[8px] text-slate-500 uppercase tracking-widest">
-                {dragStatus.type === 'move' ? 'Establishing Start' : dragStatus.type === 'resize-start' ? 'Adjusting Start' : 'Adjusting End'}
-              </span>
-              <span className="text-blue-600">{dragStatus.date}</span>
-            </div>
-          )}
-
-       <AnimatePresence>
-          {selectedTaskId && (
-            <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-[#0d0f17] w-[1000px] h-[85vh] border border-white/10 rounded-lg shadow-2xl flex flex-col overflow-hidden">
-                  {(() => {
-                    const task = tasks.find(t => t.id === selectedTaskId)
-                    if (!task) return null
-
-                    const subtasks = task.metadata_json?.subtasks || []
-                    
-                    // New Completion Logic
-                    const calculateProgress = () => {
-                      if (subtasks.length > 0) {
-                        const completed = subtasks.filter((s: any) => s.completed).length
-                        return Math.round((completed / subtasks.length) * 100)
-                      }
-                      
-                      // Status-based defaults
-                      switch(task.status) {
-                        case 'Completed': return 100
-                        case 'Review': return 90
-                        case 'In Progress': return 50
-                        case 'Blocked': return task.progress // Maintain existing if blocked
-                        default: return 0
-                      }
-                    }
-
-                    const autoProgress = calculateProgress()
-                    const autoStatus = task.status === 'Blocked' ? 'Blocked' : (autoProgress === 100 ? 'Completed' : (autoProgress > 0 ? 'In Progress' : task.status))
-
-                    const updateSubtask = (idx: number, updates: any) => {
-                      const newSubtasks = [...subtasks]
-                      newSubtasks[idx] = { ...newSubtasks[idx], ...updates }
-                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
-                    }
-
-                    const addSubtask = () => {
-                      const label = prompt('Subtask Description')
-                      if (!label) return
-                      const newSubtasks = [...subtasks, { label, completed: false }]
-                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
-                    }
-
-                    const removeSubtask = (idx: number) => {
-                      const newSubtasks = subtasks.filter((_: any, i: number) => i !== idx)
-                      handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
-                    }
-
-                    // Dependencies
-                    const dependentFrom = tasks.filter(t => task.dependencies_json?.includes(t.id))
-                    const dependentTo = tasks.filter(t => t.dependencies_json?.includes(task.id))
-
-                    return (
-                      <>
-                        <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 flex items-center justify-between">
-                           <div className="flex items-center gap-4">
-                              <div className={`w-3 h-3 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
-                              <div>
-                                 <h2 className="text-xl font-bold text-white tracking-tighter leading-none">{task.name}</h2>
-                                 <div className="flex items-center gap-2 mt-1">
-                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Milestone Vector</p>
-                                    <span className="text-slate-800">•</span>
-                                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{autoProgress}% Execution Maturity</span>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-3">
-                              <button 
-                                onClick={() => { if(confirm('Decommission this strategic milestone?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }}
-                                className="p-2 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
-                                title="Decommission Task"
-                              >
-                                 <Trash2 size={16}/>
-                              </button>
-                              <div className="w-px h-8 bg-white/10 mx-2" />
-                              <button 
-                                onClick={() => { 
-                                  const finalTask = { ...task, progress: autoProgress, status: autoStatus }
-                                  const updatedTasks = tasks.map(t => t.id === task.id ? finalTask : t)
-                                  onUpdate({ ...project, tasks: updatedTasks })
-                                  setSelectedTaskId(null)
-                                }} 
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
-                              >
-                                 <Save size={14}/> 
-                                 <span className="text-[10px] font-bold uppercase tracking-widest">Commit Changes</span>
-                              </button>
-                              <button onClick={() => setSelectedTaskId(null)} className="p-2 text-slate-500 hover:text-white rounded-lg transition-all"><X size={20}/></button>
-                           </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-10 grid grid-cols-12 gap-10">
-                           <div className="col-span-7 space-y-10">
-                              <section className="space-y-4">
-                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Task Description</h4>
-                                 <textarea 
-                                   value={task.description || ''} 
-                                   onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} 
-                                   className="w-full h-32 bg-black/40 border border-white/10 rounded-lg p-5 text-sm font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" 
-                                   placeholder="Define core objectives..." 
-                                 />
-                              </section>
-
-                              <section className="space-y-6">
-                                 <div className="flex items-center justify-between">
-                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtasks</h4>
-                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> Add</button>
-                                 </div>
-                                 <div className="space-y-2">
-                                    {subtasks.map((s: any, idx: number) => (
-                                      <div key={idx} className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg hover:border-blue-500/30 transition-all">
-                                         <input 
-                                           type="checkbox" 
-                                           checked={s.completed} 
-                                           onChange={e => updateSubtask(idx, { completed: e.target.checked })}
-                                           className="w-4 h-4 rounded border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                                         />
-                                         <input 
-                                           value={s.label} 
-                                           onChange={e => updateSubtask(idx, { label: e.target.value })}
-                                           className={`flex-1 bg-transparent border-none outline-none text-xs font-bold transition-all ${s.completed ? 'text-slate-600 line-through' : 'text-slate-300'}`}
-                                         />
-                                         <button onClick={() => removeSubtask(idx)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-500 hover:text-rose-400 transition-all"><Trash2 size={14}/></button>
-                                      </div>
-                                    ))}
-                                    {subtasks.length === 0 && (
-                                      <div className="py-12 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-20">
-                                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">No subtasks defined</p>
-                                      </div>
-                                    )}
-                                 </div>
-                              </section>
-
-                              {/* Comment Section */}
-                              <section className="space-y-6 pt-10 border-t border-white/5">
-                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comments</h4>
-                                 <div className="space-y-4">
-                                    {(task.metadata_json?.comments || []).map((c: any, i: number) => (
-                                      <div key={i} className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-2">
-                                         <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-blue-400">{c.author}</span>
-                                            <span className="text-[8px] font-bold text-slate-600 uppercase">{format(new Date(c.timestamp), 'MMM dd, HH:mm')}</span>
-                                         </div>
-                                         <p className="text-xs font-bold text-slate-300 leading-relaxed">{c.content}</p>
-                                      </div>
-                                    ))}
-                                    <div className="flex gap-4">
-                                       <textarea 
-                                         id="task-comment-input"
-                                         className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-xs font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none h-20"
-                                         placeholder="Add a comment..."
-                                       />
-                                       <button 
-                                         onClick={() => {
-                                           const input = document.getElementById('task-comment-input') as HTMLTextAreaElement
-                                           if (!input.value) return
-                                           const newComments = [...(task.metadata_json?.comments || []), { author: 'System', content: input.value, timestamp: new Date().toISOString() }]
-                                           handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, comments: newComments } })
-                                           input.value = ''
-                                         }}
-                                         className="px-6 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
-                                       >
-                                          Post
-                                       </button>
-                                    </div>
-                                 </div>
-                              </section>
-                           </div>
-
-                           <div className="col-span-5 space-y-10">
-                              <section className="space-y-6">
-                                 <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Current Status</label>
-                                       <select 
-                                         value={task.status} 
-                                         onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} 
-                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all"
-                                       >
-                                          {['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                                       </select>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Priority</label>
-                                       <select 
-                                         value={task.priority || 'Medium'} 
-                                         onChange={e => handleTaskUpdate(task.id, { priority: e.target.value })} 
-                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all"
-                                       >
-                                          {['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
-                                       </select>
-                                    </div>
-                                 </div>
-                              </section>
-
-                              <section className="space-y-6">
-                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Planned Timeline</h4>
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned Start Date</label>
-                                       <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned End Date</label>
-                                       <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                 </div>
-                              </section>
-
-                              <section className="space-y-6">
-                                 <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Actual Execution</h4>
-                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual Start Date</label>
-                                       <input type="date" value={task.actual_start_date ? format(new Date(task.actual_start_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_start_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual End Date</label>
-                                       <input type="date" value={task.actual_end_date ? format(new Date(task.actual_end_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_end_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
-                                    </div>
-                                 </div>
-                              </section>
-
-                              <section className="space-y-6">
-                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Strategic Dependencies</h4>
-                                 <div className="space-y-4">
-                                    <div className="space-y-2">
-                                       <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent From (Blocks these tasks)</p>
-                                       <div className="flex flex-wrap gap-2">
-                                          {dependentTo.map(t => (
-                                            <span key={t.id} className="px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded text-[9px] font-bold text-blue-400 uppercase tracking-widest">{t.name}</span>
-                                          ))}
-                                          {dependentTo.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No downstream blocks</span>}
-                                       </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                       <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent To (Blocked by these tasks)</p>
-                                       <div className="flex flex-wrap gap-2">
-                                          {dependentFrom.map(t => (
-                                            <span key={t.id} className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 rounded text-[9px] font-bold text-amber-400 uppercase tracking-widest">{t.name}</span>
-                                          ))}
-                                          {dependentFrom.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No upstream blocks</span>}
-                                       </div>
-                                    </div>
-                                 </div>
-                              </section>
-
-                              <section className="space-y-4 pt-10 border-t border-white/5">
-                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audit Timestamps</h4>
-                                 <div className="space-y-2">
-                                    {(task.metadata_json?.history || []).slice(-5).reverse().map((h: any, i: number) => (
-                                      <div key={i} className="text-[9px] font-bold text-slate-600 flex items-center justify-between">
-                                         <span className="truncate flex-1">"{h.content}"</span>
-                                         <span className="text-slate-800 shrink-0 ml-4 uppercase">{format(new Date(h.timestamp), 'MMM dd, HH:mm')}</span>
-                                      </div>
-                                    ))}
-                                    {(!task.metadata_json?.history || task.metadata_json.history.length === 0) && <p className="text-[8px] font-bold text-slate-800 uppercase text-center py-4">No audit history</p>}
-                                 </div>
-                              </section>
-                           </div>
-                        </div>
-                      </>
-                    )
-                  })()}
-               </motion.div>
-            </div>
-            )}
-            </AnimatePresence>
-            </div>
-            </div>
-            )
-            }
-const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
-  const [selectedPoint, setSelectedPoint] = useState<any>(null)
-
-  const data = useMemo(() => {
-    if (!tasks || tasks.length === 0) return []
-    
-    // Get time range from all tasks (planned and actual)
-    const times = tasks.flatMap(t => [
-      new Date(t.start_date).getTime(), 
-      new Date(t.end_date).getTime(),
-      t.actual_start_date ? new Date(t.actual_start_date).getTime() : null,
-      t.actual_end_date ? new Date(t.actual_end_date).getTime() : null
-    ]).filter(t => t !== null && !isNaN(t))
-    
-    if (times.length === 0) return []
-    
-    const start = startOfMonth(new Date(Math.min(...times)))
-    const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
-    const interval = eachDayOfInterval({ start, end })
-
-    const step = interval.length > 60 ? 7 : (interval.length > 30 ? 2 : 1)
-
-    let cumulativeScheduled = 0
-    let cumulativeActual = 0
-    const totalTasks = tasks.length
-
-    return interval.filter((_, i) => i % step === 0).map(date => {
-      const scheduledOnDate = tasks.filter(t => isSameDay(new Date(t.end_date), date))
-      const actualOnDate = tasks.filter(t => t.actual_end_date && isSameDay(new Date(t.actual_end_date), date))
-      
-      const scheduledCount = tasks.filter(t => new Date(t.end_date) <= date).length
-      const actualCount = tasks.filter(t => t.actual_end_date && new Date(t.actual_end_date) <= date).length
-
-      return {
-        date: format(date, 'MMM d'),
-        fullDate: date,
-        scheduled: totalTasks > 0 ? Math.round((scheduledCount / totalTasks) * 100) : 0,
-        actual: totalTasks > 0 ? Math.round((actualCount / totalTasks) * 100) : 0,
-        plannedTasks: scheduledOnDate,
-        actualTasks: actualOnDate
-      }
-    })
-  }, [tasks])
-
-  return (
-    <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6 overflow-hidden">
-       <div className="flex items-center justify-between shrink-0">
-          <div>
-             <h3 className="text-xl font-bold text-white uppercase tracking-tighter flex items-center gap-3">
-                <TrendingUp className="text-blue-500" size={24} />
-                Strategic Velocity Vector
-             </h3>
-             <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Real-time execution momentum vs theoretical plan</p>
-          </div>
-          <div className="flex gap-8">
-             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" /><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Target Velocity</span></div>
-             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Actual Momentum</span></div>
-          </div>
-       </div>
-       <div className="flex-1 min-h-0 relative">
-          <ResponsiveContainer width="100%" height="100%">
-             <AreaChart data={data} onClick={(e: any) => e?.activePayload && setSelectedPoint(e.activePayload[0].payload)}>
-                <defs>
-                   <linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                   <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.3} />
-                <XAxis dataKey="date" stroke="#334155" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} />
-                <YAxis stroke="#334155" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
-                <RechartsTooltip 
-                   contentStyle={{ background: '#0a0c14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '9px', fontWeight: 'bold', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }} 
-                   itemStyle={{ color: '#fff' }}
-                   cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-                />
-                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorSched)" activeDot={{ r: 4, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" activeDot={{ r: 5, strokeWidth: 0 }} />
-             </AreaChart>
-          </ResponsiveContainer>
-
-          <AnimatePresence>
-            {selectedPoint && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-0 right-0 w-72 bg-[#0d0f17] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col max-h-full">
-                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
-                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{selectedPoint.date} Report</h4>
-                  <button onClick={() => setSelectedPoint(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-                  <div className="space-y-3">
-                     <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest px-1">Planned Completions</p>
-                     {selectedPoint.plannedTasks.length > 0 ? selectedPoint.plannedTasks.map((t: any) => (
-                       <div key={t.id} className="p-2.5 bg-white/5 rounded border border-white/5">
-                         <p className="text-[10px] font-bold text-slate-300 truncate">{t.name}</p>
-                         <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase">Target: {format(new Date(t.end_date), 'MMM dd')}</p>
-                       </div>
-                     )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
-                  </div>
-                  <div className="space-y-3 border-t border-white/5 pt-4">
-                     <p className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-widest px-1">Actual Completions</p>
-                     {selectedPoint.actualTasks.length > 0 ? selectedPoint.actualTasks.map((t: any) => (
-                       <div key={t.id} className="p-2.5 bg-emerald-500/5 rounded border border-emerald-500/20">
-                         <p className="text-[10px] font-bold text-emerald-400 truncate">{t.name}</p>
-                         <p className="text-[8px] font-bold text-emerald-600 mt-1 uppercase">Finalized: {format(new Date(t.actual_end_date), 'MMM dd')}</p>
-                       </div>
-                     )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-       </div>
-    </div>
-  )
-}
+// --- Main Views ---
 
 const DiagramBuilder = ({ data, onChange, onSave }: any) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(data?.nodes || [])
   const [edges, setEdges, onEdgesChange] = useEdgesState(data?.edges || [])
-
-  const onConnect = (params: Connection) => {
-    const newEdges = addEdge({ ...params, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' }, style: { stroke: '#3b82f6', strokeWidth: 2 } }, edges)
-    setEdges(newEdges)
-  }
-
-  const addNode = (type: string, label: string, color: string) => {
-    const count = nodes.length
-    setNodes([...nodes, {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type,
-      data: { label },
-      position: { x: 100 + (count % 5) * 40, y: 100 + Math.floor(count / 5) * 40 },
-      style: { background: '#1a1b26', color: '#fff', border: `2px solid ${color}`, fontSize: '10px', fontWeight: 'bold', borderRadius: type === 'circle' ? '50%' : '8px', width: 120, height: type === 'circle' ? 120 : 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 15px ${color}40` }
-    }])
-  }
-
-  useEffect(() => {
-    onChange({ nodes, edges })
-  }, [nodes, edges])
-
+  const onConnect = (params: Connection) => setEdges(eds => addEdge({ ...params, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' } }, eds))
+  const addNode = (type: string, label: string) => { const nd = { id: Date.now().toString(), type, data: { label }, position: { x: 100, y: 100 } }; setNodes(nds => [...nds, nd]) }
+  useEffect(() => { onChange({ nodes, edges }) }, [nodes, edges])
   return (
-    <div className="h-[600px] bg-[#0a0c14] border border-white/5 rounded-xl overflow-hidden relative group">
-      <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView>
-        <Background color="#1e293b" gap={20} /><Controls /><MiniMap nodeStrokeColor="#3b82f6" nodeColor="#1e293b" maskColor="rgba(0,0,0,0.5)" />
-      </ReactFlow>
-      <div className="absolute top-4 left-4 flex flex-col gap-2">
-         <div className="flex gap-2 bg-black/50 p-2 rounded-lg backdrop-blur-md border border-white/10">
-            <button onClick={() => addNode('default', 'PROCESS', '#3b82f6')} className="p-2 hover:bg-blue-600/20 text-blue-400 rounded transition-all" title="Process/CPU"><Cpu size={16}/></button>
-            <button onClick={() => addNode('circle', 'DATA', '#10b981')} className="p-2 hover:bg-emerald-600/20 text-emerald-400 rounded transition-all" title="Data/Database"><Database size={16}/></button>
-            <button onClick={() => addNode('input', 'SOURCE', '#f59e0b')} className="p-2 hover:bg-amber-600/20 text-amber-400 rounded transition-all" title="Source/Maximize"><Maximize2 size={16}/></button>
-            <button onClick={() => addNode('output', 'SINK', '#ef4444')} className="p-2 hover:bg-rose-600/20 text-rose-400 rounded transition-all" title="Sink/Minimize"><Minimize2 size={16}/></button>
-         </div>
+    <div className="h-[650px] bg-[#0a0c14] border border-white/5 rounded-2xl overflow-hidden relative">
+      <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} nodeTypes={nodeTypes} fitView><Background color="#1e293b" gap={20} /><Controls /></ReactFlow>
+      <div className="absolute top-6 left-6 flex flex-col gap-4">
+         <div className="bg-black/60 p-2 rounded-2xl border border-white/10 backdrop-blur-xl flex gap-2"><button onClick={() => addNode('process', 'STEP')} className="p-2 text-blue-400 hover:bg-blue-600/20 rounded-xl"><Layout size={18}/></button><button onClick={() => addNode('diamond', 'DECISION')} className="p-2 text-amber-400 hover:bg-amber-600/20 rounded-xl"><MousePointer2 size={18}/></button></div>
+         <div className="bg-black/60 p-2 rounded-2xl border border-white/10 backdrop-blur-xl flex gap-2"><button onClick={() => addNode('server', 'SERVER')} className="p-2 text-slate-400 hover:bg-slate-600/20 rounded-xl"><Server size={18}/></button><button onClick={() => addNode('db', 'DATABASE')} className="p-2 text-emerald-400 hover:bg-emerald-600/20 rounded-xl"><Database size={18}/></button></div>
       </div>
-      {onSave && (
-        <div className="absolute bottom-4 right-4"><button onClick={onSave} className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg flex items-center gap-2"><Save size={14} /> Commit Design</button></div>
-      )}
+      {onSave && <button onClick={onSave} className="absolute bottom-6 right-6 px-8 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl">Baseline Design</button>}
     </div>
   )
 }
@@ -1757,1381 +240,789 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
   const [name, setName] = useState(project?.name || '')
   const [problemStatement, setProblemStatement] = useState(project?.problem_statement || '')
   const [objective, setObjective] = useState(project?.objective || '')
-  const [isPasting, setIsPasting] = useState(false)
-  const [newLinkLabel, setNewLinkLabel] = useState('')
-  const [newLinkUrl, setNewLinkUrl] = useState('')
-  const [isAddingLink, setIsAddingLink] = useState(false)
   const [activeDiagramIndex, setActiveDiagramIndex] = useState<number | null>(null)
-  const [systemSearch, setSystemSearch] = useState('')
-  const [assetSearch, setAssetSearch] = useState('')
-  const [serviceSearch, setServiceSearch] = useState('')
-  const [selectedImage, setSelectedImage] = useState<{ url: string, caption?: string, index: number } | null>(null)
+  const [selectedImage, setSelectedImage] = useState<any>(null)
+  const [isAddingRef, setIsAddingRef] = useState(false)
+  const [newRefLabel, setNewRefLabel] = useState('')
+  const [newRefUrl, setNewRefUrl] = useState('')
+  const [newJira, setNewJira] = useState('')
+  const [isEvidenceHighlighted, setIsEvidenceHighlighted] = useState(false)
+  const evidenceRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setName(project?.name || '')
-    setProblemStatement(project?.problem_statement || '')
-    setObjective(project?.objective || '')
-  }, [project])
-
-  const handleFieldChange = (field: string, value: any) => {
-    if (project && project[field] !== value) onUpdate({ ...project, [field]: value })
-  }
-
-  // Cascading Logic & Option Prioritization
-  const systemOptions = useMemo(() => options?.filter((o:any) => o.category === 'LogicalSystem') || [], [options])
-  const typeOptions = useMemo(() => options?.filter((o:any) => o.category === 'ProjectType') || PROJECT_TYPES, [options])
-  const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.username, label: u.full_name || u.username })) || [], [users])
-
-  const filteredSystems = useMemo(() => {
-    const base = systemOptions.filter((o:any) => o.label.toLowerCase().includes(systemSearch.toLowerCase()))
-    const selected = project?.target_systems || []
-    return [...base].sort((a, b) => {
-      const aSel = selected.includes(a.value)
-      const bSel = selected.includes(b.value)
-      if (aSel && !bSel) return -1
-      if (!aSel && bSel) return 1
-      return 0
-    })
-  }, [systemOptions, project?.target_systems, systemSearch])
-
-  const filteredAssets = useMemo(() => {
-    const base = (!project?.target_systems?.length ? devices : devices?.filter((d:any) => project.target_systems.includes(d.system))) || []
-    const searched = base.filter((d:any) => d.name.toLowerCase().includes(assetSearch.toLowerCase()))
-    const selected = project?.target_assets || []
-    return [...searched].sort((a, b) => {
-      const aSel = selected.includes(a.id)
-      const bSel = selected.includes(b.id)
-      if (aSel && !bSel) return -1
-      if (!aSel && bSel) return 1
-      return 0
-    })
-  }, [devices, project?.target_systems, project?.target_assets, assetSearch])
-
-  const filteredServices = useMemo(() => {
-    const base = (!project?.target_assets?.length ? services : services?.filter((s:any) => project.target_assets.includes(s.device_id))) || []
-    const searched = base.filter((s:any) => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
-    const selected = project?.target_services || []
-    return [...searched].sort((a, b) => {
-      const aSel = selected.includes(a.id)
-      const bSel = selected.includes(b.id)
-      if (aSel && !bSel) return -1
-      if (!aSel && bSel) return 1
-      return 0
-    })
-  }, [services, project?.target_assets, project?.target_services, serviceSearch])
-
-  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile()
-        if (file) {
-          const reader = new FileReader()
-          reader.onload = (event) => {
-            const base64 = event.target?.result as string
-            const metadata = project?.metadata_json || {}
-            const updatedImages = [...(metadata.images || []), base64]
-            onUpdate({ ...project, metadata_json: { ...metadata, images: updatedImages } })
-            toast.success('Artifact Captured')
-            setIsPasting(false)
-          }
-          reader.readAsDataURL(file)
+     const handleClickOutside = (e: MouseEvent) => {
+        if (evidenceRef.current && !evidenceRef.current.contains(e.target as Node)) {
+           setIsEvidenceHighlighted(false)
         }
-      }
-    }
-  }, [project, onUpdate])
+     }
+     document.addEventListener('mousedown', handleClickOutside)
+     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
-  useEffect(() => {
-    const handleClickOutside = () => setIsPasting(false)
-    if (isPasting) {
-      window.addEventListener('click', handleClickOutside)
-      return () => window.removeEventListener('click', handleClickOutside)
-    }
-  }, [isPasting])
-
-  if (!project) return (
-    <div className="h-full flex flex-col items-center justify-center opacity-20">
-       <Briefcase size={64} className="mb-4" />
-       <h2 className="text-xl font-bold uppercase tracking-widest">Select Strategic Vector</h2>
-    </div>
-  )
+  const handleFieldChange = (field: string, value: any) => { if (project && project[field] !== value) onUpdate({ ...project, [field]: value }) }
+  const userOptions = useMemo(() => users?.map((u:any) => ({ value: u.username, label: u.full_name || u.username })) || [], [users])
+  const typeOptions = useMemo(() => options?.filter((o:any) => o.category === 'ProjectType') || PROJECT_TYPES, [options])
 
   return (
-    <div className="max-w-full mx-auto space-y-10 pb-20" onPaste={handlePaste}>
-       <section className="bg-white/5 rounded-lg border border-white/5 overflow-hidden shadow-2xl">
-          <div className="p-8 border-b border-white/5 bg-[#0a0c14]/50">
-             <div className="grid grid-cols-3 gap-8">
-                <div className="col-span-1 space-y-2">
-                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Project Title</label>
-                   {isEditing ? (
-                     <input 
-                       value={name} 
-                       onChange={e => setName(e.target.value)}
-                       onBlur={() => handleFieldChange('name', name)}
-                       className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all"
-                     />
-                   ) : (
-                     <p className="text-xl font-bold text-white tracking-tighter px-1">{project.name}</p>
-                   )}
-                </div>
-                <div className="space-y-2">
-                   {isEditing ? (
-                     <StyledSelect 
-                       label="Status"
-                       value={project.status}
-                       onChange={e => handleFieldChange('status', e.target.value)}
-                       options={PROJECT_STATUSES}
-                     />
-                   ) : (
-                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Status</label>
-                        <div className="flex items-center gap-2 px-1">
-                           <StatusPill value={project.status} />
-                        </div>
-                     </div>
-                   )}
-                </div>
-                <div className="space-y-2">
-                   {isEditing ? (
-                     <StyledSelect 
-                       label="Priority"
-                       value={project.priority}
-                       onChange={e => handleFieldChange('priority', e.target.value)}
-                       options={PROJECT_PRIORITIES}
-                     />
-                   ) : (
-                     <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Priority</label>
-                        <p className="text-xs font-bold text-amber-500 uppercase tracking-widest px-1">{project.priority}</p>
-                     </div>
-                   )}
-                </div>
-             </div>
-          </div>
-
-          <div className="p-8 grid grid-cols-2 gap-10">
-             <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Problem Statement</h4>
-                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
-                   {isEditing ? (
-                     <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define strategic friction..." />
-                   ) : (
-                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.problem_statement || 'No problem statement defined.'}</p>
-                   )}
-                </div>
-             </section>
-             <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Objective</h4>
-                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-white/10' : 'border-white/5'}`}>
-                   {isEditing ? (
-                     <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define target end state..." />
-                   ) : (
-                     <p className="text-xs font-bold text-slate-400 leading-relaxed whitespace-pre-wrap">{project.objective || 'No objective defined.'}</p>
-                   )}
-                </div>
-             </section>
-          </div>
-
-          <div className="p-8 grid grid-cols-2 gap-10 bg-[#0a0c14]/30 border-t border-white/5">
-             <div className="space-y-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner(s)</label>
-                <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                   {userOptions
-                    .filter((o:any) => isEditing || (project.owners || []).includes(o.value))
-                    .map((o:any) => (
-                      <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
-                         {isEditing && (
-                           <input 
-                             type="checkbox" 
-                             checked={(project.owners || []).includes(o.value)} 
-                             onChange={e => {
-                                const current = project.owners || []
-                                const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                handleFieldChange('owners', updated)
-                             }}
-                             className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                           />
-                         )}
-                         <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
-                      </label>
-                   ))}
-                   {!isEditing && (!project.owners || project.owners.length === 0) && (
-                     <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No owners assigned</p>
-                   )}
-                </div>
-             </div>
-             <div className="space-y-2">
+    <div className="max-w-7xl mx-auto space-y-10 pb-32">
+       {/* Primary Header Info */}
+       <section className="bg-[#0a0c14] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+          <div className="p-8 border-b border-white/5 bg-gradient-to-r from-blue-600/5 to-transparent flex gap-8 items-start">
+             <div className="flex-1 space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Project Identifier</label>
                 {isEditing ? (
-                  <StyledSelect 
-                    label="Type"
-                    value={project.type || ''}
-                    onChange={e => handleFieldChange('type', e.target.value)}
-                    options={typeOptions}
-                    placeholder="Select type..."
-                  />
+                  <input value={name} onChange={e => setName(e.target.value)} onBlur={() => handleFieldChange('name', name)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-lg font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner" />
                 ) : (
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Type</label>
-                    <div className="flex items-center gap-3 bg-white/[0.02] p-3 rounded-lg border border-white/5">
-                       <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">{project.type || 'N/A'}</span>
-                    </div>
-                  </div>
+                  <h2 className="text-3xl font-black text-white tracking-tighter px-1">{project.name}</h2>
+                )}
+             </div>
+             <div className="w-48 space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
+                {isEditing ? (
+                   <div className="h-[48px] flex items-center">
+                    <select value={project.status} onChange={(e:any) => handleFieldChange('status', e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 h-full text-[11px] font-bold text-white outline-none focus:border-blue-500">
+                      {PROJECT_STATUSES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                   </div>
+                ) : (
+                  <div className="h-[48px] flex items-center px-1"><StatusPill value={project.status} /></div>
+                )}
+             </div>
+             <div className="w-48 space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Priority</label>
+                {isEditing ? (
+                   <div className="h-[48px] flex items-center">
+                    <select value={project.priority} onChange={(e:any) => handleFieldChange('priority', e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-3 h-full text-[11px] font-bold text-white outline-none focus:border-blue-500">
+                      {PROJECT_PRIORITIES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                   </div>
+                ) : (
+                  <div className="h-[48px] flex items-center px-1"><span className={`text-[10px] font-black uppercase tracking-widest ${project.priority === 'High' || project.priority === 'Highest' ? 'text-rose-500' : 'text-slate-500'}`}>{project.priority}</span></div>
                 )}
              </div>
           </div>
 
-          <div className="p-8 border-t border-white/5">
-             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
-                Strategic Context & Target Boundaries
-             </label>
-             <div className="grid grid-cols-3 gap-6">
-                <div className="space-y-2">
-                   <div className="flex items-center justify-between px-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Strategic Systems</label>
-                      {isEditing && (
-                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                           <Search size={8} className="text-slate-600" />
-                           <input value={systemSearch} onChange={e => setSystemSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                        </div>
-                      )}
-                   </div>
-                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredSystems
-                        .filter((o:any) => isEditing || project.target_systems?.includes(o.value))
-                        .map((o:any) => (
-                         <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
-                            {isEditing && (
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_systems?.includes(o.value)} 
-                                onChange={e => {
-                                   const current = project.target_systems || []
-                                   const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                   handleFieldChange('target_systems', updated)
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                            )}
-                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
-                         </label>
-                      ))}
-                      {!isEditing && (!project.target_systems || project.target_systems.length === 0) && (
-                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No systems selected</p>
-                      )}
-                   </div>
+          <div className="p-8 grid grid-cols-2 gap-10">
+             <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Problem Statement</h4>
+                <div className={`p-6 rounded-2xl border transition-all ${isEditing ? 'bg-slate-900/40 border-blue-500/20 shadow-inner' : 'bg-black/20 border-white/5'} min-h-[160px]`}>
+                   {isEditing ? (
+                     <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define the challenge..." />
+                   ) : (
+                     <p className="text-xs font-bold text-slate-400 leading-relaxed italic">"{project.problem_statement || 'Awaiting definition...'}"</p>
+                   )}
                 </div>
-                <div className="space-y-2">
-                   <div className="flex items-center justify-between px-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Impacted Assets</label>
-                      {isEditing && (
-                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                           <Search size={8} className="text-slate-600" />
-                           <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                        </div>
-                      )}
-                   </div>
-                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredAssets
-                        .filter((d:any) => isEditing || project.target_assets?.includes(d.id))
-                        .map((d:any) => (
-                         <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
-                            {isEditing && (
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_assets?.includes(d.id)} 
-                                onChange={e => {
-                                   const current = project.target_assets || []
-                                   const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                   handleFieldChange('target_assets', updated)
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                            )}
-                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{d.name}</span>
-                         </label>
-                      ))}
-                      {!isEditing && (!project.target_assets || project.target_assets.length === 0) && (
-                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No assets impacted</p>
-                      )}
-                   </div>
-                </div>
-                <div className="space-y-2">
-                   <div className="flex items-center justify-between px-1">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Core Services</label>
-                      {isEditing && (
-                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                           <Search size={8} className="text-slate-600" />
-                           <input value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                        </div>
-                      )}
-                   </div>
-                   <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredServices
-                        .filter((s:any) => isEditing || project.target_services?.includes(s.id))
-                        .map((s:any) => (
-                         <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
-                            {isEditing && (
-                              <input 
-                                type="checkbox" 
-                                checked={project.target_services?.includes(s.id)} 
-                                onChange={e => {
-                                   const current = project.target_services || []
-                                   const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
-                                   handleFieldChange('target_services', updated)
-                                }}
-                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                              />
-                            )}
-                            <span className="text-[9px] font-bold uppercase tracking-tight truncate">{s.name}</span>
-                         </label>
-                      ))}
-                      {!isEditing && (!project.target_services || project.target_services.length === 0) && (
-                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No services impacted</p>
-                      )}
-                   </div>
+             </div>
+             <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Strategic Objective</h4>
+                <div className={`p-6 rounded-2xl border transition-all ${isEditing ? 'bg-slate-900/40 border-blue-500/20 shadow-inner' : 'bg-black/20 border-white/5'} min-h-[160px]`}>
+                   {isEditing ? (
+                     <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="What are we achieving?" />
+                   ) : (
+                     <p className="text-xs font-bold text-slate-400 leading-relaxed italic">"{project.objective || 'Awaiting definition...'}"</p>
+                   )}
                 </div>
              </div>
           </div>
        </section>
 
-       <div className="grid grid-cols-2 gap-10">
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Jira Links</h4>
-             <div className="space-y-2">
+       {/* Secondary Context & Stakeholders */}
+       <div className="grid grid-cols-3 gap-10 items-stretch">
+          <section className="col-span-1 bg-[#0a0c14] rounded-2xl border border-white/10 p-6 flex flex-col gap-6">
+             <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Ownership Matrix</label>
+                <div className="flex-1 min-h-[200px] max-h-[300px] overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-2xl p-4 space-y-1">
+                   {userOptions.filter((o:any) => isEditing || (project.owners || []).includes(o.value)).map((o:any) => (
+                      <label key={o.value} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${(project.owners || []).includes(o.value) ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20' : 'text-slate-600 hover:bg-white/5'}`}>
+                         {isEditing && <input type="checkbox" checked={(project.owners || []).includes(o.value)} onChange={e => { const current = project.owners || []; const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value); handleFieldChange('owners', updated) }} className="w-4 h-4 rounded border-white/10 bg-black/40 text-blue-600" />}
+                         <span className="text-[11px] font-black uppercase tracking-tight truncate">{o.label}</span>
+                      </label>
+                   ))}
+                </div>
+             </div>
+             <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Vector Type</label>
+                {isEditing ? (
+                   <select value={project.type || ''} onChange={(e:any) => handleFieldChange('type', e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500">
+                      <option value="">Select Type</option>
+                      {typeOptions.map((o:any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                   </select>
+                ) : (
+                  <div className="flex items-center gap-4 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+                     <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20"><Projector size={18} className="text-blue-400" /></div>
+                     <div><p className="text-xs font-black text-white uppercase tracking-widest">{project.type || 'N/A'}</p></div>
+                  </div>
+                )}
+             </div>
+          </section>
+
+          <section className="col-span-2 bg-[#0a0c14] rounded-2xl border border-white/10 p-6 flex flex-col gap-8">
+             <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <input 
-                      value={newLinkLabel} 
-                      onChange={e => setNewLinkLabel(e.target.value)} 
-                      className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
-                      placeholder="Label (e.g. PROJ-123)"
-                    />
-                    <input 
-                      value={newLinkUrl} 
-                      onChange={e => setNewLinkUrl(e.target.value)} 
-                      className="flex-[2] bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none" 
-                      placeholder="Link URL"
-                    />
-                    <button 
-                      onClick={() => {
-                        if (!newLinkLabel || !newLinkUrl) return
-                        const metadata = project?.metadata_json || {}
-                        const links = [...(metadata.links || []), { label: newLinkLabel, url: newLinkUrl }]
-                        handleFieldChange('metadata_json', { ...metadata, links })
-                        setNewLinkLabel(''); setNewLinkUrl('')
-                      }}
-                      className="p-2 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
-                    ><Plus size={16}/></button>
-                  </div>
-                  <div className="space-y-1">
-                    {(project.metadata_json?.links || []).map((link: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5 group">
-                        <a href={link.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-slate-400 uppercase hover:text-blue-400">{link.label}</a>
-                        <button onClick={() => {
-                          const metadata = project.metadata_json || {}
-                          const links = metadata.links.filter((_:any, idx:number) => idx !== i)
-                          handleFieldChange('metadata_json', { ...metadata, links })
-                        }} className="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1 flex items-center justify-between">
+                      <span>Jira Vectors</span>
+                      {isEditing && <button onClick={() => { if(!newJira) return; handleFieldChange('jira_links', [...(project.jira_links || []), newJira]); setNewJira('') }} className="text-blue-400 hover:text-white"><Plus size={14}/></button>}
+                   </label>
+                   <div className="space-y-2">
+                      {isEditing && <input value={newJira} onChange={e => setNewJira(e.target.value)} className="w-full bg-slate-900/40 border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none" placeholder="Ticket URL..." />}
+                      <div className="flex flex-wrap gap-2">
+                         {(project.jira_links || []).map((link: string, i: number) => (
+                            <div key={i} className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-3 py-1.5 rounded-lg">
+                               <ExternalLink size={12} className="text-blue-400" />
+                               <a href={link} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-blue-400 uppercase tracking-widest max-w-[150px] truncate">{link.split('/').pop()}</a>
+                               {isEditing && <button onClick={() => handleFieldChange('jira_links', project.jira_links.filter((_:any, idx:number) => idx !== i))} className="text-slate-600 hover:text-rose-500"><X size={12}/></button>}
+                            </div>
+                         ))}
                       </div>
-                    ))}
-                  </div>
+                   </div>
+                </div>
+                <div className="space-y-3">
+                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Beneficiaries</label>
+                   <div className="flex flex-wrap gap-2 min-h-[60px] p-3 bg-black/40 border border-white/5 rounded-2xl">
+                      {isEditing ? (
+                        <input className="bg-transparent border-none text-[10px] font-bold text-white outline-none w-full" placeholder="Add beneficiary..." onKeyDown={e => { if(e.key === 'Enter') { const v = e.currentTarget.value.trim(); if(v) { handleFieldChange('beneficiaries', [...(project.beneficiaries || []), v]); e.currentTarget.value = '' } } }} />
+                      ) : null}
+                      {(project.beneficiaries || []).map((b: string, i: number) => (
+                        <div key={i} className="flex items-center gap-2 bg-emerald-600/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg text-emerald-400 text-[9px] font-black uppercase tracking-widest">
+                           {b} {isEditing && <button onClick={() => handleFieldChange('beneficiaries', project.beneficiaries.filter((_:any, idx:number) => idx !== i))} className="hover:text-rose-500"><X size={10}/></button>}
+                        </div>
+                      ))}
+                   </div>
+                </div>
+             </div>
+
+             <div className="space-y-4 pt-4 border-t border-white/5">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Resource Matrix (Assets & Systems)</label>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-1">Target Systems</p>
+                      <div className="flex flex-wrap gap-2 p-3 bg-black/20 rounded-xl border border-white/5">
+                         {(project.target_systems || []).map((s: string) => <span key={s} className="px-2 py-1 bg-white/5 rounded text-[9px] font-bold text-slate-400 uppercase">{s}</span>)}
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-1">Target Assets</p>
+                      <div className="flex flex-wrap gap-2 p-3 bg-black/20 rounded-xl border border-white/5">
+                         {(project.target_assets || []).length} Devices Linked
+                      </div>
+                   </div>
                 </div>
              </div>
           </section>
-
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Stakeholders</h4>
-             <div className="space-y-2">
-                <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Comma-separated team names</label>
-                <input 
-                   value={project.stakeholders || ''}
-                   onChange={e => handleFieldChange('stakeholders', e.target.value)}
-                   className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20 transition-all"
-                   placeholder="Security, Infra, DevOps..."
-                />
-             </div>
-          </section>
        </div>
 
-       <div className="space-y-8">
-          <div className="flex items-center justify-between">
-             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Designs</h4>
-             <button 
-               onClick={() => {
-                 const metadata = project?.metadata_json || {}
-                 const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Design v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]
-                 handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
-                 setActiveDiagramIndex(newDiagrams.length - 1)
-               }}
-               className="px-3 py-1 bg-white/5 border border-white/10 text-slate-500 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
-             >+ New Design</button>
+       {/* Designs & Visuals */}
+       <section className="space-y-6">
+          <div className="flex items-center justify-between px-1">
+             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><Workflow size={14} className="text-blue-500" /> Strategic Design & Architecture</h4>
+             {isEditing && (
+                <button onClick={() => { 
+                   const metadata = project?.metadata_json || {}; 
+                   const newDiagrams = [...(metadata.diagrams || []), { id: Date.now(), name: `Design v${(metadata.diagrams || []).length + 1}`, nodes: [], edges: [] }]; 
+                   handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams }); 
+                   setActiveDiagramIndex(newDiagrams.length - 1) 
+                }} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                   <Plus size={14} /> New Design Vector
+                </button>
+             )}
           </div>
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
              {(project?.metadata_json?.diagrams || []).map((d: any, idx: number) => (
-               <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden group/design">
-                  <div className="w-full flex items-center justify-between bg-white/5 pr-4">
-                     <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="flex-1 px-6 py-3 flex items-center gap-3 hover:bg-white/5 transition-all">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{d.name}</span>
-                        <ChevronRight size={14} className={`text-slate-600 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
-                     </button>
-                     <button 
-                       onClick={() => {
-                         if (confirm('Decommission this design?')) {
-                           const metadata = project.metadata_json || {}
-                           const updated = metadata.diagrams.filter((_:any, i:number) => i !== idx)
-                           handleFieldChange('metadata_json', { ...metadata, diagrams: updated })
-                           if (activeDiagramIndex === idx) setActiveDiagramIndex(null)
-                         }
-                       }}
-                       className="p-1.5 text-slate-600 hover:text-rose-500 rounded transition-all opacity-0 group-hover/design:opacity-100"
-                     ><Trash2 size={14} /></button>
-                  </div>
-                  <AnimatePresence>
-                     {activeDiagramIndex === idx && (
-                       <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
-                          <DiagramBuilder data={d} onChange={(updated: any) => {
-                            const metadata = project?.metadata_json || {}
-                            const newDiagrams = [...(metadata.diagrams || [])]
-                            newDiagrams[idx] = { ...newDiagrams[idx], ...updated }
-                            handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
-                          }} onSave={() => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); }} />
-                       </motion.div>
-                     )}
-                  </AnimatePresence>
-               </div>
+                <div key={d.id} className={`border rounded-2xl overflow-hidden transition-all ${activeDiagramIndex === idx ? 'border-blue-500/30 shadow-[0_0_40px_rgba(37,99,235,0.1)]' : 'border-white/5 bg-[#0a0c14]'}`}>
+                   <div className="flex items-center justify-between pr-6">
+                      <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="flex-1 px-8 py-5 flex items-center gap-4 hover:bg-white/5 transition-all text-left">
+                         <div className={`w-2.5 h-2.5 rounded-full ${activeDiagramIndex === idx ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-slate-700'}`} />
+                         <span className={`text-[12px] font-black uppercase tracking-[0.2em] ${activeDiagramIndex === idx ? 'text-white' : 'text-slate-500'}`}>{d.name}</span>
+                      </button>
+                      {isEditing && (
+                         <button onClick={() => {
+                            const metadata = project?.metadata_json || {};
+                            const newDiagrams = project.metadata_json.diagrams.filter((_:any, i:number) => i !== idx);
+                            handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams });
+                            if(activeDiagramIndex === idx) setActiveDiagramIndex(null);
+                         }} className="text-slate-700 hover:text-rose-500 p-2"><Trash2 size={16}/></button>
+                      )}
+                   </div>
+                   <AnimatePresence>
+                      {activeDiagramIndex === idx && (
+                         <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden border-t border-white/5 bg-[#0a0c14]">
+                            <DiagramBuilder data={d} onChange={(updated: any) => { 
+                               const metadata = project?.metadata_json || {}; 
+                               const newDiagrams = [...(metadata.diagrams || [])]; 
+                               newDiagrams[idx] = { ...newDiagrams[idx], ...updated }; 
+                               handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams }) 
+                            }} onSave={() => { setActiveDiagramIndex(null); toast.success('Vector Baseline Committed'); }} />
+                         </motion.div>
+                      )}
+                   </AnimatePresence>
+                </div>
              ))}
           </div>
-       </div>
+       </section>
 
-       <div className="grid grid-cols-1 gap-8">
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Images</h4>
-             <div className="grid grid-cols-4 gap-4">
-                {(project?.metadata_json?.images || []).map((img: any, i: number) => {
-                  const imageUrl = typeof img === 'string' ? img : img.url
-                  const caption = typeof img === 'string' ? '' : img.caption
-                  return (
-                    <div key={i} className="flex flex-col gap-2">
-                      <div className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative cursor-pointer" onClick={() => setSelectedImage({ url: imageUrl, caption, index: i })}>
-                         <img src={imageUrl} alt="Artifact" className="w-full h-full object-cover" />
-                         <button onClick={(e) => {
-                            e.stopPropagation()
-                            const metadata = project?.metadata_json || {}
-                            const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
-                            handleFieldChange('metadata_json', { ...metadata, images: updated })
-                         }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
+       {/* Artifacts & Evidence */}
+       <div className="grid grid-cols-2 gap-10">
+          <section ref={evidenceRef} onClick={() => setIsEvidenceHighlighted(true)} className={`space-y-6 p-8 rounded-[2rem] border-2 transition-all ${isEvidenceHighlighted ? 'bg-amber-600/5 border-amber-500/40 shadow-[0_0_50px_rgba(245,158,11,0.1)]' : 'bg-transparent border-transparent'}`}>
+             <div className="flex items-center justify-between px-1">
+                <h4 className={`text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 transition-colors ${isEvidenceHighlighted ? 'text-amber-400' : 'text-slate-500'}`}><Camera size={14} /> Artifact Evidence</h4>
+                {isEditing && isEvidenceHighlighted && (
+                   <div className="relative group animate-in fade-in zoom-in-95">
+                      <button className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-amber-900/40 flex items-center gap-2 hover:scale-105 transition-all"><Plus size={14}/> Attach Artifact</button>
+                      <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={e => {
+                         const file = e.target.files?.[0];
+                         if(!file) return;
+                         const reader = new FileReader();
+                         reader.onload = (ev) => {
+                            const metadata = project?.metadata_json || {};
+                            const images = [...(metadata.images || []), { url: ev.target?.result, caption: file.name, timestamp: new Date().toISOString() }];
+                            handleFieldChange('metadata_json', { ...metadata, images });
+                         };
+                         reader.readAsDataURL(file);
+                      }} />
+                   </div>
+                )}
+                {isEditing && !isEvidenceHighlighted && (
+                   <span className="text-[8px] font-bold text-slate-700 uppercase tracking-widest italic">Select field to attach evidence</span>
+                )}
+             </div>
+             <div className="grid grid-cols-3 gap-4">
+                {(project?.metadata_json?.images || []).map((img: any, i: number) => (
+                   <div key={i} className="relative aspect-square group rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/50 transition-all bg-black/40 cursor-pointer" onClick={(e) => { e.stopPropagation(); setSelectedImage({ ...img, index: i }); }}>
+                      <img src={img.url} alt={img.caption} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black to-transparent">
+                         <p className="text-[8px] font-black text-white uppercase truncate">{img.caption}</p>
                       </div>
-                      <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter truncate px-1">{caption || 'No caption'}</p>
-                    </div>
-                  )
-                })}
-                <button 
-                  onClick={() => setIsPasting(true)}
-                  className={`aspect-video border border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-white/20 bg-white/5 text-slate-300' : 'border-white/5 text-slate-700 hover:text-slate-400'}`}
-                >
-                   <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
-                </button>
-             </div>
-          </section>
-       </div>
-
-       <div className="grid grid-cols-1 gap-8">
-          <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">References</h4>
-             <div className="grid grid-cols-2 gap-4">
-                {(project?.metadata_json?.references || []).map((ref: any, i: number) => (
-                  <div key={i} className="flex items-center gap-2 group">
-                     <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase truncate">{ref.label}</span>
-                        <ExternalLink size={12} className="text-slate-700" />
-                     </a>
-                     <button onClick={() => {
-                        const metadata = project?.metadata_json || {}
-                        const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
-                        handleFieldChange('metadata_json', { ...metadata, references: updated })
-                     }} className="p-3 bg-white/5 text-slate-600 hover:text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
-                  </div>
+                      {isEditing && (
+                         <button onClick={(e) => { e.stopPropagation(); handleFieldChange('metadata_json', { ...project.metadata_json, images: project.metadata_json.images.filter((_:any, idx:number) => idx !== i) }) }} className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg text-white opacity-0 group-hover:opacity-100 hover:bg-rose-600 transition-all"><X size={12}/></button>
+                      )}
+                   </div>
                 ))}
-                <button 
-                  onClick={() => {
-                    const label = prompt('Reference Label')
-                    const url = prompt('Reference URL')
-                    if (label && url) {
-                      const metadata = project?.metadata_json || {}
-                      const references = [...(metadata.references || []), { label, url }]
-                      handleFieldChange('metadata_json', { ...metadata, references })
-                    }
-                  }}
-                  className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-slate-400 transition-all"
-                >Establish Reference Link</button>
+             </div>
+          </section>
+
+          <section className="space-y-6">
+             <div className="flex items-center justify-between px-1">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><BookOpen size={14} className="text-sky-500" /> Strategic References</h4>
+                {isEditing && !isAddingRef && <button onClick={() => setIsAddingRef(true)} className="p-2 bg-sky-600/10 text-sky-500 rounded-lg hover:bg-sky-600 hover:text-white transition-all"><Plus size={16}/></button>}
+             </div>
+             <div className="space-y-3">
+                {isAddingRef && (
+                   <div className="p-4 bg-slate-900/50 rounded-2xl border border-sky-500/30 grid grid-cols-2 gap-3">
+                      <input autoFocus value={newRefLabel} onChange={e => setNewRefLabel(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-white outline-none" placeholder="Label" />
+                      <input value={newRefUrl} onChange={e => setNewRefUrl(e.target.value)} className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-white outline-none" placeholder="URL" />
+                      <button onClick={() => setIsAddingRef(false)} className="py-2 text-[9px] font-black uppercase text-slate-500">Cancel</button>
+                      <button onClick={() => { if (!newRefLabel || !newRefUrl) return; const metadata = project?.metadata_json || {}; const references = [...(metadata.references || []), { label: newRefLabel, url: newRefUrl }]; handleFieldChange('metadata_json', { ...metadata, references }); setNewRefLabel(''); setNewRefUrl(''); setIsAddingRef(false) }} className="py-2 bg-sky-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest">Attach Ref</button>
+                   </div>
+                )}
+                {(project?.metadata_json?.references || []).map((ref: any, i: number) => (
+                   <div key={i} className="flex items-center gap-4 group">
+                      <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-4 bg-[#0a0c14] rounded-2xl border border-white/5 hover:border-sky-500/40 transition-all flex justify-between items-center group/link">
+                         <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-sky-600/10 rounded-xl flex items-center justify-center border border-sky-500/20"><LinkIcon size={18} className="text-sky-400" /></div>
+                            <div>
+                               <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest group-hover/link:text-sky-400 transition-colors">{ref.label}</p>
+                               <p className="text-[8px] font-bold text-slate-600 truncate max-w-[200px] mt-1">{ref.url}</p>
+                            </div>
+                         </div>
+                         <ExternalLink size={14} className="text-slate-700 group-hover/link:text-sky-400 transition-all" />
+                      </a>
+                      {isEditing && <button onClick={() => handleFieldChange('metadata_json', { ...project.metadata_json, references: project.metadata_json.references.filter((_:any, idx:number) => idx !== i) })} className="p-2 text-slate-700 hover:text-rose-500"><Trash2 size={16}/></button>}
+                   </div>
+                ))}
              </div>
           </section>
        </div>
+       <AnimatePresence>{selectedImage && <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-12 overflow-y-auto" onClick={() => setSelectedImage(null)}><motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative max-w-7xl w-full flex flex-col gap-8" onClick={e => e.stopPropagation()}><div className="relative group/modal"><img src={selectedImage.url} alt="Artifact Full" className="w-full h-auto rounded-2xl shadow-[0_40px_100px_rgba(0,0,0,0.8)] border border-white/10" /><button onClick={() => setSelectedImage(null)} className="absolute top-6 right-6 p-3 bg-black/60 hover:bg-rose-600 text-white rounded-2xl backdrop-blur-md border border-white/10 transition-all shadow-2xl"><X size={32}/></button></div><div className="bg-[#0a0c14] border border-white/10 rounded-2xl p-10 space-y-6 shadow-2xl"><div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-amber-600/10 rounded-xl flex items-center justify-center border border-amber-500/20"><ImageIcon size={20} className="text-amber-400" /></div><div><h4 className="text-lg font-black text-white uppercase tracking-tighter leading-none">Artifact Attribution</h4><p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">Strategic Visual Evidence Record</p></div></div></div><div className="space-y-3"><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Contextual Caption</label><textarea autoFocus value={selectedImage.caption || ''} onChange={e => { const newCaption = e.target.value; setSelectedImage({ ...selectedImage, caption: newCaption }); const metadata = project?.metadata_json || {}; const updated = [...(metadata.images || [])]; updated[selectedImage.index] = { ...updated[selectedImage.index], caption: newCaption }; handleFieldChange('metadata_json', { ...metadata, images: updated }) }} className="w-full bg-black/40 border border-white/10 rounded-2xl p-6 text-sm font-bold text-slate-300 outline-none focus:border-amber-500/30 transition-all h-32 resize-none leading-relaxed" placeholder="Provide forensic context for this artifact..." /></div></div></motion.div></div>}</AnimatePresence>
+    </div>
+  )
+}
 
-       <AnimatePresence>
-          {selectedImage && (
-            <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-xl p-12 overflow-y-auto" onClick={() => setSelectedImage(null)}>
-               <motion.div 
-                 initial={{ opacity: 0, scale: 0.9 }} 
-                 animate={{ opacity: 1, scale: 1 }} 
-                 exit={{ opacity: 0, scale: 0.9 }}
-                 className="relative max-w-7xl w-full flex flex-col gap-6"
-                 onClick={e => e.stopPropagation()}
-               >
-                  <img src={selectedImage.url} alt="Artifact Full" className="w-full h-auto rounded-xl shadow-2xl border border-white/10" />
-                  <div className="bg-[#0a0c14] border border-white/10 rounded-xl p-8 space-y-4">
-                     <div className="flex items-center justify-between">
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Artifact Caption</h4>
-                        <button onClick={() => setSelectedImage(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button>
-                     </div>
-                     <textarea 
-                       value={selectedImage.caption || ''} 
-                       onChange={e => {
-                          const newCaption = e.target.value
-                          setSelectedImage({ ...selectedImage, caption: newCaption })
-                          const metadata = project?.metadata_json || {}
-                          const images = [...(metadata.images || [])]
-                          const currentImg = images[selectedImage.index]
-                          if (typeof currentImg === 'string') {
-                             images[selectedImage.index] = { url: currentImg, caption: newCaption }
-                          } else {
-                             images[selectedImage.index] = { ...currentImg, caption: newCaption }
-                          }
-                          handleFieldChange('metadata_json', { ...metadata, images })
-                       }}
-                       className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-slate-300 outline-none focus:border-blue-500 transition-all h-24 resize-none leading-relaxed"
-                       placeholder="Enter artifact context..."
-                     />
-                  </div>
-               </motion.div>
-            </div>
-          )}
-       </AnimatePresence>
+const ProjectAdoptionView = ({ project, onUpdate }: any) => {
+  const [newTeam, setNewTeam] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+  const [newBenefit, setNewBenefit] = useState('')
+  const [isAddingTeam, setIsAddingTeam] = useState(false)
+  
+  const adoption = useMemo(() => project?.metadata_json?.adoption || [], [project])
+  
+  const handleAddEntry = (teamName: string) => {
+    if (!newDescription.trim()) return
+    const metadata = project?.metadata_json || {}
+    const existingTeam = adoption.find((a: any) => a.team === teamName)
+    const newRecord = { 
+      description: newDescription, 
+      benefit: newBenefit, 
+      timestamp: new Date().toISOString(),
+      author: 'haewonkim'
+    }
+    
+    let updatedAdoption
+    if (existingTeam) {
+       updatedAdoption = adoption.map((a: any) => 
+          a.team === teamName ? { ...a, current: newRecord, history: [a.current, ...(a.history || [])] } : a
+       )
+    } else {
+       updatedAdoption = [...adoption, { team: teamName, current: newRecord, history: [] }]
+    }
+    
+    onUpdate({ ...project, metadata_json: { ...metadata, adoption: updatedAdoption } })
+    setNewDescription(''); setNewBenefit(''); setIsAddingTeam(false); setNewTeam('')
+    toast.success(`Adoption vector updated for ${teamName}`)
+  }
+
+  return (
+    <div className="h-full flex flex-col p-12 space-y-12 max-w-7xl mx-auto custom-scrollbar overflow-y-auto">
+       <div className="flex items-center justify-between bg-emerald-600/5 p-10 rounded-[2rem] border border-emerald-500/20 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
+          <div className="flex items-center gap-8 relative z-10">
+             <div className="w-20 h-20 bg-emerald-600/10 rounded-[1.5rem] flex items-center justify-center border border-emerald-500/30 shadow-inner">
+                <TrendingUp size={40} className="text-emerald-400" />
+             </div>
+             <div>
+                <h2 className="text-3xl font-black text-white tracking-tighter uppercase font-inter italic">Stakeholder Adoption Ledger</h2>
+                <p className="text-[12px] font-black text-slate-500 uppercase tracking-[0.4em] mt-2 italic">Unified record of strategic utility & utility realization</p>
+             </div>
+          </div>
+          <button onClick={() => setIsAddingTeam(true)} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all active:scale-95">
+             <Plus size={20}/> Register Team
+          </button>
+       </div>
+
+       {isAddingTeam && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-[#0d111a] border-2 border-emerald-500/30 rounded-[2.5rem] p-10 space-y-8 shadow-[0_40px_100px_rgba(0,0,0,0.6)]">
+             <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <h4 className="text-[12px] font-black text-emerald-400 uppercase tracking-[0.5em] font-inter italic">New Adoption Vector</h4>
+                </div>
+                <button onClick={() => setIsAddingTeam(false)} className="p-2 hover:bg-white/5 rounded-xl transition-all text-slate-500"><X size={24}/></button>
+             </div>
+             <div className="grid grid-cols-12 gap-8">
+                <div className="col-span-4 space-y-3">
+                   <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Stakeholder Team</label>
+                   <input value={newTeam} onChange={e => setNewTeam(e.target.value)} placeholder="e.g. CORE-PLATFORM" className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/50 transition-all shadow-inner" />
+                </div>
+                <div className="col-span-8 space-y-3">
+                   <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Usage Description</label>
+                   <input value={newDescription} onChange={e => setNewDescription(e.target.value)} placeholder="How is this team utilizing the project outcomes?" className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/50 transition-all shadow-inner" />
+                </div>
+                <div className="col-span-12 space-y-3">
+                   <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">Realized Benefits</label>
+                   <textarea value={newBenefit} onChange={e => setNewBenefit(e.target.value)} placeholder="Quantifiable or qualitative gains observed..." className="w-full bg-black/40 border-2 border-white/5 rounded-2xl px-5 py-4 text-sm font-bold text-white h-32 outline-none focus:border-emerald-500/50 transition-all resize-none shadow-inner leading-relaxed" />
+                </div>
+             </div>
+             <div className="flex justify-end gap-6 items-center">
+                <button onClick={() => setIsAddingTeam(false)} className="text-slate-500 uppercase font-black text-[11px] tracking-widest hover:text-white transition-all">Cancel</button>
+                <button onClick={() => handleAddEntry(newTeam)} className="px-10 py-4 bg-emerald-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-2xl shadow-emerald-900/40 hover:scale-105 active:scale-95 transition-all font-inter italic">Commit Adoption Record</button>
+             </div>
+          </motion.div>
+       )}
+
+       <div className="space-y-8 pb-20">
+          {adoption.map((entry: any, idx: number) => (
+             <div key={idx} className="bg-[#0a0c14] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl group transition-all hover:border-emerald-500/30">
+                <div className="p-8 bg-gradient-to-r from-white/[0.03] to-transparent border-b border-white/5 flex items-center justify-between">
+                   <div className="flex items-center gap-6">
+                      <div className="w-14 h-14 bg-emerald-600/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner">
+                         <Users size={24} className="text-emerald-400" />
+                      </div>
+                      <div>
+                         <h3 className="text-xl font-black text-white uppercase tracking-tighter italic font-inter">{entry.team}</h3>
+                         <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Active Stakeholder Entity</p>
+                      </div>
+                   </div>
+                   <button onClick={() => { setNewTeam(entry.team); setIsAddingTeam(true); }} className="px-6 py-2.5 bg-white/5 hover:bg-emerald-600/20 text-[10px] font-black text-slate-400 hover:text-emerald-400 rounded-xl border border-white/10 transition-all uppercase tracking-widest font-inter italic">Update Vector</button>
+                </div>
+                <div className="p-10 grid grid-cols-12 gap-12">
+                   <div className="col-span-7 space-y-8">
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-3 px-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <label className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] font-inter italic">Current Realization</label>
+                         </div>
+                         <div className="bg-black/40 p-8 rounded-[2rem] border-2 border-emerald-500/10 space-y-6 shadow-inner">
+                            <p className="text-lg font-bold text-slate-200 leading-relaxed italic">"{entry.current.description}"</p>
+                            <div className="pt-6 border-t border-white/5">
+                               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Quantified Benefit</p>
+                               <p className="text-sm font-bold text-emerald-400/90 leading-relaxed">{entry.current.benefit}</p>
+                            </div>
+                            <div className="flex justify-end pt-2">
+                               <span className="text-[9px] font-bold text-slate-700 uppercase tracking-widest italic">{format(new Date(entry.current.timestamp), 'MMMM dd, yyyy @ HH:mm')}</span>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                   <div className="col-span-5 space-y-6">
+                      <div className="flex items-center gap-3 px-1">
+                         <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+                         <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] font-inter italic">Historical Lineage</label>
+                      </div>
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
+                         {entry.history?.length === 0 ? (
+                            <div className="p-8 text-center border border-dashed border-white/5 rounded-2xl opacity-40"><p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">No previous iterations</p></div>
+                         ) : (
+                            entry.history?.map((h: any, i: number) => (
+                               <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl opacity-60 hover:opacity-100 transition-opacity">
+                                  <p className="text-xs font-bold text-slate-400 italic">"{h.description}"</p>
+                                  <div className="flex justify-between mt-4 items-center">
+                                     <span className="text-[9px] font-black text-emerald-600/60 uppercase tracking-widest">Benefit Logged</span>
+                                     <span className="text-[8px] font-bold text-slate-700 uppercase">{format(new Date(h.timestamp), 'MMM dd, yyyy')}</span>
+                                  </div>
+                               </div>
+                            ))
+                         )}
+                      </div>
+                   </div>
+                </div>
+             </div>
+          ))}
+       </div>
     </div>
   )
 }
 
 const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
   const [isFull, setIsFull] = useState(false)
-  
   const activities = useMemo(() => {
-    const list = project 
-      ? [
-          ...(project?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, type: 'TASK', taskName: t?.name, icon: <Target size={14}/> }))),
-          ...(project?.tasks || []).flatMap((t:any) => (t?.metadata_json?.comments || []).map((c:any) => ({ ...c, type: 'COMMENT', taskName: t?.name, icon: <MessageSquare size={14}/> }))),
-          ...(project?.metadata_json?.audit_log || []).map((a:any) => ({ ...a, type: 'PROJECT', icon: <Projector size={14}/> }))
-        ]
-      : allProjects.flatMap((p:any) => [
-          ...(p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, type: 'TASK', taskName: t?.name, projectName: p?.name, icon: <Target size={14}/> }))),
-          ...(p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.comments || []).map((c:any) => ({ ...c, type: 'COMMENT', taskName: t?.name, projectName: p?.name, icon: <MessageSquare size={14}/> }))),
-          ...(p?.metadata_json?.audit_log || []).map((a:any) => ({ ...a, type: 'PROJECT', projectName: p?.name, icon: <Projector size={14}/> }))
-        ])
-    return list.sort((a:any, b:any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
+    let list: any[] = []
+    
+    const extractFromProject = (p: any) => {
+       const taskHistory = (p?.tasks || []).flatMap((t: any) => 
+          (t?.metadata_json?.history || []).map((h: any) => ({ ...h, type: 'TASK_UPDATE', taskName: t?.name, projectName: p?.name, icon: <Target size={14}/> }))
+       )
+       const taskComments = (p?.tasks || []).flatMap((t: any) => 
+          (t?.metadata_json?.comments || []).map((c: any) => ({ ...c, type: 'COMMENT', taskName: t?.name, projectName: p?.name, icon: <MessageSquare size={14}/> }))
+       )
+       const projectAudit = (p?.metadata_json?.audit_log || []).map((a: any) => ({ ...a, type: 'PROJECT_META', projectName: p?.name, icon: <Projector size={14}/> }))
+       
+       const projectComments = (p?.comments || []).map((c: any) => ({ ...c, type: 'COMMENT', projectName: p?.name, icon: <MessageSquare size={14}/> }))
+       
+       return [...taskHistory, ...taskComments, ...projectAudit, ...projectComments]
+    }
+
+    if (project) {
+       list = extractFromProject(project)
+    } else {
+       allProjects.forEach(p => {
+          list = [...list, ...extractFromProject(p)]
+       })
+    }
+    
+    return list.sort((a: any, b: any) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime())
   }, [project, allProjects])
 
   return (
-    <div className={`flex flex-col bg-[#0d0f17] transition-all ${isFull ? 'fixed inset-0 z-[200] p-12' : 'h-full p-6'}`}>
-       <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-             <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
-                <Activity size={20} className="text-blue-400" />
+    <div className={`flex flex-col bg-[#080a0f] transition-all relative overflow-hidden ${isFull ? 'fixed inset-0 z-[200] p-16' : 'h-full p-8'}`}>
+       {isFull && <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#3b82f615,transparent_50%)] pointer-events-none" />}
+       
+       <div className="flex items-center justify-between mb-10 relative z-10">
+          <div className="flex items-center gap-6">
+             <div className="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-2xl">
+                <Activity size={28} className="text-blue-400" />
              </div>
              <div>
-                <h3 className="text-xl font-bold text-white uppercase tracking-tighter">Strategic Evolution Stream</h3>
-                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">Unified ledger of tactical shifts and strategic commits</p>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter font-inter italic">Evolution Stream</h3>
+                <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1 italic">Tactical shifts and strategic vector commits</p>
              </div>
           </div>
-          <button 
-            onClick={() => setIsFull(!isFull)} 
-            className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white hover:bg-white/10 transition-all"
-          >
-             {isFull ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}
+          <button onClick={() => setIsFull(!isFull)} className="p-3 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all shadow-xl backdrop-blur-md">
+             {isFull ? <Minimize2 size={24}/> : <Maximize2 size={24}/>}
           </button>
        </div>
 
-       <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
-          {activities.map((item:any, i:number) => (
-            <div key={i} className="group relative flex gap-6 p-5 bg-[#0a0c14] border border-white/5 rounded-2xl hover:border-blue-500/30 transition-all">
-               <div className="flex flex-col items-center gap-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
-                    item.type === 'COMMENT' ? 'bg-amber-600/10 border-amber-500/20 text-amber-500' : 
-                    item.type === 'TASK' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' :
-                    'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
-                  }`}>
-                     {item.icon}
-                  </div>
-                  <div className="w-px flex-1 bg-white/5" />
-               </div>
-               
-               <div className="flex-1 space-y-3">
-                  <div className="flex justify-between items-center">
-                     <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{item.author || 'SYSTEM'}</span>
-                        <span className="text-slate-800">•</span>
-                        <span className="text-[9px] font-bold text-blue-500/60 uppercase tracking-widest">{item.type}</span>
-                        {item.projectName && (
-                          <>
-                             <span className="text-slate-800">/</span>
-                             <span className="text-[9px] font-bold text-slate-500 uppercase">{item.projectName}</span>
-                          </>
-                        )}
-                     </div>
-                     <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(item.timestamp || item.created_at), 'MMM dd, yyyy HH:mm:ss')}</span>
-                  </div>
-                  
-                  <div className="bg-black/20 p-4 rounded-xl border border-white/5">
-                     <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{item.content || item.message}"</p>
-                  </div>
-
-                  {item.taskName && (
-                    <div className="flex items-center gap-2">
-                       <Tag size={10} className="text-blue-500" />
-                       <span className="text-[9px] font-bold text-blue-400/60 uppercase tracking-widest">{item.taskName}</span>
-                    </div>
-                  )}
-               </div>
-            </div>
-          ))}
-          
-          {activities.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center py-40 opacity-20">
-               <History size={64} className="text-slate-500 mb-6" />
-               <p className="text-xs font-bold uppercase tracking-[0.4em] text-slate-500 text-center">No project evolutions captured in current context</p>
-            </div>
+       <div className="flex-1 overflow-y-auto custom-scrollbar pr-6 space-y-6 relative z-10">
+          {activities.length === 0 ? (
+             <div className="h-64 flex items-center justify-center border-2 border-dashed border-white/5 rounded-[2.5rem]">
+                <p className="text-xs font-black text-slate-700 uppercase tracking-widest italic">No evolution data captured in the stream</p>
+             </div>
+          ) : (
+             activities.map((item: any, i: number) => (
+                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} key={i} className="group relative flex gap-8 p-8 bg-[#0a0c14] border border-white/10 rounded-[2rem] hover:border-blue-500/40 transition-all shadow-xl hover:shadow-blue-900/10">
+                   <div className="flex flex-col items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all shadow-inner ${
+                         item.type === 'COMMENT' ? 'bg-amber-600/10 border-amber-500/20 text-amber-400' : 
+                         item.type === 'TASK_UPDATE' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 
+                         'bg-emerald-600/10 border-emerald-500/20 text-emerald-400'
+                      }`}>
+                         {item.icon}
+                      </div>
+                      <div className="w-px flex-1 bg-gradient-to-b from-white/10 to-transparent" />
+                   </div>
+                   <div className="flex-1 space-y-4">
+                      <div className="flex justify-between items-center">
+                         <div className="flex items-center gap-4">
+                            <span className="text-[11px] font-black text-white uppercase tracking-widest font-inter italic">{item.author || 'SYSTEM_CORE'}</span>
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-widest ${
+                               item.type === 'COMMENT' ? 'text-amber-500 border-amber-500/30' : 
+                               item.type === 'TASK_UPDATE' ? 'text-blue-500 border-blue-500/30' : 
+                               'text-emerald-500 border-emerald-500/30'
+                            }`}>{item.type}</span>
+                            {item.projectName && <span className="text-[10px] font-bold text-slate-500 uppercase italic">/ {item.projectName}</span>}
+                         </div>
+                         <span className="text-[10px] font-black text-slate-700 uppercase italic font-inter">{format(new Date(item.timestamp || item.created_at), 'MMM dd, HH:mm:ss')}</span>
+                      </div>
+                      <div className="bg-black/30 p-6 rounded-2xl border border-white/5 shadow-inner">
+                         <p className="text-sm font-bold text-slate-300 leading-relaxed italic">"{item.content || item.message}"</p>
+                      </div>
+                      {item.taskName && (
+                         <div className="flex items-center gap-3 px-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span className="text-[10px] font-black text-blue-400/60 uppercase tracking-widest font-inter italic">{item.taskName}</span>
+                         </div>
+                      )}
+                      {item.image && (
+                         <div className="pt-2">
+                            <img src={item.image} className="rounded-2xl border border-white/10 max-h-64 w-auto shadow-2xl hover:scale-[1.02] transition-transform cursor-zoom-in" alt="Evidence Artifact" />
+                         </div>
+                      )}
+                   </div>
+                </motion.div>
+             ))
           )}
        </div>
     </div>
   )
 }
 
-export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, services, options }: any) => {
-  const [formData, setFormData] = useState({ 
-    name: '', type: 'Strategic', status: 'Planning', priority: 'Medium', owner: '', 
-    problem_statement: '', objective: '', description: '', start_date: new Date().toISOString(), end_date: addDays(new Date(), 90).toISOString(),
-    man_hours_saved: 0, stoploss_minutes_saved: 0, wafers_gained: 0, roi_defense_line: 0, roi_types: [], jira_links: [], 
-    target_systems: [], target_assets: [], target_services: [], ...initialData 
-  })
-  const [jiraInput, setJiraInput] = useState((formData.jira_links || []).join(', '))
-
-  // Cascading Logic
-  const systemOptions = options?.filter((o:any) => o.category === 'LogicalSystem') || []
-  const filteredAssets = useMemo(() => {
-    if (!formData.target_systems?.length) return devices || []
-    return devices?.filter((d:any) => formData.target_systems.includes(d.system)) || []
-  }, [devices, formData.target_systems])
-
-  const filteredServices = useMemo(() => {
-    if (!formData.target_assets?.length) return services || []
-    return services?.filter((s:any) => formData.target_assets.includes(s.device_id)) || []
-  }, [services, formData.target_assets])
-
-  const years = Array.from({ length: 11 }, (_, i) => 2024 + i)
-  const months = [
-    { v: 0, l: 'JAN' }, { v: 1, l: 'FEB' }, { v: 2, l: 'MAR' }, { v: 3, l: 'APR' },
-    { v: 4, l: 'MAY' }, { v: 5, l: 'JUN' }, { v: 6, l: 'JUL' }, { v: 7, l: 'AUG' },
-    { v: 8, l: 'SEP' }, { v: 9, l: 'OCT' }, { v: 10, l: 'NOV' }, { v: 11, l: 'DEC' }
-  ]
-
-  const handleDateChange = (type: 'start' | 'end', part: 'month' | 'year', val: number) => {
-    const d = new Date(formData[`${type}_date`] || new Date())
-    d.setDate(1)
-    if (part === 'month') d.setMonth(val)
-    else d.setFullYear(val)
-    setFormData({ ...formData, [`${type}_date`]: d.toISOString() })
-  }
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData(prev => ({ ...prev, ...initialData }))
-      setJiraInput((initialData.jira_links || []).join(', '))
-    }
-  }, [initialData])
-
-  const startDate = new Date(formData.start_date || new Date())
-  const endDate = new Date(formData.end_date || new Date())
-
+const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
+  const [tooltip, setTooltip] = useState<any>(null)
+  const data = useMemo(() => {
+    if (!tasks || tasks.length === 0) return []
+    const times = tasks.flatMap(t => [new Date(t.start_date).getTime(), new Date(t.end_date).getTime(), t.actual_start_date ? new Date(t.actual_start_date).getTime() : null, t.actual_end_date ? new Date(t.actual_end_date).getTime() : null]).filter(t => t !== null && !isNaN(t))
+    if (times.length === 0) return []
+    const start = startOfMonth(new Date(Math.min(...times)))
+    const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
+    const interval = eachDayOfInterval({ start, end })
+    return interval.filter((_, i) => i % 5 === 0).map(date => {
+      const scheduledCount = tasks.filter(t => new Date(t.end_date) <= date).length
+      const actualCount = tasks.filter(t => t.actual_end_date && new Date(t.actual_end_date) <= date).length
+      return { date: format(date, 'MMM d'), fullDate: date, scheduled: Math.round((scheduledCount / (tasks.length || 1)) * 100), actual: Math.round((actualCount / (tasks.length || 1)) * 100), plannedTasks: tasks.filter(t => isSameDay(new Date(t.end_date), date)), actualTasks: tasks.filter(t => t.actual_end_date && isSameDay(new Date(t.actual_end_date), date)) }
+    })
+  }, [tasks])
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-8 bg-[#0a0c14]/50 rounded-lg border border-white/5 shadow-2xl mt-4">
-       <div className="flex items-center gap-3"><div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20"><Briefcase size={20} className="text-blue-400" /></div><div><h3 className="text-lg font-bold uppercase text-white tracking-tighter">Strategic Matrix Configuration</h3></div></div>
-       <div className="grid grid-cols-2 gap-8">
-          <div className="space-y-5">
-             <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Project Identifier</label><input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="Enter project name..."/></div>
-             <div className="grid grid-cols-2 gap-4"><StyledSelect label="Type" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} options={PROJECT_TYPES} /><StyledSelect label="Priority" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})} options={PROJECT_PRIORITIES} /></div>
-             <div className="grid grid-cols-2 gap-4"><StyledSelect label="Status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={PROJECT_STATUSES} /><div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Lead Owner</label><input value={formData.owner} onChange={e => setFormData({ ...formData, owner: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500"/></div></div>
-             
-             <div className="space-y-4 pt-4 border-t border-white/5">
-                <label className="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2"><Calendar size={14} /> Timeline parameters</label>
-                <div className="grid grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Initialization</label>
-                      <div className="flex gap-2">
-                         <select value={startDate.getMonth()} onChange={e => handleDateChange('start', 'month', parseInt(e.target.value))} className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none">{months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}</select>
-                         <select value={startDate.getFullYear()} onChange={e => handleDateChange('start', 'year', parseInt(e.target.value))} className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Termination</label>
-                      <div className="flex gap-2">
-                         <select value={endDate.getMonth()} onChange={e => handleDateChange('end', 'month', parseInt(e.target.value))} className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none">{months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}</select>
-                         <select value={endDate.getFullYear()} onChange={e => handleDateChange('end', 'year', parseInt(e.target.value))} className="flex-1 bg-black/40 border border-white/10 rounded-lg px-2 py-2 text-[10px] font-bold text-white outline-none">{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-
-          <div className="space-y-5">
-             <div className="bg-white/[0.02] p-5 rounded-lg border border-white/5 space-y-4">
-                <h4 className="text-[9px] font-bold text-blue-400 uppercase mb-1 flex items-center gap-2"><BarChart3 size={12} /> Strategic Impact Metrics</h4>
-                <div className="space-y-3 mb-4">
-                   <h5 className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Active ROI Streams</h5>
-                   <div className="grid grid-cols-2 gap-2">
-                      {ROI_TYPES.map(t => (
-                        <label key={t.value} className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer ${formData.roi_types?.includes(t.value) ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-600'}`}>
-                           <input type="checkbox" checked={formData.roi_types?.includes(t.value)} onChange={e => {
-                             const current = formData.roi_types || []
-                             const updated = e.target.checked ? [...current, t.value] : current.filter((v:any) => v !== t.value)
-                             setFormData({ ...formData, roi_types: updated })
-                           }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold uppercase tracking-tight">{t.label}</span>
-                        </label>
-                      ))}
-                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <StyledSelect label="Defense Line" value={formData.roi_defense_line} onChange={e => setFormData({...formData, roi_defense_line: parseInt(e.target.value)})} options={DEFENSE_LINES} />
-                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Man-Hours Saved (hr/yr)</label><input type="number" value={formData.man_hours_saved} onChange={e => setFormData({...formData, man_hours_saved: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Stoploss (min/yr)</label><input type="number" value={formData.stoploss_minutes_saved} onChange={e => setFormData({...formData, stoploss_minutes_saved: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
-                   <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Wafer Yield (WPD)</label><input type="number" value={formData.wafers_gained} onChange={e => setFormData({...formData, wafers_gained: parseFloat(e.target.value) || 0})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-xs font-bold text-white outline-none" /></div>
-                </div>
-                <div><label className="text-[9px] font-bold text-slate-600 uppercase mb-1.5 block">Jira References</label><input value={jiraInput} onChange={e => { setJiraInput(e.target.value); setFormData({ ...formData, jira_links: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }) }} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none" placeholder="e.g. PROJ-123, PROJ-456"/></div>
-             </div>
-
-             <div className="space-y-4 pt-4 border-t border-white/5">
-                <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Sliders size={14} /> Context boundaries</label>
-                <div className="grid grid-cols-3 gap-4">
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Systems</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {systemOptions.map((o:any) => (
-                            <label key={o.value} className="flex items-center gap-2 group cursor-pointer">
-                               <input type="checkbox" checked={formData.target_systems?.includes(o.value)} onChange={e => {
-                                  const current = formData.target_systems || []
-                                  const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                  
-                                  // Prune assets that no longer belong to selected systems
-                                  const validAssets = devices?.filter((d:any) => updated.includes(d.system)).map((d:any) => d.id) || []
-                                  const prunedAssets = (formData.target_assets || []).filter((id:any) => validAssets.includes(id))
-                                  
-                                  // Prune services that no longer belong to valid assets
-                                  const validServices = services?.filter((s:any) => prunedAssets.includes(s.device_id)).map((s:any) => s.id) || []
-                                  const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
-
-                                  setFormData({ ...formData, target_systems: updated, target_assets: prunedAssets, target_services: prunedServices })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase">{o.label}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Assets</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {filteredAssets.map((d:any) => (
-                            <label key={d.id} className="flex items-center gap-2 group cursor-pointer">
-                               <input type="checkbox" checked={formData.target_assets?.includes(d.id)} onChange={e => {
-                                  const current = formData.target_assets || []
-                                  const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                  
-                                  // Prune services that no longer belong to selected assets
-                                  const validServices = services?.filter((s:any) => updated.includes(s.device_id)).map((s:any) => s.id) || []
-                                  const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
-
-                                  setFormData({ ...formData, target_assets: updated, target_services: prunedServices })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{d.name}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[8px] font-bold text-slate-500 uppercase">Services</label>
-                      <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                         {filteredServices.map((s:any) => (
-                            <label key={s.id} className="flex items-center gap-2 group cursor-pointer">
-                               <input type="checkbox" checked={formData.target_services?.includes(s.id)} onChange={e => {
-                                  const current = formData.target_services || []
-                                  const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
-                                  setFormData({ ...formData, target_services: updated })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{s.name}</span>
-                            </label>
-                         ))}
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-       </div>
-       <div className="flex gap-4 pt-4">
-          <button onClick={onCancel} className="flex-1 py-3 bg-white/5 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">Abort</button>
-          <button 
-            disabled={isSaving || !formData.name || new Date(formData.start_date) >= new Date(formData.end_date)} 
-            onClick={() => onSave(formData)} 
-            className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-             {isSaving ? 'Establishing Link...' : 'Commit Strategic Vector'}
-          </button>
-       </div>
+    <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6 relative">
+       <div className="flex items-center justify-between"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20"><BarChart3 size={20} className="text-blue-400" /></div><div><h3 className="text-lg font-black text-white uppercase tracking-tighter leading-none">Trajectory</h3></div></div><div className="flex gap-6"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" /><span className="text-[10px] font-bold text-slate-400 uppercase">Planned</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[10px] font-bold text-slate-400 uppercase">Actual</span></div></div></div>
+       <div className="flex-1 w-full"><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} onMouseMove={(e:any) => { if(e.activePayload) setTooltip(e.activePayload[0].payload) }} onMouseLeave={() => setTooltip(null)}><defs><linearGradient id="colorSch" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs><XAxis dataKey="date" hide /><YAxis hide /><Area type="monotone" dataKey="scheduled" stroke="#3b82f6" fill="url(#colorSch)" /><Area type="monotone" dataKey="actual" stroke="#10b981" fill="transparent" /></AreaChart></ResponsiveContainer></div>
+       {tooltip && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#0d0f17] border border-blue-500/30 p-4 rounded-xl shadow-2xl z-50 pointer-events-none text-white text-[10px] font-bold uppercase tracking-widest">{format(tooltip.fullDate, 'MMM dd, yyyy')}<br/>Scheduled: {tooltip.scheduled}%<br/>Actual: {tooltip.actual}%</div>}
     </div>
   )
 }
 
-const DailyHuddleView = ({ projects, users }: any) => {
-  const huddleTasks = useMemo(() => {
-    if (!projects) return []
-    const tasks: any[] = []
-    projects.forEach((p: any) => {
-      (p.tasks || []).forEach((t: any) => {
-        if (t.status !== 'Completed') {
-          tasks.push({ ...t, projectName: p.name, projectId: p.id, projectPriority: p.priority })
-        }
-      })
-    })
-    return tasks.sort((a, b) => {
-      // Prioritize Blocked tasks, then by date
-      if (a.status === 'Blocked' && b.status !== 'Blocked') return -1
-      if (a.status !== 'Blocked' && b.status === 'Blocked') return 1
-      
-      const dateA = new Date(a.end_date).getTime()
-      const dateB = new Date(b.end_date).getTime()
-      return dateA - dateB
-    })
-  }, [projects])
+const TaskRow = ({ task, rowIndex, startDate, zoomLevel, selectedTaskIds, onTaskUpdate, setSelectedTaskId, handleSelectTask, ROW_HEIGHT, getDayOffset, getDayWidth }: any) => {
+  const dragControls = useDragControls()
+  const [isDragging, setIsDragging] = useState(false)
+  const left = Math.floor(getDayOffset(task.start_date) * zoomLevel)
+  const width = Math.max(zoomLevel, Math.floor(getDayWidth(task.start_date, task.end_date) * zoomLevel))
+  const isSmall = width < 150
+  
+  return (
+    <div className="absolute w-full" style={{ top: rowIndex * ROW_HEIGHT, height: ROW_HEIGHT }}>
+       <div className="absolute inset-0 border-b border-white/5 opacity-50" />
+       
+       <motion.div 
+          drag="x"
+          dragMomentum={false}
+          dragElastic={0}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={(e, info) => {
+             setIsDragging(false)
+             const daysMoved = Math.round(info.offset.x / zoomLevel)
+             if (daysMoved !== 0) {
+                const newStart = addDays(new Date(task.start_date), daysMoved)
+                const newEnd = addDays(new Date(task.end_date), daysMoved)
+                onTaskUpdate({ ...task, start_date: newStart.toISOString(), end_date: newEnd.toISOString() })
+             }
+          }}
+          onClick={(e) => { e.stopPropagation(); handleSelectTask(task.id); }} 
+          onDoubleClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }} 
+          className={`absolute h-8 top-1.5 rounded-lg flex items-center border transition-all z-10 ${selectedTaskIds.has(task.id) ? 'border-blue-500 bg-blue-600/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/20 bg-white/10'} ${isDragging ? 'cursor-grabbing opacity-80 scale-[1.02]' : 'cursor-grab'}`} 
+          style={{ left, width }}
+       >
+          <div className="flex-1 h-full flex items-center px-3 gap-3 overflow-hidden">
+             <div className={`w-2 h-2 rounded-full shrink-0 shadow-[0_0_10px_currentColor] ${task.status === 'Completed' ? 'text-emerald-400 bg-emerald-400' : task.status === 'Blocked' ? 'text-rose-500 bg-rose-500' : 'text-blue-400 bg-blue-400'}`} />
+             {!isSmall && <span className="text-[10px] font-black italic uppercase truncate text-white tracking-widest font-inter">{task.name}</span>}
+          </div>
 
-  const stats = useMemo(() => {
-    return {
-      total: huddleTasks.length,
-      blocked: huddleTasks.filter(t => t.status === 'Blocked').length,
-      approaching: huddleTasks.filter(t => differenceInDays(new Date(t.end_date), new Date()) < 3).length
-    }
-  }, [huddleTasks])
+          {(isSmall || true) && (
+            <div className="absolute left-full ml-6 flex items-center h-full pointer-events-none whitespace-nowrap z-20">
+               <div className="w-10 h-px bg-blue-500/30 -ml-6" />
+               <span className="text-[10px] font-black italic uppercase text-slate-400 tracking-[0.15em] font-inter ml-2 drop-shadow-lg">{task.name}</span>
+            </div>
+          )}
+       </motion.div>
+    </div>
+  )
+}
+
+const PrecisionGantt = ({ project, onUpdate }: any) => {
+  const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
+  const [zoomLevel, setZoomLevel] = useState(30)
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
+  const [showExecutiveChart, setShowExecutiveChart] = useState(false)
+  
+  const ROW_HEIGHT = 48
+  const startDate = useMemo(() => {
+     if (!tasks.length) return startOfMonth(new Date())
+     const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
+     const minDate = times.length ? new Date(Math.min(...times)) : new Date()
+     return startOfMonth(minDate)
+  }, [tasks])
+
+  const getDayOffset = useCallback((date: string) => differenceInDays(new Date(date), startDate), [startDate])
+  const getDayWidth = useCallback((start: string, end: string) => Math.max(1, differenceInDays(new Date(end), new Date(start))), [])
+  
+  const handleTaskUpdate = (updatedTask: any) => {
+     const newTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
+     setTasks(newTasks)
+     onUpdate({ ...project, tasks: newTasks })
+  }
+
+  const dependencyLines = useMemo(() => {
+     const lines: any[] = []
+     tasks.forEach((t, i) => {
+        (t.dependencies_json || []).forEach((depId: number) => {
+           const fromTaskIdx = tasks.findIndex(tk => tk.id === depId)
+           if (fromTaskIdx === -1) return
+           const fromTask = tasks[fromTaskIdx]
+           
+           const x1 = getDayOffset(fromTask.end_date) * zoomLevel
+           const y1 = fromTaskIdx * ROW_HEIGHT + ROW_HEIGHT/2
+           const x2 = getDayOffset(t.start_date) * zoomLevel
+           const y2 = i * ROW_HEIGHT + ROW_HEIGHT/2
+           
+           lines.push({ id: `${depId}-${t.id}`, x1, y1, x2, y2 })
+        })
+     })
+     return lines
+  }, [tasks, zoomLevel, getDayOffset])
 
   return (
-    <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
-       <div className="h-20 border-b border-white/5 flex items-center px-8 justify-between bg-[#0a0c14]/80 backdrop-blur-xl">
+    <div className="h-full flex flex-col bg-[#080a0f] overflow-hidden" onClick={() => setSelectedTaskIds(new Set())}>
+       <div className="h-14 border-b border-white/10 flex items-center px-6 justify-between bg-[#0a0c14] shrink-0 z-40 shadow-xl">
           <div className="flex items-center gap-6">
-             <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
-                <Users size={24} className="text-blue-400" />
+             <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/10">
+                <button onClick={(e) => { e.stopPropagation(); setShowExecutiveChart(!showExecutiveChart); }} className={`p-2 rounded-lg transition-all ${showExecutiveChart ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-white'}`}><BarChart3 size={18}/></button>
+                <button onClick={(e) => { e.stopPropagation(); setZoomLevel(prev => Math.max(10, prev - 5)); }} className="p-2 text-slate-500 hover:text-white"><Minimize2 size={18}/></button>
+                <button onClick={(e) => { e.stopPropagation(); setZoomLevel(prev => Math.min(100, prev + 5)); }} className="p-2 text-slate-500 hover:text-white"><Maximize2 size={18}/></button>
              </div>
-             <div>
-                <h2 className="text-xl font-black text-white tracking-tighter uppercase">Tactical Huddle</h2>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Aggregated live execution stream</p>
-             </div>
-          </div>
-          <div className="flex items-center gap-12">
-             <div className="text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Active Deck</p>
-                <p className="text-2xl font-black text-white leading-none tracking-tighter">{stats.total}</p>
-             </div>
-             <div className="w-px h-10 bg-white/5" />
-             <div className="text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Blocked</p>
-                <p className="text-2xl font-black text-rose-500 leading-none tracking-tighter">{stats.blocked}</p>
-             </div>
-             <div className="w-px h-10 bg-white/5" />
-             <div className="text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Critical (72H)</p>
-                <p className="text-2xl font-black text-amber-500 leading-none tracking-tighter">{stats.approaching}</p>
+             <div className="h-6 w-px bg-white/10" />
+             <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                <span className="text-[10px] font-black italic uppercase text-slate-400 tracking-widest font-inter">Milestone Trajectory</span>
              </div>
           </div>
+          <button onClick={() => { const n = prompt('Milestone Name'); if(n) setTasks([...tasks, { id: Date.now(), name: n, start_date: new Date().toISOString(), end_date: addDays(new Date(), 14).toISOString(), status: 'To Do', metadata_json: {} }]) }} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black italic uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:scale-105 transition-all active:scale-95 flex items-center gap-2"><Plus size={16}/> New Milestone</button>
        </div>
 
-       <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-[#0a0c14]/30">
-          <div className="max-w-6xl mx-auto">
-             {huddleTasks.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                   {huddleTasks.map((task) => (
-                     <div 
-                       key={task.id}
-                       className={`group bg-[#0d0f17]/80 backdrop-blur-sm border rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
-                         task.status === 'Blocked' ? 'border-rose-500/30 shadow-[0_0_25px_rgba(244,63,94,0.1)]' : 'border-white/5'
-                       }`}
-                     >
-                        <div className="flex items-center justify-between mb-5">
-                           <div className="flex flex-col gap-1">
-                              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest truncate max-w-[150px]">{task.projectName}</span>
-                              <div className={`text-[7px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded w-fit ${
-                                 task.projectPriority === 'High' || task.projectPriority === 'Highest' ? 'bg-rose-600/20 text-rose-500' : 'bg-slate-800 text-slate-500'
-                              }`}>
-                                 {task.projectPriority} Priority
-                              </div>
-                           </div>
-                           <StatusPill value={task.status} />
-                        </div>
-                        <h3 className="text-base font-bold text-white mb-3 leading-tight group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[44px]">{task.name}</h3>
-                        <div className="space-y-2 mb-6">
-                           <div className="flex items-center justify-between text-[10px] font-bold">
-                              <span className="text-slate-500 uppercase tracking-widest">Maturity</span>
-                              <span className="text-blue-400">{task.progress}%</span>
-                           </div>
-                           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                              <div 
-                                className={`h-full transition-all duration-1000 ${task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]'}`} 
-                                style={{ width: `${task.progress}%` }} 
-                              />
-                           </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-5 border-t border-white/5">
-                           <div className="flex items-center gap-2 text-slate-500">
-                              <Calendar size={12} className={differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500 animate-pulse' : ''} />
-                              <span className={`text-[9px] font-black uppercase tracking-widest ${differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500' : ''}`}>
-                                 {format(new Date(task.end_date), 'MMM dd')}
-                              </span>
-                           </div>
-                           <div className="flex items-center gap-2">
-                              <div className="px-2 py-1 bg-white/5 rounded text-[8px] font-black text-slate-500 uppercase">
-                                 {task.owner || 'Unassigned'}
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             ) : (
-                <div className="py-60 text-center">
-                   <div className="w-24 h-24 bg-blue-600/5 rounded-full flex items-center justify-center mx-auto border border-blue-500/10 mb-8 relative">
-                      <Target size={40} className="text-blue-500/10" />
-                      <div className="absolute inset-0 border border-blue-500/20 rounded-full animate-ping opacity-20" />
+       {showExecutiveChart && <div className="h-[250px] border-b border-white/10 shrink-0 bg-[#0a0c14]"><ExecutiveChart tasks={tasks} /></div>}
+       
+       <div className="flex-1 flex overflow-hidden relative">
+          <div className="w-[200px] border-r border-white/10 bg-[#0d0f17]/80 backdrop-blur-md flex flex-col z-30 shadow-2xl">
+             <div className="h-14 border-b border-white/10 flex items-center px-5 shrink-0 italic text-[10px] font-black text-slate-500 uppercase tracking-widest font-inter">Vector Milestones</div>
+             <div className="flex-1 overflow-y-auto no-scrollbar">
+                {tasks.map((t, i) => (
+                   <div key={t.id} onClick={(e) => { e.stopPropagation(); setSelectedTaskIds(new Set([t.id])); }} onDoubleClick={() => setSelectedTaskId(t.id)} className={`h-[48px] flex items-center px-4 border-b border-white/5 cursor-pointer transition-all ${selectedTaskIds.has(t.id) ? 'bg-blue-600/20 border-l-2 border-l-blue-500' : 'hover:bg-white/5'}`}>
+                      <p className="text-[10px] font-black italic text-slate-300 uppercase truncate font-inter">{t.name}</p>
                    </div>
-                   <h3 className="text-2xl font-black text-slate-400 uppercase tracking-tighter">Strategic Deck Clear</h3>
-                   <p className="text-[11px] font-bold text-slate-600 uppercase tracking-[0.3em] mt-3">All tactical vectors have reached terminal state</p>
-                </div>
-             )}
-          </div>
-       </div>
-    </div>
-  )
-}
-
-const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
-  const [newLog, setNewLog] = useState('')
-  const [newScore, setNewLogScore] = useState(5)
-
-  const logs = useMemo(() => project?.metadata_json?.adoption_logs || [], [project])
-
-  const handleAddLog = () => {
-    if (!newLog.trim()) return
-    const metadata = project?.metadata_json || {}
-    const log = {
-      id: Date.now(),
-      content: newLog,
-      score: newScore,
-      author: 'Current User', // Placeholder
-      timestamp: new Date().toISOString()
-    }
-    const updatedLogs = [log, ...logs]
-    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
-    setNewLog('')
-  }
-
-  const handleDeleteLog = (id: number) => {
-    const metadata = project?.metadata_json || {}
-    const updatedLogs = logs.filter((l: any) => l.id !== id)
-    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
-  }
-
-  return (
-    <div className="h-full flex flex-col p-8 space-y-10">
-       <div className="flex items-center justify-between bg-emerald-600/5 p-6 rounded-2xl border border-emerald-500/10">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-emerald-600/10 rounded-xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-                <TrendingUp size={24} className="text-emerald-400" />
-             </div>
-             <div>
-                <h2 className="text-xl font-black text-white tracking-tighter uppercase">Adoption & Utilization</h2>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Measuring strategic reach and stakeholder impact</p>
-             </div>
-          </div>
-          <div className="flex items-center gap-8">
-             <div className="text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Mean Sentiment</p>
-                <p className="text-2xl font-black text-emerald-500 leading-none tracking-tighter">
-                   {(logs.reduce((acc: number, l: any) => acc + (l.score || 0), 0) / (logs.length || 1)).toFixed(1)}/10
-                </p>
-             </div>
-             <div className="w-px h-10 bg-white/5" />
-             <div className="text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1.5">Signal Count</p>
-                <p className="text-2xl font-black text-white leading-none tracking-tighter">{logs.length}</p>
-             </div>
-          </div>
-       </div>
-
-       <div className="grid grid-cols-12 gap-10">
-          <div className="col-span-4 space-y-6">
-             <div className="bg-[#0d0f17] border border-white/5 rounded-2xl p-6 space-y-6 shadow-2xl">
-                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                   <PlusCircle size={14} /> Log Adoption Signal
-                </h4>
-                <div className="space-y-4">
-                   <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest px-1">Engagement Level (1-10)</label>
-                      <input 
-                        type="range" min="1" max="10" step="1"
-                        value={newScore}
-                        onChange={e => setNewLogScore(parseInt(e.target.value))}
-                        className="w-full h-1 bg-white/5 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                      />
-                      <div className="flex justify-between text-[9px] font-black text-slate-700">
-                         <span>RESISTANT</span>
-                         <span className="text-emerald-500">{newScore}</span>
-                         <span>CHAMPION</span>
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-slate-600 uppercase tracking-widest px-1">Evidence / Feedback</label>
-                      <textarea 
-                        value={newLog}
-                        onChange={e => setNewLog(e.target.value)}
-                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed"
-                        placeholder="Stakeholder mentioned X, system Y used for Z..."
-                      />
-                   </div>
-                   <button 
-                     onClick={handleAddLog}
-                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20"
-                   >
-                      Commit Adoption Signal
-                   </button>
-                </div>
-             </div>
-          </div>
-
-          <div className="col-span-8 space-y-4">
-             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] px-1">Adoption History</h4>
-             <div className="space-y-3">
-                {logs.map((log: any) => (
-                  <div key={log.id} className="group bg-[#0d0f17]/50 border border-white/5 rounded-xl p-5 hover:border-emerald-500/20 transition-all">
-                     <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
-                           <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
-                              log.score >= 8 ? 'bg-emerald-600/20 text-emerald-400' :
-                              log.score >= 5 ? 'bg-blue-600/20 text-blue-400' : 'bg-rose-600/20 text-rose-400'
-                           }`}>
-                              SCORE {log.score}
-                           </div>
-                           <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{log.author}</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                           <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm')}</span>
-                           <button onClick={() => handleDeleteLog(log.id)} className="text-slate-800 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
-                        </div>
-                     </div>
-                     <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{log.content}"</p>
-                  </div>
                 ))}
-                {logs.length === 0 && (
-                  <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl opacity-20">
-                     <TrendingUp size={48} className="mx-auto mb-4" />
-                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No adoption metrics recorded</p>
-                  </div>
-                )}
+             </div>
+          </div>
+
+          <div className="flex-1 overflow-auto custom-scrollbar relative bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px]">
+             <div className="sticky top-0 z-30 flex bg-[#0a0c14]/95 backdrop-blur-md border-b border-white/10 h-14" style={{ width: 730 * zoomLevel }}>
+                {eachDayOfInterval({ start: startDate, end: addDays(startDate, 730) }).map((d, i) => {
+                   const isFirstOfMonth = d.getDate() === 1
+                   return (
+                      <div key={i} className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-full transition-colors ${isFirstOfMonth ? 'bg-blue-600/5' : ''}`} style={{ width: zoomLevel }}>
+                         {isFirstOfMonth && <span className="text-[8px] font-black italic text-blue-400 uppercase tracking-widest absolute top-1 font-inter">{format(d, 'MMMM yyyy')}</span>}
+                         <span className={`text-[11px] font-black font-inter ${isFirstOfMonth ? 'text-blue-400' : 'text-slate-500'}`}>{format(d, 'd')}</span>
+                      </div>
+                   )
+                })}
+             </div>
+
+             <div className="relative" style={{ width: 730 * zoomLevel, height: (tasks.length + 10) * ROW_HEIGHT }}>
+                <svg className="absolute inset-0 pointer-events-none z-0" style={{ width: '100%', height: '100%' }}>
+                   <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" /></marker></defs>
+                   {dependencyLines.map(line => (
+                      <path key={line.id} d={`M ${line.x1} ${line.y1} L ${line.x1 + 10} ${line.y1} L ${line.x1 + 10} ${line.y2} L ${line.x2} ${line.y2}`} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeOpacity="0.3" markerEnd="url(#arrow)" />
+                   ))}
+                </svg>
+
+                {tasks.map((t, i) => (
+                   <TaskRow 
+                      key={t.id} 
+                      task={t} 
+                      rowIndex={i} 
+                      startDate={startDate} 
+                      zoomLevel={zoomLevel} 
+                      selectedTaskIds={selectedTaskIds} 
+                      onTaskUpdate={handleTaskUpdate} 
+                      setSelectedTaskId={setSelectedTaskId} 
+                      handleSelectTask={(id:any)=>setSelectedTaskIds(new Set([id]))} 
+                      ROW_HEIGHT={ROW_HEIGHT} 
+                      getDayOffset={getDayOffset} 
+                      getDayWidth={getDayWidth} 
+                   />
+                ))}
              </div>
           </div>
        </div>
+
+       <AnimatePresence>{selectedTaskId && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8"><motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-[#0d0f17] w-[900px] h-[80vh] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden">{(() => { const task = tasks.find(t => t.id === selectedTaskId); if(!task) return null; const subtasks = task.metadata_json?.subtasks || []; const [inline, setInline] = useState(''); return (<><div className="p-8 border-b border-white/10 flex items-center justify-between"><h2 className="text-xl font-bold text-white">{task.name}</h2><button onClick={() => setSelectedTaskId(null)} className="text-slate-500 hover:text-white"><X size={24}/></button></div><div className="flex-1 overflow-y-auto p-10 grid grid-cols-12 gap-10"><div className="col-span-8 space-y-12"><section className="space-y-4"><h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-1">Requirements</h4><div className="space-y-3">{subtasks.map((s:any, i:any) => <div key={i} className="flex items-center gap-4 p-5 bg-white/5 rounded-2xl shadow-xl"><div className="text-[10px] font-black text-slate-700 w-6">{String(i+1).padStart(2,'0')}</div><input type="checkbox" checked={s.completed} onChange={e => { const ns = [...subtasks]; ns[i].completed = e.target.checked; setTasks(ts => ts.map(tk => tk.id === task.id ? {...tk, metadata_json: {...tk.metadata_json, subtasks: ns}} : tk)) }} className="w-5 h-5 rounded-lg border-white/10 bg-black/40 text-blue-500" /><input value={s.label} onChange={e => { const ns = [...subtasks]; ns[i].label = e.target.value; setTasks(ts => ts.map(tk => tk.id === task.id ? {...tk, metadata_json: {...tk.metadata_json, subtasks: ns}} : tk)) }} className="flex-1 bg-transparent border-none text-xs font-bold text-slate-200" /></div>)}<div className="flex gap-3 p-3 bg-black/40 rounded-2xl border border-dashed border-white/10"><input value={inline} onChange={e => setInline(e.target.value)} onKeyDown={e => { if(e.key === 'Enter') { const ns = [...subtasks, {label: inline, completed: false}]; setTasks(ts => ts.map(tk => tk.id === task.id ? {...tk, metadata_json: {...tk.metadata_json, subtasks: ns}} : tk)); setInline('') } }} placeholder="New milestone requirement..." className="flex-1 bg-transparent px-4 text-xs font-bold outline-none" /><button onClick={() => { const ns = [...subtasks, {label: inline, completed: false}]; setTasks(ts => ts.map(tk => tk.id === task.id ? {...tk, metadata_json: {...tk.metadata_json, subtasks: ns}} : tk)); setInline('') }} className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20"><Plus size={20}/></button></div></div></section></div><div className="col-span-4 space-y-10"><section className="space-y-4"><h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest px-1">Status Vector</h4><select value={task.status} onChange={e => setTasks(ts => ts.map(tk => tk.id === task.id ? {...tk, status: e.target.value} : tk))} className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s}</option>)}</select></section></div></div><div className="p-8 border-t border-white/10 flex justify-end gap-4"><button onClick={() => { onUpdate({...project, tasks}); setSelectedTaskId(null); toast.success('Vector Baseline Synced') }} className="px-10 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-600/20">Commit Changes</button></div></>) })()}</motion.div></div>}</AnimatePresence>
     </div>
   )
 }
+
+// --- Main Component ---
 
 export default function Projects() {
   const queryClient = useQueryClient()
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => apiFetch('/api/v1/projects').then(r => r.json()),
-    placeholderData: (prev) => prev
-  })
+  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: () => apiClient.get('/projects') })
+  const { data: devices = [] } = useQuery({ queryKey: ['devices'], queryFn: () => apiClient.get('/devices') })
+  const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: () => apiClient.get('/services') })
+  const { data: options = [] } = useQuery({ queryKey: ['options'], queryFn: () => apiClient.get('/settings/options') })
+  const { data: operators = [] } = useQuery({ queryKey: ['operators'], queryFn: () => apiClient.get('/settings/operators') })
 
-  const reorderMutation = useMutation({
-    mutationFn: (newOrder: any[]) => apiFetch('/api/v1/projects/reorder', {
-      method: 'POST',
-      body: JSON.stringify(newOrder.map((p, i) => ({ id: p.id, order_index: i })))
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-    }
-  })
+  const [selectedId, setSelectedId] = useState<any>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [draft, setDraft] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<'WORKBENCH' | 'GANTT' | 'ADOPTION' | 'STREAM'>('WORKBENCH')
+  const [isRailCollapsed, setIsRailCollapsed] = useState(false)
 
-  const handleReorder = (newOrder: any[]) => {
-    queryClient.setQueryData(['projects'], newOrder)
-    reorderMutation.mutate(newOrder)
-  }
-
-  const sortedProjects = useMemo(() => {
-    if (!projects) return []
-    return [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-  }, [projects])
-  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: () => apiFetch('/api/v1/devices').then(r => r.json()) })
-  const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
-  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
-  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/settings/operators').then(r => r.json()) })
-  const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
-  const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY' | 'ADOPTION'>('WORKSPACE')
-  const [isGlobalEditing, setIsGlobalEditing] = useState(false)
-  const [draftProject, setDraftProject] = useState<any>(null)
-  const [pendingNav, setPendingNav] = useState<any>(null)
-  const [showConfig, setShowConfig] = useState(false)
-  const [isFullScreen, setIsFullScreen] = useState(false)
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [isLedgerCollapsed, setIsLedgerCollapsed] = useState(false)
-  const [railWidth, setRailWidth] = useState(320)
-  const [ledgerWidth, setLedgerWidth] = useState(380)
-
-  useEffect(() => {
-    if (projects?.length > 0 && selectedProjectId === 'HUDDLE') {
-      // Find latest created project
-      const latest = [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-      if (latest) setSelectedProjectId(latest.id)
-    }
-  }, [projects])
-
-  const selectedProject = useMemo(() => {
-    if (selectedProjectId === 'HUDDLE') return null
-    return projects?.find((p:any) => p.id === selectedProjectId)
-  }, [projects, selectedProjectId])
-
-  const isDirty = useMemo(() => {
-    if (!isGlobalEditing || !draftProject || !selectedProject) return false
-    return JSON.stringify(draftProject) !== JSON.stringify(selectedProject)
-  }, [isGlobalEditing, draftProject, selectedProject])
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault()
-        e.returnValue = ''
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isDirty])
+  const project = useMemo(() => draft || projects.find((p: any) => p.id === selectedId), [selectedId, projects, draft])
 
   const mutation = useMutation({
-    mutationFn: async ({ data, silent }: { data: any, silent?: boolean }) => {
-      const isNew = !data.id
-      const res = await apiFetch(isNew ? '/api/v1/projects' : `/api/v1/projects/${data.id}`, {
-        method: isNew ? 'POST' : 'PUT',
-        body: JSON.stringify(data)
-      })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-      if (!variables.silent) {
-        setIsGlobalEditing(false)
-        setDraftProject(null)
-        toast.success('Strategic Matrix Synchronized')
-      }
-      if (!selectedProjectId) setSelectedProjectId(data.id)
-    },
-    onError: (e: any) => toast.error(e.message)
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiFetch(`/api/v1/projects/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setSelectedProjectId(projects?.[0]?.id || null)
-      setPendingNav(null)
-      toast.success('Project Decommissioned')
+    mutationFn: (data: any) => apiClient.put(`/projects/${data.id}`, data),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['projects'], (old: any) => old?.map((p: any) => p.id === data.id ? data : p))
+      setDraft(null); setIsEditing(false); toast.success('Strategic vector synced')
     }
   })
-
-  const requestTabChange = (tab: any) => {
-    if (isDirty) setPendingNav({ type: 'TAB', id: tab })
-    else setActiveTab(tab)
-  }
-
-  const requestProjectChange = (id: number | 'HUDDLE') => {
-    if (isDirty) setPendingNav({ type: 'PROJECT', id })
-    else {
-      setSelectedProjectId(id)
-      setIsGlobalEditing(false)
-      setDraftProject(null)
-    }
-  }
-
-  const confirmNav = () => {
-    if (!pendingNav) return
-    if (pendingNav.type === 'TAB') {
-      setActiveTab(pendingNav.id)
-      setIsGlobalEditing(false)
-      setDraftProject(null)
-    } else if (pendingNav.type === 'PROJECT') {
-      setSelectedProjectId(pendingNav.id)
-      setIsGlobalEditing(false)
-      setDraftProject(null)
-    } else if (pendingNav.type === 'DELETE') {
-      deleteMutation.mutate(pendingNav.id)
-    }
-    setPendingNav(null)
-  }
-
-  const toggleFullScreen = () => {
-    const next = !isFullScreen
-    setIsFullScreen(next)
-    setIsSidebarCollapsed(next)
-    setIsLedgerCollapsed(next)
-  }
-
-  const handleUpdate = (updated: any) => {
-    if (isGlobalEditing) {
-      setDraftProject(updated)
-    } else {
-      mutation.mutate({ data: updated, silent: true })
-    }
-  }
-
-  if (isLoading && !projects) return <div className="h-full flex items-center justify-center bg-[#0a0c14]"><div className="flex flex-col items-center gap-4"><div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"/><p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">Synchronizing Matrix...</p></div></div>
 
   return (
-    <div className="h-full flex flex-col bg-[#0a0c14] overflow-hidden rounded-lg border border-white/5 shadow-2xl transition-all duration-500">
-       <ProjectHUD 
-         project={isGlobalEditing ? draftProject : selectedProject} 
-         isEditing={isGlobalEditing}
-         isDirty={isDirty}
-         onEdit={() => { setDraftProject({ ...selectedProject }); setIsGlobalEditing(true); }}
-         onSave={() => mutation.mutate({ data: draftProject })}
-         onCancel={() => { setIsGlobalEditing(false); setDraftProject(null); }}
-         onDelete={() => setPendingNav({ type: 'DELETE', id: selectedProjectId })}
-         isSaving={mutation.isPending}
-       />
-
-       <div className="h-12 border-b border-white/5 bg-[#0a0c14] flex items-center px-6 justify-between shrink-0">
-          <div className="flex items-center h-full">
-             {[
-               { id: 'WORKSPACE', icon: Target, label: 'Workbench' }, 
-               { id: 'GANTT', icon: Calendar, label: 'Precision Gantt' }, 
-               { id: 'ACTIVITY', icon: History, label: 'Stream' },
-               { id: 'ADOPTION', icon: TrendingUp, label: 'Adoption' }
-             ].map(tab => (
-               <button key={tab.id} onClick={() => requestTabChange(tab.id as any)} className={`h-full px-6 flex items-center gap-2 border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
-                  <tab.icon size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
-               </button>
-             ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-             <button 
-               onClick={() => setShowConfig(true)}
-               className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 transition-all border border-white/5"
-               title="Project Configuration"
-             >
-                <Settings size={16} />
-             </button>
-             <button 
-               onClick={toggleFullScreen}
-               className={`p-1.5 rounded-lg transition-all border ${isFullScreen ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white hover:bg-white/10'}`}
-               title={isFullScreen ? "Exit Full Screen" : "Full Screen View"}
-             >
-                <Maximize2 size={16} />
-             </button>
-             <div className="w-px h-4 bg-white/10 mx-1" />
-             <div className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Operational</span>
-             </div>
+    <div className="h-screen flex bg-[#0a0c14] overflow-hidden text-slate-300">
+       <ProjectRail projects={projects} selectedId={selectedId} onSelect={setSelectedId} onNew={() => {}} width={280} isCollapsed={isRailCollapsed} onToggleCollapse={() => setIsRailCollapsed(!isRailCollapsed)} />
+       <div className="flex-1 flex flex-col overflow-hidden">
+          <ProjectHUD project={project} isEditing={isEditing} isDirty={!!draft} onEdit={() => { setDraft(JSON.parse(JSON.stringify(project))); setIsEditing(true) }} onSave={() => mutation.mutate(draft)} onCancel={() => { setDraft(null); setIsEditing(false) }} onDelete={() => {}} isSaving={mutation.isPending} />
+          {project && (
+            <div className="h-10 bg-[#0d0f17] border-b border-white/5 flex items-center px-6 gap-8 shrink-0">
+               {(['WORKBENCH', 'GANTT', 'ADOPTION', 'STREAM'] as const).map(t => <button key={t} onClick={() => setActiveTab(t)} className={`text-[10px] font-black uppercase tracking-[0.2em] relative h-full ${activeTab === t ? 'text-blue-400' : 'text-slate-600'}`}>{t}{activeTab === t && <motion.div layoutId="at" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]" />}</button>)}
+            </div>
+          )}
+          <div className="flex-1 overflow-hidden relative">
+             <AnimatePresence mode="wait">
+                <motion.div key={activeTab + (selectedId || '')} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
+                   {activeTab === 'WORKBENCH' && <div className="h-full overflow-y-auto p-12 custom-scrollbar"><WorkbenchView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} isEditing={isEditing} devices={devices} services={services} options={options} users={operators} /></div>}
+                   {activeTab === 'GANTT' && <PrecisionGantt project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
+                   {activeTab === 'ADOPTION' && <ProjectAdoptionView project={project} onUpdate={(u:any) => isEditing ? setDraft(u) : mutation.mutate(u)} />}
+                   {activeTab === 'STREAM' && <ProjectActivityStream project={project} allProjects={projects} />}
+                </motion.div>
+             </AnimatePresence>
           </div>
        </div>
-
-       <div className="flex-1 flex overflow-hidden">
-          <ProjectRail 
-            projects={projects || []} 
-            selectedId={selectedProjectId} 
-            onSelect={requestProjectChange} 
-            onReorder={handleReorder}
-            onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
-            onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
-            width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          />
-          <div className="flex-1 flex flex-col min-w-0 bg-[#0f111a] shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]">
-             <div className="flex-1 overflow-hidden relative">
-                <AnimatePresence mode="wait">
-                   {selectedProjectId === 'HUDDLE' ? (
-                     <motion.div key="huddle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-                        <DailyHuddleView projects={projects} users={users} />
-                     </motion.div>
-                   ) : (
-                     <>
-                        {activeTab === 'WORKSPACE' && (
-                          <motion.div key={`workspace-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full p-10 overflow-y-auto custom-scrollbar bg-[#0a0c14]/30 backdrop-blur-sm">
-                             <WorkbenchView 
-                               key={selectedProjectId}
-                               project={isGlobalEditing ? draftProject : selectedProject} 
-                               onUpdate={handleUpdate} 
-                               isEditing={isGlobalEditing}
-                               devices={devices || []}
-                               services={services || []}
-                               options={options || []}
-                               users={users || []}
-                             />
-                          </motion.div>
-                        )}
-                        {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
-                        {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
-                        {activeTab === 'ADOPTION' && (
-                          <motion.div key={`adoption-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto custom-scrollbar">
-                             <ProjectAdoptionView project={isGlobalEditing ? draftProject : selectedProject} onUpdate={handleUpdate} isEditing={isGlobalEditing} />
-                          </motion.div>
-                        )}
-                     </>
-                   )}
-                </AnimatePresence>
-             </div>
-          </div>
-          <ProjectLedger 
-            project={isGlobalEditing ? draftProject : selectedProject} 
-            width={ledgerWidth} 
-            onResize={setLedgerWidth} 
-            isCollapsed={isLedgerCollapsed} 
-            onToggleCollapse={() => setIsLedgerCollapsed(!isLedgerCollapsed)}
-            isEditing={isGlobalEditing}
-            onUpdate={handleUpdate}
-          />
-       </div>
-
-       {/* Confirmation Modals */}
-       <AnimatePresence>
-         {pendingNav && (
-           <ConfirmationModal 
-             isOpen={true} 
-             title={pendingNav.type === 'DELETE' ? "Decommission Strategic Stream" : "Unsaved Strategic Data"} 
-             message={pendingNav.type === 'DELETE' ? "Are you certain? This action permanently removes all milestones and ROI data." : "You have uncommitted changes in the strategic matrix. Leaving now will discard these updates."}
-             onConfirm={confirmNav} 
-             onClose={() => setPendingNav(null)} 
-             variant={pendingNav.type === 'DELETE' ? "danger" : "info"}
-             confirmText={pendingNav.type === 'DELETE' ? "Decommission" : "Discard Changes"}
-           />
-         )}
-       </AnimatePresence>
-
-       <ConfigRegistryModal
-         isOpen={showConfig}
-         onClose={() => setShowConfig(false)}
-         title="Project Configuration"
-         sections={[
-             { title: "Project Types", category: "ProjectType", icon: Layers }
-         ]}
-       />
-
-       <style>{`
-         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } 
-         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
-         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; } 
-         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.1); }
-       `}</style>
+       <style>{` .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; } .no-scrollbar::-webkit-scrollbar { display: none; } `}</style>
     </div>
   )
 }
