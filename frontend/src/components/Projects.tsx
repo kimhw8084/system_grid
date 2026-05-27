@@ -305,7 +305,7 @@ const ProjectRail = ({
                 >
                    <button
                      onClick={() => onSelect(p.id)}
-                     className={`w-full text-left p-4 rounded-xl transition-all border flex flex-col gap-3 cursor-grab active:cursor-grabbing ${
+                     className={`w-full text-left p-4 rounded-lg transition-all border flex flex-col gap-3 cursor-grab active:cursor-grabbing ${
                        selectedId === p.id 
                          ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
                          : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'
@@ -1726,7 +1726,7 @@ const DiagramBuilder = ({ data, onChange, onSave }: any) => {
   }, [nodes, edges])
 
   return (
-    <div className="h-[650px] bg-[#0a0c14] border border-white/5 rounded-[2.5rem] overflow-hidden relative shadow-inner">
+    <div className="h-[650px] bg-[#0a0c14] border border-white/5 rounded-lg overflow-hidden relative shadow-inner">
        <ReactFlow 
          nodes={nodes} 
          edges={edges} 
@@ -1739,15 +1739,15 @@ const DiagramBuilder = ({ data, onChange, onSave }: any) => {
           <Background color="#1e293b" gap={24} size={1} />
           <Controls />
        </ReactFlow>
-       <div className="absolute top-6 left-6 flex flex-col gap-4 bg-black/60 p-2 rounded-2xl border border-white/10 backdrop-blur-xl shadow-2xl">
-          <button onClick={() => addNode('process', 'STEP')} className="p-3 text-blue-400 hover:bg-blue-600/20 rounded-xl transition-all"><Layout size={20}/></button>
-          <button onClick={() => addNode('diamond', 'DECISION')} className="p-3 text-amber-400 hover:bg-amber-600/20 rounded-xl transition-all"><MousePointer2 size={20}/></button>
-          <button onClick={() => addNode('server', 'SERVER')} className="p-3 text-slate-400 hover:bg-white/10 rounded-xl transition-all"><Server size={20}/></button>
+       <div className="absolute top-6 left-6 flex flex-col gap-4 bg-black/60 p-2 rounded-lg border border-white/10 backdrop-blur-xl shadow-2xl">
+          <button onClick={() => addNode('process', 'STEP')} className="p-3 text-blue-400 hover:bg-blue-600/20 rounded-lg transition-all"><Layout size={20}/></button>
+          <button onClick={() => addNode('diamond', 'DECISION')} className="p-3 text-amber-400 hover:bg-amber-600/20 rounded-lg transition-all"><MousePointer2 size={20}/></button>
+          <button onClick={() => addNode('server', 'SERVER')} className="p-3 text-slate-400 hover:bg-white/10 rounded-lg transition-all"><Server size={20}/></button>
        </div>
        {onSave && (
          <button 
            onClick={onSave} 
-           className="absolute bottom-6 right-6 px-10 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all"
+           className="absolute bottom-6 right-6 px-10 py-3 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-2xl hover:scale-105 active:scale-95 transition-all"
          >Baseline Design</button>
        )}
     </div>
@@ -1914,7 +1914,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-inter italic">Problem Statement</h4>
                 </div>
-                <div className={`bg-black/40 p-8 rounded-[2rem] border-2 transition-all min-h-[160px] shadow-inner ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
+                <div className={`bg-black/40 p-8 rounded-lg border-2 transition-all min-h-[160px] shadow-inner ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-sm font-bold text-slate-300 leading-relaxed resize-none italic" placeholder="Define strategic friction..." />
                    ) : (
@@ -1927,7 +1927,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-inter italic">Strategic Objective</h4>
                 </div>
-                <div className={`bg-black/40 p-8 rounded-[2rem] border-2 transition-all min-h-[160px] shadow-inner ${isEditing ? 'border-white/20' : 'border-white/5'}`}>
+                <div className={`bg-black/40 p-8 rounded-lg border-2 transition-all min-h-[160px] shadow-inner ${isEditing ? 'border-white/20' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-sm font-bold text-slate-300 leading-relaxed resize-none italic" placeholder="Define target end state..." />
                    ) : (
@@ -1956,11 +1956,11 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                              <input value={group.search} onChange={e => group.setSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-blue-500 w-12 text-right" placeholder="FIND..." />
                            )}
                         </div>
-                        <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-2xl p-3 shadow-inner">
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-3 shadow-inner">
                            {group.options
                              .filter((o:any) => isEditing || (project[group.key] || []).includes(o.value || o.id))
                              .map((o:any) => (
-                              <label key={o.value || o.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all ${isEditing ? 'cursor-pointer' : ''} ${(project[group.key] || []).includes(o.value || o.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
+                              <label key={o.value || o.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all ${isEditing ? 'cursor-pointer' : ''} ${(project[group.key] || []).includes(o.value || o.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
                                  {isEditing && (
                                    <input 
                                      type="checkbox" 
@@ -1992,7 +1992,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                       <input 
                          value={project.stakeholders || ''}
                          onChange={e => handleFieldChange('stakeholders', e.target.value)}
-                         className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-white/20 transition-all shadow-inner italic"
+                         className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-white/20 transition-all shadow-inner italic"
                          placeholder="Enter team identifiers..."
                       />
                    </div>
@@ -2002,9 +2002,9 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] font-inter italic">Strategic Owners</label>
                    </div>
-                   <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-2xl p-3 shadow-inner">
+                   <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-3 shadow-inner">
                       {userOptions.map((o:any) => (
-                        <label key={o.value} className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all cursor-pointer ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400 shadow-sm' : 'hover:bg-white/5 text-slate-600'}`}>
+                        <label key={o.value} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400 shadow-sm' : 'hover:bg-white/5 text-slate-600'}`}>
                            <input 
                              type="checkbox" 
                              checked={(project.owners || []).includes(o.value)} 
@@ -2098,12 +2098,12 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                  handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
                  setActiveDiagramIndex(newDiagrams.length - 1)
                }}
-               className="px-6 py-2 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-[0.2em] transition-all hover:bg-white/10 italic"
+               className="px-6 py-2 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-[0.2em] transition-all hover:bg-white/10 italic"
              >+ New Design</button>
           </div>
           <div className="grid grid-cols-1 gap-6">
              {(project?.metadata_json?.diagrams || []).map((d: any, idx: number) => (
-               <div key={d.id} className="border border-white/10 rounded-[2rem] bg-black/20 overflow-hidden group/design shadow-2xl">
+               <div key={d.id} className="border border-white/10 rounded-lg bg-black/20 overflow-hidden group/design shadow-2xl">
                   <div className="w-full flex items-center justify-between bg-white/[0.02] pr-6">
                      <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="flex-1 px-8 py-5 flex items-center gap-4 hover:bg-white/5 transition-all">
                         <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -2119,7 +2119,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                            if (activeDiagramIndex === idx) setActiveDiagramIndex(null)
                          }
                        }}
-                       className="p-2 text-rose-500 hover:bg-rose-600 hover:text-white rounded-xl transition-all opacity-0 group-hover/design:opacity-100 shadow-xl"
+                       className="p-2 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all opacity-0 group-hover/design:opacity-100 shadow-xl"
                      ><Trash2 size={16} /></button>
                   </div>
                   <AnimatePresence>
@@ -2152,20 +2152,20 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
              </div>
              <div 
                onClick={(e) => { e.stopPropagation(); setFocusedField('images'); }}
-               className={`grid grid-cols-3 gap-6 p-8 rounded-[2.5rem] border-2 transition-all min-h-[200px] shadow-inner cursor-pointer ${focusedField === 'images' ? 'border-blue-500 bg-blue-500/5' : 'border-dashed border-white/5 bg-black/20 hover:border-white/20'}`}
+               className={`grid grid-cols-3 gap-6 p-8 rounded-lg border-2 transition-all min-h-[200px] shadow-inner cursor-pointer ${focusedField === 'images' ? 'border-blue-500 bg-blue-500/5' : 'border-dashed border-white/5 bg-black/20 hover:border-white/20'}`}
              >
                 {(project?.metadata_json?.images || []).map((img: any, i: number) => {
                   const imageUrl = typeof img === 'string' ? img : img.url
                   const caption = typeof img === 'string' ? '' : img.caption
                   return (
-                    <div key={i} className="group/img relative aspect-video bg-black/40 rounded-2xl border border-white/10 overflow-hidden shadow-2xl hover:scale-[1.02] transition-transform cursor-zoom-in" onClick={() => setSelectedImage({ url: imageUrl, caption, index: i })}>
+                    <div key={i} className="group/img relative aspect-video bg-black/40 rounded-lg border border-white/10 overflow-hidden shadow-2xl hover:scale-[1.02] transition-transform cursor-zoom-in" onClick={() => setSelectedImage({ url: imageUrl, caption, index: i })}>
                        <img src={imageUrl} alt="Artifact" className="w-full h-full object-cover opacity-80 group-hover/img:opacity-100 transition-opacity" />
                        <button onClick={(e) => {
                           e.stopPropagation()
                           const metadata = project?.metadata_json || {}
                           const updated = (metadata.images || []).filter((_:any, idx:number) => idx !== i)
                           handleFieldChange('metadata_json', { ...metadata, images: updated })
-                       }} className="absolute top-3 right-3 p-2 bg-rose-600 rounded-xl text-white opacity-0 group-hover/img:opacity-100 transition-all shadow-2xl"><Trash2 size={14}/></button>
+                       }} className="absolute top-3 right-3 p-2 bg-rose-600 rounded-lg text-white opacity-0 group-hover/img:opacity-100 transition-all shadow-2xl"><Trash2 size={14}/></button>
                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover/img:opacity-100 transition-all">
                           <p className="text-[8px] font-bold text-white uppercase tracking-widest truncate">{caption || 'UNLABELED_ARTIFACT'}</p>
                        </div>
@@ -2188,10 +2188,10 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                 </div>
                 <h4 className="text-sm font-black text-white uppercase tracking-tighter italic font-inter">Strategic References</h4>
              </div>
-             <div className="space-y-4 bg-black/20 p-8 rounded-[2.5rem] border border-white/5 shadow-inner min-h-[200px]">
+             <div className="space-y-4 bg-black/20 p-8 rounded-lg border border-white/5 shadow-inner min-h-[200px]">
                 {(project?.metadata_json?.references || []).map((ref: any, i: number) => (
                   <div key={i} className="flex items-center gap-4 group/ref">
-                     <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-5 bg-white/[0.03] rounded-2xl border border-white/5 hover:bg-blue-600/10 hover:border-blue-500/30 transition-all flex justify-between items-center shadow-lg">
+                     <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-5 bg-white/[0.03] rounded-lg border border-white/5 hover:bg-blue-600/10 hover:border-blue-500/30 transition-all flex justify-between items-center shadow-lg">
                         <div className="flex items-center gap-3">
                            <Globe size={14} className="text-slate-600" />
                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic font-inter">{ref.label}</span>
@@ -2202,7 +2202,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                         const metadata = project?.metadata_json || {}
                         const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
                         handleFieldChange('metadata_json', { ...metadata, references: updated })
-                     }} className="p-3 bg-white/5 text-slate-600 hover:text-rose-500 rounded-xl opacity-0 group-hover/ref:opacity-100 transition-all shadow-xl"><Trash2 size={14} /></button>
+                     }} className="p-3 bg-white/5 text-slate-600 hover:text-rose-500 rounded-lg opacity-0 group-hover/ref:opacity-100 transition-all shadow-xl"><Trash2 size={14} /></button>
                   </div>
                 ))}
                 <button 
@@ -2215,7 +2215,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                       handleFieldChange('metadata_json', { ...metadata, references })
                     }
                   }}
-                  className="w-full py-5 border-2 border-dashed border-white/5 rounded-2xl text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] hover:text-blue-500 hover:border-blue-500/40 transition-all italic font-inter"
+                  className="w-full py-5 border-2 border-dashed border-white/5 rounded-lg text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] hover:text-blue-500 hover:border-blue-500/40 transition-all italic font-inter"
                 >Establish Reference Link</button>
              </div>
           </section>
@@ -2231,8 +2231,8 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                  className="relative max-w-7xl w-full flex flex-col gap-6"
                  onClick={e => e.stopPropagation()}
                >
-                  <img src={selectedImage.url} alt="Artifact Full" className="w-full h-auto rounded-xl shadow-2xl border border-white/10" />
-                  <div className="bg-[#0a0c14] border border-white/10 rounded-xl p-8 space-y-4">
+                  <img src={selectedImage.url} alt="Artifact Full" className="w-full h-auto rounded-lg shadow-2xl border border-white/10" />
+                  <div className="bg-[#0a0c14] border border-white/10 rounded-lg p-8 space-y-4">
                      <div className="flex items-center justify-between">
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Artifact Caption</h4>
                         <button onClick={() => setSelectedImage(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button>
@@ -2286,7 +2286,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
     <div className={`flex flex-col bg-[#0d0f17] transition-all ${isFull ? 'fixed inset-0 z-[200] p-12' : 'h-full p-6'}`}>
        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-             <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+             <div className="w-10 h-10 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20">
                 <Activity size={20} className="text-blue-400" />
              </div>
              <div>
@@ -2296,7 +2296,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
           </div>
           <button 
             onClick={() => setIsFull(!isFull)} 
-            className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white hover:bg-white/10 transition-all"
+            className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-all"
           >
              {isFull ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}
           </button>
@@ -2304,9 +2304,9 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
 
        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
           {activities.map((item:any, i:number) => (
-            <div key={i} className="group relative flex gap-6 p-5 bg-[#0a0c14] border border-white/5 rounded-2xl hover:border-blue-500/30 transition-all">
+            <div key={i} className="group relative flex gap-6 p-5 bg-[#0a0c14] border border-white/5 rounded-lg hover:border-blue-500/30 transition-all">
                <div className="flex flex-col items-center gap-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all ${
                     item.type === 'COMMENT' ? 'bg-amber-600/10 border-amber-500/20 text-amber-500' : 
                     item.type === 'TASK' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' :
                     'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
@@ -2332,7 +2332,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
                      <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(item.timestamp || item.created_at), 'MMM dd, yyyy HH:mm:ss')}</span>
                   </div>
                   
-                  <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                  <div className="bg-black/20 p-4 rounded-lg border border-white/5">
                      <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{item.content || item.message}"</p>
                   </div>
 
@@ -2572,7 +2572,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
        <div className="h-20 border-b border-white/5 flex items-center px-8 justify-between bg-[#0a0c14]/80 backdrop-blur-xl">
           <div className="flex items-center gap-6">
-             <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
+             <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.1)]">
                 <Users size={24} className="text-blue-400" />
              </div>
              <div>
@@ -2605,7 +2605,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
                    {huddleTasks.map((task) => (
                      <div 
                        key={task.id}
-                       className={`group bg-[#0d0f17]/80 backdrop-blur-sm border rounded-2xl p-6 transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
+                       className={`group bg-[#0d0f17]/80 backdrop-blur-sm border rounded-lg p-6 transition-all hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${
                          task.status === 'Blocked' ? 'border-rose-500/30 shadow-[0_0_25px_rgba(244,63,94,0.1)]' : 'border-white/5'
                        }`}
                      >
@@ -2694,9 +2694,9 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
 
   return (
     <div className="h-full flex flex-col p-8 space-y-10">
-       <div className="flex items-center justify-between bg-emerald-600/5 p-6 rounded-2xl border border-emerald-500/10">
+       <div className="flex items-center justify-between bg-emerald-600/5 p-6 rounded-lg border border-emerald-500/10">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-emerald-600/10 rounded-xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+             <div className="w-12 h-12 bg-emerald-600/10 rounded-lg flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
                 <TrendingUp size={24} className="text-emerald-400" />
              </div>
              <div>
@@ -2721,7 +2721,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
 
        <div className="grid grid-cols-12 gap-10">
           <div className="col-span-4 space-y-6">
-             <div className="bg-[#0d0f17] border border-white/5 rounded-2xl p-6 space-y-6 shadow-2xl">
+             <div className="bg-[#0d0f17] border border-white/5 rounded-lg p-6 space-y-6 shadow-2xl">
                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-2">
                    <PlusCircle size={14} /> Log Adoption Signal
                 </h4>
@@ -2745,13 +2745,13 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
                       <textarea 
                         value={newLog}
                         onChange={e => setNewLog(e.target.value)}
-                        className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-xs font-bold text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed"
+                        className="w-full h-32 bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-slate-300 outline-none focus:border-emerald-500/50 resize-none transition-all leading-relaxed"
                         placeholder="Stakeholder mentioned X, system Y used for Z..."
                       />
                    </div>
                    <button 
                      onClick={handleAddLog}
-                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20"
+                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20"
                    >
                       Commit Adoption Signal
                    </button>
@@ -2763,7 +2763,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] px-1">Adoption History</h4>
              <div className="space-y-3">
                 {logs.map((log: any) => (
-                  <div key={log.id} className="group bg-[#0d0f17]/50 border border-white/5 rounded-xl p-5 hover:border-emerald-500/20 transition-all">
+                  <div key={log.id} className="group bg-[#0d0f17]/50 border border-white/5 rounded-lg p-5 hover:border-emerald-500/20 transition-all">
                      <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                            <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
@@ -2783,7 +2783,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
                   </div>
                 ))}
                 {logs.length === 0 && (
-                  <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-2xl opacity-20">
+                  <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg opacity-20">
                      <TrendingUp size={48} className="mx-auto mb-4" />
                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No adoption metrics recorded</p>
                   </div>
