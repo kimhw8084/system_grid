@@ -7,6 +7,7 @@ from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge
 
 async def _auto_seed():
+    from sqlalchemy.exc import IntegrityError
     async with AsyncSessionLocal() as db:
         # 1. Verify Global Settings (App Brain)
         res_global = await db.execute(select(models.GlobalSetting))
@@ -36,7 +37,11 @@ async def _auto_seed():
             ]
             for key, val, cat, public in global_defaults:
                 db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                await db.rollback()
+                print("AUTO-BOOT: Global Settings already seeded by another worker.")
 
         # 2. Verify Setting Options (Metadata)
         res = await db.execute(select(models.SettingOption))

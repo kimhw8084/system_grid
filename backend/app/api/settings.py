@@ -367,6 +367,7 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
 @router.post("/global")
 async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     """Update unified settings and log to Audit Trail."""
+    from sqlalchemy.exc import IntegrityError
     user_id = get_current_user_id()
     for key, value in data.items():
         if key.startswith("_"): continue # Skip metadata
@@ -418,7 +419,16 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
             user=user_id
         ))
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        # If we hit a race condition, try one more time or just report the conflict
+        print(f"IntegrityError during global settings update: {e}")
+        raise HTTPException(status_code=409, detail=f"Configuration conflict detected: {str(e.orig)}")
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save settings: {str(e)}")
     
     # Notify all connected clients via WebSocket
     if hasattr(request.app.state, 'ws_manager'):
@@ -440,6 +450,7 @@ async def get_operators(db: AsyncSession = Depends(get_db)):
 @router.post("/operators")
 async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
     # Simple create or update logic for manual addition
+    from sqlalchemy.exc import IntegrityError
     external_id = str(data.get("external_id"))
     res = await db.execute(select(models.Operator).filter(models.Operator.external_id == external_id))
     op = res.scalar_one_or_none()
@@ -458,8 +469,12 @@ async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
         op = models.Operator(**clean_data)
         db.add(op)
     
-    await db.commit()
-    await db.refresh(op)
+    try:
+        await db.commit()
+        await db.refresh(op)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "Operator with this ID or Username already exists.")
     return op
 
 @router.patch("/operators/{op_id}")
@@ -584,6 +599,8 @@ async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db))
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
+    """Initialize system with default settings and metadata."""
+    from sqlalchemy.exc import IntegrityError
     # Global Defaults list
     global_defaults = [
         ("app_name", "SYSGRID ENGINE", "App Name", False),
@@ -612,7 +629,12 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     for key, val, desc, public in global_defaults:
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
         if not res.scalar_one_or_none():
-            db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
+            try:
+                db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
+                await db.flush() # Flush each one to catch conflicts early
+            except IntegrityError:
+                await db.rollback() # If already exists due to race, just skip
+                continue
     
     # 2. Idempotent check for SettingOptions (Metadata)
     res_opt = await db.execute(select(models.SettingOption))
@@ -684,7 +706,12 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
             # Check if exists first to be safe
             res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
             if not res.scalar_one_or_none():
-                db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+                try:
+                    db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+                    await db.flush()
+                except IntegrityError:
+                    await db.rollback()
+                    continue
 
         service_types = [
             ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
@@ -710,6 +737,12 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ]
         for val, keys in hardware_profiles:
             db.add(models.SettingOption(category="HardwareProfile", label=val, value=val, metadata_keys=keys))
+    
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # If we hit a race during final commit, just return success as it's already initialized
+        pass
         
-    await db.commit()
     return {"status": "initialized"}
