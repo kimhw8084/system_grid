@@ -312,19 +312,16 @@ const ProjectRail = ({
                      }`}
                    >
                       <div className="flex justify-between items-start gap-2">
-                         <h3 className={`text-[11px] font-bold truncate transition-colors flex-1 ${selectedId === p.id ? 'text-white' : 'text-slate-300 group-hover:text-blue-400'}`}>{p.name}</h3>
-                         <div className={`w-2 h-2 rounded-full shrink-0 mt-1 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${
-                           p.status === 'Completed' ? 'bg-emerald-500 shadow-emerald-500/20' :
-                           p.status === 'Blocked' ? 'bg-rose-500 shadow-rose-500/20 animate-pulse' :
-                           p.status === 'In Progress' ? 'bg-blue-500 shadow-blue-500/20' : 
-                           p.status === 'Planning' ? 'bg-amber-500 shadow-amber-500/20' : 'bg-slate-700'
-                         }`} />
+                         <h3 className={`text-[13px] font-bold truncate transition-colors flex-1 leading-tight ${selectedId === p.id ? 'text-white' : 'text-slate-300 group-hover:text-blue-400'}`}>{p.name}</h3>
+                         <div className="shrink-0">
+                            <StatusPill value={p.status} />
+                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                         <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{p.type || 'N/A'}</span>
-                         <span className="text-slate-800 text-[8px]">•</span>
-                         <div className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter ${
+                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{p.type || 'N/A'}</span>
+                         <span className="text-slate-800 text-[9px]">•</span>
+                         <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${
                             p.priority === 'High' || p.priority === 'Highest' ? 'bg-rose-600/10 text-rose-500 border border-rose-500/20' :
                             p.priority === 'Medium' ? 'bg-amber-600/10 text-amber-500 border border-amber-500/20' :
                             'bg-slate-800 text-slate-500 border border-white/5'
@@ -333,22 +330,15 @@ const ProjectRail = ({
                          </div>
                       </div>
 
-                      <div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
-                         <div className="flex items-center justify-between text-[7px] font-bold uppercase tracking-widest">
-                            <span className="text-slate-600 flex items-center gap-1"><PlusCircle size={8} /> Created</span>
-                            <span className="text-slate-400">{p.created_at ? format(new Date(p.created_at), 'MMM dd, yyyy') : 'N/A'}</span>
-                         </div>
-                         <div className="flex items-center justify-between text-[7px] font-bold uppercase tracking-widest">
-                            <span className="text-slate-600 flex items-center gap-1"><RefreshCcw size={8} /> Updated</span>
-                            <span className="text-blue-400/60">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd, HH:mm') : 'N/A'}</span>
-                         </div>
-                      </div>
-                      
-                      <div className="mt-1 flex items-center justify-between">
-                         <div className="px-2 py-0.5 bg-white/5 rounded-full text-[7px] font-black text-slate-500 uppercase truncate max-w-[120px]">
+                      <div className="mt-1 flex items-center justify-between gap-4">
+                         <div className="flex-1 px-2 py-1 bg-white/5 rounded-md text-[9px] font-bold text-blue-400/80 uppercase truncate border border-white/5">
                             {p.owners?.length > 0 ? p.owners.join(', ') : (p.owner || 'Unassigned')}
                          </div>
-                         <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity" />
+                         <div className="flex items-center gap-1.5 shrink-0 opacity-40">
+                            <Clock size={10} className="text-slate-500" />
+                            <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd') : 'N/A'}</span>
+                         </div>
+                         <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
                    </button>
                 </Reorder.Item>
@@ -690,13 +680,13 @@ const TaskRow = React.memo(({
   }, [task.metadata_json?.tagged_nodes, diagram?.nodes])
 
   return (
-    <div className="absolute w-full h-[32px] group/row" style={{ top: rowIndex * ROW_HEIGHT }}>
+    <div className="absolute w-full group/row" style={{ top: rowIndex * ROW_HEIGHT, height: ROW_HEIGHT }}>
        <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
        
        {/* Actual Execution Bar (Overlapping) */}
        {actualLeft !== null && (
          <div 
-           className="absolute h-1 top-[22px] bg-emerald-500/30 rounded-full z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
+           className="absolute h-1.5 top-[28px] bg-emerald-500/30 rounded-full z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
            style={{ left: actualLeft, width: actualWidth || 0 }} 
          />
        )}
@@ -713,7 +703,7 @@ const TaskRow = React.memo(({
          onMouseLeave={() => setShowHologram(false)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-4 top-2 rounded-md flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow
+         className={`absolute h-6 top-2 rounded-md flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow
            ${selectedTaskIds.has(task.id) ? 'shadow-[0_0_0_2px_rgba(59,130,246,0.5)] z-40' : ''} 
            ${isCritical ? 'shadow-[0_0_15px_rgba(244,63,94,0.3)] border-rose-500/60' : ''}
            ${
@@ -729,23 +719,20 @@ const TaskRow = React.memo(({
 
           <div 
             onPointerDown={(e) => dragControls.start(e)}
-            className="flex-1 h-full flex items-center px-2 gap-1.5 cursor-grab active:cursor-grabbing overflow-hidden"
+            className="flex-1 h-full flex items-center px-2 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
           >
-             <div className={`w-1 h-1 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500' : 'bg-blue-500'}`} />
+             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500' : 'bg-blue-500'}`} />
              {width > 120 ? (
-               <>
-                 <span className={`text-[8px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-                 {task.status !== 'Blocked' && <span className="text-[7px] font-bold text-white/40 shrink-0">{task.progress}%</span>}
-               </>
+               <span className={`text-[10px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
              ) : null}
+             <span className="text-[9px] font-black text-white/60 shrink-0 ml-auto">{task.progress}%</span>
           </div>
 
           {width <= 120 && (
-            <div className="absolute left-full ml-2 flex items-center gap-2 whitespace-nowrap pointer-events-none">
-               <span className={`text-[8px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/80' : task.status === 'Blocked' ? 'text-rose-500/80' : isCritical ? 'text-rose-500/80' : 'text-slate-400'}`}>
+            <div className={`absolute left-full ml-3 flex items-center gap-2 whitespace-nowrap pointer-events-none ${isPackingMode ? 'top-6' : 'top-0'}`}>
+               <span className={`text-[10px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/80' : task.status === 'Blocked' ? 'text-rose-500/80' : isCritical ? 'text-rose-500/80' : 'text-slate-400'}`}>
                   {task.name}
                </span>
-               {task.status !== 'Blocked' && <span className="text-[7px] font-bold text-white/20">{task.progress}%</span>}
             </div>
           )}
 
@@ -768,14 +755,14 @@ const TaskRow = React.memo(({
             onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
             className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1 text-slate-600 hover:text-white transition-opacity"
           >
-             <Info size={12} />
+             <Info size={14} />
           </button>
           
           <button 
             onClick={(e) => { e.stopPropagation(); onDependencyStart(task.id); }}
-            className={`opacity-0 group-hover:opacity-100 absolute -right-14 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-600 hover:text-blue-400'}`}
+            className={`opacity-0 group-hover:opacity-100 absolute -right-16 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-600 hover:text-blue-400'}`}
           >
-             <LinkIcon size={12} />
+             <LinkIcon size={14} />
           </button>
        </motion.div>
     </div>
@@ -794,8 +781,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [isPackingMode, setIsPackingMode] = useState(false)
   const [dayTasksPopup, setDayTasksPopup] = useState<{ date: Date, tasks: any[] } | null>(null)
   const [cursorDate, setCursorDate] = useState<{ date: string, x: number, y: number } | null>(null)
+  const [dragStatus, setDragStatus] = useState<{ type: 'move' | 'resize-start' | 'resize-end', taskId: number, date: string } | null>(null)
 
-  const ROW_HEIGHT = 32
+  const ROW_HEIGHT = 44 // Increased from 32
   const HEADER_HEIGHT = 44
 
   const listRef = useRef<HTMLDivElement>(null)
@@ -935,12 +923,14 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       const idsToMove = selectedTaskIds.has(id) ? Array.from(selectedTaskIds) : [id]
       
       let updatedTasks = [...tasks]
+      let newStartDateStr = ''
       updatedTasks = updatedTasks.map(t => {
         const startTask = baseTasks.find(bt => bt.id === t.id)
         if (startTask && idsToMove.includes(t.id)) {
           const newStart = addDays(new Date(startTask.start_date), daysMoved).toISOString()
           const duration = differenceInDays(new Date(startTask.end_date), new Date(startTask.start_date))
           const newEnd = addDays(new Date(newStart), duration).toISOString()
+          if (t.id === id) newStartDateStr = format(new Date(newStart), 'MMM dd, yyyy')
           return { ...t, start_date: newStart, end_date: newEnd }
         }
         return t
@@ -953,8 +943,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       })
       
       setTasks(updatedTasks)
+      setDragStatus({ type: 'move', taskId: id, date: newStartDateStr })
     } else {
       setDragStartTasks(null)
+      setDragStatus(null)
       onUpdate({ ...project, tasks: tasks })
     }
   }, [tasks, dragStartTasks, zoomLevel, selectedTaskIds, project, onUpdate])
@@ -966,6 +958,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
 
       const daysMoved = Math.round(offset / zoomLevel)
       let updatedTasks = [...tasks]
+      let newDateStr = ''
       
       updatedTasks = updatedTasks.map(t => {
         const startTask = baseTasks.find(bt => bt.id === t.id)
@@ -973,10 +966,16 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
           let updatedTask = { ...t }
           if (type === 'start') {
             const newStart = addDays(new Date(startTask.start_date), daysMoved)
-            if (newStart < new Date(startTask.end_date)) updatedTask.start_date = newStart.toISOString()
+            if (newStart < new Date(startTask.end_date)) {
+              updatedTask.start_date = newStart.toISOString()
+              newDateStr = format(newStart, 'MMM dd, yyyy')
+            }
           } else {
             const newEnd = addDays(new Date(startTask.end_date), daysMoved)
-            if (newEnd > new Date(startTask.start_date)) updatedTask.end_date = newEnd.toISOString()
+            if (newEnd > new Date(startTask.start_date)) {
+              updatedTask.end_date = newEnd.toISOString()
+              newDateStr = format(newEnd, 'MMM dd, yyyy')
+            }
           }
           return updatedTask
         }
@@ -990,8 +989,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       }
 
       setTasks(updatedTasks)
+      setDragStatus({ type: type === 'start' ? 'resize-start' : 'resize-end', taskId: id, date: newDateStr })
     } else {
       setDragStartTasks(null)
+      setDragStatus(null)
       onUpdate({ ...project, tasks: tasks })
     }
   }, [tasks, dragStartTasks, zoomLevel, project, onUpdate])
@@ -1013,9 +1014,9 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [granularity, setGranularity] = useState<'D' | 'W' | 'M'>('D')
 
   const zoomLevels = {
-    'D': 30,
-    'W': 6,
-    'M': 1.5
+    'D': 20,
+    'W': 20,
+    'M': 50
   }
 
   useEffect(() => {
@@ -1273,7 +1274,8 @@ const DependencyLines = React.memo(({ lines }: any) => {
              <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
                 {/* Today Line */}
                 <div className="absolute top-0 bottom-0 w-px bg-blue-500/40 z-10 pointer-events-none" style={{ left: todayX }}>
-                   <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg uppercase tracking-tighter">TODAY</div>
+                   <div className="absolute top-[-44px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-[0_0_20px_rgba(37,99,235,0.4)] uppercase tracking-widest z-[60] border border-blue-400/30">TODAY</div>
+                   <div className="h-full w-full border-l border-dashed border-blue-500/40" />
                 </div>
 
                 <div 
@@ -1310,12 +1312,15 @@ const DependencyLines = React.memo(({ lines }: any) => {
              </div>
           </div>
 
-          {cursorDate && (
+          {dragStatus && cursorDate && (
             <div 
-              className="fixed pointer-events-none z-[1000] bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-2xl border border-blue-400/30 whitespace-nowrap"
+              className="fixed pointer-events-none z-[1000] bg-white text-black text-[10px] font-black px-3 py-1.5 rounded shadow-2xl border border-white/20 whitespace-nowrap flex flex-col gap-1"
               style={{ left: cursorDate.x + 15, top: cursorDate.y + 15 }}
             >
-              {cursorDate.date}
+              <span className="text-[8px] text-slate-500 uppercase tracking-widest">
+                {dragStatus.type === 'move' ? 'Establishing Start' : dragStatus.type === 'resize-start' ? 'Adjusting Start' : 'Adjusting End'}
+              </span>
+              <span className="text-blue-600">{dragStatus.date}</span>
             </div>
           )}
 
@@ -1760,6 +1765,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
   const [systemSearch, setSystemSearch] = useState('')
   const [assetSearch, setAssetSearch] = useState('')
   const [serviceSearch, setServiceSearch] = useState('')
+  const [selectedImage, setSelectedImage] = useState<{ url: string, caption?: string, index: number } | null>(null)
 
   useEffect(() => {
     setName(project?.name || '')
@@ -1905,7 +1911,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
           <div className="p-8 grid grid-cols-2 gap-10">
              <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14} /> Problem Statement</h4>
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Problem Statement</h4>
                 <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-blue-500/30' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={problemStatement} onChange={e => setProblemStatement(e.target.value)} onBlur={() => handleFieldChange('problem_statement', problemStatement)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define strategic friction..." />
@@ -1915,8 +1921,8 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                 </div>
              </section>
              <section className="space-y-3">
-                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2"><Target size={14} /> Objective</h4>
-                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-emerald-500/30' : 'border-white/5'}`}>
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Objective</h4>
+                <div className={`bg-white/5 p-6 rounded-lg border transition-all min-h-[120px] ${isEditing ? 'border-white/10' : 'border-white/5'}`}>
                    {isEditing ? (
                      <textarea value={objective} onChange={e => setObjective(e.target.value)} onBlur={() => handleFieldChange('objective', objective)} className="w-full h-full bg-transparent border-none outline-none text-xs font-bold text-slate-300 leading-relaxed resize-none" placeholder="Define target end state..." />
                    ) : (
@@ -1930,21 +1936,28 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
              <div className="space-y-2">
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner(s)</label>
                 <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                   {userOptions.map((o:any) => (
-                      <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                         <input 
-                           type="checkbox" 
-                           checked={(project.owners || []).includes(o.value)} 
-                           onChange={e => {
-                              const current = project.owners || []
-                              const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                              handleFieldChange('owners', updated)
-                           }}
-                           className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                         />
+                   {userOptions
+                    .filter((o:any) => isEditing || (project.owners || []).includes(o.value))
+                    .map((o:any) => (
+                      <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${(project.owners || []).includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                         {isEditing && (
+                           <input 
+                             type="checkbox" 
+                             checked={(project.owners || []).includes(o.value)} 
+                             onChange={e => {
+                                const current = project.owners || []
+                                const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+                                handleFieldChange('owners', updated)
+                             }}
+                             className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                           />
+                         )}
                          <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
                       </label>
                    ))}
+                   {!isEditing && (!project.owners || project.owners.length === 0) && (
+                     <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No owners assigned</p>
+                   )}
                 </div>
              </div>
              <div className="space-y-2">
@@ -1968,86 +1981,113 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
           </div>
 
           <div className="p-8 border-t border-white/5">
-             <label className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
-                <Sliders size={14} /> Context & Target Boundaries
+             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-4">
+                Strategic Context & Target Boundaries
              </label>
              <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                    <div className="flex items-center justify-between px-1">
                       <label className="text-[8px] font-bold text-slate-500 uppercase">Strategic Systems</label>
-                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                         <Search size={8} className="text-slate-600" />
-                         <input value={systemSearch} onChange={e => setSystemSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                      </div>
+                      {isEditing && (
+                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                           <Search size={8} className="text-slate-600" />
+                           <input value={systemSearch} onChange={e => setSystemSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                        </div>
+                      )}
                    </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredSystems.map((o:any) => (
-                         <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={project.target_systems?.includes(o.value)} 
-                              onChange={e => {
-                                 const current = project.target_systems || []
-                                 const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
-                                 handleFieldChange('target_systems', updated)
-                              }}
-                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                            />
+                      {filteredSystems
+                        .filter((o:any) => isEditing || project.target_systems?.includes(o.value))
+                        .map((o:any) => (
+                         <label key={o.value} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_systems?.includes(o.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                            {isEditing && (
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_systems?.includes(o.value)} 
+                                onChange={e => {
+                                   const current = project.target_systems || []
+                                   const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+                                   handleFieldChange('target_systems', updated)
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                            )}
                             <span className="text-[9px] font-bold uppercase tracking-tight truncate">{o.label}</span>
                          </label>
                       ))}
+                      {!isEditing && (!project.target_systems || project.target_systems.length === 0) && (
+                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No systems selected</p>
+                      )}
                    </div>
                 </div>
                 <div className="space-y-2">
                    <div className="flex items-center justify-between px-1">
                       <label className="text-[8px] font-bold text-slate-500 uppercase">Impacted Assets</label>
-                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                         <Search size={8} className="text-slate-600" />
-                         <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                      </div>
+                      {isEditing && (
+                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                           <Search size={8} className="text-slate-600" />
+                           <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                        </div>
+                      )}
                    </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredAssets.map((d:any) => (
-                         <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={project.target_assets?.includes(d.id)} 
-                              onChange={e => {
-                                 const current = project.target_assets || []
-                                 const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
-                                 handleFieldChange('target_assets', updated)
-                              }}
-                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                            />
+                      {filteredAssets
+                        .filter((d:any) => isEditing || project.target_assets?.includes(d.id))
+                        .map((d:any) => (
+                         <label key={d.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_assets?.includes(d.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                            {isEditing && (
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_assets?.includes(d.id)} 
+                                onChange={e => {
+                                   const current = project.target_assets || []
+                                   const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
+                                   handleFieldChange('target_assets', updated)
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                            )}
                             <span className="text-[9px] font-bold uppercase tracking-tight truncate">{d.name}</span>
                          </label>
                       ))}
+                      {!isEditing && (!project.target_assets || project.target_assets.length === 0) && (
+                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No assets impacted</p>
+                      )}
                    </div>
                 </div>
                 <div className="space-y-2">
                    <div className="flex items-center justify-between px-1">
                       <label className="text-[8px] font-bold text-slate-500 uppercase">Core Services</label>
-                      <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
-                         <Search size={8} className="text-slate-600" />
-                         <input value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
-                      </div>
+                      {isEditing && (
+                        <div className="flex items-center gap-1 border-b border-white/10 pb-0.5">
+                           <Search size={8} className="text-slate-600" />
+                           <input value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} className="bg-transparent border-none outline-none text-[8px] font-bold text-white w-16" placeholder="Find..." />
+                        </div>
+                      )}
                    </div>
                    <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar bg-black/40 border border-white/10 rounded-lg p-2">
-                      {filteredServices.map((s:any) => (
-                         <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={project.target_services?.includes(s.id)} 
-                              onChange={e => {
-                                 const current = project.target_services || []
-                                 const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
-                                 handleFieldChange('target_services', updated)
-                              }}
-                              className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                            />
+                      {filteredServices
+                        .filter((s:any) => isEditing || project.target_services?.includes(s.id))
+                        .map((s:any) => (
+                         <label key={s.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all ${isEditing ? 'cursor-pointer' : ''} ${project.target_services?.includes(s.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
+                            {isEditing && (
+                              <input 
+                                type="checkbox" 
+                                checked={project.target_services?.includes(s.id)} 
+                                onChange={e => {
+                                   const current = project.target_services || []
+                                   const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
+                                   handleFieldChange('target_services', updated)
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                              />
+                            )}
                             <span className="text-[9px] font-bold uppercase tracking-tight truncate">{s.name}</span>
                          </label>
                       ))}
+                      {!isEditing && (!project.target_services || project.target_services.length === 0) && (
+                        <p className="text-[9px] font-bold text-slate-600 uppercase italic p-2">No services impacted</p>
+                      )}
                    </div>
                 </div>
              </div>
@@ -2056,7 +2096,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
        <div className="grid grid-cols-2 gap-10">
           <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> Jira Link(s)</h4>
+             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Jira Links</h4>
              <div className="space-y-2">
                 <div className="space-y-3">
                   <div className="flex gap-2">
@@ -2080,18 +2120,18 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                         handleFieldChange('metadata_json', { ...metadata, links })
                         setNewLinkLabel(''); setNewLinkUrl('')
                       }}
-                      className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-all"
+                      className="p-2 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg transition-all"
                     ><Plus size={16}/></button>
                   </div>
                   <div className="space-y-1">
                     {(project.metadata_json?.links || []).map((link: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5">
-                        <a href={link.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-blue-400 uppercase hover:underline">{link.label}</a>
+                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5 group">
+                        <a href={link.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-slate-400 uppercase hover:text-blue-400">{link.label}</a>
                         <button onClick={() => {
                           const metadata = project.metadata_json || {}
                           const links = metadata.links.filter((_:any, idx:number) => idx !== i)
                           handleFieldChange('metadata_json', { ...metadata, links })
-                        }} className="text-rose-500 hover:text-rose-400"><Trash2 size={12}/></button>
+                        }} className="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
                       </div>
                     ))}
                   </div>
@@ -2100,13 +2140,13 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
           </section>
 
           <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Users size={14} /> Stakeholders</h4>
+             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Stakeholders</h4>
              <div className="space-y-2">
                 <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Comma-separated team names</label>
                 <input 
                    value={project.stakeholders || ''}
                    onChange={e => handleFieldChange('stakeholders', e.target.value)}
-                   className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all"
+                   className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs font-bold text-white outline-none focus:border-white/20 transition-all"
                    placeholder="Security, Infra, DevOps..."
                 />
              </div>
@@ -2115,7 +2155,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
        <div className="space-y-8">
           <div className="flex items-center justify-between">
-             <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Workflow size={14} /> Designs</h4>
+             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Designs</h4>
              <button 
                onClick={() => {
                  const metadata = project?.metadata_json || {}
@@ -2123,7 +2163,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                  handleFieldChange('metadata_json', { ...metadata, diagrams: newDiagrams })
                  setActiveDiagramIndex(newDiagrams.length - 1)
                }}
-               className="px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
+               className="px-3 py-1 bg-white/5 border border-white/10 text-slate-500 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
              >+ New Design</button>
           </div>
           <div className="space-y-4">
@@ -2131,9 +2171,8 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                <div key={d.id} className="border border-white/5 rounded-lg bg-[#12141f] overflow-hidden group/design">
                   <div className="w-full flex items-center justify-between bg-white/5 pr-4">
                      <button onClick={() => setActiveDiagramIndex(activeDiagramIndex === idx ? null : idx)} className="flex-1 px-6 py-3 flex items-center gap-3 hover:bg-white/5 transition-all">
-                        <GitBranch size={14} className="text-amber-400" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">{d.name}</span>
-                        <ChevronRight size={14} className={`text-slate-500 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{d.name}</span>
+                        <ChevronRight size={14} className={`text-slate-600 transition-transform ${activeDiagramIndex === idx ? 'rotate-90' : ''}`} />
                      </button>
                      <button 
                        onClick={() => {
@@ -2144,7 +2183,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                            if (activeDiagramIndex === idx) setActiveDiagramIndex(null)
                          }
                        }}
-                       className="p-1.5 text-rose-500 hover:bg-rose-600 hover:text-white rounded transition-all opacity-0 group-hover/design:opacity-100"
+                       className="p-1.5 text-slate-600 hover:text-rose-500 rounded transition-all opacity-0 group-hover/design:opacity-100"
                      ><Trash2 size={14} /></button>
                   </div>
                   <AnimatePresence>
@@ -2161,34 +2200,35 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                   </AnimatePresence>
                </div>
              ))}
-             {(!project?.metadata_json?.diagrams || project.metadata_json.diagrams.length === 0) && (
-               <div className="py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-30">
-                  <Workflow size={32} className="mb-2" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">No designs created</p>
-               </div>
-             )}
           </div>
        </div>
 
        <div className="grid grid-cols-1 gap-8">
           <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ImageIcon size={14} /> Images</h4>
+             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Images</h4>
              <div className="grid grid-cols-4 gap-4">
-                {(project?.metadata_json?.images || []).map((img: string, i: number) => (
-                  <div key={i} className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative">
-                     <img src={img} alt="Artifact" className="w-full h-full object-cover" />
-                     <button onClick={() => {
-                        const metadata = project?.metadata_json || {}
-                        const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
-                        handleFieldChange('metadata_json', { ...metadata, images: updated })
-                     }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
-                  </div>
-                ))}
+                {(project?.metadata_json?.images || []).map((img: any, i: number) => {
+                  const imageUrl = typeof img === 'string' ? img : img.url
+                  const caption = typeof img === 'string' ? '' : img.caption
+                  return (
+                    <div key={i} className="flex flex-col gap-2">
+                      <div className="aspect-video bg-white/5 rounded-lg border border-white/5 overflow-hidden group relative cursor-pointer" onClick={() => setSelectedImage({ url: imageUrl, caption, index: i })}>
+                         <img src={imageUrl} alt="Artifact" className="w-full h-full object-cover" />
+                         <button onClick={(e) => {
+                            e.stopPropagation()
+                            const metadata = project?.metadata_json || {}
+                            const updated = metadata.images.filter((_:any, idx:number) => idx !== i)
+                            handleFieldChange('metadata_json', { ...metadata, images: updated })
+                         }} className="absolute top-2 right-2 p-1.5 bg-rose-600 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all shadow-xl"><Trash2 size={14}/></button>
+                      </div>
+                      <p className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter truncate px-1">{caption || 'No caption'}</p>
+                    </div>
+                  )
+                })}
                 <button 
                   onClick={() => setIsPasting(true)}
-                  className={`aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-slate-700 hover:text-blue-500'}`}
+                  className={`aspect-video border border-dashed rounded-lg flex flex-col items-center justify-center transition-all ${isPasting ? 'border-white/20 bg-white/5 text-slate-300' : 'border-white/5 text-slate-700 hover:text-slate-400'}`}
                 >
-                   <Camera size={24} className="mb-2 opacity-30" />
                    <span className="text-[8px] font-bold uppercase tracking-widest text-center">{isPasting ? 'PASTE NOW (CTRL+V)' : 'Capture Artifact'}</span>
                 </button>
              </div>
@@ -2197,19 +2237,19 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 
        <div className="grid grid-cols-1 gap-8">
           <section className="space-y-4">
-             <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Link2 size={14} /> References</h4>
+             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">References</h4>
              <div className="grid grid-cols-2 gap-4">
                 {(project?.metadata_json?.references || []).map((ref: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 group">
                      <a href={ref.url} target="_blank" rel="noreferrer" className="flex-1 p-3 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-all flex justify-between">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase truncate">{ref.label}</span>
-                        <ExternalLink size={12} className="text-slate-600" />
+                        <span className="text-[10px] font-bold text-slate-500 uppercase truncate">{ref.label}</span>
+                        <ExternalLink size={12} className="text-slate-700" />
                      </a>
                      <button onClick={() => {
                         const metadata = project?.metadata_json || {}
                         const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
                         handleFieldChange('metadata_json', { ...metadata, references: updated })
-                     }} className="p-3 bg-rose-600/10 text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
+                     }} className="p-3 bg-white/5 text-slate-600 hover:text-rose-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12} /></button>
                   </div>
                 ))}
                 <button 
@@ -2222,11 +2262,51 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                       handleFieldChange('metadata_json', { ...metadata, references })
                     }
                   }}
-                  className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-blue-500 transition-all"
+                  className="w-full py-3 border border-dashed border-white/5 rounded-lg text-[8px] font-bold text-slate-700 uppercase hover:text-slate-400 transition-all"
                 >Establish Reference Link</button>
              </div>
           </section>
        </div>
+
+       <AnimatePresence>
+          {selectedImage && (
+            <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-xl p-12 overflow-y-auto" onClick={() => setSelectedImage(null)}>
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.9 }} 
+                 animate={{ opacity: 1, scale: 1 }} 
+                 exit={{ opacity: 0, scale: 0.9 }}
+                 className="relative max-w-7xl w-full flex flex-col gap-6"
+                 onClick={e => e.stopPropagation()}
+               >
+                  <img src={selectedImage.url} alt="Artifact Full" className="w-full h-auto rounded-xl shadow-2xl border border-white/10" />
+                  <div className="bg-[#0a0c14] border border-white/10 rounded-xl p-8 space-y-4">
+                     <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Artifact Caption</h4>
+                        <button onClick={() => setSelectedImage(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+                     </div>
+                     <textarea 
+                       value={selectedImage.caption || ''} 
+                       onChange={e => {
+                          const newCaption = e.target.value
+                          setSelectedImage({ ...selectedImage, caption: newCaption })
+                          const metadata = project?.metadata_json || {}
+                          const images = [...(metadata.images || [])]
+                          const currentImg = images[selectedImage.index]
+                          if (typeof currentImg === 'string') {
+                             images[selectedImage.index] = { url: currentImg, caption: newCaption }
+                          } else {
+                             images[selectedImage.index] = { ...currentImg, caption: newCaption }
+                          }
+                          handleFieldChange('metadata_json', { ...metadata, images })
+                       }}
+                       className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-slate-300 outline-none focus:border-blue-500 transition-all h-24 resize-none leading-relaxed"
+                       placeholder="Enter artifact context..."
+                     />
+                  </div>
+               </motion.div>
+            </div>
+          )}
+       </AnimatePresence>
     </div>
   )
 }
@@ -2906,6 +2986,14 @@ export default function Projects() {
     setIsLedgerCollapsed(next)
   }
 
+  const handleUpdate = (updated: any) => {
+    if (isGlobalEditing) {
+      setDraftProject(updated)
+    } else {
+      mutation.mutate({ data: updated, silent: true })
+    }
+  }
+
   if (isLoading && !projects) return <div className="h-full flex items-center justify-center bg-[#0a0c14]"><div className="flex flex-col items-center gap-4"><div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"/><p className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">Synchronizing Matrix...</p></div></div>
 
   return (
@@ -2982,7 +3070,7 @@ export default function Projects() {
                              <WorkbenchView 
                                key={selectedProjectId}
                                project={isGlobalEditing ? draftProject : selectedProject} 
-                               onUpdate={setDraftProject} 
+                               onUpdate={handleUpdate} 
                                isEditing={isGlobalEditing}
                                devices={devices || []}
                                services={services || []}
@@ -2995,7 +3083,7 @@ export default function Projects() {
                         {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
                         {activeTab === 'ADOPTION' && (
                           <motion.div key={`adoption-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto custom-scrollbar">
-                             <ProjectAdoptionView project={isGlobalEditing ? draftProject : selectedProject} onUpdate={setDraftProject} isEditing={isGlobalEditing} />
+                             <ProjectAdoptionView project={isGlobalEditing ? draftProject : selectedProject} onUpdate={handleUpdate} isEditing={isGlobalEditing} />
                           </motion.div>
                         )}
                      </>
@@ -3010,7 +3098,7 @@ export default function Projects() {
             isCollapsed={isLedgerCollapsed} 
             onToggleCollapse={() => setIsLedgerCollapsed(!isLedgerCollapsed)}
             isEditing={isGlobalEditing}
-            onUpdate={setDraftProject}
+            onUpdate={handleUpdate}
           />
        </div>
 
