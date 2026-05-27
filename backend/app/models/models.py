@@ -727,6 +727,7 @@ class Project(Base, BaseMixin):
     parent_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     
     # ROI Metrics
+    roi_types = Column(JSON, default=list) # List of active ROI streams
     roi_defense_line = Column(Integer, default=0) # 0, 1, 2
     roi_defense_line_desc = Column(Text)
     man_hours_saved = Column(Float, default=0.0)
@@ -765,6 +766,8 @@ class ProjectTask(Base, BaseMixin):
     description = Column(Text)
     start_date = Column(DateTime)
     end_date = Column(DateTime)
+    actual_start_date = Column(DateTime, nullable=True)
+    actual_end_date = Column(DateTime, nullable=True)
     progress = Column(Integer, default=0) # 0-100
     status = Column(String, default="To Do")
     owner = Column(String)

@@ -411,6 +411,8 @@ class ProjectTaskBase(BaseModel):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    actual_start_date: Optional[datetime] = None
+    actual_end_date: Optional[datetime] = None
     progress: int = 0
     status: str = "To Do"
     owner: Optional[str] = None
@@ -455,6 +457,7 @@ class ProjectBase(BaseModel):
     
     parent_project_id: Optional[int] = None
     
+    roi_types: Optional[List[str]] = []
     roi_defense_line: int = 0
     roi_defense_line_desc: Optional[str] = None
     man_hours_saved: float = 0.0

@@ -9,7 +9,8 @@ import {
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
   Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown,
   Workflow, ExternalLink, Briefcase, BarChart3, Users, DollarSign, Image as ImageIcon, HelpCircle, BookOpen, Filter,
-  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical, Layout
+  Maximize2, Minimize2, PanelLeft, PanelRight, MousePointer2, GitBranch, Binary, Cpu, Network, Activity as ActivityIcon, ScrollText, GripVertical, Layout,
+  Projector, Tag
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -657,12 +658,9 @@ const TaskRow = React.memo(({
   task, 
   rowIndex, 
   isPackingMode, 
-  showBaseline, 
   startDate, 
   zoomLevel, 
   selectedTaskIds, 
-  dragInfo, 
-  setDragInfo, 
   handleTaskMove, 
   handleTaskResize, 
   setSelectedTaskId, 
@@ -670,7 +668,6 @@ const TaskRow = React.memo(({
   onDependencyStart,
   isSource,
   isCritical,
-  ghost,
   diagram,
   ROW_HEIGHT,
   getDayOffset,
@@ -680,7 +677,13 @@ const TaskRow = React.memo(({
   const [showHologram, setShowHologram] = useState(false)
   const left = Math.floor(getDayOffset(task?.start_date) * zoomLevel)
   const width = Math.max(zoomLevel, Math.floor(getDayWidth(task?.start_date, task?.end_date) * zoomLevel))
-  const baseline = task?.metadata_json?.baseline
+  
+  // Actual progress visualization
+  const actualLeft = task.actual_start_date ? Math.floor(getDayOffset(task.actual_start_date) * zoomLevel) : null
+  const actualWidth = (task.actual_start_date && task.actual_end_date) 
+    ? Math.max(zoomLevel, Math.floor(getDayWidth(task.actual_start_date, task.actual_end_date) * zoomLevel)) 
+    : (task.actual_start_date ? Math.max(zoomLevel, Math.floor(getDayWidth(task.actual_start_date, new Date().toISOString()) * zoomLevel)) : null)
+
   const taggedNodes = useMemo(() => {
     if (!task.metadata_json?.tagged_nodes?.length || !diagram?.nodes) return []
     return diagram.nodes.filter((n: any) => task.metadata_json.tagged_nodes.includes(n.id))
@@ -689,27 +692,29 @@ const TaskRow = React.memo(({
   return (
     <div className="absolute w-full h-[32px] group/row" style={{ top: rowIndex * ROW_HEIGHT }}>
        <div className="absolute inset-0 border-b border-white/5 group-hover/row:bg-white/[0.02] transition-all pointer-events-none" />
-       {showBaseline && baseline && (
-         <div className="absolute h-1 bg-amber-500/20 border border-amber-500/30 rounded-full z-10 top-[26px] opacity-60 pointer-events-none" style={{ left: Math.floor(getDayOffset(baseline.start) * zoomLevel), width: Math.max(10, Math.floor(getDayWidth(baseline.start, baseline.end) * zoomLevel)) }} />
+       
+       {/* Actual Execution Bar (Overlapping) */}
+       {actualLeft !== null && (
+         <div 
+           className="absolute h-1 top-[22px] bg-emerald-500/30 rounded-full z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
+           style={{ left: actualLeft, width: actualWidth || 0 }} 
+         />
        )}
-       {ghost && (
-         <div className="absolute h-3 bg-rose-500/10 border border-dashed border-rose-500/30 rounded-full top-2.5 opacity-40 animate-pulse z-10" style={{ left: Math.floor(getDayOffset(ghost.start) * zoomLevel), width: Math.max(10, Math.floor(getDayWidth(ghost.start, ghost.end) * zoomLevel)) }} />
-       )}
+
        <motion.div
          layout
          drag="x"
          dragControls={dragControls}
          dragListener={false}
          dragMomentum={false}
-         onDragStart={() => setDragInfo({ id: task.id, date: format(new Date(task.start_date), 'MMM d, yyyy') })}
          onDrag={(e, info) => handleTaskMove(task.id, info.offset.x)}
          onDragEnd={(e, info) => handleTaskMove(task.id, info.offset.x, true)}
          onMouseEnter={() => setShowHologram(true)}
          onMouseLeave={() => setShowHologram(false)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-5 top-1.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-all 
-           ${selectedTaskIds.has(task.id) ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#0b0c14] z-40' : ''} 
+         className={`absolute h-4 top-2 rounded-md flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow
+           ${selectedTaskIds.has(task.id) ? 'shadow-[0_0_0_2px_rgba(59,130,246,0.5)] z-40' : ''} 
            ${isCritical ? 'shadow-[0_0_15px_rgba(244,63,94,0.3)] border-rose-500/60' : ''}
            ${
            task.status === 'Completed' ? 'border-emerald-500/40 bg-[#0d1f17]' : 
@@ -720,51 +725,27 @@ const TaskRow = React.memo(({
          }`}
          style={{ left, width }}
        >
-          {isCritical && <div className="absolute -inset-[1px] rounded-lg bg-rose-500/20 animate-pulse pointer-events-none" />}
+          {isCritical && <div className="absolute -inset-[1px] rounded-md bg-rose-500/20 animate-pulse pointer-events-none" />}
 
-          <AnimatePresence>
-            {showHologram && taggedNodes.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.9 }} className="absolute bottom-full mb-3 left-0 bg-[#0d0f17]/90 backdrop-blur-xl border border-blue-500/30 rounded-lg p-3 shadow-2xl z-[100] min-w-[160px]">
-                 <div className="flex items-center gap-2 mb-2 border-b border-white/5 pb-2">
-                    <LayoutGrid size={12} className="text-blue-400" />
-                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Architecture Context</span>
-                 </div>
-                 <div className="space-y-1.5">
-                    {taggedNodes.map((n: any) => (
-                       <div key={n.id} className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tight">{n.data?.label}</span>
-                       </div>
-                    ))}
-                 </div>
-                 <div className="mt-3 pt-2 border-t border-white/5 flex justify-center">
-                    <div className="w-full h-12 bg-black/40 rounded border border-white/5 flex items-center justify-center">
-                       <Workflow size={16} className="text-slate-700 animate-pulse" />
-                    </div>
-                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
           <div 
             onPointerDown={(e) => dragControls.start(e)}
-            className="flex-1 h-full flex items-center px-3 gap-2 cursor-grab active:cursor-grabbing overflow-hidden"
+            className="flex-1 h-full flex items-center px-2 gap-1.5 cursor-grab active:cursor-grabbing overflow-hidden"
           >
-             <div className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)] ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-blue-500'}`} />
+             <div className={`w-1 h-1 rounded-full shrink-0 ${task.status === 'Completed' ? 'bg-emerald-500' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : isCritical ? 'bg-rose-500' : 'bg-blue-500'}`} />
              {width > 120 ? (
                <>
-                 <span className={`text-[9px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
-                 <span className="text-[8px] font-bold text-white/40 shrink-0">{task.progress}%</span>
+                 <span className={`text-[8px] font-bold truncate tracking-tight flex-1 ${task.status === 'Completed' ? 'text-emerald-400' : task.status === 'Blocked' ? 'text-rose-400' : isCritical ? 'text-rose-400' : 'text-blue-300'}`}>{task.name}</span>
+                 {task.status !== 'Blocked' && <span className="text-[7px] font-bold text-white/40 shrink-0">{task.progress}%</span>}
                </>
              ) : null}
           </div>
 
           {width <= 120 && (
-            <div className="absolute left-full ml-3 flex items-center gap-2 whitespace-nowrap pointer-events-none">
-               <span className={`text-[9px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/60' : task.status === 'Blocked' ? 'text-rose-500/60' : isCritical ? 'text-rose-500/60' : 'text-slate-500/60'}`}>
+            <div className="absolute left-full ml-2 flex items-center gap-2 whitespace-nowrap pointer-events-none">
+               <span className={`text-[8px] font-black uppercase tracking-widest ${task.status === 'Completed' ? 'text-emerald-500/80' : task.status === 'Blocked' ? 'text-rose-500/80' : isCritical ? 'text-rose-500/80' : 'text-slate-400'}`}>
                   {task.name}
                </span>
-               <span className="text-[8px] font-bold text-white/20">{task.progress}%</span>
+               {task.status !== 'Blocked' && <span className="text-[7px] font-bold text-white/20">{task.progress}%</span>}
             </div>
           )}
 
@@ -773,36 +754,29 @@ const TaskRow = React.memo(({
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/20" 
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-md hover:bg-white/10" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
-            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/20" 
+            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-md hover:bg-white/10" 
           />
 
           <button 
-            onClick={(e) => { e.stopPropagation(); handleSelectTask(task.id, false); setSelectedTaskId(task.id); }}
-            className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1 text-slate-500 hover:text-white transition-opacity"
+            onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }}
+            className="opacity-0 group-hover:opacity-100 absolute -right-8 p-1 text-slate-600 hover:text-white transition-opacity"
           >
              <Info size={12} />
           </button>
           
           <button 
             onClick={(e) => { e.stopPropagation(); onDependencyStart(task.id); }}
-            className={`opacity-0 group-hover:opacity-100 absolute -right-14 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-500 hover:text-blue-400'}`}
+            className={`opacity-0 group-hover:opacity-100 absolute -right-14 p-1 transition-all ${isSource ? 'text-blue-400 animate-pulse scale-125' : 'text-slate-600 hover:text-blue-400'}`}
           >
              <LinkIcon size={12} />
           </button>
-          
-          {dragInfo?.id === task.id && (
-            <div className="fixed top-[10%] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1.5 rounded shadow-2xl whitespace-nowrap pointer-events-none z-[1000] border border-blue-400/30 backdrop-blur-md">
-              <Calendar size={12} className="inline mr-2" />
-              {dragInfo.date}
-            </div>
-          )}
        </motion.div>
     </div>
   )
@@ -816,11 +790,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set())
   const [dependencySourceId, setDependencySourceId] = useState<number | null>(null)
-  const [showBaseline, setShowBaseline] = useState(false)
   const [showExecutiveChart, setShowExecutiveChart] = useState(false)
   const [isPackingMode, setIsPackingMode] = useState(false)
-  const [dragInfo, setDragInfo] = useState<{ id: number, date: string } | null>(null)
   const [dayTasksPopup, setDayTasksPopup] = useState<{ date: Date, tasks: any[] } | null>(null)
+  const [cursorDate, setCursorDate] = useState<{ date: string, x: number, y: number } | null>(null)
 
   const ROW_HEIGHT = 32
   const HEADER_HEIGHT = 44
@@ -832,6 +805,24 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       timelineRef.current.scrollTop = e.target.scrollTop
     } else if (e.target === timelineRef.current && listRef.current) {
       listRef.current.scrollTop = e.target.scrollTop
+    }
+  }
+
+  const handleTimelineMouseMove = (e: React.MouseEvent) => {
+    if (!timelineRef.current) return
+    const rect = timelineRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left + timelineRef.current.scrollLeft
+    const y = e.clientY - rect.top
+    const daysOffset = x / zoomLevel
+    const date = addDays(startDate, daysOffset)
+    setCursorDate({ date: format(date, 'MMM dd, yyyy'), x: e.clientX, y: e.clientY })
+  }
+
+  const scrollToTask = (taskId: number) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task && timelineRef.current) {
+      const offset = getDayOffset(task.start_date) * zoomLevel
+      timelineRef.current.scrollTo({ left: offset - 100, behavior: 'smooth' })
     }
   }
 
@@ -891,27 +882,6 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
 
     findCritical(lastTask.id)
     return path
-  }, [tasks])
-  const driftGhosts = useMemo(() => {
-    const ghosts: Record<number, { start: string, end: string }> = {}
-    const now = new Date()
-    
-    tasks.forEach(t => {
-      if (t.progress > 0 && t.progress < 100) {
-        const start = new Date(t.start_date)
-        const elapsed = differenceInDays(now, start)
-        if (elapsed > 0) {
-          const projectedDuration = (elapsed / t.progress) * 100
-          if (isFinite(projectedDuration)) {
-            const projectedEnd = addDays(start, Math.round(projectedDuration))
-            if (projectedEnd > new Date(t.end_date)) {
-              ghosts[t.id] = { start: t.end_date, end: projectedEnd.toISOString() }
-            }
-          }
-        }
-      }
-    })
-    return ghosts
   }, [tasks])
 
   // Sync tasks from project when it updates, but not while editing
@@ -982,13 +952,8 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
         if (moved) updatedTasks = propagateChanges(mid, moved.end_date, updatedTasks)
       })
       
-      const movedTask = updatedTasks.find(t => t.id === id)
-      if (movedTask) {
-        setDragInfo({ id, date: format(new Date(movedTask.start_date), 'MMM d, yyyy') })
-        setTasks(updatedTasks)
-      }
+      setTasks(updatedTasks)
     } else {
-      setDragInfo(null)
       setDragStartTasks(null)
       onUpdate({ ...project, tasks: tasks })
     }
@@ -1024,13 +989,8 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
         if (resized) updatedTasks = propagateChanges(id, resized.end_date, updatedTasks)
       }
 
-      const target = updatedTasks.find(t => t.id === id)
-      if (target) {
-        setDragInfo({ id, date: format(new Date(type === 'start' ? target.start_date : target.end_date), 'MMM d, yyyy') })
-        setTasks(updatedTasks)
-      }
+      setTasks(updatedTasks)
     } else {
-      setDragInfo(null)
       setDragStartTasks(null)
       onUpdate({ ...project, tasks: tasks })
     }
@@ -1077,12 +1037,6 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     catch (e) { return [new Date()] }
   }, [startDate, endDate, granularity])
 
-  const formatHeaderDate = (date: Date) => {
-    if (granularity === 'D') return format(date, 'MMM dd')
-    if (granularity === 'W') return `Week of ${format(date, 'MMM dd')}`
-    return format(date, 'MMMM yyyy')
-  }
-
   const getDayOffset = useCallback((date: string) => {
     const d = new Date(date)
     if (granularity === 'D') return differenceInDays(d, startDate)
@@ -1126,25 +1080,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     const task = tasks.find(t => t.id === id)
     if (!task) return
     
-    // Automatic Audit Logging
-    const changes: string[] = []
-    if (updates.name && updates.name !== task.name) changes.push(`Renamed to "${updates.name}"`)
-    if (updates.status && updates.status !== task.status) changes.push(`Status changed to ${updates.status}`)
-    if (updates.progress && updates.progress !== task.progress) changes.push(`Progress updated to ${updates.progress}%`)
-    if (updates.start_date || updates.end_date) changes.push('Timeline adjusted')
-    if (updates.metadata_json?.baseline) changes.push('Baseline snapshot established')
-
-    let finalUpdates = { ...updates }
-    if (changes.length > 0) {
-      const historyEntry = { content: changes.join(', '), timestamp: new Date().toISOString() }
-      const existingHistory = task.metadata_json?.history || []
-      finalUpdates.metadata_json = { 
-        ...(updates.metadata_json || task.metadata_json || {}), 
-        history: [...existingHistory, historyEntry] 
-      }
-    }
-
-    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...finalUpdates } : t)
+    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
     setTasks(updatedTasks)
   }
 
@@ -1166,15 +1102,11 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
         const endX = Math.floor(getDayOffset(task.start_date) * zoomLevel)
         const endY = task.rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2
         
-        const distance = Math.abs(endX - startX)
-        const cp1X = startX + Math.min(distance / 2, 100)
-        const cp2X = endX - Math.min(distance / 2, 100)
-        
         const isCriticalLink = criticalPath.has(task.id) && criticalPath.has(fromTask.id)
         
         lines.push({
           key: `${fromTask.id}-${task.id}`,
-          d: `M ${startX} ${startY} C ${cp1X} ${startY}, ${cp2X} ${endY}, ${endX} ${endY}`,
+          startX, startY, endX, endY,
           isCritical: isCriticalLink
         })
       })
@@ -1192,10 +1124,10 @@ const GanttHeader = React.memo(({ days, zoomLevel, granularity, onDayClick }: an
           <div 
             key={i} 
             onClick={() => onDayClick(day)}
-            className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/10' : ''}`} 
+            className={`shrink-0 border-r border-white/5 flex flex-col items-center justify-center h-11 transition-colors cursor-pointer hover:bg-white/5 ${isToday ? 'bg-blue-600/5' : ''}`} 
             style={{ width: zoomLevel }}
           >
-             <span className={`text-[8px] font-bold uppercase tracking-tighter ${granularity !== 'D' ? 'text-blue-400' : 'text-slate-600'}`}>
+             <span className={`text-[8px] font-bold uppercase tracking-tighter ${isToday ? 'text-blue-400' : 'text-slate-600'}`}>
                 {granularity === 'D' ? format(day, 'MMM') : granularity === 'W' ? 'WEEK' : format(day, 'yyyy')}
              </span>
              <span className={`text-[11px] font-bold ${isToday ? 'text-blue-400' : 'text-slate-400'}`}>
@@ -1208,33 +1140,39 @@ const GanttHeader = React.memo(({ days, zoomLevel, granularity, onDayClick }: an
   )
 })
 
-const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_HEIGHT }: any) => {
+const DependencyLines = React.memo(({ lines }: any) => {
   return (
-    <svg className="absolute inset-0 pointer-events-none" style={{ width: daysCount * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
+    <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6" opacity="0.5" />
+        <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+          <polygon points="0 0, 6 3, 0 6" fill="#3b82f6" fillOpacity="0.4" />
         </marker>
-        <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" opacity="0.8" />
+        <marker id="arrowhead-crit" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+          <polygon points="0 0, 6 3, 0 6" fill="#f43f5e" fillOpacity="0.8" />
         </marker>
       </defs>
-      {lines.map((line: any) => (
-        <motion.path
-          key={line.key}
-          d={line.d}
-          stroke={line.isCritical ? "#f43f5e" : "#3b82f6"}
-          strokeWidth={line.isCritical ? "2" : "1.5"}
-          fill="none"
-          animate={{ d: line.d }}
-          transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
-          opacity={line.isCritical ? "0.6" : "0.3"}
-          markerEnd={line.isCritical ? "url(#arrow-red)" : "url(#arrow)"}
-        />
-      ))}
+      {lines.map((line: any) => {
+        const dx = line.endX - line.startX
+        const dy = line.endY - line.startY
+        const controlX = line.startX + dx * 0.5
+        const d = `M ${line.startX} ${line.startY} C ${controlX} ${line.startY}, ${controlX} ${line.endY}, ${line.endX - 4} ${line.endY}`
+        return (
+          <path
+            key={line.key}
+            d={d}
+            stroke={line.isCritical ? "#f43f5e" : "#3b82f6"}
+            strokeWidth={line.isCritical ? "1.5" : "1"}
+            fill="none"
+            opacity={line.isCritical ? "0.6" : "0.3"}
+            markerEnd={line.isCritical ? "url(#arrowhead-crit)" : "url(#arrowhead)"}
+          />
+        )
+      })}
     </svg>
   )
 })
+
+  const todayX = getDayOffset(new Date().toISOString()) * zoomLevel
 
   return (
     <div className="h-full flex flex-col bg-[#0b0c14] overflow-hidden">
@@ -1256,26 +1194,19 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                 ))}
              </div>
 
-             <button onClick={() => setIsPackingMode(!isPackingMode)} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${isPackingMode ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`} title="Optimize Row Packing">Visualize Gantt</button>
+             <button onClick={() => setIsPackingMode(!isPackingMode)} className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${isPackingMode ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`} title="Optimize Row Packing">{isPackingMode ? 'Compact Mode' : 'Standard Mode'}</button>
+             
              <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                <button onClick={() => setZoomLevel(Math.max(1, zoomLevel - (granularity === 'D' ? 5 : 1)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
+                <button onClick={() => setZoomLevel(Math.max(5, zoomLevel - (granularity === 'D' ? 5 : 1)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Minimize2 size={14}/></button>
                 <div className="w-px h-3 bg-white/10 mx-1" />
                 <button onClick={() => setZoomLevel(Math.min(500, zoomLevel + (granularity === 'D' ? 10 : 2)))} className="text-slate-500 hover:text-white transition-all p-0.5"><Maximize2 size={14}/></button>
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel.toFixed(1)}PX/UNIT</span>
+                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-[0.2em] ml-2">{zoomLevel.toFixed(1)}PX</span>
              </div>
-             {dependencySourceId && (
-               <div className="flex items-center gap-3 px-3 py-1.5 bg-blue-600/10 border border-blue-500/20 rounded-lg animate-pulse">
-                  <Link2 size={14} className="text-blue-400" />
-                  <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Binding Dependency Vector...</span>
-                  <button onClick={() => setDependencySourceId(null)} className="ml-2 text-slate-500 hover:text-white transition-colors"><X size={12}/></button>
-               </div>
-             )}
           </div>
           <div className="flex items-center gap-4">
-             <button onClick={() => setShowBaseline(!showBaseline)} className={`px-4 py-1.5 border rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${showBaseline ? 'bg-amber-600/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-slate-500 hover:text-white'}`}>{showBaseline ? 'Hide Baseline' : 'Show Baseline'}</button>
              <button 
                onClick={() => {
-                 const name = prompt('New milestone identifier')
+                 const name = prompt('New task identifier')
                  if (!name) return
                  const newTask = { id: Date.now(), name: name, start_date: new Date().toISOString(), end_date: addDays(new Date(), 7).toISOString(), progress: 0, status: 'To Do', dependencies_json: [], metadata_json: {} }
                  const updated = [...tasks, newTask]
@@ -1283,7 +1214,7 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                  onUpdate({ ...project, tasks: updated })
                }}
                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2"
-             ><Plus size={14}/> Add Milestone</button>
+             ><Plus size={14}/> New Task</button>
           </div>
        </div>
 
@@ -1297,7 +1228,7 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
           {!isPackingMode && (
             <div className="w-[240px] flex-none flex flex-col border-r border-white/10 bg-[#0d0f17] z-30 shadow-2xl">
                <div className="h-11 border-b border-white/10 flex items-center px-5 shrink-0 bg-[#0a0c14]/80">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">Vector Stack</span>
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">Execution Vectors</span>
                </div>
                <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto no-scrollbar">
                   <Reorder.Group axis="y" values={tasks} onReorder={(newOrder) => { setTasks(newOrder); onUpdate({ ...project, tasks: newOrder }); }} className="w-full">
@@ -1305,20 +1236,17 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                        <Reorder.Item 
                          key={task.id} 
                          value={task}
-                         onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
+                         onClick={() => { scrollToTask(task.id); handleSelectTask(task.id, false); }}
                          onDoubleClick={() => setSelectedTaskId(task.id)}
-                         className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/15' : 'hover:bg-white/5'}`}
+                         className={`h-[32px] flex items-center px-4 border-b border-white/5 cursor-grab active:cursor-grabbing transition-all group ${selectedTaskIds.has(task.id) ? 'bg-blue-600/10' : 'hover:bg-white/5'}`}
                        >
-                          <div className={`w-1.5 h-1.5 rounded-full mr-3 shrink-0 ${
+                          <div className={`w-1 h-1 rounded-full mr-3 shrink-0 ${
                             task.status === 'Completed' ? 'bg-emerald-500' : 
                             task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 
-                            criticalPath.has(task.id) ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-blue-500'
+                            criticalPath.has(task.id) ? 'bg-rose-500' : 'bg-blue-500'
                           }`} />
-                          <p className={`text-[10px] font-bold truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'}`}>{task.name}</p>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); setSelectedTaskId(task.id); }} className="p-1 text-slate-500 hover:text-white"><Info size={12}/></button>
-                            <GripVertical size={12} className="text-slate-800" />
-                          </div>
+                          <p className={`text-[10px] font-bold truncate tracking-tight transition-all flex-1 ${selectedTaskIds.has(task.id) ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`}>{task.name}</p>
+                          <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100" />
                        </Reorder.Item>
                      ))}
                   </Reorder.Group>
@@ -1326,7 +1254,13 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
             </div>
           )}
 
-          <div ref={timelineRef} onScroll={handleScroll} className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]">
+          <div 
+            ref={timelineRef} 
+            onScroll={handleScroll} 
+            onMouseMove={handleTimelineMouseMove}
+            onMouseLeave={() => setCursorDate(null)}
+            className="flex-1 overflow-auto custom-scrollbar relative bg-[#0b0c14]"
+          >
              <GanttHeader 
                days={days} 
                zoomLevel={zoomLevel} 
@@ -1337,31 +1271,29 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                }} 
              />
              <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
+                {/* Today Line */}
+                <div className="absolute top-0 bottom-0 w-px bg-blue-500/40 z-10 pointer-events-none" style={{ left: todayX }}>
+                   <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg uppercase tracking-tighter">TODAY</div>
+                </div>
+
                 <div 
-                  className="absolute inset-0 pointer-events-none opacity-10" 
+                  className="absolute inset-0 pointer-events-none opacity-5" 
                   style={{ 
                     backgroundImage: `repeating-linear-gradient(to right, transparent, transparent ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel - 1}px, rgba(255,255,255,0.1) ${zoomLevel}px)` 
                   }} 
                 />
-                <DependencyLines 
-                  lines={dependencyLines} 
-                  zoomLevel={zoomLevel} 
-                  daysCount={days.length} 
-                  maxRow={maxRow} 
-                  ROW_HEIGHT={ROW_HEIGHT} 
-                />
+                
+                <DependencyLines lines={dependencyLines} />
+                
                 {packedTasks.map((task) => (
                   <TaskRow 
                     key={task.id} 
                     task={task} 
                     rowIndex={task.rowIndex} 
                     isPackingMode={isPackingMode}
-                    showBaseline={showBaseline}
                     startDate={startDate}
                     zoomLevel={zoomLevel}
                     selectedTaskIds={selectedTaskIds}
-                    dragInfo={dragInfo}
-                    setDragInfo={setDragInfo}
                     handleTaskMove={handleTaskMove}
                     handleTaskResize={handleTaskResize}
                     setSelectedTaskId={setSelectedTaskId}
@@ -1369,53 +1301,23 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                     onDependencyStart={setDependencySourceId}
                     isSource={dependencySourceId === task.id}
                     isCritical={criticalPath.has(task.id)}
-                    ghost={driftGhosts[task.id]}
                     diagram={project.metadata_json?.diagram}
                     ROW_HEIGHT={ROW_HEIGHT}
                     getDayOffset={getDayOffset}
                     getDayWidth={getDayWidth}
-                  />                ))}
+                  />
+                ))}
              </div>
           </div>
 
-          <AnimatePresence>
-            {dayTasksPopup && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="fixed top-24 left-1/2 -translate-x-1/2 w-80 bg-[#0d0f17] border border-blue-500/30 rounded-lg shadow-2xl z-[200] overflow-hidden"
-              >
-                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-blue-600/10">
-                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{format(dayTasksPopup.date, 'MMMM d, yyyy')}</h4>
-                  <button onClick={() => setDayTasksPopup(null)} className="text-slate-500 hover:text-white transition-all"><X size={14}/></button>
-                </div>
-                <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
-                  {dayTasksPopup.tasks.length > 0 ? dayTasksPopup.tasks.map((t: any) => (
-                    <div 
-                      key={t.id} 
-                      className="p-3 bg-white/5 border border-white/5 rounded-lg group cursor-pointer hover:bg-white/10 transition-all"
-                      onClick={() => { setSelectedTaskId(t.id); setDayTasksPopup(null); }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold text-white truncate">{t.name}</span>
-                        <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Completed' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[8px] font-bold text-slate-500 uppercase">{t.status}</span>
-                        <span className="text-[8px] font-bold text-blue-400">{t.progress}%</span>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="py-8 text-center">
-                      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">No milestones ending on this date</p>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-       </div>
+          {cursorDate && (
+            <div 
+              className="fixed pointer-events-none z-[1000] bg-blue-600 text-white text-[9px] font-bold px-2 py-1 rounded shadow-2xl border border-blue-400/30 whitespace-nowrap"
+              style={{ left: cursorDate.x + 15, top: cursorDate.y + 15 }}
+            >
+              {cursorDate.date}
+            </div>
+          )}
 
        <AnimatePresence>
           {selectedTaskId && (
@@ -1426,20 +1328,29 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                     if (!task) return null
 
                     const subtasks = task.metadata_json?.subtasks || []
+                    
+                    // New Completion Logic
                     const calculateProgress = () => {
-                      if (subtasks.length === 0) {
-                        if (task.status === 'Completed') return 100
-                        if (task.status === 'In Progress') return 50
-                        return 0
+                      if (subtasks.length > 0) {
+                        const completed = subtasks.filter((s: any) => s.completed).length
+                        return Math.round((completed / subtasks.length) * 100)
                       }
-                      const completed = subtasks.filter((s: any) => s.completed).length
-                      return Math.round((completed / subtasks.length) * 100)
+                      
+                      // Status-based defaults
+                      switch(task.status) {
+                        case 'Completed': return 100
+                        case 'Review': return 90
+                        case 'In Progress': return 50
+                        case 'Blocked': return task.progress // Maintain existing if blocked
+                        default: return 0
+                      }
                     }
 
                     const autoProgress = calculateProgress()
                     const autoStatus = task.status === 'Blocked' ? 'Blocked' : (autoProgress === 100 ? 'Completed' : (autoProgress > 0 ? 'In Progress' : task.status))
 
-                    const updateSubtask = (idx: number, updates: any) => {                      const newSubtasks = [...subtasks]
+                    const updateSubtask = (idx: number, updates: any) => {
+                      const newSubtasks = [...subtasks]
                       newSubtasks[idx] = { ...newSubtasks[idx], ...updates }
                       handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
                     }
@@ -1456,26 +1367,31 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                       handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, subtasks: newSubtasks } })
                     }
 
+                    // Dependencies
+                    const dependentFrom = tasks.filter(t => task.dependencies_json?.includes(t.id))
+                    const dependentTo = tasks.filter(t => t.dependencies_json?.includes(task.id))
+
                     return (
                       <>
                         <div className="p-8 border-b border-white/10 bg-[#0a0c14]/50 flex items-center justify-between">
                            <div className="flex items-center gap-4">
-                              <div className={`w-4 h-4 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
+                              <div className={`w-3 h-3 rounded-full ${task.status === 'Completed' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : task.status === 'Blocked' ? 'bg-rose-500 animate-pulse' : 'bg-blue-500'}`} />
                               <div>
-                                 <h2 className="text-2xl font-bold text-white tracking-tighter leading-none">{task.name}</h2>
+                                 <h2 className="text-xl font-bold text-white tracking-tighter leading-none">{task.name}</h2>
                                  <div className="flex items-center gap-2 mt-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Strategic Vector Milestone</p>
+                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Milestone Vector</p>
                                     <span className="text-slate-800">•</span>
-                                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{autoProgress}% Maturity</span>
+                                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{autoProgress}% Execution Maturity</span>
                                  </div>
                               </div>
                            </div>
                            <div className="flex items-center gap-3">
                               <button 
-                                onClick={() => { if(confirm('Decommission this strategic milestone?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }}                                className="p-2.5 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
+                                onClick={() => { if(confirm('Decommission this strategic milestone?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }}
+                                className="p-2 bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white rounded-lg transition-all border border-rose-500/20"
                                 title="Decommission Task"
                               >
-                                 <Trash2 size={18}/>
+                                 <Trash2 size={16}/>
                               </button>
                               <div className="w-px h-8 bg-white/10 mx-2" />
                               <button 
@@ -1485,34 +1401,39 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                                   onUpdate({ ...project, tasks: updatedTasks })
                                   setSelectedTaskId(null)
                                 }} 
-                                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
                               >
-                                 <Save size={16}/> 
-                                 <span className="text-[10px] font-bold uppercase tracking-widest">Commit Milestone</span>
+                                 <Save size={14}/> 
+                                 <span className="text-[10px] font-bold uppercase tracking-widest">Commit Changes</span>
                               </button>
-                              <button onClick={() => setSelectedTaskId(null)} className="p-2.5 bg-white/5 text-slate-500 hover:text-white rounded-lg transition-all"><X size={20}/></button>
+                              <button onClick={() => setSelectedTaskId(null)} className="p-2 text-slate-500 hover:text-white rounded-lg transition-all"><X size={20}/></button>
                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-10 grid grid-cols-12 gap-10">
                            <div className="col-span-7 space-y-10">
                               <section className="space-y-4">
-                                 <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clipboard size={14}/> Technical Mission</h4>
-                                 <textarea value={task.description || ''} onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} className="w-full h-40 bg-black/40 border border-white/10 rounded-lg p-5 text-sm font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" placeholder="Define core objectives..." />
+                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Task Description</h4>
+                                 <textarea 
+                                   value={task.description || ''} 
+                                   onChange={e => handleTaskUpdate(task.id, { description: e.target.value })} 
+                                   className="w-full h-32 bg-black/40 border border-white/10 rounded-lg p-5 text-sm font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none transition-all leading-relaxed" 
+                                   placeholder="Define core objectives..." 
+                                 />
                               </section>
 
                               <section className="space-y-6">
                                  <div className="flex items-center justify-between">
-                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><ListTodo size={14}/> Tactical Subtasks</h4>
-                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-emerald-600/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-600 hover:text-white rounded text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> New Subtask</button>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtasks</h4>
+                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> Add</button>
                                  </div>
                                  <div className="space-y-2">
                                     {subtasks.map((s: any, idx: number) => (
-                                      <div key={idx} className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg hover:border-emerald-500/30 transition-all">
+                                      <div key={idx} className="group flex items-center gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg hover:border-blue-500/30 transition-all">
                                          <input 
                                            type="checkbox" 
                                            checked={s.completed} 
                                            onChange={e => updateSubtask(idx, { completed: e.target.checked })}
-                                           className="w-4 h-4 rounded border-white/10 bg-black/40 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                                           className="w-4 h-4 rounded border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                          />
                                          <input 
                                            value={s.label} 
@@ -1523,87 +1444,137 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                                       </div>
                                     ))}
                                     {subtasks.length === 0 && (
-                                      <div className="py-12 border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-20">
-                                         <ListTodo size={32} className="mb-2" />
-                                         <p className="text-[10px] font-bold uppercase tracking-widest">No tactical subtasks defined</p>
+                                      <div className="py-12 border border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center opacity-20">
+                                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">No subtasks defined</p>
                                       </div>
                                     )}
+                                 </div>
+                              </section>
+
+                              {/* Comment Section */}
+                              <section className="space-y-6 pt-10 border-t border-white/5">
+                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comments</h4>
+                                 <div className="space-y-4">
+                                    {(task.metadata_json?.comments || []).map((c: any, i: number) => (
+                                      <div key={i} className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-2">
+                                         <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-blue-400">{c.author}</span>
+                                            <span className="text-[8px] font-bold text-slate-600 uppercase">{format(new Date(c.timestamp), 'MMM dd, HH:mm')}</span>
+                                         </div>
+                                         <p className="text-xs font-bold text-slate-300 leading-relaxed">{c.content}</p>
+                                      </div>
+                                    ))}
+                                    <div className="flex gap-4">
+                                       <textarea 
+                                         id="task-comment-input"
+                                         className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-xs font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none h-20"
+                                         placeholder="Add a comment..."
+                                       />
+                                       <button 
+                                         onClick={() => {
+                                           const input = document.getElementById('task-comment-input') as HTMLTextAreaElement
+                                           if (!input.value) return
+                                           const newComments = [...(task.metadata_json?.comments || []), { author: 'System', content: input.value, timestamp: new Date().toISOString() }]
+                                           handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, comments: newComments } })
+                                           input.value = ''
+                                         }}
+                                         className="px-6 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                                       >
+                                          Post
+                                       </button>
+                                    </div>
                                  </div>
                               </section>
                            </div>
 
                            <div className="col-span-5 space-y-10">
-                              <section className="space-y-4">
-                                 <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-[0.2em] flex items-center gap-2"><Shield size={14}/> Deployment Parameters</h4>
-                                 <div className="bg-white/5 p-6 rounded-lg border border-white/5 space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
-                                       <div className="space-y-1.5">
-                                          <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Current State</label>
-                                          <select value={task.status} onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}</select>
-                                       </div>
-                                       <div className="space-y-1.5">
-                                          <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Priority</label>
-                                          <select value={task.priority || 'Medium'} onChange={e => handleTaskUpdate(task.id, { priority: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all">{['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}</select>
-                                       </div>
+                              <section className="space-y-6">
+                                 <div className="grid grid-cols-2 gap-6">
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Current Status</label>
+                                       <select 
+                                         value={task.status} 
+                                         onChange={e => handleTaskUpdate(task.id, { status: e.target.value })} 
+                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all"
+                                       >
+                                          {['To Do', 'In Progress', 'Blocked', 'Review', 'Completed'].map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                                       </select>
                                     </div>
-                                    <div className="space-y-1.5 pt-4 border-t border-white/5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1 flex items-center gap-2"><Layout size={10}/> Architectural Context</label>
-                                       <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 bg-black/40 rounded-lg border border-white/5 custom-scrollbar">
-                                          {(project.metadata_json?.diagram?.nodes || []).map((node: any) => (
-                                            <label key={node.id} className={`flex items-center gap-2 px-2 py-1.5 rounded transition-all cursor-pointer ${task.metadata_json?.tagged_nodes?.includes(node.id) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-500'}`}>
-                                              <input 
-                                                type="checkbox" 
-                                                checked={task.metadata_json?.tagged_nodes?.includes(node.id)} 
-                                                onChange={e => {
-                                                  const current = task.metadata_json?.tagged_nodes || []
-                                                  const updated = e.target.checked ? [...current, node.id] : current.filter((id: string) => id !== node.id)
-                                                  handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, tagged_nodes: updated } })
-                                                }}
-                                                className="rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
-                                              />
-                                              <span className="text-[9px] font-bold uppercase truncate">{node.data?.label || 'UNNAMED NODE'}</span>
-                                            </label>
-                                          ))}
-                                          {(!project.metadata_json?.diagram?.nodes || project.metadata_json.diagram.nodes.length === 0) && <p className="col-span-2 text-[8px] font-bold text-slate-800 uppercase text-center py-2">No nodes in design</p>}
-                                       </div>
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">Priority</label>
+                                       <select 
+                                         value={task.priority || 'Medium'} 
+                                         onChange={e => handleTaskUpdate(task.id, { priority: e.target.value })} 
+                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white uppercase outline-none focus:border-blue-500 transition-all"
+                                       >
+                                          {['Low', 'Medium', 'High', 'Critical'].map(p => <option key={p} value={p}>{p.toUpperCase()}</option>)}
+                                       </select>
                                     </div>
                                  </div>
                               </section>
 
-                              <section className="space-y-4">
-                                 <div className="flex items-center justify-between">
-                                    <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] flex items-center gap-2"><Clock size={14}/> Execution Window</h4>
-                                    <button 
-                                      onClick={() => handleTaskUpdate(task.id, { metadata_json: { ...(task.metadata_json || {}), baseline: { start: task.start_date, end: task.end_date } } })} 
-                                      className="flex items-center gap-2 px-3 py-1 bg-amber-600/10 border border-amber-500/20 text-amber-500 hover:bg-amber-600 hover:text-white rounded text-[8px] font-bold uppercase tracking-widest transition-all"
-                                    >
-                                       <Camera size={12}/> Snapshot Baseline
-                                    </button>
-                                 </div>
-                                 <div className="bg-white/5 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-4">
+                              <section className="space-y-6">
+                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Planned Timeline</h4>
+                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Start Date</label>
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned Start Date</label>
                                        <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                     <div className="space-y-1.5">
-                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">End Date</label>
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned End Date</label>
                                        <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                  </div>
                               </section>
 
-                              <section className="space-y-4 pt-4 border-t border-white/5">
-                                 <div className="flex items-center justify-between">
-                                    <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2"><History size={14}/> Audit History</h4>
-                                    <span className="text-[8px] font-bold text-slate-700 uppercase tracking-widest">v1.2.0</span>
+                              <section className="space-y-6">
+                                 <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Actual Execution</h4>
+                                 <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual Start Date</label>
+                                       <input type="date" value={task.actual_start_date ? format(new Date(task.actual_start_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_start_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                       <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual End Date</label>
+                                       <input type="date" value={task.actual_end_date ? format(new Date(task.actual_end_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_end_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                    </div>
                                  </div>
-                                 <div className="space-y-3">
-                                    {(task.metadata_json?.history || []).slice(-3).reverse().map((h: any, i: number) => (
-                                      <div key={i} className="text-[10px] font-bold text-slate-500 italic px-2">
-                                         • {h.content} <span className="text-[8px] text-slate-700 not-italic ml-2 uppercase">({format(new Date(h.timestamp), 'MMM d')})</span>
+                              </section>
+
+                              <section className="space-y-6">
+                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Strategic Dependencies</h4>
+                                 <div className="space-y-4">
+                                    <div className="space-y-2">
+                                       <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent From (Blocks these tasks)</p>
+                                       <div className="flex flex-wrap gap-2">
+                                          {dependentTo.map(t => (
+                                            <span key={t.id} className="px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded text-[9px] font-bold text-blue-400 uppercase tracking-widest">{t.name}</span>
+                                          ))}
+                                          {dependentTo.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No downstream blocks</span>}
+                                       </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                       <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent To (Blocked by these tasks)</p>
+                                       <div className="flex flex-wrap gap-2">
+                                          {dependentFrom.map(t => (
+                                            <span key={t.id} className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 rounded text-[9px] font-bold text-amber-400 uppercase tracking-widest">{t.name}</span>
+                                          ))}
+                                          {dependentFrom.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No upstream blocks</span>}
+                                       </div>
+                                    </div>
+                                 </div>
+                              </section>
+
+                              <section className="space-y-4 pt-10 border-t border-white/5">
+                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Audit Timestamps</h4>
+                                 <div className="space-y-2">
+                                    {(task.metadata_json?.history || []).slice(-5).reverse().map((h: any, i: number) => (
+                                      <div key={i} className="text-[9px] font-bold text-slate-600 flex items-center justify-between">
+                                         <span className="truncate flex-1">"{h.content}"</span>
+                                         <span className="text-slate-800 shrink-0 ml-4 uppercase">{format(new Date(h.timestamp), 'MMM dd, HH:mm')}</span>
                                       </div>
                                     ))}
-                                    {(!task.metadata_json?.history || task.metadata_json.history.length === 0) && <p className="text-[9px] font-bold text-slate-800 uppercase text-center py-4">No audit logs</p>}
+                                    {(!task.metadata_json?.history || task.metadata_json.history.length === 0) && <p className="text-[8px] font-bold text-slate-800 uppercase text-center py-4">No audit history</p>}
                                  </div>
                               </section>
                            </div>
@@ -1613,96 +1584,117 @@ const DependencyLines = React.memo(({ lines, zoomLevel, daysCount, maxRow, ROW_H
                   })()}
                </motion.div>
             </div>
-          )}
-       </AnimatePresence>
-    </div>
-  )
-}
-
+            )}
+            </AnimatePresence>
+            </div>
+            </div>
+            )
+            }
 const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
   const [selectedPoint, setSelectedPoint] = useState<any>(null)
 
   const data = useMemo(() => {
     if (!tasks || tasks.length === 0) return []
-    const times = tasks.flatMap(t => [new Date(t.start_date).getTime(), new Date(t.end_date).getTime()]).filter(t => !isNaN(t))
+    
+    // Get time range from all tasks (planned and actual)
+    const times = tasks.flatMap(t => [
+      new Date(t.start_date).getTime(), 
+      new Date(t.end_date).getTime(),
+      t.actual_start_date ? new Date(t.actual_start_date).getTime() : null,
+      t.actual_end_date ? new Date(t.actual_end_date).getTime() : null
+    ]).filter(t => t !== null && !isNaN(t))
+    
     if (times.length === 0) return []
     
     const start = startOfMonth(new Date(Math.min(...times)))
     const end = endOfMonth(addDays(new Date(Math.max(...times)), 30))
     const interval = eachDayOfInterval({ start, end })
 
-    // Dynamic granularity: Weekly for long projects, daily for short ones
-    const step = interval.length > 30 ? 7 : 1
+    const step = interval.length > 60 ? 7 : (interval.length > 30 ? 2 : 1)
+
+    let cumulativeScheduled = 0
+    let cumulativeActual = 0
+    const totalTasks = tasks.length
 
     return interval.filter((_, i) => i % step === 0).map(date => {
-      const totalTasks = tasks.length
-      const scheduledTasks = tasks.filter(t => new Date(t.end_date) <= date).length
-      const completedTasks = tasks.filter(t => t.status === 'Completed' && new Date(t.end_date) <= date).length
-
-      const scheduledPercent = totalTasks > 0 ? Math.round((scheduledTasks / totalTasks) * 100) : 0
-      const actualPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-      const tasksToComplete = tasks.filter(t => isSameDay(new Date(t.end_date), date))
+      const scheduledOnDate = tasks.filter(t => isSameDay(new Date(t.end_date), date))
+      const actualOnDate = tasks.filter(t => t.actual_end_date && isSameDay(new Date(t.actual_end_date), date))
+      
+      const scheduledCount = tasks.filter(t => new Date(t.end_date) <= date).length
+      const actualCount = tasks.filter(t => t.actual_end_date && new Date(t.actual_end_date) <= date).length
 
       return {
         date: format(date, 'MMM d'),
         fullDate: date,
-        scheduled: scheduledPercent,
-        actual: actualPercent,
-        tasks: tasksToComplete
+        scheduled: totalTasks > 0 ? Math.round((scheduledCount / totalTasks) * 100) : 0,
+        actual: totalTasks > 0 ? Math.round((actualCount / totalTasks) * 100) : 0,
+        plannedTasks: scheduledOnDate,
+        actualTasks: actualOnDate
       }
-    })  }, [tasks])
+    })
+  }, [tasks])
 
   return (
     <div className="h-full w-full bg-[#0a0c14] p-8 flex flex-col gap-6 overflow-hidden">
        <div className="flex items-center justify-between shrink-0">
           <div>
              <h3 className="text-xl font-bold text-white uppercase tracking-tighter flex items-center gap-3">
-                <TrendingUp className="text-emerald-500" size={24} />
+                <TrendingUp className="text-blue-500" size={24} />
                 Strategic Velocity Vector
              </h3>
-             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Real-time execution momentum vs theoretical plan</p>
+             <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-1">Real-time execution momentum vs theoretical plan</p>
           </div>
-          <div className="flex gap-6">
-             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-blue-500/50 border border-blue-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">Target Velocity</span></div>
-             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-emerald-500/50 border border-emerald-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">Actual Momentum</span></div>
+          <div className="flex gap-8">
+             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" /><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Target Velocity</span></div>
+             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" /><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Actual Momentum</span></div>
           </div>
        </div>
        <div className="flex-1 min-h-0 relative">
           <ResponsiveContainer width="100%" height="100%">
              <AreaChart data={data} onClick={(e: any) => e?.activePayload && setSelectedPoint(e.activePayload[0].payload)}>
                 <defs>
-                   <linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                   <linearGradient id="colorSched" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="date" stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
-                <YAxis stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} opacity={0.3} />
+                <XAxis dataKey="date" stroke="#334155" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} />
+                <YAxis stroke="#334155" fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
                 <RechartsTooltip 
-                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '10px', fontWeight: 'bold' }} 
+                   contentStyle={{ background: '#0a0c14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '9px', fontWeight: 'bold', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)' }} 
                    itemStyle={{ color: '#fff' }}
+                   cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
                 />
-                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorSched)" activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="scheduled" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorSched)" activeDot={{ r: 4, strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" activeDot={{ r: 5, strokeWidth: 0 }} />
              </AreaChart>
           </ResponsiveContainer>
 
           <AnimatePresence>
             {selectedPoint && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 w-64 bg-[#0f172a] border border-white/10 rounded-lg p-4 shadow-2xl z-50 overflow-hidden flex flex-col max-h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{selectedPoint.date} Milestones</h4>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-0 right-0 w-72 bg-[#0d0f17] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col max-h-full">
+                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/40">
+                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{selectedPoint.date} Report</h4>
                   <button onClick={() => setSelectedPoint(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
-                  {selectedPoint.tasks.length > 0 ? selectedPoint.tasks.map((t: any) => (
-                    <div key={t.id} className="p-2 bg-white/5 rounded border border-white/5">
-                      <p className="text-[10px] font-bold text-white truncate">{t.name}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[8px] font-bold text-slate-500 uppercase">{t.status}</span>
-                        <span className="text-[8px] font-bold text-blue-400">{t.progress}%</span>
-                      </div>
-                    </div>
-                  )) : <p className="text-[10px] text-slate-600 font-bold uppercase py-4 text-center">No completions scheduled</p>}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
+                  <div className="space-y-3">
+                     <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest px-1">Planned Completions</p>
+                     {selectedPoint.plannedTasks.length > 0 ? selectedPoint.plannedTasks.map((t: any) => (
+                       <div key={t.id} className="p-2.5 bg-white/5 rounded border border-white/5">
+                         <p className="text-[10px] font-bold text-slate-300 truncate">{t.name}</p>
+                         <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase">Target: {format(new Date(t.end_date), 'MMM dd')}</p>
+                       </div>
+                     )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
+                  </div>
+                  <div className="space-y-3 border-t border-white/5 pt-4">
+                     <p className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-widest px-1">Actual Completions</p>
+                     {selectedPoint.actualTasks.length > 0 ? selectedPoint.actualTasks.map((t: any) => (
+                       <div key={t.id} className="p-2.5 bg-emerald-500/5 rounded border border-emerald-500/20">
+                         <p className="text-[10px] font-bold text-emerald-400 truncate">{t.name}</p>
+                         <p className="text-[8px] font-bold text-emerald-600 mt-1 uppercase">Finalized: {format(new Date(t.actual_end_date), 'MMM dd')}</p>
+                       </div>
+                     )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -2240,28 +2232,93 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
 }
 
 const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
+  const [isFull, setIsFull] = useState(false)
+  
   const activities = useMemo(() => {
     const list = project 
-      ? [...(project?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, taskName: t?.name })))]
-      : allProjects.flatMap((p:any) => (p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, taskName: t?.name, projectName: p?.name }))))
+      ? [
+          ...(project?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, type: 'TASK', taskName: t?.name, icon: <Target size={14}/> }))),
+          ...(project?.tasks || []).flatMap((t:any) => (t?.metadata_json?.comments || []).map((c:any) => ({ ...c, type: 'COMMENT', taskName: t?.name, icon: <MessageSquare size={14}/> }))),
+          ...(project?.metadata_json?.audit_log || []).map((a:any) => ({ ...a, type: 'PROJECT', icon: <Projector size={14}/> }))
+        ]
+      : allProjects.flatMap((p:any) => [
+          ...(p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.history || []).map((h:any) => ({ ...h, type: 'TASK', taskName: t?.name, projectName: p?.name, icon: <Target size={14}/> }))),
+          ...(p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.comments || []).map((c:any) => ({ ...c, type: 'COMMENT', taskName: t?.name, projectName: p?.name, icon: <MessageSquare size={14}/> }))),
+          ...(p?.metadata_json?.audit_log || []).map((a:any) => ({ ...a, type: 'PROJECT', projectName: p?.name, icon: <Projector size={14}/> }))
+        ])
     return list.sort((a:any, b:any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
   }, [project, allProjects])
 
   return (
-    <div className="h-full flex flex-col p-6 space-y-6">
-       <div className="flex items-center gap-3"><History size={20} className="text-blue-400" /><h3 className="text-lg font-bold text-white uppercase tracking-tighter">Strategic Activity Stream</h3></div>
-       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+    <div className={`flex flex-col bg-[#0d0f17] transition-all ${isFull ? 'fixed inset-0 z-[200] p-12' : 'h-full p-6'}`}>
+       <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+             <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                <Activity size={20} className="text-blue-400" />
+             </div>
+             <div>
+                <h3 className="text-xl font-bold text-white uppercase tracking-tighter">Strategic Evolution Stream</h3>
+                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">Unified ledger of tactical shifts and strategic commits</p>
+             </div>
+          </div>
+          <button 
+            onClick={() => setIsFull(!isFull)} 
+            className="p-2.5 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white hover:bg-white/10 transition-all"
+          >
+             {isFull ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}
+          </button>
+       </div>
+
+       <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-4">
           {activities.map((item:any, i:number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-4 rounded-lg space-y-2">
-               <div className="flex justify-between items-start">
-                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">{item.author || item.asked_by || 'SYSTEM'} {item.projectName && `@ ${item.projectName}`}</span>
-                  <span className="text-[8px] font-bold text-slate-600 uppercase">{format(new Date(item.timestamp || item.created_at), 'MMM d, HH:mm')}</span>
+            <div key={i} className="group relative flex gap-6 p-5 bg-[#0a0c14] border border-white/5 rounded-2xl hover:border-blue-500/30 transition-all">
+               <div className="flex flex-col items-center gap-2">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
+                    item.type === 'COMMENT' ? 'bg-amber-600/10 border-amber-500/20 text-amber-500' : 
+                    item.type === 'TASK' ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' :
+                    'bg-emerald-600/10 border-emerald-500/20 text-emerald-500'
+                  }`}>
+                     {item.icon}
+                  </div>
+                  <div className="w-px flex-1 bg-white/5" />
                </div>
-               <p className="text-[11px] font-bold text-slate-300 leading-relaxed">"{item.content || item.question || item.message}"</p>
-               {item.taskName && <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest"># {item.taskName}</p>}
+               
+               <div className="flex-1 space-y-3">
+                  <div className="flex justify-between items-center">
+                     <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{item.author || 'SYSTEM'}</span>
+                        <span className="text-slate-800">•</span>
+                        <span className="text-[9px] font-bold text-blue-500/60 uppercase tracking-widest">{item.type}</span>
+                        {item.projectName && (
+                          <>
+                             <span className="text-slate-800">/</span>
+                             <span className="text-[9px] font-bold text-slate-500 uppercase">{item.projectName}</span>
+                          </>
+                        )}
+                     </div>
+                     <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(item.timestamp || item.created_at), 'MMM dd, yyyy HH:mm:ss')}</span>
+                  </div>
+                  
+                  <div className="bg-black/20 p-4 rounded-xl border border-white/5">
+                     <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{item.content || item.message}"</p>
+                  </div>
+
+                  {item.taskName && (
+                    <div className="flex items-center gap-2">
+                       <Tag size={10} className="text-blue-500" />
+                       <span className="text-[9px] font-bold text-blue-400/60 uppercase tracking-widest">{item.taskName}</span>
+                    </div>
+                  )}
+               </div>
             </div>
           ))}
-          {activities.length === 0 && <div className="py-20 text-center text-slate-700 font-bold uppercase tracking-[0.2em] opacity-30">No activity recorded</div>}
+          
+          {activities.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center py-40 opacity-20">
+               <History size={64} className="text-slate-500 mb-6" />
+               <p className="text-xs font-bold uppercase tracking-[0.4em] text-slate-500 text-center">No project evolutions captured in current context</p>
+            </div>
+          )}
        </div>
     </div>
   )
@@ -2735,8 +2792,7 @@ export default function Projects() {
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: () => apiFetch('/api/v1/devices').then(r => r.json()) })
   const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
-  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/operators').then(r => r.json()) })
-
+  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/settings/operators').then(r => r.json()) })
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY' | 'ADOPTION'>('WORKSPACE')
   const [isGlobalEditing, setIsGlobalEditing] = useState(false)
