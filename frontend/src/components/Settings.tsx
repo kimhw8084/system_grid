@@ -121,6 +121,16 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
 
 export default function SettingsPage() {
   const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system' | 'tenants'>('environments')
+  
+  // Use URL search params to set the initial tab if provided
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && ['environments', 'permissions', 'system', 'tenants'].includes(tab)) {
+      setTopTab(tab as any);
+    }
+  }, []);
+
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
@@ -494,7 +504,7 @@ result_df = get_user_pool()`)
   };
 
   return (
-    <div className="h-full flex flex-col space-y-6 max-w-[1600px] mx-auto px-4 overflow-hidden relative">
+    <div className="h-full flex flex-col space-y-6 w-full mx-auto px-4 overflow-hidden relative">
       <AnimatePresence>
         {isDisconnected && (
           <motion.div 

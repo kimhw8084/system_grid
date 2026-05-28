@@ -41,7 +41,7 @@ export function TenantSelector() {
   const activeTenant = tenants?.find((t: any) => t.is_selected)
 
   return (
-    <div className="relative">
+    <div className="relative z-[60]">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl hover:bg-blue-500/20 transition-all group"

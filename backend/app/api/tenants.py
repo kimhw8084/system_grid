@@ -143,8 +143,16 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
 async def get_my_tenants(db: AsyncSession = Depends(get_config_db)):
     user_id = get_current_user_id()
     
-    # Check if this is the first time for the user and if they are an admin, maybe grant them default access?
-    # For now, just return what's in the table
+    # Check if user has ANY access. If not, auto-grant default engine access
+    res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == user_id))
+    if not res.scalars().first():
+        # Get default tenant ID
+        res_default = await db.execute(select(Tenant).filter(Tenant.name == "Default Engine"))
+        default_tenant = res_default.scalar_one_or_none()
+        if default_tenant:
+            db.add(UserTenantAccess(user_id=user_id, tenant_id=default_tenant.id, role="ADMIN", is_selected=True))
+            await db.commit()
+
     stmt = (
         select(Tenant.id, Tenant.name, UserTenantAccess.role, UserTenantAccess.is_selected)
         .join(UserTenantAccess)
