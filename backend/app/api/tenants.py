@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy import select, update, insert, func
+from sqlalchemy import select, update, insert, func, text
 from typing import List
 import os
 import subprocess
 import sys
 from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine
 from ..models.config import Tenant, UserTenantAccess, MasterSystemSetting
-from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse
+from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse, TenantAttach, PreflightRequest, PreflightResponse
 from ..core.config import settings
 from .utils import get_current_user_id
 
@@ -222,6 +222,118 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     # Unselect others
     await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
     
+    db.add(access)
+    await db.commit()
+
+    return new_tenant
+
+@router.post("/admin/preflight", response_model=PreflightResponse)
+async def preflight_check(req: PreflightRequest):
+    """
+    Checks if a database file exists and validates its schema compatibility.
+    """
+    db_path = req.db_path.strip()
+    if not os.path.isabs(db_path):
+        # If relative, check in storage root
+        # We'll just enforce absolute paths for preflight from UI for now
+        pass
+        
+    if not os.path.exists(db_path):
+        return {
+            "status": "Error",
+            "is_valid": False,
+            "table_count": 0,
+            "message": f"File not found: {db_path}"
+        }
+        
+    db_url = f"sqlite+aiosqlite:///{db_path}"
+    engine = get_tenant_engine(db_url)
+    
+    try:
+        async with engine.connect() as conn:
+            # 1. Check table count
+            res = await conn.execute(text("SELECT count(*) FROM sqlite_master WHERE type='table'"))
+            table_count = res.scalar()
+            
+            # 2. Check for alembic_version
+            res = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'"))
+            has_alembic = res.scalar_one_or_none()
+            
+            schema_version = "Unknown"
+            if has_alembic:
+                res = await conn.execute(text("SELECT version_num FROM alembic_version"))
+                schema_version = res.scalar()
+            
+            # 3. Check for core tables
+            res = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='devices'"))
+            has_devices = res.scalar_one_or_none()
+            
+            if not has_devices and table_count > 0:
+                return {
+                    "status": "Incompatible",
+                    "is_valid": False,
+                    "schema_version": schema_version,
+                    "table_count": table_count,
+                    "message": "Database exists but missing core SysGrid tables (e.g. 'devices')."
+                }
+                
+            return {
+                "status": "Healthy" if has_devices else "Empty",
+                "is_valid": True,
+                "schema_version": schema_version,
+                "table_count": table_count,
+                "message": "Database is compatible and ready to be linked." if has_devices else "Database is empty but valid for initialization."
+            }
+    except Exception as e:
+        return {
+            "status": "Corrupt",
+            "is_valid": False,
+            "table_count": 0,
+            "message": f"Connection failed: {str(e)}"
+        }
+
+@router.post("/admin/attach", response_model=TenantResponse)
+async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_config_db), request: Request = None):
+    """
+    Links an existing database file on disk to the registry.
+    """
+    db_path = tenant_in.db_path.strip()
+    if not os.path.exists(db_path):
+        raise HTTPException(status_code=400, detail=f"Database file not found: {db_path}")
+        
+    db_url = f"sqlite+aiosqlite:///{db_path}"
+    
+    # 1. Check if already exists in registry
+    res = await db.execute(select(Tenant).filter(func.lower(Tenant.name) == tenant_in.name.lower()))
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Tenant name already exists in registry")
+        
+    res = await db.execute(select(Tenant).filter(Tenant.db_url == db_url))
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This database path is already registered under a different name")
+
+    # 2. Run migrations (idempotent) to ensure it's up to date
+    success, error = await run_alembic_upgrade(db_url)
+    if not success:
+        raise HTTPException(status_code=500, detail=f"Failed to synchronize schema: {error}")
+
+    # 3. Seed if necessary (ensure default roles/settings exist)
+    from ..main import _auto_seed
+    user_id = get_current_user_id(request)
+    tenant_engine = get_tenant_engine(db_url)
+    session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as tenant_db:
+        await _auto_seed(tenant_db, creator_id=user_id)
+
+    # 4. Register
+    new_tenant = Tenant(name=tenant_in.name, db_url=db_url)
+    db.add(new_tenant)
+    await db.commit()
+    await db.refresh(new_tenant)
+
+    # 5. Grant access
+    access = UserTenantAccess(user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", is_selected=True)
+    await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
     db.add(access)
     await db.commit()
 

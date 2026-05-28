@@ -141,9 +141,47 @@ export default function SettingsPage() {
   const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
   const [newTenantName, setNewTenantName] = useState("")
+  const [attachName, setAttachName] = useState("")
+  const [attachPath, setAttachPath] = useState("")
+  const [preflightResult, setPreflightResult] = useState<any>(null)
   const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
   
   const queryClient = useQueryClient()
+
+  const preflightMutation = useMutation({
+    mutationFn: async (db_path: string) => {
+      const res = await apiFetch("/api/v1/tenants/admin/preflight", {
+        method: "POST",
+        body: JSON.stringify({ db_path })
+      })
+      return res.json()
+    },
+    onSuccess: (data) => {
+      setPreflightResult(data);
+      if (data.is_valid) toast.success("Preflight check passed");
+      else toast.error(`Preflight check failed: ${data.message}`);
+    }
+  })
+
+  const attachMutation = useMutation({
+    mutationFn: async (data: { name: string, db_path: string }) => {
+      const res = await apiFetch("/api/v1/tenants/admin/attach", {
+        method: "POST",
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
+      setAttachName("");
+      setAttachPath("");
+      setPreflightResult(null);
+      toast.success("Existing database attached to registry")
+    },
+    onError: (e: any) => toast.error(`Attach Failed: ${e.message}`)
+  })
   
   const toggleEdit = (field: string, action?: 'save') => {
     if (action === 'save') {
@@ -934,6 +972,69 @@ result_df = get_user_pool()`)
                            >
                               {createTenantMutation.isPending ? 'Spinning up...' : 'Create Database'}
                            </button>
+                        </div>
+                     </div>
+
+                     <div className="p-6 bg-emerald-600/5 border border-emerald-500/20 rounded-2xl shadow-xl">
+                        <div className="flex items-center gap-3 mb-6">
+                           <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-lg shadow-emerald-500/20"><Link size={18} /></div>
+                           <div>
+                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Attach Existing</h3>
+                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Register External Database</p>
+                           </div>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Friendly Name</label>
+                              <input 
+                                 value={attachName} onChange={e => setAttachName(e.target.value)}
+                                 placeholder="e.g. Legacy_Archive" 
+                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Absolute File Path</label>
+                              <div className="relative">
+                                 <input 
+                                    value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
+                                    placeholder="/absolute/path/to/system_grid.db" 
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500"
+                                 />
+                                 <button 
+                                    onClick={() => preflightMutation.mutate(attachPath)}
+                                    disabled={preflightMutation.isPending || !attachPath}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-emerald-500 transition-all disabled:opacity-30"
+                                    title="Run Preflight Schema Check"
+                                 >
+                                    <Microscope size={14} className={preflightMutation.isPending ? 'animate-pulse' : ''} />
+                                 </button>
+                              </div>
+                           </div>
+
+                           <AnimatePresence>
+                              {preflightResult && (
+                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                    <div className={`p-4 rounded-xl border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
+                                       <div className="flex items-center justify-between">
+                                          <span className={`text-[8px] font-black uppercase tracking-widest ${preflightResult.is_valid ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                             Status: {preflightResult.status}
+                                          </span>
+                                          <span className="text-[8px] font-black uppercase text-slate-500">Tables: {preflightResult.table_count}</span>
+                                       </div>
+                                       <p className="text-[9px] font-bold text-slate-300 uppercase leading-relaxed">{preflightResult.message}</p>
+                                       {preflightResult.is_valid && (
+                                          <button 
+                                             onClick={() => attachMutation.mutate({ name: attachName, db_path: attachPath })}
+                                             disabled={attachMutation.isPending || !attachName}
+                                             className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-black uppercase text-[9px] tracking-widest hover:bg-emerald-500 transition-all mt-2"
+                                          >
+                                             {attachMutation.isPending ? 'Linking...' : 'Confirm & Attach'}
+                                          </button>
+                                       )}
+                                    </div>
+                                 </motion.div>
+                              )}
+                           </AnimatePresence>
                         </div>
                      </div>
 

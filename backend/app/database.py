@@ -160,6 +160,11 @@ async def init_config_db():
             db.add(default_tenant)
             await db.commit()
             await db.refresh(default_tenant)
+        elif default_tenant.db_url != settings.DATABASE_URL:
+            # Synchronize static config with registry if it changed in .env
+            default_tenant.db_url = settings.DATABASE_URL
+            await db.commit()
+            await db.refresh(default_tenant)
 
         # 3. Grant 'admin_root' access to Default Engine
         res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == "admin_root"))

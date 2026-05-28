@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Upload, Check, X, AlertCircle, FileText, Download, 
   RefreshCcw, Database, Terminal, ChevronRight, Layout, Info,
-  Clipboard, FileUp, Copy, Trash2
+  Clipboard, FileUp, Copy, Trash2, CheckCircle2
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { apiFetch } from "../../api/apiClient"
@@ -49,7 +49,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
     },
     onSuccess: (data) => {
       setAuditResults(data)
-      const validIndices = new Set(data.results.filter((r: any) => r.status === "VALID").map((r: any) => r.row))
+      const validIndices = new Set<number>(data.results.filter((r: any) => r.status === "VALID").map((r: any) => r.row))
       setSelectedRowIndices(validIndices)
       setStep('audit')
     },
@@ -311,7 +311,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                  <div className="space-y-3">
                     <div className="flex justify-between items-center px-1">
                       <h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2">
-                         <CheckCircle size={14} /> Valid Neural Vectors ({validRows.length})
+                         <CheckCircle2 size={14} /> Valid Neural Vectors ({validRows.length})
                       </h4>
                       <span className="text-[8px] font-bold text-slate-600 uppercase">Selected: {selectedRowIndices.size}</span>
                     </div>

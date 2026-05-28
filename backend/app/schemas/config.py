@@ -8,6 +8,19 @@ class TenantBase(BaseModel):
 class TenantCreate(TenantBase):
     pass
 
+class TenantAttach(TenantBase):
+    db_path: str # Absolute path on disk
+
+class PreflightRequest(BaseModel):
+    db_path: str
+
+class PreflightResponse(BaseModel):
+    status: str
+    is_valid: bool
+    schema_version: Optional[str] = None
+    table_count: int
+    message: str
+
 class TenantResponse(TenantBase):
     id: int
     db_url: str
