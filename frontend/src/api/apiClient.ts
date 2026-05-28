@@ -56,6 +56,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     : `${baseUrl.replace(/\/$/, '')}/${normalizedEndpoint.replace(/^\//, '')}`;
   
   const headers: Record<string, string> = { ...options.headers } as any;
+  
+  // Add User identity for multi-tenant routing
+  // In production, this would come from a secure token, 
+  // but following 'simple LDAP/ENV' directive:
+  headers['X-User-Id'] = localStorage.getItem('SYSGRID_USER_ID') || 'admin_root';
+
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, insert
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import select, update, insert, func
 from typing import List
 import os
 import subprocess
 import sys
-from ..database import get_config_db, get_db, ConfigSessionLocal
+from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine
 from ..models.config import Tenant, UserTenantAccess, MasterSystemSetting
 from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse
 from ..core.config import settings
@@ -55,7 +55,8 @@ async def list_all_tenants(db: AsyncSession = Depends(get_config_db)):
 async def run_alembic_upgrade(db_url: str):
     """Runs alembic upgrade head on a specific database file."""
     # Convert async url to sync for alembic
-    sync_url = db_url.replace("aiosqlite", "sqlite")
+    # sqlite+aiosqlite:///path -> sqlite:///path
+    sync_url = db_url.replace("sqlite+aiosqlite", "sqlite")
     
     # CORRECT PATH: tenants.py is in backend/app/api/, so we need to go 3 levels up to reach backend/
     api_dir = os.path.dirname(os.path.abspath(__file__))
@@ -94,22 +95,34 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to create storage root: {str(e)}")
     
-    db_filename = f"{tenant_in.name.lower().replace(' ', '_')}.sqlite"
+    # Case-insensitive check and filename normalization
+    tenant_name_clean = tenant_in.name.strip()
+    db_filename = f"{tenant_name_clean.lower().replace(' ', '_')}.sqlite"
     db_path = os.path.join(storage_root, db_filename)
     db_url = f"sqlite+aiosqlite:///{db_path}"
 
-    # 2. Check if already exists
-    res = await db.execute(select(Tenant).filter(Tenant.name == tenant_in.name))
+    # 2. Check if already exists (Case Insensitive)
+    res = await db.execute(select(Tenant).filter(func.lower(Tenant.name) == tenant_name_clean.lower()))
     if res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Tenant name already exists")
+    
+    if os.path.exists(db_path):
+        raise HTTPException(status_code=400, detail="Database file already exists on disk. Please use a unique name.")
 
     # 3. Create file and run migrations
     success, error = await run_alembic_upgrade(db_url)
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {error}")
 
-    # 4. Register in config.db
-    new_tenant = Tenant(name=tenant_in.name, db_url=db_url)
+    # 4. Seed the new database with default settings/roles
+    from ..main import _auto_seed
+    tenant_engine = get_tenant_engine(db_url)
+    session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as tenant_db:
+        await _auto_seed(tenant_db)
+
+    # 5. Register in config.db
+    new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
     db.add(new_tenant)
     await db.commit()
     await db.refresh(new_tenant)

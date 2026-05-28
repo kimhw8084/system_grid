@@ -6,48 +6,55 @@ from .database import engine, Base, AsyncSessionLocal
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
 
-async def _auto_seed():
+async def _auto_seed(db_session=None):
     from sqlalchemy.exc import IntegrityError
-    async with AsyncSessionLocal() as db:
-        # 1. Verify Global Settings (App Brain)
-        res_global = await db.execute(select(models.GlobalSetting))
-        if not res_global.scalars().first():
-            print("AUTO-BOOT: Seeding missing Global Settings...")
-            global_defaults = [
-                ("app_name", "SYSGRID ENGINE", "General", False),
-                ("org_name", "Global Infrastructure Corp", "General", False),
-                ("site_id", "HQ-01", "General", False),
-                ("retention_days", "30", "Infrastructure", False),
-                ("maintenance_mode", "false", "Infrastructure", False),
-                ("default_timezone", "UTC", "General", False),
-                ("dashboard_refresh_interval", "60", "UI", False),
-                ("security_level", "Standard", "Infrastructure", False),
-                ("audit_log_level", "Full", "Infrastructure", False),
-                ("ui_primary_color", "#3b82f6", "UI", False),
-                ("ui_accent_color", "#10b981", "UI", False),
-                ("support_email", "admin@infra.local", "General", False),
-                ("VITE_APP_TITLE", "SYSGRID Tactical", "General", True),
-                ("VITE_POLLING_INTERVAL", "5000", "Infrastructure", True),
-                ("VITE_ENABLE_WEBSOCKETS", "true", "Infrastructure", True),
-                ("VITE_THEME_DEFAULT", "nordic-frost-v1", "UI", True),
-                ("VITE_UI_TIMEOUT", "30000", "Infrastructure", True),
-                ("VITE_MAX_GRID_ROWS", "100", "UI", True),
-                ("PORT", "8000", "Infrastructure", True),
-                ("API_ENDPOINT", "/api/v1", "Infrastructure", True)
-            ]
-            for key, val, cat, public in global_defaults:
-                db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))
-            try:
-                await db.commit()
-            except IntegrityError:
-                await db.rollback()
-                print("AUTO-BOOT: Global Settings already seeded by another worker.")
+    
+    # If no session provided, use the default one (for lifespan boot)
+    if db_session is None:
+        async with AsyncSessionLocal() as db:
+            await _perform_seed(db)
+    else:
+        await _perform_seed(db_session)
 
-        # 2. Verify Setting Options (Metadata)
-        res = await db.execute(select(models.SettingOption))
-        if res.scalars().first():
-            return  # Already seeded
+async def _perform_seed(db):
+    from sqlalchemy.exc import IntegrityError
+    # 1. Verify Global Settings (App Brain)
+    res_global = await db.execute(select(models.GlobalSetting))
+    if not res_global.scalars().first():
+        print("AUTO-BOOT: Seeding missing Global Settings...")
+        global_defaults = [
+            ("app_name", "SYSGRID ENGINE", "General", False),
+            ("org_name", "Global Infrastructure Corp", "General", False),
+            ("site_id", "HQ-01", "General", False),
+            ("retention_days", "30", "Infrastructure", False),
+            ("maintenance_mode", "false", "Infrastructure", False),
+            ("default_timezone", "UTC", "General", False),
+            ("dashboard_refresh_interval", "60", "UI", False),
+            ("security_level", "Standard", "Infrastructure", False),
+            ("audit_log_level", "Full", "Infrastructure", False),
+            ("ui_primary_color", "#3b82f6", "UI", False),
+            ("ui_accent_color", "#10b981", "UI", False),
+            ("support_email", "admin@infra.local", "General", False),
+            ("VITE_APP_TITLE", "SYSGRID Tactical", "General", True),
+            ("VITE_POLLING_INTERVAL", "5000", "Infrastructure", True),
+            ("VITE_ENABLE_WEBSOCKETS", "true", "Infrastructure", True),
+            ("VITE_THEME_DEFAULT", "nordic-frost-v1", "UI", True),
+            ("VITE_UI_TIMEOUT", "30000", "Infrastructure", True),
+            ("VITE_MAX_GRID_ROWS", "100", "UI", True),
+            ("PORT", "8000", "Infrastructure", True),
+            ("API_ENDPOINT", "/api/v1", "Infrastructure", True)
+        ]
+        for key, val, cat, public in global_defaults:
+            db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            print("AUTO-BOOT: Global Settings already seeded by another worker.")
 
+    # 2. Verify Setting Options (Metadata)
+    res = await db.execute(select(models.SettingOption))
+    if not res.scalars().first():
         defaults = [
             # Logical Systems
             ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
@@ -101,29 +108,28 @@ async def _auto_seed():
         for val, keys in service_types:
             db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
 
-        # 3. Ensure we have a default operator and role
-        res = await db.execute(select(models.Role).filter(models.Role.name == "SuperAdmin"))
-        admin_role = res.scalar_one_or_none()
-        if not admin_role:
-            admin_role = models.Role(name="SuperAdmin", permissions={"dashboard": 3, "settings": 3, "audit": 3})
-            db.add(admin_role)
-            await db.commit()
-            await db.refresh(admin_role)
-        
-        res = await db.execute(select(models.Operator).filter(models.Operator.username == "admin_root"))
-        if not res.scalar_one_or_none():
-            db.add(models.Operator(
-                external_id="1000",
-                username="admin_root",
-                full_name="System Administrator",
-                email="admin@sysgrid.local",
-                department="Infrastructure",
-                role_id=admin_role.id,
-                registration_status="Verified"
-            ))
-            
+    # 3. Ensure we have a default operator and role
+    res = await db.execute(select(models.Role).filter(models.Role.name == "SuperAdmin"))
+    admin_role = res.scalar_one_or_none()
+    if not admin_role:
+        admin_role = models.Role(name="SuperAdmin", permissions={"dashboard": 3, "settings": 3, "audit": 3})
+        db.add(admin_role)
         await db.commit()
-        print("Settings and Operators self-healed.")
+        await db.refresh(admin_role)
+    
+    res = await db.execute(select(models.Operator).filter(models.Operator.username == "admin_root"))
+    if not res.scalar_one_or_none():
+        db.add(models.Operator(
+            external_id="1000",
+            username="admin_root",
+            full_name="System Administrator",
+            email="admin@sysgrid.local",
+            department="Infrastructure",
+            role_id=admin_role.id,
+            registration_status="Verified"
+        ))
+        
+    await db.commit()
 
 from .core.config import settings
 
