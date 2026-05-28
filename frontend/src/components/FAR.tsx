@@ -168,24 +168,6 @@ export default function FAR() {
   
   const idParam = searchParams.get('id')
 
-  useEffect(() => {
-    if (gridRef.current?.api && idParam && modes) {
-      const targetId = parseInt(idParam)
-      const mode = modes.find((m: any) => m.id === targetId)
-      
-      if (mode) {
-        setTimeout(() => {
-          gridRef.current.api.forEachNode((node: any) => {
-            if (node.data.id === targetId) {
-              node.setSelected(true)
-              gridRef.current.api.ensureNodeVisible(node, 'middle')
-            }
-          })
-        }, 100)
-      }
-    }
-  }, [idParam, modes])
-
   const [showWizard, setShowWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -219,6 +201,24 @@ export default function FAR() {
     queryKey: ['far', 'modes'], 
     queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
   })
+
+  useEffect(() => {
+    if (gridRef.current?.api && idParam && modes) {
+      const targetId = parseInt(idParam)
+      const mode = modes.find((m: any) => m.id === targetId)
+      
+      if (mode) {
+        setTimeout(() => {
+          gridRef.current.api.forEachNode((node: any) => {
+            if (node.data.id === targetId) {
+              node.setSelected(true)
+              gridRef.current.api.ensureNodeVisible(node, 'middle')
+            }
+          })
+        }, 100)
+      }
+    }
+  }, [idParam, modes])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const availableSystems = useMemo(() => {

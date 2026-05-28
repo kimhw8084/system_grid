@@ -3,6 +3,7 @@ import { Search, X, Loader2, Server, Briefcase, AlertTriangle, ChevronRight } fr
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../../api/apiClient';
+import metadata from '../../metadata.json';
 
 interface SearchResult {
   id: number;

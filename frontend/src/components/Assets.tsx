@@ -1323,42 +1323,6 @@ export default function Assets() {
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  useEffect(() => {
-    if (searchParam) {
-      setSearchTerm(searchParam.toUpperCase())
-    }
-  }, [searchParam])
-
-  useEffect(() => {
-    if (gridRef.current?.api && idParam && devices) {
-      const targetId = parseInt(idParam)
-      const asset = devices.find((a: any) => a.id === targetId)
-      
-      if (asset) {
-        // Switch to appropriate tab if asset is deleted
-        if (asset.is_deleted && activeTab !== 'deleted') setActiveTab('deleted')
-        if (!asset.is_deleted && activeTab !== 'inventory') setActiveTab('inventory')
-
-        setTimeout(() => {
-          gridRef.current.api.forEachNode((node: any) => {
-            if (node.data.id === targetId) {
-              node.setSelected(true)
-              gridRef.current.api.ensureNodeVisible(node, 'middle')
-              setSelectedAssetId(targetId)
-            }
-          })
-        }, 100)
-      }
-    }
-  }, [idParam, devices, activeTab])
-
-  useEffect(() => {
-    if (gridRef.current?.api && statusParam) {
-       gridRef.current.api.setFilterModel({
-          status: { filterType: 'text', type: 'equals', filter: statusParam }
-       })
-    }
-  }, [statusParam])
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -1398,6 +1362,43 @@ export default function Assets() {
     queryKey: ['devices'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
   })
+
+  useEffect(() => {
+    if (searchParam) {
+      setSearchTerm(searchParam.toUpperCase())
+    }
+  }, [searchParam])
+
+  useEffect(() => {
+    if (gridRef.current?.api && idParam && devices) {
+      const targetId = parseInt(idParam)
+      const asset = devices.find((a: any) => a.id === targetId)
+      
+      if (asset) {
+        // Switch to appropriate tab if asset is deleted
+        if (asset.is_deleted && activeTab !== 'deleted') setActiveTab('deleted')
+        if (!asset.is_deleted && activeTab !== 'inventory') setActiveTab('inventory')
+
+        setTimeout(() => {
+          gridRef.current.api.forEachNode((node: any) => {
+            if (node.data.id === targetId) {
+              node.setSelected(true)
+              gridRef.current.api.ensureNodeVisible(node, 'middle')
+              setSelectedAssetId(targetId)
+            }
+          })
+        }, 100)
+      }
+    }
+  }, [idParam, devices, activeTab])
+
+  useEffect(() => {
+    if (gridRef.current?.api && statusParam) {
+       gridRef.current.api.setFilterModel({
+          status: { filterType: 'text', type: 'equals', filter: statusParam }
+       })
+    }
+  }, [statusParam])
 
   const { inventoryAssets, deletedAssets } = useMemo(() => {
     if (!devices) return { inventoryAssets: [], deletedAssets: [] }
