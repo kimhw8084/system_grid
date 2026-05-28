@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ForceGraph2D from 'react-force-graph-2d'
@@ -900,7 +901,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="flex items-start justify-between">
               <div className="space-y-4">
                 <div className="flex items-center space-x-6">
-                   <div className="bg-blue-600 p-2.5 rounded-xl text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
+                   <div className="bg-blue-600 p-2.5 rounded-lg text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
                       <Box size={40} />
                    </div>
                    <div>
@@ -913,7 +914,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                    </div>
                 </div>
 
-                <div className="flex items-center space-x-6 bg-black/40 p-4 rounded-xl border border-white/5">
+                <div className="flex items-center space-x-6 bg-black/40 p-4 rounded-lg border border-white/5">
                    <div className="flex flex-col">
                       <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
                       <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
@@ -946,7 +947,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </div>
 
             {/* Quick Stats Banner */}
-            <div className="grid grid-cols-6 gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+            <div className="grid grid-cols-6 gap-3 bg-white/5 p-4 rounded-lg border border-white/5">
                <div className="flex flex-col">
                   <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Power Avg/Max</span>
                   <span className="text-[10px] font-mono text-white font-bold">{selectedAsset.power_typical_w}W / {selectedAsset.power_max_w}W</span>
@@ -980,7 +981,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <CpuIcon size={14} className="text-amber-400" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-xl border border-white/5 grid grid-cols-2 gap-y-6 gap-x-8 flex-1">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-y-6 gap-x-8 flex-1">
                      <div>
                         <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-0.5">Platform Identity</p>
                         <p className="text-xs font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
@@ -1006,7 +1007,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Calendar size={14} className="text-rose-400" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics Registry</h3>
                   </div>
-                  <div className="bg-black/20 p-6 rounded-xl border border-white/5 grid grid-cols-2 gap-6 flex-1">
+                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-6 flex-1">
                      <div className="space-y-6">
                         <div>
                            <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Deployment Phase</p>
@@ -1057,7 +1058,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Layers size={14} className="text-blue-400" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
                        deviceId={selectedAsset.id} 
                        onViewDetails={onViewServiceDetails} 
@@ -1071,7 +1072,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Activity size={14} className="text-emerald-400" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <MiniMonitoringTable deviceId={selectedAsset.id} />
                   </div>
                </div>
@@ -1084,7 +1085,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Shield size={14} className="text-amber-500" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Security Credentials & Secrets</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <SecretsTable deviceId={selectedAsset.id} />
                   </div>
                </div>
@@ -1094,7 +1095,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <FileJson size={14} className="text-slate-400" />
                      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Registry Metadata Payload</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10 min-h-[120px]">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10 min-h-[120px]">
                      <MetadataViewer data={selectedAsset.metadata_json} />
                   </div>
                </div>
@@ -1106,7 +1107,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <HardDrive size={14} className="text-emerald-400" />
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Physical Component Inventory</h3>
                </div>
-               <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -1222,7 +1223,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
     <div className="flex-1 flex flex-col h-full bg-[#020617] p-8 animate-in fade-in duration-500 overflow-hidden">
        <div className="flex items-center justify-between mb-8 shrink-0">
           <div className="flex items-center space-x-6">
-             <button onClick={onBack} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-all">
+             <button onClick={onBack} className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-slate-400 hover:text-white transition-all">
                 <ArrowRightLeft className="rotate-180" size={20} />
              </button>
              <div>
@@ -1230,12 +1231,12 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Comparative Analysis of {selectedAssets.length} Infrastructure Assets</p>
              </div>
           </div>
-          <button onClick={onBack} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl text-rose-500 transition-all">
+          <button onClick={onBack} className="p-3 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-rose-500 transition-all">
              <X size={24} />
           </button>
        </div>
 
-       <div className="flex-1 overflow-auto custom-scrollbar glass-panel rounded-2xl border border-white/5 bg-slate-900/20 shadow-2xl">
+       <div className="flex-1 overflow-auto custom-scrollbar glass-panel rounded-lg border border-white/5 bg-slate-900/20 shadow-2xl">
           <table className="w-full text-left border-collapse min-w-[800px]">
              <thead className="sticky top-0 z-10">
                 <tr>
@@ -1305,23 +1306,59 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
 
 export default function Assets() {
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  
+  const idParam = searchParams.get('id')
+  const searchParam = searchParams.get('search')
+  const statusParam = searchParams.get('status')
   
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
   const [showStyleLab, setShowStyleLab] = useState(true)
 
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 50)
-    }
-  }, [fontSize, rowDensity])
-
   const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    if (searchParam) {
+      setSearchTerm(searchParam.toUpperCase())
+    }
+  }, [searchParam])
+
+  useEffect(() => {
+    if (gridRef.current?.api && idParam && devices) {
+      const targetId = parseInt(idParam)
+      const asset = devices.find((a: any) => a.id === targetId)
+      
+      if (asset) {
+        // Switch to appropriate tab if asset is deleted
+        if (asset.is_deleted && activeTab !== 'deleted') setActiveTab('deleted')
+        if (!asset.is_deleted && activeTab !== 'inventory') setActiveTab('inventory')
+
+        setTimeout(() => {
+          gridRef.current.api.forEachNode((node: any) => {
+            if (node.data.id === targetId) {
+              node.setSelected(true)
+              gridRef.current.api.ensureNodeVisible(node, 'middle')
+              setSelectedAssetId(targetId)
+            }
+          })
+        }, 100)
+      }
+    }
+  }, [idParam, devices, activeTab])
+
+  useEffect(() => {
+    if (gridRef.current?.api && statusParam) {
+       gridRef.current.api.setFilterModel({
+          status: { filterType: 'text', type: 'equals', filter: statusParam }
+       })
+    }
+  }, [statusParam])
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -2058,7 +2095,7 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
                 )}
             </div>
             
-            <div className="bg-black/20 rounded-[20px] p-2">
+            <div className="bg-black/20 rounded-lg p-2">
                 {mode === 'view' ? (
                     <MetadataViewer data={localData.metadata_json} />
                 ) : (
@@ -2276,10 +2313,10 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
   }, [connections, device?.id])
 
   return (
-    <div className="bg-black/40 border border-white/5 rounded-[20px] p-8">
+    <div className="bg-black/40 border border-white/5 rounded-lg p-8">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-           <div className={`p-3 rounded-xl ${isSwitch ? 'bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-blue-500/20 text-blue-400 border-blue-500/20'} border`}>
+           <div className={`p-3 rounded-lg ${isSwitch ? 'bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-blue-500/20 text-blue-400 border-blue-500/20'} border`}>
               <Network size={20} />
            </div>
            <div>
@@ -2312,13 +2349,13 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
           return (
             <div 
               key={idx} 
-              className={`relative group p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
+              className={`relative group p-4 rounded-lg border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
                 ${isActive 
                   ? (isLogical ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]')
                   : 'bg-black/40 border-white/5 hover:border-white/10'}`}
             >
 
-              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-xl transition-all ${isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent'}`} />
+              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-lg transition-all ${isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent'}`} />
               
               <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? (isLogical ? 'text-blue-400' : 'text-emerald-400') : 'text-slate-600'}`}>
                 {p.name}
@@ -2337,7 +2374,7 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
 
               {isActive && (
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-xl shadow-2xl backdrop-blur-xl">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-lg shadow-2xl backdrop-blur-xl">
                     <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
                     <div className="text-[10px] font-black text-white uppercase truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
                     <div className="flex items-center justify-between text-[8px] font-black">
@@ -2470,7 +2507,7 @@ const SecurityTab = ({ device }: { device: any }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-4">
+      <div className="bg-white/5 p-6 rounded-lg border border-white/5 space-y-4">
         <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-[0.2em] mb-4">Request Firewall Exception</h3>
         <div className="grid grid-cols-4 gap-4">
           <div className="col-span-2">
@@ -2730,7 +2767,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     ))}
                 </div>
             </div>
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+            <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6">
                 {tab === 'metadata' && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <MetadataTab device={device} onSave={(d:any) => mutation.mutate(d)} />
@@ -3118,7 +3155,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-6">
+      <div className="bg-white/5 p-6 rounded-lg border border-white/5 space-y-6">
          <div className="grid grid-cols-11 gap-4 items-end">
             <div className="col-span-3">
                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
@@ -3751,15 +3788,15 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
         <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
            <div className="relative">
               <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full animate-pulse" />
-              <div className="relative bg-slate-900/50 border border-white/10 p-12 rounded-[40px] backdrop-blur-3xl flex flex-col items-center text-center space-y-6 shadow-2xl">
-                 <div className="w-24 h-24 bg-indigo-600/20 rounded-3xl flex items-center justify-center border border-indigo-500/30 text-indigo-400 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
+              <div className="relative bg-slate-900/50 border border-white/10 p-12 rounded-lg backdrop-blur-3xl flex flex-col items-center text-center space-y-6 shadow-2xl">
+                 <div className="w-24 h-24 bg-indigo-600/20 rounded-lg flex items-center justify-center border border-indigo-500/30 text-indigo-400 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
                     <Share2 size={48} className="animate-pulse" />
                  </div>
                  <div className="space-y-2">
                     <h2 className="text-4xl font-black uppercase tracking-tighter text-white">Vector <span className="text-indigo-500">Topology</span></h2>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">Infrastructure Connectivity Matrix</p>
                  </div>
-                 <div className="max-w-md p-6 bg-black/40 rounded-2xl border border-white/5">
+                 <div className="max-w-md p-6 bg-black/40 rounded-lg border border-white/5">
                     <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight">
                        Map rendering is restricted to active search parameters. Please select a system or search for an asset to initiate topological crawl.
                     </p>
@@ -3769,7 +3806,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                        <button
                          key={sys}
                          onClick={() => setSelectedSystems([sys])}
-                         className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all tracking-widest"
+                         className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black uppercase text-slate-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all tracking-widest"
                        >
                           {sys}
                        </button>
@@ -3783,7 +3820,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
           <div className="absolute top-8 left-8 z-20 flex flex-col space-y-4 pointer-events-none">
              <motion.div 
                animate={{ width: isSidebarCollapsed ? 48 : 320, height: isTopologyCollapsed ? 48 : 'auto' }}
-               className="glass-panel rounded-2xl border border-white/10 shadow-2xl pointer-events-auto overflow-hidden bg-slate-900/80 backdrop-blur-xl relative"
+               className="glass-panel rounded-lg border border-white/10 shadow-2xl pointer-events-auto overflow-hidden bg-slate-900/80 backdrop-blur-xl relative"
              >
                 <div className="absolute top-4 right-4 flex items-center gap-2 z-30">
                    {!isSidebarCollapsed && !isTopologyCollapsed && (
@@ -3857,7 +3894,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                            value={searchTerm} 
                            onChange={e => setSearchTerm(e.target.value)}
                            placeholder="FOCUS SEARCH..." 
-                           className="w-full bg-black/40 border border-white/5 rounded-xl pl-9 pr-4 py-3 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest transition-all" 
+                           className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-3 text-[9px] font-black text-white outline-none focus:border-indigo-500/50 uppercase tracking-widest transition-all" 
                          />
                       </div>
                    </div>
@@ -3865,7 +3902,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                    <div className="pt-2">
                       <button 
                         onClick={() => { setSelectedSystems([]); setSearchTerm(''); setSelectedAssetIds([]); }}
-                        className="w-full py-3 bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-all rounded-xl"
+                        className="w-full py-3 bg-white/5 hover:bg-rose-500/10 border border-white/5 hover:border-rose-500/30 text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-all rounded-lg"
                       >
                          Reset Workspace
                       </button>
@@ -3875,7 +3912,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
 
              <AnimatePresence>
                {selectedNode && !isSidebarCollapsed && (
-                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-panel w-80 p-6 rounded-2xl border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
+                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="glass-panel w-80 p-6 rounded-lg border border-indigo-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/90 backdrop-blur-xl">
                      <div className="flex items-start justify-between">
                         <div>
                            <div className="flex items-center gap-2 mb-1">
@@ -3888,16 +3925,16 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white p-1 hover:bg-white/5 rounded-lg transition-all"><X size={14}/></button>
                      </div>
                      <div className="grid grid-cols-2 gap-3">
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/5">
                            <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
                            <p className={`text-[9px] font-black uppercase ${selectedNode.status === 'Active' ? 'text-emerald-400' : 'text-amber-500'}`}>{selectedNode.status}</p>
                         </div>
-                        <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/5">
                            <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Environment</p>
                            <p className="text-[9px] font-black text-indigo-400 uppercase">{selectedNode.environment}</p>
                         </div>
                      </div>
-                     <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                     <div className="p-3 rounded-lg bg-black/40 border border-white/5">
                         <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Primary Network IP</p>
                         <p className="text-[10px] font-mono font-black text-white">{selectedNode.primary_ip || 'DHCP_ASSIGNED'}</p>
                      </div>
@@ -4009,7 +4046,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                     initial={{ opacity: 0, x: 20 }} 
                     animate={{ opacity: 1, x: 0 }} 
                     exit={{ opacity: 0, x: 20 }}
-                    className="glass-panel p-6 rounded-2xl border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl pointer-events-auto w-64"
+                    className="glass-panel p-6 rounded-lg border border-white/10 shadow-2xl bg-slate-900/80 backdrop-blur-xl pointer-events-auto w-64"
                   >
                      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
                         <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-500">Vector Legend</h4>
@@ -4052,7 +4089,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
              {/* Link Tooltip for hovered multi-links */}
              <AnimatePresence>
                {hoveredLink && hoveredLink.labels.length > 0 && (
-                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-panel p-4 rounded-xl border border-blue-500/30 shadow-2xl bg-slate-900/90 backdrop-blur-xl pointer-events-auto min-w-[200px]">
+                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="glass-panel p-4 rounded-lg border border-blue-500/30 shadow-2xl bg-slate-900/90 backdrop-blur-xl pointer-events-auto min-w-[200px]">
                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2 pb-2 border-b border-white/5">Active Vectors ({hoveredLink.labels.length})</p>
                    <div className="space-y-1.5">
                      {hoveredLink.labels.map((l: string, i: number) => (
@@ -4068,7 +4105,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
           </div>
 
           <div className={`absolute bottom-8 right-8 flex flex-col gap-3 transition-opacity duration-500 ${isTopologyCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-             <div className="glass-panel p-2 rounded-xl border border-white/10 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-xl pointer-events-auto shadow-2xl">
+             <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 bg-slate-900/80 backdrop-blur-xl pointer-events-auto shadow-2xl">
                 <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom In"><ZoomIn size={18}/></button>
                 <button onClick={() => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400)} className="p-3 text-slate-500 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all" title="Zoom Out"><ZoomOut size={18}/></button>
                 <div className="h-px bg-white/5 mx-1" />
@@ -4076,7 +4113,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
              </div>
              <button 
                onClick={() => setShowLegend(!showLegend)} 
-               className={`p-3 rounded-xl border transition-all shadow-2xl backdrop-blur-xl pointer-events-auto ${showLegend ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/80 border-white/10 text-slate-500 hover:text-white'}`}
+               className={`p-3 rounded-lg border transition-all shadow-2xl backdrop-blur-xl pointer-events-auto ${showLegend ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-900/80 border-white/10 text-slate-500 hover:text-white'}`}
              >
                 <Layers size={18}/>
              </button>

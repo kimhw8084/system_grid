@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -162,7 +163,29 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
 
 export default function FAR() {
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  
+  const idParam = searchParams.get('id')
+
+  useEffect(() => {
+    if (gridRef.current?.api && idParam && modes) {
+      const targetId = parseInt(idParam)
+      const mode = modes.find((m: any) => m.id === targetId)
+      
+      if (mode) {
+        setTimeout(() => {
+          gridRef.current.api.forEachNode((node: any) => {
+            if (node.data.id === targetId) {
+              node.setSelected(true)
+              gridRef.current.api.ensureNodeVisible(node, 'middle')
+            }
+          })
+        }, 100)
+      }
+    }
+  }, [idParam, modes])
+
   const [showWizard, setShowWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -1235,11 +1258,11 @@ function CausalTab({ mode, onUpdate }: any) {
        function RpnDefinitionModal({ onClose }: { onClose: () => void }) {
        return (
        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-[40px] border border-amber-500/30 shadow-2xl relative">
+       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-lg border border-amber-500/30 shadow-2xl relative">
        <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={32}/></button>
 
        <div className="flex items-center gap-6 mb-12 border-b border-white/5 pb-8">
-         <div className="w-20 h-20 rounded-[30px] bg-amber-600 flex items-center justify-center text-white shadow-xl shadow-amber-600/20">
+         <div className="w-20 h-20 rounded-lg bg-amber-600 flex items-center justify-center text-white shadow-xl shadow-amber-600/20">
             <Target size={40}/>
          </div>
          <div>
@@ -1272,7 +1295,7 @@ function CausalTab({ mode, onUpdate }: any) {
          </div>
        </div>
 
-       <div className="mt-12 p-8 bg-black/40 rounded-3xl border border-white/5">
+       <div className="mt-12 p-8 bg-black/40 rounded-lg border border-white/5">
          <div className="flex items-center justify-between mb-6">
             <span className="text-xs font-black uppercase tracking-widest text-slate-500">Threshold Logic</span>
             <div className="flex gap-4">
@@ -1291,11 +1314,11 @@ function CausalTab({ mode, onUpdate }: any) {
        function MaturityDefinitionModal({ onClose }: { onClose: () => void }) {
        return (
        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
-       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-[40px] border border-blue-500/30 shadow-2xl relative">
+       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-12 rounded-lg border border-blue-500/30 shadow-2xl relative">
        <button onClick={onClose} className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"><X size={32}/></button>
 
        <div className="flex items-center gap-6 mb-12 border-b border-white/5 pb-8">
-         <div className="w-20 h-20 rounded-[30px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-600/20">
+         <div className="w-20 h-20 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-600/20">
             <Zap size={40}/>
          </div>
          <div>
@@ -1306,8 +1329,8 @@ function CausalTab({ mode, onUpdate }: any) {
 
        <div className="grid grid-cols-2 gap-x-12 gap-y-4">
          {maturityLevels.map((ml) => (
-            <div key={ml.lv} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5">
-               <div className="w-12 h-12 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-black border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
+            <div key={ml.lv} className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-white/5">
+               <div className="w-12 h-12 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 font-black border border-blue-500/20 shadow-inner">Lv{ml.lv}</div>
                <div>
                   <h4 className="text-[11px] font-black uppercase text-white tracking-widest">{ml.label}</h4>
                   <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 leading-tight">{ml.desc}</p>

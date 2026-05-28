@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -2797,6 +2798,8 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
 
 export default function Projects() {
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
+  const idParam = searchParams.get('id')
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => apiFetch('/api/v1/projects').then(r => r.json()),
@@ -2839,12 +2842,21 @@ export default function Projects() {
   const [ledgerWidth, setLedgerWidth] = useState(380)
 
   useEffect(() => {
-    if (projects?.length > 0 && selectedProjectId === 'HUDDLE') {
+    if (idParam && projects) {
+       const targetId = parseInt(idParam)
+       if (projects.find((p: any) => p.id === targetId)) {
+          setSelectedProjectId(targetId)
+       }
+    }
+  }, [idParam, projects])
+
+  useEffect(() => {
+    if (projects?.length > 0 && selectedProjectId === 'HUDDLE' && !idParam) {
       // Find latest created project
       const latest = [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
       if (latest) setSelectedProjectId(latest.id)
     }
-  }, [projects])
+  }, [projects, idParam, selectedProjectId])
 
   const selectedProject = useMemo(() => {
     if (selectedProjectId === 'HUDDLE') return null

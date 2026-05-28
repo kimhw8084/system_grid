@@ -72,7 +72,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
     if (this.state.hasError) {
       return (
         <div className="h-full w-full bg-[var(--bg-primary)] flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mb-6 border border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
+          <div className="w-16 h-16 bg-rose-500/10 rounded-lg flex items-center justify-center mb-6 border border-rose-500/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
             <AlertOctagon size={32} className="text-rose-500" />
           </div>
           
@@ -88,7 +88,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
                   const event = new CustomEvent('open-error-console');
                   window.dispatchEvent(event);
                 }} 
-                className="px-6 py-4 rounded-2xl border bg-white/5 border-white/10 text-slate-400 hover:border-white/20 transition-all flex flex-col items-center gap-2"
+                className="px-6 py-4 rounded-lg border bg-white/5 border-white/10 text-slate-400 hover:border-white/20 transition-all flex flex-col items-center gap-2"
              >
                 <Bug size={20} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Open Bug Console</span>
@@ -96,7 +96,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
 
              <button 
                 onClick={() => window.location.reload()} 
-                className="px-6 py-4 bg-blue-600 text-white rounded-2xl border border-blue-500 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex flex-col items-center gap-2"
+                className="px-6 py-4 bg-blue-600 text-white rounded-lg border border-blue-500 shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex flex-col items-center gap-2"
              >
                 <RefreshCcw size={20} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Refresh App</span>
@@ -104,7 +104,7 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
           </div>
 
           <div className="mt-8 w-full max-w-4xl overflow-hidden">
-            <div className="p-8 bg-black/40 border border-rose-500/20 rounded-3xl text-left shadow-2xl backdrop-blur-md">
+            <div className="p-8 bg-black/40 border border-rose-500/20 rounded-lg text-left shadow-2xl backdrop-blur-md">
                <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-4">
                   <div className="flex items-center gap-2 text-rose-500">
                      <Terminal size={14} />
@@ -146,7 +146,7 @@ const getPermLevel = (perms: any, view: string) => {
 
 const SidebarItem = ({ icon: Icon, label, path, active, isOpen, disabled, isSubItem }: any) => {
   const content = (
-    <div className={`w-full flex items-center ${isSubItem ? 'px-3 py-2.5' : 'px-4 py-3.5'} rounded-xl transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
+    <div className={`w-full flex items-center ${isSubItem ? 'px-3 py-2.5' : 'px-4 py-3.5'} rounded-lg transition-all duration-300 relative ${disabled ? "opacity-20 grayscale cursor-not-allowed" : active ? "bg-[#034EA2] text-white shadow-lg" : "hover:bg-white/5 text-slate-400"} ${!isOpen ? "justify-center" : "space-x-3"}`}>
       <Icon size={isSubItem ? 16 : 20} className={!isOpen && active ? "text-white" : ""} />
       {isOpen && <span className={`${isSubItem ? 'font-bold text-[11px]' : 'font-black text-[12px]'} uppercase tracking-wider`}>{label}</span>}
       {active && isOpen && <motion.div layoutId="active-pill" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />}
@@ -198,7 +198,7 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
   if (userProfile && !hasRead) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500">
-        <div className="w-20 h-20 bg-rose-500/10 rounded-3xl flex items-center justify-center mb-8 border border-rose-500/20 shadow-[0_0_40px_rgba(244,63,94,0.15)] relative overflow-hidden group">
+        <div className="w-20 h-20 bg-rose-500/10 rounded-lg flex items-center justify-center mb-8 border border-rose-500/20 shadow-[0_0_40px_rgba(244,63,94,0.15)] relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <ShieldAlert size={40} className="text-rose-500 relative z-10" />
         </div>
@@ -211,7 +211,7 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
         <div className="flex flex-col items-center gap-6 mt-12">
            <Link 
               to="/" 
-              className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+              className="px-8 py-4 bg-blue-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
            >
               <LayoutDashboard size={16} /> Return to Neutral Zone
            </Link>
@@ -230,7 +230,7 @@ const PatchNotesModal = ({ onClose }: any) => {
   const [expandedIndex, setExpandedIndex] = useState(0)
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-hidden flex flex-col p-10 rounded-2xl border-blue-500/30">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] max-h-[80vh] overflow-hidden flex flex-col p-10 rounded-lg border-blue-500/30">
          <div className="flex items-center justify-between border-b border-white/10 pb-6">
             <div className="flex items-center space-x-4">
                <Star size={24} className="text-blue-400 animate-pulse" />
@@ -240,7 +240,7 @@ const PatchNotesModal = ({ onClose }: any) => {
          </div>
          <div className="flex-1 overflow-y-auto custom-scrollbar mt-6 space-y-4">
             {PATCH_HISTORY.map((patch, idx) => (
-              <div key={patch.version} className={`border border-white/5 rounded-2xl overflow-hidden ${expandedIndex === idx ? "bg-white/5 border-blue-500/20" : "hover:bg-white/5"}`}>
+              <div key={patch.version} className={`border border-white/5 rounded-lg overflow-hidden ${expandedIndex === idx ? "bg-white/5 border-blue-500/20" : "hover:bg-white/5"}`}>
                  <button onClick={() => setExpandedIndex(expandedIndex === idx ? -1 : idx)} className="w-full px-6 py-4 flex items-center justify-between text-left">
                     <div>
                        <span className={`text-[10px] font-black uppercase tracking-widest ${expandedIndex === idx ? "text-blue-400" : "text-slate-500"}`}>{patch.version}</span>
@@ -265,7 +265,7 @@ const PatchNotesModal = ({ onClose }: any) => {
               </div>
             ))}
          </div>
-         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-blue-500/20">Close Inspection</button>
+         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-lg font-black uppercase shadow-lg shadow-blue-500/20">Close Inspection</button>
       </motion.div>
     </div>
   )
@@ -282,16 +282,16 @@ const LinuxEnvModal = ({ onClose }: any) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[700px] max-h-[80vh] flex flex-col p-10 rounded-3xl border border-blue-500/30 overflow-hidden shadow-2xl">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[700px] max-h-[80vh] flex flex-col p-10 rounded-lg border border-blue-500/30 overflow-hidden shadow-2xl">
          <div className="flex items-center justify-between border-b border-white/5 pb-6">
             <div className="flex items-center space-x-4">
-               <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20"><Terminal size={24} /></div>
+               <div className="p-3 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20"><Terminal size={24} /></div>
                <div>
                   <h2 className="text-2xl font-black uppercase text-white tracking-tighter leading-none">Local Environment <span className="text-blue-500">Forensics</span></h2>
                   <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-2">Active Operating System Parameters</p>
                </div>
             </div>
-            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-xl"><X size={24}/></button>
+            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"><X size={24}/></button>
          </div>
 
          <div className="flex-1 overflow-y-auto custom-scrollbar mt-6 space-y-4 pr-2">
@@ -303,7 +303,7 @@ const LinuxEnvModal = ({ onClose }: any) => {
             ) : envVars ? (
                <div className="grid grid-cols-1 gap-2">
                   {Object.entries(envVars).map(([key, value]: [string, any]) => (
-                     <div key={key} className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-xl hover:border-blue-500/20 transition-all group">
+                     <div key={key} className="flex items-center justify-between p-3 bg-white/[0.03] border border-white/5 rounded-lg hover:border-blue-500/20 transition-all group">
                         <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider group-hover:text-blue-400 transition-colors">{key}</span>
                         <span className="text-[10px] font-mono text-slate-300 font-bold truncate max-w-[400px] bg-black/40 px-3 py-1 rounded-lg border border-white/5" title={String(value)}>{String(value)}</span>
                      </div>
@@ -312,14 +312,14 @@ const LinuxEnvModal = ({ onClose }: any) => {
             ) : null}
          </div>
          
-         <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
+         <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg flex items-start gap-4">
             <Info size={18} className="text-amber-500 shrink-0" />
             <p className="text-[9px] font-bold text-amber-500/80 uppercase leading-relaxed tracking-tight">
                These variables are extracted directly from the underlying Linux OS execution context. They impact how the SysGrid Engine interacts with system binaries and file-system hooks.
             </p>
          </div>
 
-         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Close Diagnostic View</button>
+         <button onClick={onClose} className="w-full mt-8 py-4 bg-blue-600 text-white rounded-lg font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Close Diagnostic View</button>
       </motion.div>
     </div>
   )
@@ -522,7 +522,7 @@ function MainLayout() {
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]">
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">
-             <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
+             <div className="w-9 h-9 flex-shrink-0 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/5 transition-transform group-hover:scale-105 duration-300">
                 <Grid3X3 size={20} className="text-white" />
              </div>
              {isSidebarOpen && <span className="font-black text-xl text-[var(--text-primary)] tracking-tighter uppercase">SYSGRID</span>}
@@ -574,7 +574,7 @@ function MainLayout() {
         <div className={`p-4 border-t border-[var(--glass-border)] space-y-2 transition-all ${!isSidebarOpen ? 'flex flex-col items-center' : ''}`}>
            <button 
               onClick={() => setShowLinuxEnv(true)}
-              className={`flex items-center gap-3 p-2 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
+              className={`flex items-center gap-3 p-2 rounded-lg bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] hover:border-blue-500/30 transition-all group ${!isSidebarOpen ? 'w-10 h-10 p-0 justify-center' : 'w-full text-left'}`}
            >
               <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 group-hover:scale-110 transition-transform">
                  <Globe size={16} />
@@ -588,7 +588,7 @@ function MainLayout() {
            </button>
 
            {/* Direct Theme Toggles */}
-           <div className={`flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 ${!isSidebarOpen ? 'flex-col' : 'w-full'}`}>
+           <div className={`flex items-center gap-1 p-1 rounded-lg bg-white/[0.03] border border-white/5 ${!isSidebarOpen ? 'flex-col' : 'w-full'}`}>
               {THEMES.map(theme => (
                 <button 
                   key={theme.id}
@@ -614,7 +614,7 @@ function MainLayout() {
             
             <button 
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-slate-500 hover:text-white hover:border-blue-500/30 transition-all group min-w-[300px]"
+              className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-lg text-slate-500 hover:text-white hover:border-blue-500/30 transition-all group min-w-[300px]"
             >
               <Search size={16} className="group-hover:text-blue-400 transition-colors" />
               <span className="text-[10px] font-black uppercase tracking-widest flex-1 text-left">Global ID Search...</span>

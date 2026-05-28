@@ -19,13 +19,13 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className="group relative h-full cursor-pointer overflow-hidden rounded-2xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03]"
+      className="group relative h-full cursor-pointer overflow-hidden rounded-lg border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03]"
       onClick={onClick}
     >
       <div className={`absolute -right-4 -top-4 h-24 w-24 bg-gradient-to-br ${color} opacity-[0.03] blur-2xl group-hover:opacity-[0.1] transition-opacity`} />
       
       <div className="flex items-start justify-between">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 shadow-inner transition-transform group-hover:scale-110`}>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${color} bg-opacity-10 border border-white/5 shadow-inner transition-transform group-hover:scale-110`}>
           <Icon size={24} className="text-white" />
         </div>
         <div className="text-right">
@@ -84,7 +84,7 @@ const SiteClock = ({ site, delay }: any) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="px-4 py-2 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:border-blue-500/20 transition-all"
+      className="px-4 py-2 bg-white/[0.03] border border-white/5 rounded-lg flex items-center justify-between group hover:border-blue-500/20 transition-all"
     >
       <div className="flex flex-col">
         <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{site.name}</span>
@@ -104,7 +104,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
     initial={{ opacity: 0, x: -10 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ delay, duration: 0.4 }}
-    className="flex flex-col h-full rounded-2xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group"
+    className="flex flex-col h-full rounded-lg border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group"
   >
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
@@ -123,7 +123,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
         <Link 
           key={item.id || idx} 
           to={`${path}?id=${item.id}`}
-          className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item"
+          className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item"
         >
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-black text-slate-200 uppercase tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
@@ -149,20 +149,21 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
     </div>
     <div className="space-y-2">
       {projects && projects.length > 0 ? projects.map((p: any) => (
-        <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item">
+        <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
             <span className="text-[8px] font-bold text-slate-600 uppercase shrink-0">{new Date(p.updated_at).toLocaleDateString()}</span>
           </div>
         </Link>
       )) : (
-        <div className="p-3 rounded-xl bg-white/[0.01] border border-dashed border-white/5 text-center">
+        <div className="p-3 rounded-lg bg-white/[0.01] border border-dashed border-white/5 text-center">
            <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">No Projects</span>
         </div>
       )}
     </div>
   </div>
 )
+
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const navigate = useNavigate();
@@ -209,7 +210,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             exit={{ height: 0, opacity: 0 }}
             className="shrink-0 overflow-hidden"
           >
-            <div className="bg-rose-600 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-xl shadow-rose-600/20 border border-rose-500/50 mb-2">
+            <div className="bg-rose-600 text-white px-6 py-3 rounded-lg flex items-center justify-between shadow-xl shadow-rose-600/20 border border-rose-500/50 mb-2">
               <div className="flex items-center gap-4">
                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center animate-pulse">
                     <AlertTriangle size={18} />
@@ -230,7 +231,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         <div className="flex items-center gap-6">
            <div className="relative group">
               <div className="absolute inset-0 bg-blue-600/30 blur-2xl rounded-full group-hover:bg-blue-600/50 transition-colors" />
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center border border-white/20 shadow-2xl relative z-10">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center border border-white/20 shadow-2xl relative z-10">
                  <Grid3X3 size={28} className="text-white" />
               </div>
            </div>
@@ -254,12 +255,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 value={globalSearch}
                 onChange={e => setGlobalSearch(e.target.value)}
                 placeholder="GLOBAL ID SEARCH (ASSET, PROJ, FAR)..."
-                className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 focus:bg-white/[0.03] transition-all"
+                className="w-full bg-black/40 border border-white/5 rounded-lg pl-12 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] outline-none focus:border-blue-500/50 focus:bg-white/[0.03] transition-all"
               />
            </div>
         </form>
 
-        <div className="flex items-center gap-8 bg-black/30 px-8 py-4 rounded-3xl border border-white/5 backdrop-blur-xl">
+        <div className="flex items-center gap-8 bg-black/30 px-8 py-4 rounded-lg border border-white/5 backdrop-blur-xl">
            <Link to="/asset" className="flex flex-col items-center hover:opacity-70 transition-opacity">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Nodes</span>
               <span className="text-xl font-black text-white tabular-nums">{metrics?.asset_overview.total || 0}</span>
@@ -310,7 +311,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               delay={0.3}
            />
            <div className="grid grid-rows-2 gap-4">
-              <div className="glass-panel p-6 rounded-2xl border-white/5 bg-gradient-to-br from-emerald-600/10 to-transparent flex items-center justify-between group hover:border-emerald-500/20 transition-all cursor-pointer" onClick={() => onNavigate('racks')}>
+              <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-emerald-600/10 to-transparent flex items-center justify-between group hover:border-emerald-500/20 transition-all cursor-pointer" onClick={() => onNavigate('racks')}>
                  <div>
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Racks</p>
                     <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.rack_overview.total_racks}</h3>
@@ -319,7 +320,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <Box size={20} />
                  </div>
               </div>
-              <div className="glass-panel p-6 rounded-2xl border-white/5 bg-gradient-to-br from-rose-600/10 to-transparent flex items-center justify-between group hover:border-rose-500/20 transition-all cursor-pointer" onClick={() => onNavigate('monitoring')}>
+              <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-rose-600/10 to-transparent flex items-center justify-between group hover:border-rose-500/20 transition-all cursor-pointer" onClick={() => onNavigate('monitoring')}>
                  <div>
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Monitors</p>
                     <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.monitoring_overview.total}</h3>
@@ -334,7 +335,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         {/* Second Level: Mid-Sized Detail Cards */}
         <div className="grid grid-cols-4 gap-6">
            {/* Activity Feed */}
-           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+           <div className="glass-panel p-6 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[280px]">
               <div className="flex items-center justify-between mb-6">
                  <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/20">
@@ -346,7 +347,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               </div>
               <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-1">
                  {metrics?.recent.activity?.map((log: any) => (
-                    <div key={log.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
+                    <div key={log.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all">
                        <div className="flex items-center justify-between mb-1">
                           <span className="text-[8px] font-black text-blue-400 uppercase">{log.user}</span>
                           <span className="text-[7px] font-bold text-slate-600 uppercase">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -364,7 +365,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
 
            {/* Quick Actions */}
-           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+           <div className="glass-panel p-6 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[280px]">
               <div className="flex items-center gap-3 mb-6">
                  <div className="p-2 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
                     <Zap size={16} />
@@ -383,7 +384,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <button 
                       key={i} 
                       onClick={() => navigate(act.path)}
-                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group/btn"
+                      className="flex flex-col items-center justify-center gap-2 p-3 rounded-lg bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group/btn"
                     >
                        <act.icon size={16} className="text-slate-500 group-hover/btn:text-blue-400 transition-colors" />
                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest group-hover/btn:text-white transition-colors">{act.label}</span>
@@ -393,7 +394,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
 
            {/* Site Clocks */}
-           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/20 flex flex-col group h-[280px]">
+           <div className="glass-panel p-6 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[280px]">
               <div className="flex items-center gap-3 mb-6">
                  <div className="p-2 rounded-lg bg-amber-600/20 text-amber-400 border border-amber-500/20">
                     <Globe size={16} />
@@ -414,7 +415,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
 
            {/* Performance/Stability Card */}
-           <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent flex flex-col group h-[280px]">
+           <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-blue-600/5 to-transparent flex flex-col group h-[280px]">
               <div className="flex items-center justify-between mb-4">
                  <h3 className="text-[10px] font-black uppercase tracking-widest text-white">Stability Metric</h3>
                  <Shield size={16} className="text-blue-500 animate-pulse" />
@@ -445,7 +446,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8 }}
-              className="flex flex-col h-full rounded-2xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group overflow-hidden relative"
+              className="flex flex-col h-full rounded-lg border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group overflow-hidden relative"
            >
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-bl-full blur-3xl" />
               <div className="flex items-center justify-between mb-6 relative z-10">
@@ -469,3 +470,4 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     </div>
   )
 }
+
