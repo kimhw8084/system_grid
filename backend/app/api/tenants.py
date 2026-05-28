@@ -57,7 +57,10 @@ async def run_alembic_upgrade(db_url: str):
     # Convert async url to sync for alembic
     sync_url = db_url.replace("aiosqlite", "sqlite")
     
-    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # CORRECT PATH: tenants.py is in backend/app/api/, so we need to go 3 levels up to reach backend/
+    api_dir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(api_dir)
+    backend_dir = os.path.dirname(app_dir)
     
     # We use subprocess to run alembic to avoid conflicts with current async loop
     env = os.environ.copy()
