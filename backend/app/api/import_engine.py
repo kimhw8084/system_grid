@@ -63,25 +63,34 @@ class ModelValidator:
         return errors
 
 @router.get("/template/{table_name}")
-def download_template(table_name: str):
+def download_template(table_name: str, mode: str = "raw", db: AsyncSession = Depends(get_db)):
     model = ModelValidator.get_model(table_name)
     if not model:
         raise HTTPException(404, "Table model not found")
         
     mapper = inspect(model)
-    cols = [c.name for c in mapper.columns if not c.primary_key and c.name not in ["created_at", "updated_at"]]
+    # Columns to exclude: primary keys, timestamps, and known auto-populated fields
+    exclude = ["created_at", "updated_at", "id", "created_by_user_id", "is_deleted", "hardware_age", "open_incident_count"]
+    cols = [c.name for c in mapper.columns if not c.primary_key and c.name not in exclude]
     
+    if mode == "snapshot":
+        # This will be handled by a different logic or if I want to merge it here
+        pass
+
     df = pd.DataFrame(columns=cols)
-    # Add a dummy row as example
-    dummy = {}
-    for c in mapper.columns:
-        if c.primary_key or c.name in ["created_at", "updated_at"]: continue
-        if c.type.python_type == int: dummy[c.name] = 0
-        elif c.type.python_type == float: dummy[c.name] = 0.0
-        elif c.type.python_type == bool: dummy[c.name] = True
-        else: dummy[c.name] = "Example"
     
-    df.loc[0] = dummy
+    # Add a type hint row
+    type_hints = {}
+    for c in mapper.columns:
+        if c.name not in cols: continue
+        python_type = c.type.python_type
+        if python_type == int: type_hints[c.name] = "[INTEGER]"
+        elif python_type == float: type_hints[c.name] = "[FLOAT]"
+        elif python_type == bool: type_hints[c.name] = "[BOOLEAN]"
+        elif python_type == dict or python_type == list: type_hints[c.name] = "[JSON_OBJECT]"
+        else: type_hints[c.name] = "[STRING]"
+    
+    df.loc[0] = type_hints
     
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
@@ -91,6 +100,43 @@ def download_template(table_name: str):
         stream, 
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Template.csv"}
+    )
+
+@router.get("/snapshot/{table_name}")
+async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db)):
+    model = ModelValidator.get_model(table_name)
+    if not model:
+        raise HTTPException(404, "Table model not found")
+        
+    mapper = inspect(model)
+    exclude = ["created_at", "updated_at", "id", "created_by_user_id"]
+    cols = [c.name for c in mapper.columns if c.name not in exclude]
+    
+    # Fetch all records
+    result = await db.execute(select(model).where(model.is_deleted == False if hasattr(model, 'is_deleted') else True))
+    records = result.scalars().all()
+    
+    data = []
+    for r in records:
+        row = {}
+        for col in cols:
+            val = getattr(r, col)
+            if isinstance(val, (dict, list)):
+                row[col] = json.dumps(val)
+            else:
+                row[col] = val
+        data.append(row)
+        
+    df = pd.DataFrame(data, columns=cols)
+    
+    stream = io.BytesIO()
+    df.to_csv(stream, index=False)
+    stream.seek(0)
+    
+    return StreamingResponse(
+        stream, 
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Snapshot.csv"}
     )
 
 @router.post("/audit")

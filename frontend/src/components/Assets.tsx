@@ -1995,22 +1995,30 @@ export default function Assets() {
                    onEditLink={(l:any) => setActiveNetworkEdit(l)}
                    onViewLink={(l:any) => setSelectedConnection(l)}
                  />
-               </div>               </motion.div>
                </div>
-               )}
-               </AnimatePresence>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
-               <SharedServiceModals 
-               activeDetails={activeServiceDetails}
-               setActiveDetails={setActiveServiceDetails}
-               activeEdit={activeServiceEdit}
-               setActiveEdit={setActiveServiceEdit}
-               options={options}
-               devices={devices}
-               onServiceUpdate={() => {
-               queryClient.invalidateQueries({ queryKey: ['device-services'] })
-               }}
-               />
+      <BulkImportModal 
+        isOpen={showImportModal} 
+        onClose={() => setShowImportModal(false)} 
+        tableName="devices" 
+        displayName="Infrastructure Assets" 
+      />
+
+      <SharedServiceModals 
+        activeDetails={activeServiceDetails}
+        setActiveDetails={setActiveServiceDetails}
+        activeEdit={activeServiceEdit}
+        setActiveEdit={setActiveServiceEdit}
+        options={options}
+        devices={devices}
+        onServiceUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ['device-services'] })
+        }}
+      />
 
                <SharedNetworkModals 
                  activeEdit={activeNetworkEdit}
