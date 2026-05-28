@@ -510,8 +510,6 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
     </div>
   )
 }
-  )
-}
 
 const ServiceLevelFlow = (props: any) => (
   <ReactFlowProvider>
