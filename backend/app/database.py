@@ -5,6 +5,7 @@ from sqlalchemy import event, MetaData, select
 from .core.config import settings
 import os
 from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting
+from .api.utils import get_current_user_id
 
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -80,10 +81,6 @@ async def get_config_db():
         finally:
             await session.close()
 
-from .api.utils import get_current_user_id
-
-...
-
 async def get_db(request: Request):
     """
     Dynamic DB dependency. Determines tenant DB based on USER_ID.
@@ -92,7 +89,6 @@ async def get_db(request: Request):
     user_id = get_current_user_id(request)
 
     target_db_url = settings.DATABASE_URL # Default/Fallback
-...
 
     # 2. Lookup active tenant for this user in config.db
     async with ConfigSessionLocal() as config_db:
