@@ -120,7 +120,7 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
 }
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system' | 'tenants'>('environments')
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
@@ -130,6 +130,8 @@ export default function SettingsPage() {
   const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
   const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
+  const [newTenantName, setNewTenantName] = useState("")
+  const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
   
   const queryClient = useQueryClient()
   
@@ -309,6 +311,57 @@ result_df = get_user_pool()`)
       return res.json()
     },
     enabled: !!historyField
+  })
+
+  const { data: masterSettings } = useQuery({
+    queryKey: ['master-settings'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/tenants/admin/settings")
+      return res.json()
+    },
+    enabled: topTab === 'tenants'
+  })
+
+  const { data: allTenants } = useQuery({
+    queryKey: ['admin-tenants'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/tenants/admin/all")
+      return res.json()
+    },
+    enabled: topTab === 'tenants'
+  })
+
+  const createTenantMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiFetch("/api/v1/tenants/admin/create", {
+        method: "POST",
+        body: JSON.stringify({ name })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
+      queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
+      toast.success("New tenant database created and initialized")
+    },
+    onError: (e: any) => toast.error(`Creation Failed: ${e.message}`)
+  })
+
+  const updateMasterSettingMutation = useMutation({
+    mutationFn: async (setting: any) => {
+      const res = await apiFetch("/api/v1/tenants/admin/settings", {
+        method: "POST",
+        body: JSON.stringify(setting)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['master-settings'] })
+      toast.success("System setting updated")
+    },
+    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
   })
 
   const envHelp: any = {
@@ -502,6 +555,9 @@ result_df = get_user_pool()`)
            </button>
            <button onClick={() => setTopTab('system')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'system' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Terminal size={14} /> Analysis
+           </button>
+           <button onClick={() => setTopTab('tenants')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'tenants' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Database size={14} /> Tenants
            </button>
         </div>
         
@@ -744,6 +800,145 @@ result_df = get_user_pool()`)
                             </motion.div>
                         )}
                     </AnimatePresence>
+               </div>
+            </motion.div>
+          )}
+
+          {topTab === 'tenants' && (
+            <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+               <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
+                  <div>
+                     <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none text-emerald-500">Tenant Management</h2>
+                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Multi-Database Orchestration & S3 Storage Config</p>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-2xl">
+                        <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
+                           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                              <Database size={14} className="text-emerald-500" /> Registered Databases
+                           </h3>
+                           <span className="text-[8px] font-black uppercase text-slate-600">Total: {allTenants?.length || 0}</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left border-collapse">
+                              <thead>
+                                 <tr className="bg-black/20 text-[8px] font-black uppercase text-slate-500 tracking-widest">
+                                    <th className="p-4 border-b border-white/5">Name</th>
+                                    <th className="p-4 border-b border-white/5">Storage Path</th>
+                                    <th className="p-4 border-b border-white/5">Created At</th>
+                                    <th className="p-4 border-b border-white/5">Status</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {allTenants?.map((t: any) => (
+                                    <tr key={t.id} className="hover:bg-white/2 border-b border-white/5 last:border-0 transition-colors">
+                                       <td className="p-4">
+                                          <div className="flex items-center gap-3">
+                                             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                                                <Database size={14} />
+                                             </div>
+                                             <span className="text-[11px] font-black uppercase text-white">{t.name}</span>
+                                          </div>
+                                       </td>
+                                       <td className="p-4">
+                                          <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded border border-white/5 block truncate max-w-[300px]" title={t.db_url}>
+                                             {t.db_url}
+                                          </code>
+                                       </td>
+                                       <td className="p-4 text-[9px] font-bold text-slate-500 uppercase">
+                                          {new Date(t.created_at).toLocaleDateString()}
+                                       </td>
+                                       <td className="p-4">
+                                          <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${t.is_active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                             {t.is_active ? 'Active' : 'Offline'}
+                                          </span>
+                                       </td>
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="space-y-6">
+                     <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-2xl shadow-xl">
+                        <div className="flex items-center gap-3 mb-6">
+                           <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/20"><Plus size={18} /></div>
+                           <div>
+                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Spawn New DB</h3>
+                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Initialize Fresh Schema</p>
+                           </div>
+                        </div>
+                        <div className="space-y-4">
+                           <div className="space-y-2">
+                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Tenant Identity</label>
+                              <input 
+                                 value={newTenantName} onChange={e => setNewTenantName(e.target.value)}
+                                 placeholder="e.g. Asia_Production" 
+                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase text-blue-400 outline-none focus:border-blue-500"
+                              />
+                           </div>
+                           <button 
+                              onClick={() => {
+                                 if (!newTenantName) return;
+                                 createTenantMutation.mutate(newTenantName);
+                                 setNewTenantName("");
+                              }}
+                              disabled={createTenantMutation.isPending || !newTenantName}
+                              className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                           >
+                              {createTenantMutation.isPending ? 'Spinning up...' : 'Create Database'}
+                           </button>
+                        </div>
+                     </div>
+
+                     <div className="p-6 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl">
+                        <div className="flex items-center gap-3 mb-6">
+                           <div className="p-2 bg-emerald-600/10 text-emerald-500 rounded-xl border border-emerald-500/20"><HardDrive size={18} /></div>
+                           <div>
+                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Storage Config</h3>
+                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Persistent S3 Mount Root</p>
+                           </div>
+                        </div>
+                        <div className="space-y-4">
+                           {masterSettings?.filter((s: any) => s.key === 'tenant_storage_root').map((setting: any) => (
+                              <div key={setting.key} className="space-y-2">
+                                 <div className="flex justify-between">
+                                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">{setting.key.replace(/_/g, ' ')}</label>
+                                    <button 
+                                       onClick={() => {
+                                          if (storageRootEdit !== null) {
+                                             updateMasterSettingMutation.mutate({ key: setting.key, value: storageRootEdit });
+                                             setStorageRootEdit(null);
+                                          } else {
+                                             setStorageRootEdit(setting.value);
+                                          }
+                                       }}
+                                       className="text-[8px] font-black uppercase text-blue-500 hover:underline"
+                                    >
+                                       {storageRootEdit !== null ? 'Save Path' : 'Change'}
+                                    </button>
+                                 </div>
+                                 {storageRootEdit !== null ? (
+                                    <input 
+                                       value={storageRootEdit} onChange={e => setStorageRootEdit(e.target.value)}
+                                       className="w-full bg-black/40 border border-blue-500/30 rounded-xl px-4 py-3 text-[10px] font-mono text-emerald-400 outline-none"
+                                    />
+                                 ) : (
+                                    <div className="p-3 bg-black/30 border border-white/5 rounded-xl text-[10px] font-mono text-slate-400 break-all leading-relaxed">
+                                       {setting.value}
+                                    </div>
+                                 )}
+                                 <p className="text-[8px] font-bold text-slate-600 uppercase leading-relaxed px-1">{setting.description}</p>
+                              </div>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
                </div>
             </motion.div>
           )}

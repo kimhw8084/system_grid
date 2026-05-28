@@ -31,6 +31,7 @@ import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
 import { GlobalSearch } from "./components/shared/GlobalSearch"
+import { TenantSelector } from "./components/shared/TenantSelector"
 
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
@@ -626,6 +627,7 @@ function MainLayout() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <TenantSelector />
             <div className="flex flex-col items-end mr-4">
               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">System Status</span>
               <div className="flex items-center space-x-2">

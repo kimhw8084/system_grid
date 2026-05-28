@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
-from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge
+from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
 
 async def _auto_seed():
     from sqlalchemy.exc import IntegrityError
@@ -151,9 +151,14 @@ async def run_migrations():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure migrations are applied first
+    # 1. Initialize Master Config DB (Routing Brain)
+    from .database import init_config_db
+    await init_config_db()
+    
+    # 2. Ensure migrations are applied to Default DB first
     await run_migrations()
-    # Seed data if necessary
+    
+    # 3. Seed default data if necessary
     await _auto_seed()
     yield
 
@@ -230,6 +235,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(tenants.router, prefix=settings.API_V1_STR)
 app.include_router(devices.router, prefix=settings.API_V1_STR)
 app.include_router(import_engine.router, prefix=settings.API_V1_STR)
 app.include_router(networks.router, prefix=settings.API_V1_STR)
