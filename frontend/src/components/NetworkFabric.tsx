@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers, Activity, Sliders, Clipboard, FileText, Check, MoreVertical } from 'lucide-react'
+import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers, Activity, Sliders, Clipboard, FileText, Check, MoreVertical, Upload } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from 'ag-grid-react'
 import toast from 'react-hot-toast'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { apiFetch } from "../api/apiClient"
+import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -14,6 +15,7 @@ import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 
 export default function NetworkFabric() {
   const queryClient = useQueryClient()
+  const [showImportModal, setShowImportModal] = useState(false)
   const gridRef = React.useRef<any>(null)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
@@ -400,6 +402,9 @@ export default function NetworkFabric() {
              <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
                 <FileText size={16} />
              </button>
+             <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Network Data">
+                <Upload size={16} />
+             </button>
              <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
                 <Clipboard size={16} />
              </button>
@@ -756,13 +761,20 @@ export default function NetworkFabric() {
         )}
       </AnimatePresence>
 
-      <ConfigRegistryModal 
-        isOpen={showConfig} 
-        onClose={() => setShowConfig(false)} 
+      <ConfigRegistryModal
+        isOpen={showConfig}
+        onClose={() => setShowConfig(false)}
         title="Network Fabric Config"
         sections={[
             { title: "Link Purposes", category: "LinkPurpose", icon: Network }
         ]}
+      />
+
+      <BulkImportModal 
+         isOpen={showImportModal} 
+         onClose={() => setShowImportModal(false)} 
+         tableName="port_connections" 
+         displayName="Network Fabric Connections" 
       />
 
       <style>{`

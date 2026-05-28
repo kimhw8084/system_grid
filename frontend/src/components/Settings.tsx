@@ -332,6 +332,19 @@ result_df = get_user_pool()`)
     enabled: topTab === 'tenants'
   })
 
+  const backupTenantMutation = useMutation({
+    mutationFn: async (tenantId: number) => {
+      const res = await apiFetch(`/api/v1/tenants/admin/backup/${tenantId}`, { method: "POST" })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
+      toast.success("Database backup initiated and saved to storage")
+    },
+    onError: (e: any) => toast.error(`Backup Failed: ${e.message}`)
+  })
+
   const { data: allTenants } = useQuery({
     queryKey: ['admin-tenants'],
     queryFn: async () => {
@@ -602,7 +615,7 @@ result_df = get_user_pool()`)
                              {cat === 'Infrastructure' ? <Cpu size={12} /> : cat === 'UI' ? <Layout size={12} /> : <Box size={12} />} 
                              {cat}
                           </h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                               {Object.entries(localEnv).filter(([key]) => !key.startsWith('_') && localEnv._metadata?.[key]?.category === cat).map(([key, value]: any) => (
                                   <SettingField 
                                       key={key}
@@ -824,8 +837,8 @@ result_df = get_user_pool()`)
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2 space-y-6">
+               <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                  <div className="lg:col-span-2 xl:col-span-3 space-y-6">
                      <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-2xl">
                         <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
                            <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -839,8 +852,9 @@ result_df = get_user_pool()`)
                                  <tr className="bg-black/20 text-[8px] font-black uppercase text-slate-500 tracking-widest">
                                     <th className="p-4 border-b border-white/5">Name</th>
                                     <th className="p-4 border-b border-white/5">Storage Path</th>
-                                    <th className="p-4 border-b border-white/5">Created At</th>
-                                    <th className="p-4 border-b border-white/5">Status</th>
+                                    <th className="p-4 border-b border-white/5">Last Backup</th>
+                                    <th className="p-4 border-b border-white/5">Health</th>
+                                    <th className="p-4 border-b border-white/5 text-right">Actions</th>
                                  </tr>
                               </thead>
                               <tbody>
@@ -861,13 +875,27 @@ result_df = get_user_pool()`)
                                              </code>
                                           </div>
                                        </td>
-                                       <td className="p-4 text-[9px] font-bold text-slate-500 uppercase">
-                                          {new Date(t.created_at).toLocaleDateString()}
+                                       <td className="p-4">
+                                          <div className="flex items-center gap-2">
+                                             <Clock size={12} className="text-slate-500" />
+                                             <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                                {t.last_backup ? new Date(t.last_backup).toLocaleString() : 'Never Backed Up'}
+                                             </span>
+                                          </div>
                                        </td>
                                        <td className="p-4">
-                                          <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${t.is_active ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                             {t.is_active ? 'Active' : 'Offline'}
+                                          <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${t.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                             {t.is_online ? 'Online' : 'Offline'}
                                           </span>
+                                       </td>
+                                       <td className="p-4 text-right">
+                                          <button 
+                                             onClick={() => backupTenantMutation.mutate(t.id)}
+                                             disabled={backupTenantMutation.isPending}
+                                             className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
+                                          >
+                                             {backupTenantMutation.isPending ? 'Backing up...' : 'Backup Now'}
+                                          </button>
                                        </td>
                                     </tr>
                                  ))}

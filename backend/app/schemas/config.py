@@ -12,6 +12,8 @@ class TenantResponse(TenantBase):
     id: int
     db_url: str
     is_active: bool
+    is_online: Optional[bool] = True
+    last_backup: Optional[datetime] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
@@ -21,6 +23,7 @@ class UserTenantResponse(BaseModel):
     name: str
     role: str
     is_selected: bool
+    is_online: Optional[bool] = True
     
     model_config = ConfigDict(from_attributes=True)
 

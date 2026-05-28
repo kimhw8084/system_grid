@@ -1,5 +1,6 @@
 import os
 from fastapi import Request
+from datetime import datetime
 
 def get_current_user_id(request: Request = None):
     """
@@ -18,3 +19,24 @@ def get_current_user_id(request: Request = None):
         user_id = os.getenv("USER_ID", "admin_root")
         
     return user_id
+
+def filter_valid_columns(model, data: dict):
+    """
+    Filters a dictionary to only include keys that are valid columns for a given SQLAlchemy model.
+    """
+    from sqlalchemy import inspect
+    valid_columns = {c.key for c in inspect(model).mapper.column_attrs}
+    return {k: v for k, v in data.items() if k in valid_columns}
+
+def parse_iso_date(date_str: str):
+    """
+    Safely parses an ISO date string into a datetime object.
+    """
+    if not date_str:
+        return None
+    try:
+        # Handle cases with 'Z' or offset
+        clean_str = date_str.replace('Z', '+00:00')
+        return datetime.fromisoformat(clean_str)
+    except (ValueError, TypeError):
+        return None

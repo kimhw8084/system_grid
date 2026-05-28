@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
+import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
@@ -162,6 +163,7 @@ function MetricHelpModal({ metric, onClose }: { metric: string | null, onClose: 
 }
 
 export default function FAR() {
+  const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
@@ -617,6 +619,9 @@ export default function FAR() {
                <button onClick={() => setShowRpnHelp(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-amber-400 rounded-lg transition-all" title="RPN Definition Matrix">
                   <HelpCircle size={16} />
                </button>
+               <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Risk Data">
+                  <Upload size={16} />
+               </button>
                <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Matrix Registry Enums">
                   <Settings size={16} />
                </button>
@@ -847,8 +852,14 @@ export default function FAR() {
       <MetricHelpModal metric={activeMetricHelp} onClose={() => setActiveMetricHelp(null)} />
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Reliability Matrix Registry" sections={[{ title: "Systems", category: "LogicalSystem", icon: LayoutGrid }, { title: "Risk Cats", category: "RiskCategory", icon: Target }, { title: "Teams", category: "BusinessUnit", icon: User }]} />
-
+      <BulkImportModal 
+         isOpen={showImportModal} 
+         onClose={() => setShowImportModal(false)} 
+         tableName="far_records" 
+         displayName="Failure Modes & Risk Matrix" 
+      />
       <style>{`
+
         .ag-theme-alpine-dark {
           --ag-background-color: #1a1b26;
           --ag-header-background-color: #24283b;

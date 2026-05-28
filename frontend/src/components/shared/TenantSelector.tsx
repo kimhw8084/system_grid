@@ -77,16 +77,23 @@ export function TenantSelector() {
                   <button
                     key={tenant.id}
                     onClick={() => {
-                      if (!tenant.is_selected) selectMutation.mutate(tenant.id)
+                      if (!tenant.is_selected && tenant.is_online) selectMutation.mutate(tenant.id)
                       setIsOpen(false)
                     }}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${tenant.is_selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
+                    disabled={!tenant.is_online}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${tenant.is_selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : tenant.is_online ? 'hover:bg-white/5 text-slate-400 hover:text-white' : 'opacity-40 cursor-not-allowed'}`}
                   >
                     <div className="flex items-center gap-3">
-                       <Server size={14} className={tenant.is_selected ? 'text-white' : 'text-slate-500'} />
+                       <div className="relative">
+                          <Server size={14} className={tenant.is_selected ? 'text-white' : 'text-slate-500'} />
+                          <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border-2 border-[#0f172a] ${tenant.is_online ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                       </div>
                        <div className="flex flex-col items-start">
                           <span className="text-[11px] font-black uppercase tracking-wider">{tenant.name}</span>
-                          <span className="text-[8px] font-bold uppercase opacity-60">{tenant.role}</span>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[8px] font-bold uppercase opacity-60">{tenant.role}</span>
+                             {!tenant.is_online && <span className="text-[7px] font-black text-rose-500 uppercase">Offline</span>}
+                          </div>
                        </div>
                     </div>
                     {tenant.is_selected && <Check size={14} />}

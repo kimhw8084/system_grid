@@ -8,6 +8,7 @@ import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, L
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
+import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
@@ -1306,6 +1307,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
 
 export default function Assets() {
   const queryClient = useQueryClient()
+  const [showImportModal, setShowImportModal] = useState(false)
   const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   
@@ -1775,6 +1777,9 @@ export default function Assets() {
                </button>
                <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
                   <FileText size={16} />
+               </button>
+               <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Data">
+                  <Upload size={16} />
                </button>
                <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
                   <Clipboard size={16} />
@@ -4124,6 +4129,12 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
           </div>
         </>
       )}
+      <BulkImportModal 
+         isOpen={showImportModal} 
+         onClose={() => setShowImportModal(false)} 
+         tableName="devices" 
+         displayName="Inventory Assets" 
+      />
     </div>
   )
 }

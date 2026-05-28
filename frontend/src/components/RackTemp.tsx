@@ -4,11 +4,12 @@ import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Package, BarChart3, ExternalLink, Settings,
-  Network, HardDrive, TrendingUp, Layers, List
+  Network, HardDrive, TrendingUp, Layers, List, Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
+import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { ConnectionForensicsModal } from './shared/ConnectionForensicsModal'
@@ -1394,6 +1395,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function RackTemp() {
+  const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
@@ -1843,6 +1845,12 @@ export default function RackTemp() {
           {/* Add Actions */}
           {activeTab === 'active' && (
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+              >
+                <Upload size={13} /> Import Bulk
+              </button>
               <button
                 onClick={() => setShowAuditLogs(true)}
                 className="px-4 py-2 bg-slate-600/10 text-slate-400 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
@@ -2710,6 +2718,13 @@ export default function RackTemp() {
         <AuditLogModal
           isOpen={showAuditLogs}
           onClose={() => setShowAuditLogs(false)}
+        />
+
+        <BulkImportModal 
+           isOpen={showImportModal} 
+           onClose={() => setShowImportModal(false)} 
+           tableName="racks" 
+           displayName="Datacenter Racks" 
         />
     </div>
   )

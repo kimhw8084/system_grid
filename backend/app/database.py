@@ -17,6 +17,15 @@ config_engine = create_async_engine(
     connect_args={"check_same_thread": False}
 )
 
+@event.listens_for(config_engine.sync_engine, "connect")
+def set_config_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 ConfigSessionLocal = async_sessionmaker(
     bind=config_engine,
     autoflush=False,
@@ -43,6 +52,7 @@ def get_tenant_engine(db_url: str):
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA busy_timeout=5000")
             cursor.execute("PRAGMA cache_size=-64000")
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()

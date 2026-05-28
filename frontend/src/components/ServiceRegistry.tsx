@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye } from "lucide-react"
+import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye, Upload } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
+import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -329,6 +330,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
 }
 
 export default function ServiceRegistry() {
+  const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   const [fontSize, setFontSize] = useState(11)
@@ -451,6 +453,9 @@ export default function ServiceRegistry() {
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Lab"><Activity size={16} /></button>
              <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration"><Sliders size={16} /></button>
+             <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Data">
+                <Upload size={16} />
+             </button>
              <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Enums"><Settings size={16} /></button>
           </div>
           <div className="relative bulk-menu-container">
@@ -504,6 +509,12 @@ export default function ServiceRegistry() {
       )}</AnimatePresence>
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Service Matrix Registry" sections={[{ title: "Service Types", category: "ServiceType", icon: Database }, { title: "Status Options", category: "Status", icon: RefreshCcw }, { title: "Environments", category: "Environment", icon: Globe }]} />
+      <BulkImportModal 
+         isOpen={showImportModal} 
+         onClose={() => setShowImportModal(false)} 
+         tableName="logical_services" 
+         displayName="Service Registry" 
+      />
       <style>{`
         .ag-theme-alpine-dark { --ag-background-color: #1a1b26; --ag-header-background-color: #24283b; --ag-border-color: rgba(255, 255, 255, 0.05); --ag-foreground-color: #f1f5f9; --ag-header-foreground-color: #3b82f6; --ag-font-family: 'Inter', sans-serif; --ag-font-size: ${fontSize}px; }
         .ag-root-wrapper { border: none !important; }

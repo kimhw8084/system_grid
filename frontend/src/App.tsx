@@ -367,7 +367,11 @@ function MainLayout() {
     queryKey: ['user-profile'],
     queryFn: async () => {
       const res = await apiFetch("/api/v1/settings/user/profile");
-      return res.json();
+      const data = await res.json();
+      if (data?.username) {
+        localStorage.setItem('SYSGRID_USER_ID', data.username);
+      }
+      return data;
     }
   });
 
@@ -609,7 +613,8 @@ function MainLayout() {
         </div>
       </motion.aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-10">
+        <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-[100] relative">
+
           <div className="flex items-center space-x-6">
             <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
             

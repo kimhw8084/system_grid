@@ -5,23 +5,20 @@ from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
 from ..core.config import settings
-from .utils import filter_valid_columns
+from .utils import filter_valid_columns, get_current_user_id
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
-def get_current_user_id():
-    return os.environ.get("USER") or os.environ.get("USERNAME") or "Unknown_Operator"
-
 @router.get("/user/settings")
-async def get_user_settings(db: AsyncSession = Depends(get_db)):
-    user_id = get_current_user_id()
+async def get_user_settings(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     res = await db.execute(select(models.UserPreference).filter(models.UserPreference.user_id == user_id))
     prefs = res.scalars().all()
     return {p.key: p.value for p in prefs}
 
 @router.get("/user/profile")
-async def get_user_profile(db: AsyncSession = Depends(get_db)):
-    user_id = get_current_user_id()
+async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     # Attempt to find the operator by username
     from sqlalchemy.orm import selectinload
     res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)).filter(models.Operator.username == user_id))
@@ -29,11 +26,11 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
     
     if not operator:
         # Auto-register new user with no permissions by default (except for haewon.kim)
-        is_haewon = user_id in ["haewon.kim", "haewonkim"]
+        is_haewon = user_id in ["haewon.kim", "haewonkim", "admin_root"]
         operator = models.Operator(
             external_id=user_id,
             username=user_id,
-            full_name="Haewon Kim" if is_haewon else user_id.replace("_", " ").replace(".", " ").title(),
+            full_name="Haewon Kim" if is_haewon and "haewon" in user_id else (user_id.replace("_", " ").replace(".", " ").title() if user_id != "admin_root" else "System Administrator"),
             registration_status="Registered",
             is_admin=is_haewon,
             custom_permissions={"all": 3} if is_haewon else {}
@@ -41,10 +38,8 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
         db.add(operator)
         await db.commit()
         await db.refresh(operator)
-    elif user_id in ["haewon.kim", "haewonkim"] and not operator.is_admin:
-        # Ensure haewonkim always has admin/full access
-        operator.external_id = user_id
-        operator.full_name = "Haewon Kim"
+    elif (user_id in ["haewon.kim", "haewonkim"] or user_id == "admin_root") and not operator.is_admin:
+        # Ensure haewonkim and admin_root always have admin/full access
         operator.is_admin = True
         operator.custom_permissions = {"all": 3}
         await db.commit()
@@ -68,9 +63,9 @@ async def get_user_profile(db: AsyncSession = Depends(get_db)):
     }
 
 @router.get("/user/env-vars")
-async def get_user_env_vars():
+async def get_user_env_vars(request: Request):
     # Return user-specific environment context (Mostly OS-level forensics)
-    user_id = get_current_user_id()
+    user_id = get_current_user_id(request)
     
     # Sensitive patterns to redact
     redact_patterns = ["KEY", "SECRET", "PASSWORD", "TOKEN", "AUTH", "CREDENTIAL"]
@@ -95,8 +90,8 @@ async def get_user_env_vars():
 
 @router.post("/user/settings")
 @router.patch("/user/settings")
-async def update_user_settings(data: dict, db: AsyncSession = Depends(get_db)):
-    user_id = get_current_user_id()
+async def update_user_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     for key, value in data.items():
         res = await db.execute(select(models.UserPreference).filter(
             models.UserPreference.user_id == user_id,
@@ -314,9 +309,17 @@ async def get_ui_settings(db: AsyncSession = Depends(get_db)):
     return settings
 
 @router.post("/ui")
-async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
+async def update_ui_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # Simple clear and set
     from sqlalchemy import delete
+    user_id = get_current_user_id(request)
+    
+    # Security Check
+    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    operator = res_op.scalar_one_or_none()
+    if not operator or not operator.is_admin:
+        raise HTTPException(status_code=403, detail="Privileged Access Required: UI customization restricted to administrators.")
+
     await db.execute(delete(models.SettingOption).where(models.SettingOption.category == "UISettings"))
     
     if "status_badged" in data:
@@ -330,8 +333,15 @@ async def update_ui_settings(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.get("/global")
-async def get_global_settings(db: AsyncSession = Depends(get_db)):
+async def get_global_settings(request: Request, db: AsyncSession = Depends(get_db)):
     """Fetch all settings from the unified GlobalSetting table."""
+    user_id = get_current_user_id(request)
+    # Security: Verify if user is admin before exposing raw env
+    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    operator = res_op.scalar_one_or_none()
+    if not operator or not operator.is_admin:
+        raise HTTPException(status_code=403, detail="Privileged Access Required: Raw configuration analysis restricted to administrators.")
+
     res = await db.execute(select(models.GlobalSetting))
     settings_list = res.scalars().all()
     
@@ -342,15 +352,19 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
     # Inject Raw Environment Data for Analysis tab
     raw_env = {"backend": {}, "frontend": {}}
     
-    # Helper to parse .env files
+    # Helper to parse .env files with redaction
     def parse_env(path):
         if not os.path.exists(path): return {}
         data = {}
+        redact_patterns = ["KEY", "SECRET", "PASSWORD", "TOKEN", "AUTH", "CREDENTIAL"]
         with open(path, "r") as f:
             for line in f:
                 if "=" in line and not line.startswith("#"):
                     k, v = line.split("=", 1)
-                    data[k.strip()] = {"value": v.strip(), "file": path}
+                    k = k.strip()
+                    v = v.strip()
+                    is_sensitive = any(p in k.upper() for p in redact_patterns)
+                    data[k] = {"value": "********" if is_sensitive else v, "file": path}
         return data
 
     # Backend .env
@@ -368,7 +382,14 @@ async def get_global_settings(db: AsyncSession = Depends(get_db)):
 async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     """Update unified settings and log to Audit Trail."""
     from sqlalchemy.exc import IntegrityError
-    user_id = get_current_user_id()
+    user_id = get_current_user_id(request)
+    
+    # Security: Verify if user is admin
+    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    operator = res_op.scalar_one_or_none()
+    if not operator or not operator.is_admin:
+        raise HTTPException(status_code=403, detail="Privileged Access Required: Configuration updates restricted to administrators.")
+
     for key, value in data.items():
         if key.startswith("_"): continue # Skip metadata
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
@@ -495,8 +516,8 @@ async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get
     return op
 
 @router.delete("/operators/{op_id}")
-async def delete_operator(op_id: int, db: AsyncSession = Depends(get_db)):
-    user_id = get_current_user_id()
+async def delete_operator(op_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     
     # Check if user is trying to delete themselves
     res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
@@ -521,10 +542,10 @@ async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
     return res.scalars().all()
 
 @router.post("/user-pool/refresh")
-async def refresh_user_pool(data: dict, db: AsyncSession = Depends(get_db)):
+async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # Placeholder for Python script execution logic
     # In a real scenario, this would execute the provided script
-    user_id = get_current_user_id()
+    user_id = get_current_user_id(request)
     
     # Create a dummy version for now
     import datetime

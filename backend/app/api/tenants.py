@@ -44,13 +44,95 @@ async def update_master_setting(setting: MasterSettingBase, db: AsyncSession = D
     result = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == setting.key))
     return result.scalar_one()
 
+@router.post("/admin/backup/{tenant_id}")
+async def backup_tenant(tenant_id: int, db: AsyncSession = Depends(get_config_db)):
+    """Triggers a manual backup of the tenant database."""
+    res = await db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+    tenant = res.scalar_one_or_none()
+    if not tenant: raise HTTPException(404, "Tenant not found")
+    
+    # Get storage root
+    res_root = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
+    storage_root = res_root.scalar_one().value
+    
+    backup_dir = os.path.join(storage_root, "backups", tenant.name.lower().replace(" ", "_"))
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    # Source path
+    db_path = tenant.db_url.replace("sqlite+aiosqlite:///", "")
+    if not os.path.exists(db_path):
+        raise HTTPException(400, "Source database file not found")
+        
+    # Destination path
+    import datetime
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = os.path.join(backup_dir, f"backup_{timestamp}.db")
+    
+    # We use VACUUM INTO for a safe, consistent online backup if possible
+    # But since we are using aiosqlite, we can trigger this via a session
+    tenant_engine = get_tenant_engine(tenant.db_url)
+    session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession)
+    
+    try:
+        async with session_factory() as tenant_db:
+            # SQLite safe backup command
+            await tenant_db.execute(text(f"VACUUM INTO '{backup_path}'"))
+        return {"status": "success", "path": backup_path}
+    except Exception as e:
+        # Fallback to simple copy if VACUUM INTO fails (e.g. older sqlite)
+        import shutil
+        try:
+            shutil.copy2(db_path, backup_path)
+            return {"status": "success", "path": backup_path, "note": "fallback copy used"}
+        except Exception as copy_err:
+            raise HTTPException(500, detail=f"Backup failed: {str(e)} | Fallback failed: {str(copy_err)}")
+
 @router.get("/admin/all", response_model=List[TenantResponse])
 async def list_all_tenants(db: AsyncSession = Depends(get_config_db)):
     result = await db.execute(select(Tenant))
-    return result.scalars().all()
+    tenants = result.scalars().all()
+    
+    # Get storage root to check for backups
+    res_root = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
+    storage_root = res_root.scalar_one().value
+    
+    # Enrich with backup info and actual disk status
+    enriched = []
+    for t in tenants:
+        db_path = t.db_url.replace("sqlite+aiosqlite:///", "")
+        is_online = os.path.exists(db_path)
+        
+        # Check last backup
+        last_backup = None
+        backup_dir = os.path.join(storage_root, "backups", t.name.lower().replace(" ", "_"))
+        if os.path.exists(backup_dir):
+            backups = sorted([f for f in os.listdir(backup_dir) if f.endswith(".db")], reverse=True)
+            if backups:
+                # Extract timestamp from backup_YYYYMMDD_HHMMSS.db
+                import datetime
+                try:
+                    ts_str = backups[0].replace("backup_", "").replace(".db", "")
+                    last_backup = datetime.datetime.strptime(ts_str, "%Y%m%d_%H%M%S")
+                except:
+                    pass
+        
+        # We need to manually construct the response object because TenantResponse doesn't have is_online
+        # Wait, TenantResponse has is_active but that's a DB field. Let's add is_online and last_backup to schema.
+        enriched.append({
+            "id": t.id,
+            "name": t.name,
+            "db_url": t.db_url,
+            "is_active": t.is_active,
+            "is_online": is_online,
+            "last_backup": last_backup,
+            "created_at": t.created_at
+        })
+    return enriched
+
+import asyncio
 
 async def run_alembic_upgrade(db_url: str):
-    """Runs alembic upgrade head on a specific database file."""
+    """Runs alembic upgrade head on a specific database file non-blockingly."""
     # Convert async url to sync for alembic
     # sqlite+aiosqlite:///path -> sqlite:///path
     sync_url = db_url.replace("sqlite+aiosqlite", "sqlite")
@@ -60,24 +142,23 @@ async def run_alembic_upgrade(db_url: str):
     app_dir = os.path.dirname(api_dir)
     backend_dir = os.path.dirname(app_dir)
     
-    # We use subprocess to run alembic to avoid conflicts with current async loop
     env = os.environ.copy()
     env["SQLALCHEMY_DATABASE_URL"] = sync_url
     
-    process = subprocess.Popen(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
+    process = await asyncio.create_subprocess_exec(
+        sys.executable, "-m", "alembic", "upgrade", "head",
         cwd=backend_dir,
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
     )
-    stdout, stderr = process.communicate()
+    stdout, stderr = await process.communicate()
     
     if process.returncode != 0:
-        print(f"ALEMBIC ERROR: {stderr}")
-        return False, stderr
-    return True, stdout
+        error_msg = stderr.decode()
+        print(f"ALEMBIC ERROR: {error_msg}")
+        return False, error_msg
+    return True, stdout.decode()
 
 @router.post("/admin/create", response_model=TenantResponse)
 async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db), request: Request = None):
@@ -93,8 +174,17 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
             raise HTTPException(status_code=500, detail=f"Failed to create storage root: {str(e)}")
     
     # Case-insensitive check and filename normalization
+    import re
     tenant_name_clean = tenant_in.name.strip()
-    db_filename = f"{tenant_name_clean.lower().replace(' ', '_')}.db"
+    if not tenant_name_clean:
+        raise HTTPException(status_code=400, detail="Tenant name cannot be empty")
+        
+    # Sanitize for filesystem safety and prevent path traversal
+    safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '', tenant_name_clean.replace(' ', '_')).lower()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Tenant name contains no valid characters for database identification")
+        
+    db_filename = f"{safe_name}.db"
     db_path = os.path.join(storage_root, db_filename)
     db_url = f"sqlite+aiosqlite:///{db_path}"
 
@@ -113,10 +203,11 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
 
     # 4. Seed the new database with default settings/roles
     from ..main import _auto_seed
+    user_id = get_current_user_id(request)
     tenant_engine = get_tenant_engine(db_url)
     session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as tenant_db:
-        await _auto_seed(tenant_db)
+        await _auto_seed(tenant_db, creator_id=user_id)
 
     # 5. Register in config.db
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
@@ -151,15 +242,24 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Req
             await db.commit()
 
     stmt = (
-        select(Tenant.id, Tenant.name, UserTenantAccess.role, UserTenantAccess.is_selected)
+        select(Tenant.id, Tenant.name, UserTenantAccess.role, UserTenantAccess.is_selected, Tenant.db_url)
         .join(UserTenantAccess)
         .filter(UserTenantAccess.user_id == user_id)
     )
     result = await db.execute(stmt)
-    return [
-        {"id": r[0], "name": r[1], "role": r[2], "is_selected": r[3]}
-        for r in result.all()
-    ]
+    
+    my_tenants = []
+    for r in result.all():
+        db_path = r[4].replace("sqlite+aiosqlite:///", "")
+        is_online = os.path.exists(db_path)
+        my_tenants.append({
+            "id": r[0], 
+            "name": r[1], 
+            "role": r[2], 
+            "is_selected": r[3],
+            "is_online": is_online
+        })
+    return my_tenants
 
 @router.post("/select")
 async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depends(get_config_db), request: Request = None):

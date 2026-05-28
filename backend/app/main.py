@@ -6,17 +6,17 @@ from .database import engine, Base, AsyncSessionLocal
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
 
-async def _auto_seed(db_session=None):
+async def _auto_seed(db_session=None, creator_id=None):
     from sqlalchemy.exc import IntegrityError
     
     # If no session provided, use the default one (for lifespan boot)
     if db_session is None:
         async with AsyncSessionLocal() as db:
-            await _perform_seed(db)
+            await _perform_seed(db, creator_id)
     else:
-        await _perform_seed(db_session)
+        await _perform_seed(db_session, creator_id)
 
-async def _perform_seed(db):
+async def _perform_seed(db, creator_id=None):
     from sqlalchemy.exc import IntegrityError
     # 1. Verify Global Settings (App Brain)
     res_global = await db.execute(select(models.GlobalSetting))
@@ -128,13 +128,28 @@ async def _perform_seed(db):
             role_id=admin_role.id,
             registration_status="Verified"
         ))
+    
+    if creator_id and creator_id != "admin_root":
+        res = await db.execute(select(models.Operator).filter(models.Operator.username == creator_id))
+        if not res.scalar_one_or_none():
+            db.add(models.Operator(
+                external_id=creator_id,
+                username=creator_id,
+                full_name=creator_id.replace(".", " ").replace("_", " ").title(),
+                email=f"{creator_id}@sysgrid.local",
+                department="Infrastructure",
+                role_id=admin_role.id,
+                registration_status="Verified",
+                is_admin=True,
+                custom_permissions={"all": 3}
+            ))
         
     await db.commit()
 
 from .core.config import settings
 
 async def run_migrations():
-    import subprocess
+    import asyncio
     import os
     import sys
     print("AUTO-BOOT: Checking for pending database migrations...")
@@ -142,14 +157,15 @@ async def run_migrations():
         # Determine the backend directory (where alembic.ini is)
         backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # Run alembic upgrade head using sys.executable to ensure same venv
-        result = subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "alembic", "upgrade", "head",
             cwd=backend_dir,
-            capture_output=True,
-            text=True
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        if result.returncode != 0:
-            print(f"AUTO-BOOT: Migration failed: {result.stderr}")
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            print(f"AUTO-BOOT: Migration failed: {stderr.decode()}")
         else:
             print("AUTO-BOOT: Database schema is up to date.")
     except Exception as e:
