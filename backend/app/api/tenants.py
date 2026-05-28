@@ -84,6 +84,13 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
     storage_root = res.scalar_one().value
     
+    # Ensure root exists
+    if not os.path.exists(storage_root):
+        try:
+            os.makedirs(storage_root, exist_ok=True)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to create storage root: {str(e)}")
+    
     db_filename = f"{tenant_in.name.lower().replace(' ', '_')}.sqlite"
     db_path = os.path.join(storage_root, db_filename)
     db_url = f"sqlite+aiosqlite:///{db_path}"

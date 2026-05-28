@@ -26,6 +26,11 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def _get_db_url() -> str:
+    # Prioritize environment variable for multi-tenant migrations
+    env_url = os.getenv("SQLALCHEMY_DATABASE_URL")
+    if env_url:
+        return env_url.replace("sqlite+aiosqlite", "sqlite")
+        
     from app.core.config import settings
     # Use sync driver for Alembic (strip async driver prefix)
     return settings.DATABASE_URL.replace("sqlite+aiosqlite", "sqlite")
