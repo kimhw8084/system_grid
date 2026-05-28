@@ -487,7 +487,7 @@ export default function ServiceRegistry() {
 
       <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400"><RefreshCcw size={32} className="animate-spin" /><p className="text-[10px] font-bold uppercase tracking-[0.3em] ">Scanning Logic Matrix...</p></div>}
-        <AgGridReact ref={gridRef} rowData={services || []} columnDefs={columnDefs} rowSelection="multiple" headerHeight={fontSize + rowDensity + 10} rowHeight={fontSize + rowDensity + 10} onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))} quickFilterText={searchTerm} animateRows={true} enableCellTextSelection={true} autoSizeStrategy={autoSizeStrategy} />
+        <AgGridReact ref={gridRef} rowData={services || []} columnDefs={columnDefs} rowSelection="multiple" headerHeight={fontSize + rowDensity + 10} rowHeight={fontSize + rowDensity + 10} onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])} quickFilterText={searchTerm} animateRows={true} enableCellTextSelection={true} autoSizeStrategy={autoSizeStrategy} />
       </div>
 
       <AnimatePresence>{activeModal && (

@@ -19,7 +19,7 @@ class ModelValidator:
             "devices": models.Device,
             "racks": models.Rack,
             "logical_services": models.LogicalService,
-            "far_records": models.FAR,
+            "far_records": models.FarFailureMode,
             "port_connections": models.PortConnection
         }
         return mapping.get(table_name)

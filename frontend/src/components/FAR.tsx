@@ -9,7 +9,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor
+  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -704,7 +704,7 @@ export default function FAR() {
                 animateRows={true}
                 enableCellTextSelection={true}
                 rowSelection="multiple"
-                onSelectionChanged={(e: any) => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean))}              />
+                onSelectionChanged={(e: any) => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}              />
               <AnimatePresence>
                 {showColumnPicker && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">

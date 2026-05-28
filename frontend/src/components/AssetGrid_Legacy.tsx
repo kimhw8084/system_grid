@@ -1331,7 +1331,7 @@ export default function AssetGrid() {
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
-            onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map(n => n.data.id))}
+            onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
             quickFilterText={searchTerm}
             animateRows={true}
             enableCellTextSelection={true}

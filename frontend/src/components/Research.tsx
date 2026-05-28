@@ -636,7 +636,7 @@ export default function Research() {
           animateRows={false}
           enableCellTextSelection={true}
           rowSelection="multiple"
-          onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
+          onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
           suppressColumnVirtualisation={true}
         />
         <AnimatePresence>
