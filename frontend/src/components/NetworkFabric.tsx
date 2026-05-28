@@ -51,9 +51,13 @@ export default function NetworkFabric() {
   const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
 
+  const autoSizeStrategy = useMemo(() => ({
+    type: 'fitCellContents' as const
+  }), []);
+
   useEffect(() => {
     if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+      gridRef.current.api.autoSizeAllColumns()
     }
   }, [fontSize, rowDensity])
 
@@ -104,7 +108,7 @@ export default function NetworkFabric() {
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['connections'] })
       toast.success('Link Severed')
-      setConfirmModal({ ...confirmModal, isOpen: false })
+      setConfirmModal((prev: any) => ({ ...prev, isOpen: false }))
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -129,7 +133,7 @@ export default function NetworkFabric() {
   const columnDefs = useMemo(() => [
     { 
       headerName: "", 
-      width: 50,
+      initialWidth: 50,
       minWidth: 50,
       maxWidth: 50,
       checkboxSelection: true, 
@@ -147,7 +151,7 @@ export default function NetworkFabric() {
     { 
       field: "id", 
       headerName: "ID", 
-      width: 70,
+      initialWidth: 70,
       minWidth: 70,
       pinned: 'left',
       cellClass: 'text-center font-bold text-slate-500',
@@ -158,7 +162,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Status", 
       field: "status", 
-      width: 110,
+      initialWidth: 110,
       minWidth: 110,
       suppressAutoSize: true,
       cellRenderer: (p: any) => {
@@ -188,7 +192,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Farm", 
       field: "farm", 
-      width: 120,
+      initialWidth: 120,
       filter: true,
       cellClass: 'text-center font-bold text-indigo-400 uppercase',
       headerClass: 'text-center',
@@ -198,7 +202,8 @@ export default function NetworkFabric() {
     { 
       headerName: "Src Node", 
       field: "server_a", 
-      flex: 1,
+      initialWidth: 200,
+      minWidth: 150,
       filter: true,
       cellClass: 'text-left font-bold uppercase tracking-tight',
       headerClass: 'text-left',
@@ -208,7 +213,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Src R/S", 
       field: "src_rack", 
-      width: 110,
+      initialWidth: 110,
       filter: true,
       cellClass: 'text-center font-bold text-slate-400 uppercase',
       headerClass: 'text-center',
@@ -218,7 +223,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Local Port", 
       field: "source_port", 
-      width: 110,
+      initialWidth: 110,
       filter: true,
       cellClass: 'text-center font-bold text-slate-300 uppercase',
       headerClass: 'text-center',
@@ -228,7 +233,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Src IP", 
       field: "source_ip", 
-      width: 130,
+      initialWidth: 130,
       filter: true,
       cellClass: 'text-center font-mono font-bold',
       headerClass: 'text-center',
@@ -238,7 +243,8 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer Node", 
       field: "server_b", 
-      flex: 1,
+      initialWidth: 200,
+      minWidth: 150,
       filter: true,
       cellClass: 'text-left font-bold uppercase tracking-tight',
       headerClass: 'text-left',
@@ -248,7 +254,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer R/S", 
       field: "peer_rack", 
-      width: 110,
+      initialWidth: 110,
       filter: true,
       cellClass: 'text-center font-bold text-slate-400 uppercase',
       headerClass: 'text-center',
@@ -258,7 +264,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer Port", 
       field: "target_port", 
-      width: 110,
+      initialWidth: 110,
       filter: true,
       cellClass: 'text-center font-bold text-slate-300 uppercase',
       headerClass: 'text-center',
@@ -268,7 +274,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Peer IP", 
       field: "target_ip", 
-      width: 130,
+      initialWidth: 130,
       filter: true,
       cellClass: 'text-center font-mono font-bold',
       headerClass: 'text-center',
@@ -278,7 +284,7 @@ export default function NetworkFabric() {
     { 
       field: "link_type", 
       headerName: "Type", 
-      width: 120, 
+      initialWidth: 120, 
       filter: true,
       cellClass: 'text-center uppercase tracking-widest', 
       headerClass: 'text-center',
@@ -299,7 +305,7 @@ export default function NetworkFabric() {
     { 
       headerName: "Request Link", 
       field: "request_link", 
-      width: 150,
+      initialWidth: 150,
       filter: true,
       cellClass: 'text-center font-bold text-blue-400',
       headerClass: 'text-center',
@@ -309,7 +315,7 @@ export default function NetworkFabric() {
     { 
       field: "speed", 
       headerName: "Fabric Metric", 
-      width: 110, 
+      initialWidth: 110, 
       filter: true,
       cellClass: "text-center font-bold uppercase", 
       headerClass: 'text-center',
@@ -319,7 +325,7 @@ export default function NetworkFabric() {
     {
       field: "actions",
       headerName: "Action",
-      width: 120,
+      initialWidth: 120,
       minWidth: 120,
       pinned: 'right',
       cellClass: 'text-center',
@@ -349,7 +355,8 @@ export default function NetworkFabric() {
       ),
       suppressHide: true
     }
-  ], [deleteMutation, fontSize, hiddenColumns]) as any
+  ], [fontSize, hiddenColumns]) as any
+
 
   const resetForm = () => {
     setConnData({
@@ -529,6 +536,7 @@ export default function NetworkFabric() {
           enableCellTextSelection={true}
           rowSelection="multiple"
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
+          autoSizeStrategy={autoSizeStrategy}
         />
 
         <AnimatePresence>
