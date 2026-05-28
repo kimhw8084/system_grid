@@ -30,6 +30,8 @@ import RackTemp from "./components/RackTemp"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
+import { GlobalSearch } from "./components/shared/GlobalSearch"
+
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
 
@@ -329,8 +331,36 @@ function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [showLinuxEnv, setShowLinuxEnv] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
   const [latency, setLatency] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (date: Date, timeZone: string) => {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(date);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const { data: userProfile } = useQuery({
     queryKey: ['user-profile'],
@@ -579,8 +609,20 @@ function MainLayout() {
       </motion.aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
         <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-10">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
             <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
+            
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-slate-500 hover:text-white hover:border-blue-500/30 transition-all group min-w-[300px]"
+            >
+              <Search size={16} className="group-hover:text-blue-400 transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest flex-1 text-left">Global ID Search...</span>
+              <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                 <span className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-[8px]">⌘</span>
+                 <span className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-[8px]">K</span>
+              </div>
+            </button>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -634,13 +676,23 @@ function MainLayout() {
           </ErrorBoundary>
         </div>
         <footer className="h-8 border-t border-[var(--glass-border)] px-8 flex items-center justify-between text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-primary)]/20">
-           <span />
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                 <Clock size={10} className="text-blue-500" />
+                 <span>US CENTRAL (CT): <span className="text-[var(--text-primary)] tabular-nums">{formatTime(currentTime, 'America/Chicago')}</span></span>
+              </div>
+              <div className="flex items-center gap-2 border-l border-white/5 pl-6">
+                 <Clock size={10} className="text-emerald-500" />
+                 <span>SOUTH KOREA (KST): <span className="text-[var(--text-primary)] tabular-nums">{formatTime(currentTime, 'Asia/Seoul')}</span></span>
+              </div>
+           </div>
            <span className="text-blue-500">VERSION {APP_VERSION}</span>
         </footer>
       </main>
       <AnimatePresence>
         {showPatchNotes && <PatchNotesModal onClose={() => setShowPatchNotes(false)} />}
         {showLinuxEnv && <LinuxEnvModal onClose={() => setShowLinuxEnv(false)} />}
+        {isSearchOpen && <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />}
         <ErrorConsole />
       </AnimatePresence>
     </div>
