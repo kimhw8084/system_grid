@@ -208,6 +208,7 @@ export default function FAR() {
       const mode = modes.find((m: any) => m.id === targetId)
       
       if (mode) {
+        setSearchTerm(mode.title)
         setTimeout(() => {
           gridRef.current.api.forEachNode((node: any) => {
             if (node.data.id === targetId) {
@@ -215,7 +216,7 @@ export default function FAR() {
               gridRef.current.api.ensureNodeVisible(node, 'middle')
             }
           })
-        }, 100)
+        }, 200)
       }
     }
   }, [idParam, modes])

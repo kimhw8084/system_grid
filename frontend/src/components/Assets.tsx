@@ -1375,6 +1375,9 @@ export default function Assets() {
       const asset = devices.find((a: any) => a.id === targetId)
       
       if (asset) {
+        // Filter the grid to isolate this asset
+        setSearchTerm(asset.name)
+
         // Switch to appropriate tab if asset is deleted
         if (asset.is_deleted && activeTab !== 'deleted') setActiveTab('deleted')
         if (!asset.is_deleted && activeTab !== 'inventory') setActiveTab('inventory')
@@ -1387,7 +1390,7 @@ export default function Assets() {
               setSelectedAssetId(targetId)
             }
           })
-        }, 100)
+        }, 200) // Slightly longer delay to allow filtering to complete
       }
     }
   }, [idParam, devices, activeTab])

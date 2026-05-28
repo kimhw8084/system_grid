@@ -67,6 +67,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   }, [groupedResults]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (flattenedResults.length === 0) return;
     if (e.key === 'ArrowDown') {
       setSelectedIndex((prev) => (prev + 1) % flattenedResults.length);
       e.preventDefault();
@@ -121,7 +122,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             initial={{ scale: 0.98, opacity: 0, y: -10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.98, opacity: 0, y: -10 }}
-            className="w-full max-w-2xl bg-[#1e293b]/95 border border-white/10 rounded-lg shadow-2xl overflow-hidden relative z-10 backdrop-blur-2xl"
+            className="w-full max-w-2xl bg-[#1e293b]/95 border border-white/10 rounded-lg shadow-2xl overflow-hidden relative z-10 backdrop-blur-xl"
           >
             <div className="flex items-center p-5 border-b border-white/5 bg-white/5">
               <Search size={20} className="text-slate-500 mr-4" />
