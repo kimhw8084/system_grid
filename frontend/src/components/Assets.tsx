@@ -2143,9 +2143,11 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
           <thead className="bg-white/5 border-b border-white/5">
             <tr>
               <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Local Port</th>
+              <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Farm / Status</th>
               <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">IP Address</th>
               <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">MAC / VLAN</th>
               <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Speed</th>
+              <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Peer R/S</th>
               <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Connection</th>
               <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
             </tr>
@@ -2159,10 +2161,26 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
               const localVLAN = isSource ? c.source_vlan : c.target_vlan
               const peerName = isSource ? c.server_b : c.server_a
               const peerPort = isSource ? c.target_port : c.source_port
+              const peerRS = isSource ? `${c.peer_rack || '?'}:${c.peer_slot || '?'}` : `${c.src_rack || '?'}:${c.src_slot || '?'}`
+              
+              const statusColors: any = {
+                Active: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+                Requested: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
+                Maintenance: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+                Planned: 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+              }
 
               return (
                 <tr key={c.id} className="hover:bg-white/5 transition-colors group">
                   <td className="px-4 py-3 font-bold text-blue-400 uppercase tracking-tight text-[10px]">{localPort}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-indigo-400 font-black uppercase tracking-tighter">{c.farm || 'N/A'}</span>
+                      <span className={`w-fit px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${statusColors[c.status] || 'text-slate-400 bg-white/5 border-white/10'}`}>
+                        {c.status || 'Active'}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 font-bold text-slate-200 text-[10px]">{localIP || <span className="text-slate-700 ">Unassigned</span>}</td>
                   <td className="px-4 py-3">
                      <div className="flex flex-col">
@@ -2172,6 +2190,9 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
                   </td>
                   <td className="px-4 py-3 text-center">
                      <span className="text-slate-400 font-bold text-[10px]">{c.speed}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold text-slate-500 uppercase">
+                    {peerRS}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button 

@@ -45,13 +45,25 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     from sqlalchemy.orm import aliased
     DeviceA = aliased(models.Device)
     DeviceB = aliased(models.Device)
+    LocA = aliased(models.DeviceLocation)
+    LocB = aliased(models.DeviceLocation)
+    RackA = aliased(models.Rack)
+    RackB = aliased(models.Rack)
     
     query = select(
         models.PortConnection,
         DeviceA.name.label("server_a"),
-        DeviceB.name.label("server_b")
+        DeviceB.name.label("server_b"),
+        RackA.name.label("rack_a"),
+        LocA.start_unit.label("slot_a"),
+        RackB.name.label("rack_b"),
+        LocB.start_unit.label("slot_b")
     ).outerjoin(DeviceA, models.PortConnection.source_device_id == DeviceA.id) \
-     .outerjoin(DeviceB, models.PortConnection.target_device_id == DeviceB.id)
+     .outerjoin(DeviceB, models.PortConnection.target_device_id == DeviceB.id) \
+     .outerjoin(LocA, DeviceA.id == LocA.device_id) \
+     .outerjoin(RackA, LocA.rack_id == RackA.id) \
+     .outerjoin(LocB, DeviceB.id == LocB.device_id) \
+     .outerjoin(RackB, LocB.rack_id == RackB.id)
     
     if device_id:
         query = query.filter(or_(models.PortConnection.source_device_id == device_id, models.PortConnection.target_device_id == device_id))
@@ -60,7 +72,7 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     rows = result.all()
     
     final_result = []
-    for conn, server_a, server_b in rows:
+    for conn, server_a, server_b, rack_a, slot_a, rack_b, slot_b in rows:
         final_result.append({
             "id": conn.id,
             "source_device_id": conn.source_device_id,
@@ -72,6 +84,8 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
             "source_ip": conn.source_ip,
             "source_mac": conn.source_mac,
             "source_vlan": conn.source_vlan,
+            "src_rack": rack_a or "N/A",
+            "src_slot": slot_a or "N/A",
             "target_device_id": conn.target_device_id,
             "dst_device_id": conn.target_device_id,
             "server_b": server_b or "Unknown",
@@ -81,6 +95,8 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
             "target_ip": conn.target_ip,
             "target_mac": conn.target_mac,
             "target_vlan": conn.target_vlan,
+            "peer_rack": rack_b or "N/A",
+            "peer_slot": slot_b or "N/A",
             "vlan": conn.source_vlan or conn.target_vlan,
             "speed": f"{conn.speed_gbps} {conn.unit}" if conn.speed_gbps else "Unknown",
             "speed_gbps": conn.speed_gbps,
@@ -90,7 +106,9 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
             "purpose": conn.purpose,
             "direction": conn.direction,
             "cable_type": conn.cable_type,
-            "status": conn.status
+            "status": conn.status,
+            "farm": conn.farm,
+            "request_link": conn.request_link
         })
     return final_result
 
@@ -134,7 +152,9 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
         unit=data.get('unit', 'Gbps'),
         direction=data.get('direction'),
         cable_type=data.get('cable_type'),
-        status=data.get('status', 'Active')
+        status=data.get('status', 'Active'),
+        farm=data.get('farm'),
+        request_link=data.get('request_link')
     )
     db.add(conn)
     log = models.AuditLog(user_id="admin", action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
@@ -165,6 +185,15 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     if 'direction' in data: conn.direction = data['direction']
     if 'cable_type' in data: conn.cable_type = data['cable_type']
     if 'status' in data: conn.status = data['status']
+    if 'farm' in data: conn.farm = data['farm']
+    if 'request_link' in data: conn.request_link = data['request_link']
+
+    log = models.AuditLog(
+        user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"
+    )
+    db.add(log)
+    await db.commit()
+    return conn
 
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"
@@ -184,3 +213,26 @@ async def delete_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
     db.add(log)
     await db.commit()
     return {"status": "success"}
+
+@router.post("/connections/bulk-status")
+async def bulk_update_status(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    new_status = data.get("status")
+    if not ids or not new_status:
+        raise HTTPException(400, "IDs and Status required")
+    
+    await db.execute(
+        update(models.PortConnection)
+        .where(models.PortConnection.id.in_(ids))
+        .values(status=new_status)
+    )
+    
+    log = models.AuditLog(
+        user_id="admin", 
+        action="BULK_UPDATE", 
+        target_table="port_connections", 
+        description=f"Bulk updated {len(ids)} links to {new_status}"
+    )
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(ids)}

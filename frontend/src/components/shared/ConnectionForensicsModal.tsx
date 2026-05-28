@@ -67,6 +67,10 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                             <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
                             <span className="text-[10px] font-black text-indigo-400">{connection.source_vlan || '-'}</span>
                          </div>
+                         <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Rack:Slot</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase">{connection.src_rack || 'N/A'}:{connection.src_slot || 'N/A'}</span>
+                         </div>
                       </div>
                    </div>
                 </div>
@@ -93,6 +97,10 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                             <span className="text-[10px] font-bold text-slate-500 uppercase">VLAN</span>
                             <span className="text-[10px] font-black text-indigo-400">{connection.target_vlan || '-'}</span>
                          </div>
+                         <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">Rack:Slot</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase">{connection.peer_rack || 'N/A'}:{connection.peer_slot || 'N/A'}</span>
+                         </div>
                       </div>
                    </div>
                 </div>
@@ -100,20 +108,33 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
                 <div className="col-span-2 p-6 bg-white/5 border border-white/5 rounded-[30px] space-y-4">
                    <div className="grid grid-cols-3 gap-4">
                       <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Fabric Speed</p>
-                         <p className="text-sm font-black text-indigo-400">{connection.speed || connection.speed_gbps + ' Gbps' || '-'}</p>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Farm / System</p>
+                         <p className="text-sm font-black text-indigo-400 uppercase">{connection.farm || 'Standalone'}</p>
                       </div>
                       <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Type</p>
-                         <p className="text-sm font-black text-white">{connection.link_type || '-'}</p>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Link Status</p>
+                         <p className="text-sm font-black text-emerald-400 uppercase">{connection.status || 'Active'}</p>
                       </div>                      <div className="text-center">
-                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Traffic Mode</p>
-                         <p className="text-sm font-black text-amber-400">{connection.direction || '-'}</p>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Fabric Speed</p>
+                         <p className="text-sm font-black text-white">{connection.speed || connection.speed_gbps + ' Gbps' || '-'}</p>
                       </div>
                    </div>
-                   <div className="pt-4 border-t border-white/5">
-                      <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
-                      <p className="text-xs text-slate-300">{connection.purpose || 'No description provided for this interconnect.'}</p>
+                   
+                   <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                      <div>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Mission Purpose / Logic</p>
+                         <p className="text-xs text-slate-300">{connection.purpose || 'No description provided.'}</p>
+                      </div>
+                      <div>
+                         <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Cabling Request</p>
+                         {connection.request_link ? (
+                            <a href={connection.request_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 font-bold hover:underline truncate block max-w-full">
+                               {connection.request_link}
+                            </a>
+                         ) : (
+                            <p className="text-xs text-slate-600 font-bold uppercase tracking-tighter">No Link Provided</p>
+                         )}
+                      </div>
                    </div>
                 </div>
              </div>

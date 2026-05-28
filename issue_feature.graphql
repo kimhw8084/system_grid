@@ -1,0 +1,16 @@
+mutation {
+  issueCreate(input: {
+    title: "[Test] Implement Advanced Filter Logic for Monitoring Grid",
+    description: "## Goal\nAllow users to filter monitoring items by multiple criteria (e.g., status, site, and severity) simultaneously.\n\n## Context\nCurrently, the Monitoring Grid only supports simple search. Users need more granular control to manage large datasets.\n\n## Scope\n- `frontend/src/components/MonitoringGrid.tsx`\n- Addition of a new FilterModal component.\n\n## Out of scope\n- Backend changes (use existing filtering if available, or client-side filtering).\n- Changes to other grid components.\n\n## Acceptance criteria\n- [ ] Users can open a filter modal.\n- [ ] Multiple filters can be applied at once.\n- [ ] Filtering happens in real-time or upon \"Apply\".\n\n## Suggested human verification\nOpen the Monitoring Grid, click the filter button, select 'Critical' and 'Site A', and verify only matching items are shown.\n\n## AI execution notes\n- Read law.md and .linear-ai.md first.\n- Before coding, comment a plan.\n- Keep changes surgical.\n- Move to Review when complete.\n- Do not mark Done unless the human comments PASS: or APPROVE_DONE:.",
+    teamId: "fc2159c0-9d4e-4ee6-b7c9-3be2f76f9542",
+    projectId: "d1da889e-ec60-4c20-8fca-7933415ed36c",
+    stateId: "be2888a2-cd22-4325-aa43-d9c6e5a56219",
+    labelIds: ["af3419a2-4f2c-43b2-a29f-6f96aede14a4"]
+  }) {
+    success
+    issue {
+      id
+      title
+    }
+  }
+}

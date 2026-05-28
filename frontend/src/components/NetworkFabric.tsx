@@ -109,6 +109,23 @@ export default function NetworkFabric() {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: number[], status: string }) => {
+      const res = await apiFetch('/api/v1/networks/connections/bulk-status', {
+        method: 'POST',
+        body: JSON.stringify({ ids, status })
+      })
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['connections'] })
+      toast.success(`Updated ${data.count} links`)
+      setSelectedIds([])
+      setShowBulkMenu(false)
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+
   const columnDefs = useMemo(() => [
     { 
       headerName: "", 
@@ -147,6 +164,7 @@ export default function NetworkFabric() {
           Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
           Down: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
           Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+          Requested: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
           Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
           Offline: 'text-slate-400 border-white/20 bg-white/10'
         }
@@ -165,6 +183,16 @@ export default function NetworkFabric() {
       headerClass: 'text-center'
     },
     { 
+      headerName: "Farm", 
+      field: "farm", 
+      width: 120,
+      filter: true,
+      cellClass: 'text-center font-bold text-indigo-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+      hide: hiddenColumns.includes("farm")
+    },
+    { 
       headerName: "Src Node", 
       field: "server_a", 
       flex: 1,
@@ -173,6 +201,16 @@ export default function NetworkFabric() {
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("server_a")
+    },
+    { 
+      headerName: "Src R/S", 
+      field: "src_rack", 
+      width: 110,
+      filter: true,
+      cellClass: 'text-center font-bold text-slate-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.data.src_rack}:{p.data.src_slot}</span>,
+      hide: hiddenColumns.includes("src_rack")
     },
     { 
       headerName: "Local Port", 
@@ -203,6 +241,16 @@ export default function NetworkFabric() {
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("server_b")
+    },
+    { 
+      headerName: "Peer R/S", 
+      field: "peer_rack", 
+      width: 110,
+      filter: true,
+      cellClass: 'text-center font-bold text-slate-400 uppercase',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.data.peer_rack}:{p.data.peer_slot}</span>,
+      hide: hiddenColumns.includes("peer_rack")
     },
     { 
       headerName: "Peer Port", 
@@ -246,6 +294,16 @@ export default function NetworkFabric() {
       hide: hiddenColumns.includes("link_type")
     },
     { 
+      headerName: "Request Link", 
+      field: "request_link", 
+      width: 150,
+      filter: true,
+      cellClass: 'text-center font-bold text-blue-400',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? <a href={p.value} target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ fontSize: `${fontSize}px` }}>Link</a> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      hide: hiddenColumns.includes("request_link")
+    },
+    { 
       field: "speed", 
       headerName: "Fabric Metric", 
       width: 110, 
@@ -275,7 +333,10 @@ export default function NetworkFabric() {
                      device_a_id: String(p.data.source_device_id),
                      device_b_id: String(p.data.target_device_id),
                      port_a: p.data.source_port,
-                     port_b: p.data.target_port
+                     port_b: p.data.target_port,
+                     farm: p.data.farm,
+                     status: p.data.status,
+                     request_link: p.data.request_link
                    }); 
                    setShowConnectModal(true) 
                  }} title="Edit Interconnect" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
@@ -294,7 +355,8 @@ export default function NetworkFabric() {
   const resetForm = () => {
     setConnData({
       device_a_id: '', source_port: '', device_b_id: '', target_port: '',
-      link_type: 'Data', purpose: '', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional'
+      link_type: 'Data', purpose: '', speed_gbps: 10, unit: 'Gbps', direction: 'Bidirectional',
+      farm: '', status: 'Active', request_link: ''
     })
     setEditingLink(null)
   }
@@ -352,6 +414,26 @@ export default function NetworkFabric() {
               {showBulkMenu && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
                    <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Links Selected</p>
+                   
+                   {['Active', 'Maintenance', 'Down', 'Planned', 'Requested'].map(status => (
+                     <button
+                       key={status}
+                       onClick={() => bulkStatusMutation.mutate({ ids: selectedIds, status })}
+                       className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-blue-500/20 rounded-lg text-slate-300 transition-all flex items-center justify-between group"
+                     >
+                       <span>Set to {status}</span>
+                       <div className={`w-2 h-2 rounded-full ${
+                         status === 'Active' ? 'bg-emerald-500' :
+                         status === 'Maintenance' ? 'bg-amber-500' :
+                         status === 'Down' ? 'bg-rose-500' :
+                         status === 'Planned' ? 'bg-blue-500' :
+                         'bg-indigo-500'
+                       } opacity-0 group-hover:opacity-100 transition-opacity`} />
+                     </button>
+                   ))}
+
+                   <div className="border-t border-white/5 my-1" />
+
                    <button 
                      onClick={() => {
                        setConfirmModal({ 
@@ -628,12 +710,23 @@ export default function NetworkFabric() {
                           { value: 'Active', label: 'Active' },
                           { value: 'Maintenance', label: 'Maintenance' },
                           { value: 'Down', label: 'Down' },
-                          { value: 'Planned', label: 'Planned' }
+                          { value: 'Planned', label: 'Planned' },
+                          { value: 'Requested', label: 'Requested' }
                         ]}
                       />
                       <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Farm Information</label>
+                        <input value={connData.farm || ''} onChange={e => setConnData({...connData, farm: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="e.g. Hadoop-Prod" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Cabling Request Link</label>
+                         <input value={connData.request_link || ''} onChange={e => setConnData({...connData, request_link: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500" placeholder="https://..." />
+                      </div>
+                      <div className="space-y-2">
                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Narrative</label>
-                         <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 h-[42px] resize-none" placeholder="Purpose..." />
+                         <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 h-[60px] resize-none" placeholder="Purpose..." />
                       </div>
                     </div>
                   </div>

@@ -442,13 +442,19 @@ def seed():
             db.add(PortConnection(
                 source_device_id=w.id, source_port="mgmt0", source_ip=w.primary_ip.replace("20.", "10."),
                 target_device_id=target_sw.id, target_port=f"Gi1/0/{random.randint(1,48)}",
-                link_type="Management", purpose="OOB Management Access", speed_gbps=1.0, unit="Gbps", direction="bidirectional", cable_type="Cat6"
+                link_type="Management", purpose="OOB Management Access", speed_gbps=1.0, unit="Gbps", direction="bidirectional", cable_type="Cat6",
+                status="Active", farm="MGMT-CORE"
             ))
+            
             # Data Link
+            status = random.choices(["Active", "Requested", "Planned", "Maintenance"], weights=[70, 10, 10, 10])[0]
+            req_link = f"https://jira.corp.net/browse/CAB-{random.randint(1000, 9999)}" if status == "Requested" else None
+            
             db.add(PortConnection(
                 source_device_id=w.id, source_port="eth0", source_ip=w.primary_ip,
                 target_device_id=target_sw.id, target_port=f"Te1/1/{random.randint(1,24)}",
-                link_type="Data", purpose="Production Traffic", speed_gbps=10.0 if "DGX" not in w.model else 100.0, unit="Gbps", direction="bidirectional", cable_type="SFP-DAC"
+                link_type="Data", purpose="Production Traffic", speed_gbps=10.0 if "DGX" not in w.model else 100.0, unit="Gbps", direction="bidirectional", cable_type="SFP-DAC",
+                status=status, farm=w.system, request_link=req_link
             ))
 
         # 9. Complex Relationships (Clustering, HA, Dependencies)

@@ -53,10 +53,11 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                     <thead>
                         <tr className="bg-white/[0.01] text-[10px] text-slate-500 font-black uppercase tracking-widest border-b border-white/5">
                             <th className="px-8 py-4 font-black">Connected Peer (Target)</th>
+                            <th className="px-6 py-4 font-black text-center">Farm</th>
                             <th className="px-6 py-4 font-black">Egress Port</th>
                             <th className="px-6 py-4 font-black text-center">Ingress Port</th>
-                            <th className="px-6 py-4 font-black text-center">Speed</th>
-                            <th className="px-6 py-4 font-black text-center">Type</th>
+                            <th className="px-6 py-4 font-black text-center">Peer R/S</th>
+                            <th className="px-6 py-4 font-black text-center">Status</th>
                             <th className="px-8 py-4 font-black text-right">Actions</th>
                         </tr>
                     </thead>
@@ -72,6 +73,9 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
 
                             const localPort = isSource ? conn.source_port : conn.target_port
                             const remotePort = isSource ? conn.target_port : conn.source_port
+                            
+                            const peerRack = isSource ? conn.peer_rack : conn.src_rack
+                            const peerSlot = isSource ? conn.peer_slot : conn.src_slot
 
                             return (
                                 <tr key={conn.id} className="group hover:bg-blue-500/[0.03] transition-colors">
@@ -86,6 +90,9 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                                             </div>
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4 text-center">
+                                      <span className="text-[10px] font-black text-indigo-400 uppercase">{conn.farm || 'N/A'}</span>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-mono font-bold text-blue-400">{localPort || 'AUTO-NEG'}</span>
@@ -93,26 +100,26 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col items-center">
                                             <span className="text-[10px] font-mono font-bold text-emerald-400">{remotePort || 'AUTO-NEG'}</span>
                                             <span className="text-[8px] text-slate-600 font-black uppercase tracking-tighter">Peer Ingress</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                      <span className="inline-flex items-center px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-mono font-bold border border-white/5">
-                                        {conn.speed_gbps || '10'}G
-                                      </span>
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase">{peerRack || 'N/A'}</span>
+                                        <span className="text-[8px] text-slate-600 font-black uppercase tracking-tighter">Slot {peerSlot || '-'}</span>
+                                      </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                       {conn.link_type && (
-                                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
-                                               conn.link_type === 'Physical' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 
-                                               conn.link_type === 'Virtual' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                                               'bg-slate-500/10 border-slate-500/20 text-slate-400'
-                                           }`}>
-                                               {conn.link_type}
-                                           </span>
-                                       )}
+                                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                                           conn.status === 'Active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
+                                           conn.status === 'Requested' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' :
+                                           conn.status === 'Planned' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                                           'bg-slate-500/10 border-slate-500/20 text-slate-400'
+                                       }`}>
+                                           {conn.status || 'Active'}
+                                       </span>
                                     </td>                                    <td className="px-8 py-4 text-right">
                                         <button 
                                             onClick={() => onViewForensics(conn)}

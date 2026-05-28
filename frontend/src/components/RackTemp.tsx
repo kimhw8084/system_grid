@@ -374,22 +374,41 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
                 return (
                   <div className="flex flex-col gap-1 border-b border-white/5 pb-1.5 mb-1.5">
                     <div className="flex justify-between items-center gap-2">
-                      <span className="text-[8px] text-blue-400 font-bold uppercase truncate max-w-[90px]">{sDev?.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-blue-400 font-bold uppercase truncate max-w-[90px]">{sDev?.name}</span>
+                        <span className="text-[7px] text-slate-500 font-bold uppercase">R:{hoveredLine.connection.src_rack || 'N/A'} U:{hoveredLine.connection.src_slot || 'N/A'}</span>
+                      </div>
                       <span className="text-[8px] text-slate-500 font-mono">{hoveredLine.connection.source_ip || 'No IP'}</span>
                     </div>
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="text-[8px] text-emerald-400 font-bold uppercase truncate max-w-[90px]">{tDev?.name}</span>
+                    <div className="flex justify-between items-center gap-2 mt-1">
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-emerald-400 font-bold uppercase truncate max-w-[90px]">{tDev?.name}</span>
+                        <span className="text-[7px] text-slate-500 font-bold uppercase">R:{hoveredLine.connection.peer_rack || 'N/A'} U:{hoveredLine.connection.peer_slot || 'N/A'}</span>
+                      </div>
                       <span className="text-[8px] text-slate-500 font-mono">{hoveredLine.connection.target_ip || 'No IP'}</span>
                     </div>
                   </div>
                 )
               })()}
+              
+              <div className="grid grid-cols-2 gap-2 mb-1.5">
+                <div className="bg-white/5 rounded px-2 py-1 border border-white/5">
+                  <p className="text-[6px] text-slate-500 font-black uppercase mb-0.5">FARM</p>
+                  <p className="text-[8px] text-indigo-400 font-bold truncate">{hoveredLine.connection.farm || 'N/A'}</p>
+                </div>
+                <div className="bg-white/5 rounded px-2 py-1 border border-white/5">
+                  <p className="text-[6px] text-slate-500 font-black uppercase mb-0.5">STATUS</p>
+                  <p className="text-[8px] text-emerald-400 font-bold truncate">{hoveredLine.connection.status || 'Active'}</p>
+                </div>
+              </div>
+
               {hoveredLine.connection.purpose && (
                 <div className="bg-black/20 rounded-md px-2 py-1 border border-white/5 mb-1.5">
                   <p className="text-[7px] text-slate-500 font-black uppercase mb-0.5">PURPOSE</p>
                   <p className="text-[8px] text-slate-300 ">{hoveredLine.connection.purpose}</p>
                 </div>
               )}
+              
               <div className="flex justify-between items-center gap-4">
                 <span className="text-[7px] text-slate-500 font-bold uppercase">Source Port</span>
                 <span className="text-[9px] text-blue-300 font-mono">{hoveredLine.connection.source_port || 'Auto'}</span>
@@ -402,10 +421,12 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
                 <span className="text-[7px] text-slate-500 font-bold uppercase">Speed</span>
                 <span className="text-[9px] text-emerald-400 font-bold">{hoveredLine.connection.speed_gbps || '10'} Gbps</span>
               </div>
-              <div className="flex justify-between items-center gap-4">
-                <span className="text-[7px] text-slate-500 font-bold uppercase">Type</span>
-                <span className="text-[9px] text-amber-400 font-bold uppercase">{hoveredLine.connection.link_type || hoveredLine.connection.purpose || 'Data'}</span>
-              </div>
+              
+              {hoveredLine.connection.request_link && (
+                <div className="pt-1 border-t border-white/5 mt-1">
+                  <span className="text-[7px] text-blue-400 font-bold uppercase italic underline">Request Linked</span>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
