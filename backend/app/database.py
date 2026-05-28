@@ -51,6 +51,7 @@ def get_tenant_engine(db_url: str):
 
 # Legacy/Default Session for internal use (seeding, etc)
 default_engine = get_tenant_engine(settings.DATABASE_URL)
+engine = default_engine # Restore global 'engine' for backward compatibility
 AsyncSessionLocal = async_sessionmaker(
     bind=default_engine,
     autoflush=False,
