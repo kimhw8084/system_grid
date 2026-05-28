@@ -9,12 +9,9 @@ from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_eng
 from ..models.config import Tenant, UserTenantAccess, MasterSystemSetting
 from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse
 from ..core.config import settings
+from .utils import get_current_user_id
 
 router = APIRouter(prefix="/tenants", tags=["Multi-Tenancy"])
-
-def get_current_user_id():
-    # As per user directive: simple environment-based auth
-    return os.getenv("USER_ID", "admin_root")
 
 @router.get("/admin/settings", response_model=List[MasterSettingBase])
 async def get_master_settings(db: AsyncSession = Depends(get_config_db)):
@@ -83,7 +80,7 @@ async def run_alembic_upgrade(db_url: str):
     return True, stdout
 
 @router.post("/admin/create", response_model=TenantResponse)
-async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db)):
+async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db), request: Request = None):
     # 1. Get storage root
     res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
     storage_root = res.scalar_one().value
@@ -127,8 +124,8 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     await db.commit()
     await db.refresh(new_tenant)
 
-    # 5. Auto-grant access to the creator
-    user_id = get_current_user_id()
+    # 6. Auto-grant access to the creator
+    user_id = get_current_user_id(request)
     access = UserTenantAccess(user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", is_selected=True)
     
     # Unselect others
@@ -140,8 +137,8 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     return new_tenant
 
 @router.get("/me", response_model=List[UserTenantResponse])
-async def get_my_tenants(db: AsyncSession = Depends(get_config_db)):
-    user_id = get_current_user_id()
+async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Request = None):
+    user_id = get_current_user_id(request)
     
     # Check if user has ANY access. If not, auto-grant default engine access
     res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == user_id))
@@ -165,8 +162,8 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db)):
     ]
 
 @router.post("/select")
-async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depends(get_config_db)):
-    user_id = get_current_user_id()
+async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depends(get_config_db), request: Request = None):
+    user_id = get_current_user_id(request)
     
     # Verify access
     res = await db.execute(

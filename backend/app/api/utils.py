@@ -1,14 +1,20 @@
-from datetime import datetime
+import os
+from fastapi import Request
 
-def filter_valid_columns(model, data):
-    valid_keys = {c.name for c in model.__table__.columns}
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    return {k: v for k, v in data.items() if k in valid_keys and k not in exclude}
-
-def parse_iso_date(val):
-    if not val: return None
-    if isinstance(val, datetime): return val
-    try: 
-        return datetime.fromisoformat(val.replace("Z", "+00:00"))
-    except: 
-        return None
+def get_current_user_id(request: Request = None):
+    """
+    Unified utility to identify the current user.
+    Prioritizes the X-User-Id header (set by frontend) 
+    and falls back to the system's USER_ID environment variable.
+    """
+    user_id = None
+    
+    # 1. Check Request Headers (Inject by Cloud Proxy or Frontend)
+    if request:
+        user_id = request.headers.get("X-User-Id")
+    
+    # 2. Fallback to Environment Variable (Default identity)
+    if not user_id:
+        user_id = os.getenv("USER_ID", "admin_root")
+        
+    return user_id

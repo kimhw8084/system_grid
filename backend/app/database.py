@@ -80,14 +80,19 @@ async def get_config_db():
         finally:
             await session.close()
 
+from .api.utils import get_current_user_id
+
+...
+
 async def get_db(request: Request):
     """
     Dynamic DB dependency. Determines tenant DB based on USER_ID.
     """
-    # 1. Get User ID from Header (prioritized) or Env
-    user_id = request.headers.get("X-User-Id") or os.getenv("USER_ID", "admin_root")
+    # 1. Get User ID from unified utility
+    user_id = get_current_user_id(request)
 
     target_db_url = settings.DATABASE_URL # Default/Fallback
+...
 
     # 2. Lookup active tenant for this user in config.db
     async with ConfigSessionLocal() as config_db:
