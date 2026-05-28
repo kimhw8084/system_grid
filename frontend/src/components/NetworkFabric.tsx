@@ -55,7 +55,7 @@ export default function NetworkFabric() {
     if (gridRef.current?.api) {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
-  }, [fontSize, rowDensity, connections])
+  }, [fontSize, rowDensity])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -141,7 +141,8 @@ export default function NetworkFabric() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      suppressHide: true,
+      suppressAutoSize: true
     },
     { 
       field: "id", 
@@ -152,12 +153,14 @@ export default function NetworkFabric() {
       cellClass: 'text-center font-bold text-slate-500',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
+      suppressAutoSize: true
     },
     { 
       headerName: "Status", 
       field: "status", 
       width: 110,
       minWidth: 110,
+      suppressAutoSize: true,
       cellRenderer: (p: any) => {
         const colors: any = {
           Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
@@ -348,10 +351,6 @@ export default function NetworkFabric() {
     }
   ], [deleteMutation, fontSize, hiddenColumns]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
-
   const resetForm = () => {
     setConnData({
       device_a_id: '', source_port: '', device_b_id: '', target_port: '',
@@ -528,7 +527,6 @@ export default function NetworkFabric() {
           quickFilterText={searchTerm}
           animateRows={true}
           enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
           rowSelection="multiple"
           onSelectionChanged={e => setSelectedIds(e.api.getSelectedNodes().map((n: any) => n.data.id))}
         />
