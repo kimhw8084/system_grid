@@ -343,6 +343,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
       queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
+      setNewTenantName(""); // Clear input on success
       toast.success("New tenant database created and initialized")
     },
     onError: (e: any) => toast.error(`Creation Failed: ${e.message}`)
@@ -844,9 +845,11 @@ result_df = get_user_pool()`)
                                           </div>
                                        </td>
                                        <td className="p-4">
-                                          <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded border border-white/5 block truncate max-w-[300px]" title={t.db_url}>
-                                             {t.db_url}
-                                          </code>
+                                          <div className="overflow-x-auto custom-scrollbar-mini max-w-[300px]">
+                                             <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded border border-white/5 whitespace-nowrap inline-block select-all" title="Click to select all">
+                                                {t.db_url}
+                                             </code>
+                                          </div>
                                        </td>
                                        <td className="p-4 text-[9px] font-bold text-slate-500 uppercase">
                                           {new Date(t.created_at).toLocaleDateString()}
@@ -929,8 +932,10 @@ result_df = get_user_pool()`)
                                        className="w-full bg-black/40 border border-blue-500/30 rounded-xl px-4 py-3 text-[10px] font-mono text-emerald-400 outline-none"
                                     />
                                  ) : (
-                                    <div className="p-3 bg-black/30 border border-white/5 rounded-xl text-[10px] font-mono text-slate-400 break-all leading-relaxed">
-                                       {setting.value}
+                                    <div className="overflow-x-auto custom-scrollbar-mini">
+                                       <div className="p-3 bg-black/30 border border-white/5 rounded-xl text-[10px] font-mono text-slate-400 whitespace-nowrap select-all">
+                                          {setting.value}
+                                       </div>
                                     </div>
                                  )}
                                  <p className="text-[8px] font-bold text-slate-600 uppercase leading-relaxed px-1">{setting.description}</p>

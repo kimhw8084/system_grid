@@ -97,7 +97,7 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     
     # Case-insensitive check and filename normalization
     tenant_name_clean = tenant_in.name.strip()
-    db_filename = f"{tenant_name_clean.lower().replace(' ', '_')}.sqlite"
+    db_filename = f"{tenant_name_clean.lower().replace(' ', '_')}.db"
     db_path = os.path.join(storage_root, db_filename)
     db_url = f"sqlite+aiosqlite:///{db_path}"
 

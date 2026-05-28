@@ -20,10 +20,33 @@ class ErrorManager {
   private listeners: ((errors: SysError[]) => void)[] = []
   private openListeners: ((isOpen: boolean) => void)[] = []
   private isOpen = false
+  private readonly STORAGE_KEY = 'SYSGRID_ERROR_LOGS'
 
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('open-error-console', () => this.setOpen(true));
+      this.loadFromStorage();
+    }
+  }
+
+  private loadFromStorage() {
+    try {
+      const saved = localStorage.getItem(this.STORAGE_KEY);
+      if (saved) {
+        this.errors = JSON.parse(saved);
+        this.notify();
+      }
+    } catch (e) {
+      console.warn("Failed to load error logs from storage:", e);
+      this.errors = [];
+    }
+  }
+
+  private saveToStorage() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.errors));
+    } catch (e) {
+      console.warn("Failed to save error logs to storage:", e);
     }
   }
 
@@ -36,16 +59,19 @@ class ErrorManager {
       view: window.location.pathname
     }
     this.errors = [newError, ...this.errors].slice(0, 100)
+    this.saveToStorage()
     this.notify()
   }
 
   acknowledgeError(id: string) {
     this.errors = this.errors.map(e => e.id === id ? { ...e, acknowledged: true } : e)
+    this.saveToStorage()
     this.notify()
   }
 
   acknowledgeAll() {
     this.errors = this.errors.map(e => ({ ...e, acknowledged: true }))
+    this.saveToStorage()
     this.notify()
   }
 
@@ -55,6 +81,7 @@ class ErrorManager {
 
   clearErrors() {
     this.errors = []
+    this.saveToStorage()
     this.notify()
   }
 
