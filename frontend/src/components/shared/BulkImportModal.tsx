@@ -103,92 +103,92 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4 lg:p-12">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
         <motion.div 
-          initial={{ scale: 0.98, opacity: 0, y: 20 }} 
+          initial={{ scale: 0.98, opacity: 0, y: 10 }} 
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.98, opacity: 0, y: 20 }}
-          className="glass-panel w-full max-w-[95vw] h-[90vh] overflow-hidden flex flex-col p-6 lg:p-10 rounded-3xl border border-blue-500/30 shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+          exit={{ scale: 0.98, opacity: 0, y: 10 }}
+          className="glass-panel w-full max-w-6xl h-[85vh] overflow-hidden flex flex-col p-6 rounded-2xl border border-white/10 shadow-2xl bg-[#0f172a]/95"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 pb-8">
-            <div className="flex items-center space-x-6">
-               <div className="p-4 bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-2xl shadow-2xl shadow-blue-500/30">
-                  <Database size={32} />
+          <div className="flex items-center justify-between border-b border-white/5 pb-6">
+            <div className="flex items-center space-x-5">
+               <div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20">
+                  <Database size={24} />
                </div>
                <div>
-                  <h2 className="text-3xl font-black uppercase text-white tracking-tighter leading-none">
+                  <h2 className="text-xl font-bold uppercase text-white tracking-tight leading-none">
                     Data Ingestion <span className="text-blue-500">Pipeline</span>
                   </h2>
-                  <div className="flex items-center gap-4 mt-3">
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-[0.3em] flex items-center gap-2">
-                      <Layout size={12} className="text-blue-500" /> Target Matrix: <span className="text-white bg-blue-500/20 px-2 py-0.5 rounded">{displayName}</span>
+                  <div className="flex items-center gap-4 mt-2">
+                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1.5">
+                      <Layout size={10} className="text-blue-500" /> Matrix: <span className="text-white">{displayName}</span>
                     </p>
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-[0.3em] flex items-center gap-2">
-                      <Terminal size={12} className="text-blue-500" /> Table: <span className="text-white bg-white/5 px-2 py-0.5 rounded">{tableName}</span>
+                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1.5">
+                      <Terminal size={10} className="text-blue-500" /> Table: <span className="text-white">{tableName}</span>
                     </p>
                   </div>
                </div>
             </div>
             <button 
               onClick={onClose} 
-              className="text-slate-500 hover:text-rose-500 transition-all p-3 hover:bg-rose-500/10 rounded-xl"
+              className="text-slate-500 hover:text-rose-500 transition-all p-2 hover:bg-white/5 rounded-lg"
             >
-              <X size={32}/>
+              <X size={24}/>
             </button>
           </div>
 
           {/* Stepper */}
-          <div className="flex items-center justify-center gap-12 py-8 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-center gap-10 py-6 border-b border-white/5 bg-white/[0.01]">
              {[
-               { id: 'upload', icon: Upload, label: 'Source Setup' },
-               { id: 'audit', icon: Terminal, label: 'Neural Audit' },
-               { id: 'confirm', icon: Check, label: 'Final Ingestion' }
+               { id: 'upload', icon: Upload, label: 'Source' },
+               { id: 'audit', icon: Terminal, label: 'Audit' },
+               { id: 'confirm', icon: Check, label: 'Ingest' }
              ].map((s, i) => (
                <React.Fragment key={s.id}>
-                 <div className={`flex items-center gap-4 transition-all ${step === s.id ? 'text-blue-400 scale-110' : 'text-slate-600'}`}>
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all shadow-lg ${step === s.id ? 'border-blue-500 bg-blue-500/20 shadow-blue-500/20' : 'border-slate-800 bg-black/40'}`}>
-                       <s.icon size={20} />
+                 <div className={`flex items-center gap-3 transition-all ${step === s.id ? 'text-blue-400' : 'text-slate-600'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${step === s.id ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20'}`}>
+                       <s.icon size={16} />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em]">Step 0{i+1}</span>
-                      <span className="text-[11px] font-black uppercase tracking-widest">{s.label}</span>
+                      <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">Step 0{i+1}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">{s.label}</span>
                     </div>
                  </div>
-                 {i < 2 && <div className="h-px w-16 bg-gradient-to-r from-transparent via-slate-800 to-transparent" />}
+                 {i < 2 && <div className="h-px w-12 bg-white/5" />}
                </React.Fragment>
              ))}
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-black/20">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-black/20">
             {step === 'upload' && (
-              <div className="h-full flex flex-col space-y-10">
-                 <div className="flex flex-col items-center text-center space-y-6">
-                    <h3 className="text-2xl font-black uppercase text-white tracking-[0.2em]">Select Ingestion Method</h3>
+              <div className="h-full flex flex-col space-y-8">
+                 <div className="flex flex-col items-center text-center space-y-5">
+                    <h3 className="text-lg font-bold uppercase text-white tracking-widest">Ingestion Method</h3>
                     
-                    <div className="flex bg-black/40 p-2 rounded-2xl border border-white/5 w-full max-w-xl">
+                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 w-full max-w-lg">
                       <button 
                         onClick={() => setUploadMode('file')}
-                        className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${uploadMode === 'file' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'file' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                       >
-                        <FileUp size={16} /> File Upload
+                        <FileUp size={14} /> File Upload
                       </button>
                       <button 
                         onClick={() => setUploadMode('paste')}
-                        className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${uploadMode === 'paste' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'paste' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
                       >
-                        <Clipboard size={16} /> Clipboard Paste
+                        <Clipboard size={14} /> Clipboard
                       </button>
                     </div>
                  </div>
 
                  <div className="flex-1 flex items-center justify-center">
                     {uploadMode === 'file' ? (
-                      <div className="w-full max-w-2xl space-y-6">
+                      <div className="w-full max-w-xl space-y-5">
                         <label 
                           onClick={() => fileInputRef.current?.click()}
-                          className="relative block w-full aspect-[21/9] border-4 border-dashed border-white/10 rounded-[2rem] hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer group overflow-hidden"
+                          className="relative block w-full aspect-[21/9] border-2 border-dashed border-white/5 rounded-2xl hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer group"
                         >
                            <input 
                               type="file" 
@@ -197,35 +197,35 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                               accept=".csv,.xlsx,.xls" 
                               onChange={handleFileChange} 
                            />
-                           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6">
+                           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
                               {file ? (
                                  <motion.div 
-                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    initial={{ scale: 0.9, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
-                                    className="flex flex-col items-center gap-4"
+                                    className="flex flex-col items-center gap-3"
                                  >
-                                    <div className="p-6 bg-emerald-500/20 rounded-3xl border border-emerald-500/30">
-                                      <Check className="text-emerald-500" size={48} />
+                                    <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                                      <Check className="text-emerald-500" size={32} />
                                     </div>
                                     <div className="text-center">
-                                      <span className="text-xl font-black uppercase text-white block">{file.name}</span>
-                                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 block">{(file.size / 1024).toFixed(2)} KB • {file.type || 'Binary'}</span>
+                                      <span className="text-sm font-bold uppercase text-white block truncate max-w-[300px]">{file.name}</span>
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 block">{(file.size / 1024).toFixed(1)} KB • {file.type || 'Data'}</span>
                                     </div>
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                                      className="text-[10px] font-black text-rose-500 uppercase hover:underline"
+                                      className="text-[8px] font-bold text-rose-500 uppercase hover:underline"
                                     >
-                                      Remove File
+                                      Remove
                                     </button>
                                  </motion.div>
                               ) : (
                                  <>
-                                    <div className="p-6 bg-blue-500/10 rounded-3xl border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-                                      <Upload className="text-blue-500" size={48} />
+                                    <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 group-hover:scale-105 transition-transform">
+                                      <Upload className="text-blue-500" size={36} />
                                     </div>
-                                    <div className="text-center space-y-2">
-                                      <span className="text-lg font-black uppercase text-slate-400 group-hover:text-white transition-colors block">Click to browse file</span>
-                                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] block">Fast system explorer (XLSX, CSV)</span>
+                                    <div className="text-center space-y-1">
+                                      <span className="text-sm font-bold uppercase text-slate-400 group-hover:text-white transition-colors block">Browse Vector Source</span>
+                                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">XLSX, CSV (UTF-8)</span>
                                     </div>
                                  </>
                               )}
@@ -233,41 +233,41 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                         </label>
                       </div>
                     ) : (
-                      <div className="w-full h-full max-w-5xl flex flex-col space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                            <Copy size={12} /> Paste CSV Data Below (comma or tab separated)
+                      <div className="w-full h-full max-w-4xl flex flex-col space-y-3">
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                            <Copy size={12} /> Paste CSV Data
                           </span>
                           {pastedData && (
                             <button 
                               onClick={() => setPastedData("")}
-                              className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2 hover:bg-rose-500/10 px-3 py-1 rounded-lg transition-all"
+                              className="text-[9px] font-bold text-rose-500 uppercase flex items-center gap-1.5 hover:bg-rose-500/5 px-2 py-1 rounded-lg transition-all"
                             >
-                              <Trash2 size={12} /> Clear Data
+                              <Trash2 size={12} /> Clear
                             </button>
                           )}
                         </div>
                         <textarea 
                           value={pastedData}
                           onChange={(e) => setPastedData(e.target.value)}
-                          placeholder="Column 1, Column 2, Column 3..."
-                          className="flex-1 w-full bg-black/40 border-2 border-white/5 rounded-2xl p-6 font-mono text-sm text-blue-400 focus:border-blue-500/50 outline-none transition-all resize-none min-h-[300px]"
+                          placeholder="Hostname, IP, System..."
+                          className="flex-1 w-full bg-black/40 border border-white/5 rounded-xl p-5 font-mono text-[11px] text-blue-400 focus:border-blue-500/30 outline-none transition-all resize-none min-h-[260px]"
                         />
                       </div>
                     )}
                  </div>
 
-                 <div className="flex justify-center items-center gap-8 border-t border-white/5 pt-10">
+                 <div className="flex justify-center items-center gap-6 border-t border-white/5 pt-8">
                     <button 
                         onClick={handleDownloadTemplate}
-                        className="flex items-center gap-3 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all border border-white/10"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all border border-white/5"
                     >
-                        <Download size={16} className="text-blue-500" /> Download {tableName} Template
+                        <Download size={14} className="text-blue-500" /> Template
                     </button>
-                    <div className="flex items-center gap-3 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                      <Info size={16} className="text-amber-500" />
-                      <span className="text-[9px] font-black text-amber-500/80 uppercase tracking-widest">
-                        Data will be validated against server-side model constraints
+                    <div className="flex items-center gap-2.5 p-2.5 bg-amber-500/5 rounded-lg border border-amber-500/10">
+                      <Info size={14} className="text-amber-500" />
+                      <span className="text-[8px] font-bold text-amber-500/60 uppercase tracking-widest">
+                        Data validated against server-side model constraints
                       </span>
                     </div>
                  </div>
@@ -275,60 +275,60 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
             )}
 
             {step === 'audit' && auditResults && (
-              <div className="space-y-10">
-                 <div className="grid grid-cols-4 gap-6">
+              <div className="space-y-8">
+                 <div className="grid grid-cols-4 gap-4">
                     {[
-                      { label: 'Total Scanned', val: auditResults.total_rows, color: 'text-white', icon: Database, bg: 'bg-white/5' },
-                      { label: 'Neural Valid', val: auditResults.valid_rows, color: 'text-emerald-400', icon: Check, bg: 'bg-emerald-500/10' },
-                      { label: 'Logic Errors', val: auditResults.invalid_rows, color: 'text-rose-400', icon: X, bg: 'bg-rose-500/10' },
-                      { label: 'Constraint Violations', val: auditResults.total_errors, color: 'text-amber-500', icon: AlertCircle, bg: 'bg-amber-500/10' }
+                      { label: 'Scanned', val: auditResults.total_rows, color: 'text-white', icon: Database, bg: 'bg-white/5' },
+                      { label: 'Valid', val: auditResults.valid_rows, color: 'text-emerald-400', icon: Check, bg: 'bg-emerald-500/5' },
+                      { label: 'Logic Error', val: auditResults.invalid_rows, color: 'text-rose-400', icon: X, bg: 'bg-rose-500/5' },
+                      { label: 'Violations', val: auditResults.total_errors, color: 'text-amber-500', icon: AlertCircle, bg: 'bg-amber-500/5' }
                     ].map(s => (
-                      <div key={s.label} className={`p-6 ${s.bg} border border-white/5 rounded-2xl flex flex-col items-center gap-4 shadow-xl`}>
-                         <s.icon size={24} className={s.color} />
-                         <span className={`text-4xl font-black ${s.color}`}>{s.val}</span>
-                         <span className="text-[9px] font-black uppercase text-slate-500 tracking-[0.3em]">{s.label}</span>
+                      <div key={s.label} className={`p-5 ${s.bg} border border-white/5 rounded-xl flex flex-col items-center gap-2 shadow-lg`}>
+                         <s.icon size={20} className={s.color} />
+                         <span className={`text-2xl font-bold ${s.color}`}>{s.val}</span>
+                         <span className="text-[8px] font-bold uppercase text-slate-500 tracking-widest">{s.label}</span>
                       </div>
                     ))}
                  </div>
 
-                 <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-xs font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-3">
-                         <Terminal size={16} className="text-blue-500" /> Neural Audit Diagnostic Report
+                 <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                      <h4 className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                         <Terminal size={14} className="text-blue-500" /> Audit Findings
                       </h4>
-                      <span className="text-[9px] font-black text-slate-600 uppercase">Engine V4.2.0 • Real-time Validation</span>
+                      <span className="text-[8px] font-bold text-slate-600 uppercase">Engine V4.2.0</span>
                     </div>
 
-                    <div className="bg-black/60 border border-white/5 rounded-[2rem] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-                       <div className="max-h-[45vh] overflow-y-auto custom-scrollbar">
+                    <div className="bg-black/40 border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                       <div className="max-h-[40vh] overflow-y-auto custom-scrollbar">
                           <table className="w-full text-left border-collapse">
                              <thead className="sticky top-0 bg-[#0d0e12] z-10">
-                                <tr className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] border-b border-white/5">
-                                   <th className="p-6">Registry Index</th>
-                                   <th className="p-6">Health Status</th>
-                                   <th className="p-6">Diagnostic Findings</th>
+                                <tr className="text-[8px] font-bold uppercase text-slate-500 tracking-widest border-b border-white/5">
+                                   <th className="p-4">Index</th>
+                                   <th className="p-4 text-center">Health</th>
+                                   <th className="p-4">Findings</th>
                                 </tr>
                              </thead>
                              <tbody>
                                 {auditResults.results.map((r: any, i: number) => (
-                                   <tr key={i} className={`border-b border-white/5 hover:bg-white/[0.03] transition-colors ${r.status === 'INVALID' ? 'bg-rose-500/5' : ''}`}>
-                                      <td className="p-6 text-xs font-mono text-slate-500">#{r.row.toString().padStart(4, '0')}</td>
-                                      <td className="p-6">
-                                         <span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm ${r.status === 'VALID' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/20 text-rose-400 border border-rose-500/20'}`}>
+                                   <tr key={i} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${r.status === 'INVALID' ? 'bg-rose-500/5' : ''}`}>
+                                      <td className="p-4 text-[10px] font-mono text-slate-500">#{r.row.toString().padStart(4, '0')}</td>
+                                      <td className="p-4 text-center">
+                                         <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest ${r.status === 'VALID' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                                             {r.status}
                                          </span>
                                       </td>
-                                      <td className="p-6">
+                                      <td className="p-4">
                                          {r.status === 'VALID' ? (
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-2">
-                                              <Check size={12} className="text-emerald-500" /> Schema Compliant - Ready for Ingestion
+                                            <span className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                                              <Check size={10} className="text-emerald-500" /> Compliant
                                             </span>
                                          ) : (
-                                            <div className="flex flex-col gap-2">
+                                            <div className="flex flex-col gap-1">
                                                {r.errors.map((err: string, j: number) => (
-                                                  <div key={j} className="flex items-center gap-3 text-rose-400">
-                                                     <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
-                                                     <span className="text-[10px] font-black uppercase tracking-tight">{err}</span>
+                                                  <div key={j} className="flex items-center gap-2 text-rose-400">
+                                                     <div className="w-1 h-1 rounded-full bg-rose-500" />
+                                                     <span className="text-[9px] font-bold uppercase">{err}</span>
                                                   </div>
                                                ))}
                                             </div>
@@ -343,12 +343,12 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                  </div>
 
                  {invalidRows.length > 0 && (
-                    <div className="p-6 bg-amber-500/5 border border-amber-500/20 rounded-2xl flex items-start gap-6 animate-pulse">
-                       <AlertCircle size={32} className="text-amber-500 shrink-0" />
-                       <div className="space-y-2">
-                          <p className="text-sm font-black text-amber-500 uppercase tracking-widest">Partial Sync Intelligence</p>
-                          <p className="text-[10px] font-bold text-amber-500/60 uppercase leading-relaxed max-w-4xl">
-                             The engine detected {invalidRows.length} non-compliant records. If you proceed, only the neural-verified rows ({validRows.length}) will be committed to the master database. We recommend full correction for absolute data integrity.
+                    <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl flex items-start gap-4">
+                       <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                       <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Partial Sync Detected</p>
+                          <p className="text-[9px] font-bold text-amber-500/50 uppercase leading-normal">
+                             Detected {invalidRows.length} non-compliant records. Only the neural-verified rows ({validRows.length}) will be committed.
                           </p>
                        </div>
                     </div>
@@ -358,24 +358,24 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
           </div>
 
           {/* Footer Actions */}
-          <div className="border-t border-white/5 pt-8 flex justify-between items-center bg-white/[0.02] p-10 rounded-b-3xl">
+          <div className="border-t border-white/5 pt-6 flex justify-between items-center bg-white/[0.01] p-8 rounded-b-2xl">
              <button 
                 onClick={reset}
-                className="px-10 py-4 border border-white/10 text-slate-500 hover:text-white hover:bg-rose-500/10 hover:border-rose-500/20 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all flex items-center gap-3"
+                className="px-6 py-3 border border-white/5 text-slate-500 hover:text-white hover:bg-white/5 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all flex items-center gap-2"
              >
-                {step === 'upload' ? <X size={18} /> : <RefreshCcw size={18} />}
-                {step === 'upload' ? 'Abort Pipeline' : 'Restart Diagnostic'}
+                {step === 'upload' ? <X size={16} /> : <RefreshCcw size={16} />}
+                {step === 'upload' ? 'Abort' : 'Restart'}
              </button>
 
-             <div className="flex items-center gap-6">
+             <div className="flex items-center gap-4">
                 {step === 'upload' && (
                   <button 
                      onClick={() => auditMutation.mutate()}
                      disabled={(uploadMode === 'file' ? !file : !pastedData.trim()) || auditMutation.isPending}
-                     className="px-12 py-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale flex items-center gap-4"
+                     className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 transition-all disabled:opacity-30 flex items-center gap-3"
                   >
-                     {auditMutation.isPending ? <RefreshCcw className="animate-spin" size={20} /> : <Terminal size={20} />}
-                     Initiate Neural Audit
+                     {auditMutation.isPending ? <RefreshCcw className="animate-spin" size={16} /> : <Terminal size={16} />}
+                     Initiate Audit
                   </button>
                 )}
 
@@ -383,10 +383,10 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                    <button 
                       onClick={() => executeMutation.mutate(validRows.map(r => r.data))}
                       disabled={validRows.length === 0 || executeMutation.isPending}
-                      className="px-12 py-5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-2xl font-black uppercase text-[12px] tracking-[0.3em] shadow-2xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-30 flex items-center gap-4"
+                      className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-500/20 transition-all disabled:opacity-30 flex items-center gap-3"
                    >
-                      {executeMutation.isPending ? <RefreshCcw className="animate-spin" size={20} /> : <Database size={20} />}
-                      Commit {validRows.length} Neural Vectors
+                      {executeMutation.isPending ? <RefreshCcw className="animate-spin" size={16} /> : <Database size={16} />}
+                      Commit {validRows.length} Vectors
                    </button>
                 )}
              </div>
