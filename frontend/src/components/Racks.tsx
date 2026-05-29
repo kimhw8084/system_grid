@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
@@ -2251,6 +2252,7 @@ export default function Racks() {
   })
   const [isComparing, setIsComparing] = useState(false)
   const [diffBaseVersion, setDiffBaseVersion] = useState<number | null>(null)
+  const [diffTargetVersion, setDiffTargetVersion] = useState<number | null>(null)
   const [impactAssetId, setImpactAssetId] = useState<number | null>(null)
   const [impactCoords, setImpactCoords] = useState<{ x: number; y: number } | null>(null)
   const [showLabelGenerator, setShowLabelGenerator] = useState(false)
@@ -2340,9 +2342,15 @@ export default function Racks() {
     return filtered
   }, [racks, virtualRacks, isPlanInitialized, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab, focusedConnection, showOnlySandbox, sandboxRackIds])
 
-  const availableDevices = useMemo(() =>
-    devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned'),
-  [devices])
+  const availableDevices = useMemo(() => {
+    let list = devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned')
+    if (isPlanInitialized) {
+       const mounted = new Set()
+       virtualRacks.forEach(vr => vr.device_locations?.forEach((l: any) => mounted.add(String(l.device_id))))
+       list = list?.filter((d: any) => !mounted.has(String(d.id)))
+    }
+    return list
+  }, [devices, isPlanInitialized, virtualRacks])
 
   const getPlanDeviceLocation = useCallback((deviceId: number) => {
     for (const r of virtualRacks) {
@@ -2398,14 +2406,14 @@ export default function Racks() {
       // If in sandbox mode, update virtual state instead of API
       if (isPlanInitialized) {
         setVirtualRacks(prev => prev.map(r => {
-          if (r.id !== rackId) return r
-          // In planning mode, we allow same assets in multiple racks if desired
-          // only remove if it's already in the CURRENT rack at a different position
-          const newLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
-          
+          // Remove from ALL racks first to prevent duplicates/multi-mounting
+          const cleanedLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
+
+          if (r.id !== rackId) return { ...r, device_locations: cleanedLocs }
+
           // Also remove any existing devices in the target slots to prevent overlap in virtual state
           const targetUnits = Array.from({ length: payload.size_u }, (_, i) => payload.start_unit + i)
-          const finalLocs = newLocs.filter((l: any) => {
+          const finalLocs = cleanedLocs.filter((l: any) => {
             const locUnits = Array.from({ length: l.size_u }, (_, i) => l.start_unit + i)
             return !locUnits.some(u => targetUnits.includes(u))
           })
@@ -2729,7 +2737,7 @@ export default function Racks() {
                  </p>
               </div>
            </div>
-           <button onClick={() => setDiffBaseVersion(null)} className="px-8 py-2 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+           <button onClick={() => { setDiffBaseVersion(null); setDiffTargetVersion(null); }} className="px-8 py-2 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
               Exit Time Machine
            </button>
         </motion.div>
@@ -3026,22 +3034,29 @@ export default function Racks() {
                   {racksToRender.map((r: any) => {
                     const liveRack = activeRacks.find((ar: any) => ar.id === r.id)
                     const historicalRack = diffBaseVersion 
-                      ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - 1)) }
+                      ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - (diffBaseVersion % 3 + 1))) }
                       : null
+                    const secondRack = diffTargetVersion
+                      ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - (diffTargetVersion % 3 + 1))) }
+                      : r
                     
                         if (isDiffActive) {
-                          const snapshotInfo = snapshots.find(s => s.id === diffBaseVersion)
-                          const snapshotDate = snapshotInfo ? snapshotInfo.date : (isPlanInitialized ? planDraftName : 'PROPOSED')
+                          const snapshotInfoBase = snapshots.find(s => s.id === diffBaseVersion)
+                          const snapshotInfoTarget = diffTargetVersion ? snapshots.find(s => s.id === diffTargetVersion) : null
+                          
+                          const baseLabel = diffTargetVersion ? (snapshotInfoBase?.date || 'V1') : 'CURRENT'
+                          const targetLabel = diffTargetVersion ? (snapshotInfoTarget?.date || 'V2') : (snapshotInfoBase ? snapshotInfoBase.date : (isPlanInitialized ? planDraftName : 'PROPOSED'))
+
                           return (
                             <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 scale-100 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">CURRENT</span>
+                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">{baseLabel}</span>
                                     <div className="w-10 h-10 bg-[#034EA2] rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl z-10 -mx-2">
                                        <ArrowRightLeft size={16} className="text-white" />
                                     </div>
                                     <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-r-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
-                                       {snapshotDate}
+                                       {targetLabel}
                                     </span>
                                   </div>
                                </div>
@@ -3066,7 +3081,7 @@ export default function Racks() {
                                
                                <div className="flex flex-col gap-3 h-full min-w-0 pt-4">
                                   <RackElevation
-                                    rack={r}
+                                    rack={diffTargetVersion ? secondRack : r}
                                     searchTerm={searchTerm}
                                     isSelected={false}
                                     showCheckbox={false}
@@ -3233,16 +3248,16 @@ export default function Racks() {
       )}
 
       {isComparing && (
-        <InfrastructureHistory 
+        <InfrastructureHistory
           onClose={() => setIsComparing(false)}
           onExecuteDiff={(versions) => {
             setDiffBaseVersion(versions[0])
+            setDiffTargetVersion(versions.length > 1 ? versions[1] : null)
             toast.success(`Visual Diff Engine Active: Comparing ${versions.length} versions`)
             setIsComparing(false)
           }}
         />
       )}
-
       {showPlanList && (
        <PlanListModal 
           plans={plans}
@@ -3376,6 +3391,15 @@ export default function Racks() {
           }}
           onDelete={() => {
             if (!optionsMenu.device) return
+            if (isPlanInitialized) {
+              setVirtualRacks(prev => prev.map(vr => ({
+                ...vr,
+                device_locations: (vr.device_locations || []).filter((l: any) => l.device_id !== optionsMenu.device.id)
+              })))
+              setOptionsMenu(null)
+              toast.success('Asset removed from plan')
+              return
+            }
             openConfirm('Unmount Device', `Unmount ${optionsMenu.device.name}?`, async () => {
               await apiFetch(`/api/v1/racks/mount/${optionsMenu.device.id}`, { method: 'DELETE' })
               queryClient.invalidateQueries({ queryKey: ['racks-all'] })
