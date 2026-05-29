@@ -2826,14 +2826,14 @@ export default function Racks() {
             <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Racks</h1>
             <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
           </div>
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] h-10 items-center">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] h-9 items-center">
             <button
               onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
-              className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-5 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >Active</button>
             <button
               onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }}
-              className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-5 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >Purged</button>
           </div>
         </div>
@@ -2841,7 +2841,7 @@ export default function Racks() {
         <div className="flex items-center gap-3 flex-wrap">
           {/* Width slider */}
           {viewMode === 'elevation' && (
-            <div className="flex items-center gap-2 bg-white/5 px-3 h-10 rounded-lg border border-white/[0.06]">
+            <div className="flex items-center gap-2 bg-white/5 px-3 h-9 rounded-lg border border-white/[0.06]">
               <Layers size={11} className="text-slate-500" />
               <input 
                 type="range" min={160} max={400} value={rackWidth}
@@ -2853,7 +2853,7 @@ export default function Racks() {
           )}
 
           {/* View Mode Toggle */}
-          <div className="flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center">
+          <div className="flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center">
             <button onClick={() => setViewMode('elevation')}
               className={`p-1.5 h-full aspect-square flex items-center justify-center rounded-lg transition-all ${viewMode === 'elevation' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Elevation View">
               <Layers size={14} />
@@ -2865,7 +2865,7 @@ export default function Racks() {
           </div>
 
           {/* Intelligence Overlays */}
-          <div className={`flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+          <div className={`flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
             <button onClick={() => setIsComparing(true)}
               className="px-3 h-full rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-all flex items-center justify-center" title="Time Machine / Diff">
               <History size={14} />
@@ -2877,15 +2877,15 @@ export default function Racks() {
           </div>
 
           {/* Site View / Compare */}
-          <div className={`flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+          <div className={`flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
             {viewMode === 'elevation' && (
               <>
                 <button onClick={() => setShowCompareOnly(false)}
-                  className={`px-3 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                   All
                 </button>
                 <button onClick={() => setShowCompareOnly(true)}
-                  className={`px-3 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
                   Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
                 </button>
               </>
@@ -2893,7 +2893,7 @@ export default function Racks() {
           </div>
 
           {/* Search */}
-          <div className="relative h-10">
+          <div className="relative h-9">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
             <input
               value={searchTerm}
@@ -3402,7 +3402,7 @@ export default function Racks() {
             if (isPlanInitialized) {
               setVirtualRacks(prev => prev.map(r => ({
                 ...r,
-                device_locations: (r.device_locations || []).filter((l: any) => l.device_id !== deviceId)
+                device_locations: (r.device_locations || []).filter((l: any) => String(l.device_id) !== String(deviceId))
               })))
               setManagingDevice(null)
               toast.success('Asset unmounted virtually')
@@ -3470,7 +3470,7 @@ export default function Racks() {
             if (isPlanInitialized) {
               setVirtualRacks(prev => prev.map(vr => ({
                 ...vr,
-                device_locations: (vr.device_locations || []).filter((l: any) => l.device_id !== optionsMenu.device.id)
+                device_locations: (vr.device_locations || []).filter((l: any) => String(l.device_id) !== String(optionsMenu.device.id))
               })))
               setOptionsMenu(null)
               toast.success('Asset removed from plan')
@@ -4028,5 +4028,8 @@ export default function Racks() {
            displayName="Datacenter Racks" 
         />
     </div>
+  )
+}
+   </div>
   )
 }

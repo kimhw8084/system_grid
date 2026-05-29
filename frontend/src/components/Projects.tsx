@@ -1717,36 +1717,61 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
   )
 }
 
-const ProcessNode = ({ data }: any) => (
-  <div className="px-6 py-3 shadow-2xl rounded-xl bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[140px] flex items-center justify-center relative overflow-hidden group">
-     <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-     <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{data.label}</span>
-     <Handle type="target" position={Position.Top} className="w-2 h-2 bg-blue-500 border-none" />
-     <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-blue-500 border-none" />
-  </div>
-)
+const ProcessNode = ({ id, data }: any) => {
+  const { setNodes } = useReactFlow();
+  return (
+    <div className="px-6 py-3 shadow-2xl rounded-xl bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[140px] flex items-center justify-center relative overflow-hidden group">
+       <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+       <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{data.label}</span>
+       <button 
+         onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
+         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+       >
+         <X size={10} strokeWidth={3} />
+       </button>
+       <Handle type="target" position={Position.Top} className="w-2 h-2 bg-blue-500 border-none" />
+       <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-blue-500 border-none" />
+    </div>
+  )
+}
 
-const DiamondNode = ({ data }: any) => (
-  <div className="w-24 h-24 rotate-45 bg-[#0a0c14] border-2 border-amber-500/50 flex items-center justify-center relative group overflow-hidden shadow-2xl">
-     <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-     <span className="-rotate-45 text-[9px] font-black uppercase tracking-tighter text-amber-400 text-center px-2">{data.label}</span>
-     <Handle type="target" position={Position.Top} className="w-2 h-2 bg-amber-500 border-none !top-[-4px] !left-1/2 !-translate-x-1/2" />
-     <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-amber-500 border-none !bottom-[-4px] !left-1/2 !-translate-x-1/2" />
-     <Handle type="source" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-4px] !top-1/2 !-translate-y-1/2" />
-     <Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-4px] !top-1/2 !-translate-y-1/2" />
-  </div>
-)
+const DiamondNode = ({ id, data }: any) => {
+  const { setNodes } = useReactFlow();
+  return (
+    <div className="w-24 h-24 rotate-45 bg-[#0a0c14] border-2 border-amber-500/50 flex items-center justify-center relative group overflow-hidden shadow-2xl">
+       <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+       <span className="-rotate-45 text-[9px] font-black uppercase tracking-tighter text-amber-400 text-center px-2">{data.label}</span>
+       <button 
+         onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
+         className="absolute top-2 right-2 w-5 h-5 -rotate-45 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+       >
+         <X size={10} strokeWidth={3} />
+       </button>
+       <Handle type="target" position={Position.Top} className="w-2 h-2 bg-amber-500 border-none !top-[-4px] !left-1/2 !-translate-x-1/2" />
+       <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-amber-500 border-none !bottom-[-4px] !left-1/2 !-translate-x-1/2" />
+       <Handle type="source" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-4px] !top-1/2 !-translate-y-1/2" />
+       <Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-4px] !top-1/2 !-translate-y-1/2" />
+    </div>
+  )
+}
 
-const InfrastructureNode = ({ data, type }: any) => {
+const InfrastructureNode = ({ id, data, type }: any) => {
+  const { setNodes } = useReactFlow();
   const Icon = type === 'db' ? Database : type === 'cloud' ? Globe : type === 'storage' ? Layers : Server
   const color = type === 'db' ? 'emerald' : type === 'cloud' ? 'sky' : type === 'storage' ? 'purple' : 'slate'
   
   return (
-    <div className={`px-4 py-3 rounded-2xl bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[120px] flex flex-col items-center gap-2 shadow-2xl group transition-all hover:border-${color}-500`}>
+    <div className={`px-4 py-3 rounded-2xl bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[120px] flex flex-col items-center gap-2 shadow-2xl group transition-all hover:border-${color}-500 relative`}>
        <div className={`w-10 h-10 bg-${color}-600/10 rounded-xl flex items-center justify-center border border-${color}-500/20 group-hover:scale-110 transition-transform`}>
           <Icon size={20} className={`text-${color}-400`} />
        </div>
        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{data.label}</span>
+       <button 
+         onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
+         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+       >
+         <X size={10} strokeWidth={3} />
+       </button>
        <Handle type="target" position={Position.Top} className={`w-2 h-2 bg-${color}-500 border-none`} />
        <Handle type="source" position={Position.Bottom} className={`w-2 h-2 bg-${color}-500 border-none`} />
     </div>
