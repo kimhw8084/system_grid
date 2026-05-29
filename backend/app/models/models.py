@@ -54,6 +54,14 @@ class Rack(Base, BaseMixin):
     room = relationship("Room", back_populates="racks")
     device_locations = relationship("DeviceLocation", back_populates="rack", cascade="all, delete-orphan")
 
+class InfrastructurePlan(Base, BaseMixin):
+    __tablename__ = "infrastructure_plans"
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    racks_config = Column(JSON) # List of sandboxRackIds
+    virtual_racks_data = Column(JSON) # virtualRacks data (JSON serialized)
+    plan_date = Column(DateTime(timezone=True), server_default=func.now())
+
 class Device(Base, BaseMixin):
     __tablename__ = "devices"
     name = Column(String, index=True) # Hostname (Removed unique)

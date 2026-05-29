@@ -8,6 +8,31 @@ from typing import List, Optional
 
 router = APIRouter(prefix="/racks", tags=["Racks"])
 
+@router.get("/plans")
+async def get_plans(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.InfrastructurePlan).order_by(models.InfrastructurePlan.created_at.desc()))
+    plans = result.scalars().all()
+    return plans
+
+@router.post("/plans")
+async def save_plan(data: dict, db: AsyncSession = Depends(get_db)):
+    plan = models.InfrastructurePlan(
+        name=data.get("name"),
+        description=data.get("description"),
+        racks_config=data.get("racks"),
+        virtual_racks_data=data.get("racksData")
+    )
+    db.add(plan)
+    await db.commit()
+    await db.refresh(plan)
+    return plan
+
+@router.delete("/plans/{plan_id}")
+async def delete_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(models.InfrastructurePlan).filter(models.InfrastructurePlan.id == plan_id))
+    await db.commit()
+    return {"status": "deleted"}
+
 @router.get("")
 async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     if site_id == "missing":

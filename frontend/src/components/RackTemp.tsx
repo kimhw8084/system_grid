@@ -726,6 +726,14 @@ const RackElevation = ({
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.size_u || 1), 0),
   [rack.device_locations])
 
+  const serverCount = useMemo(() =>
+    (rack.device_locations || []).filter((l: any) => l.device?.type?.toLowerCase() === 'server' || l.device?.type?.toLowerCase() === 'physical').length,
+  [rack.device_locations])
+
+  const reservedCount = useMemo(() =>
+    (rack.device_locations || []).filter((l: any) => l.device?.status?.toLowerCase() === 'reserved').length,
+  [rack.device_locations])
+
   const estimatedPowerKw = useMemo(() =>
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + ((l.device?.power_typical_w || 0) / 1000), 0),
   [rack.device_locations])
@@ -848,6 +856,20 @@ const RackElevation = ({
 
         {/* Capacity bars */}
         <div className="space-y-1.5 px-0.5">
+          <div className="flex items-center justify-between mb-0.5 px-0.5">
+             <div className="flex gap-2">
+                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                   <Server size={8} /> {serverCount} SRV
+                </span>
+                <span className="text-[7px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-1">
+                   <Package size={8} /> {reservedCount} RES
+                </span>
+             </div>
+             <div className="flex gap-2">
+                <span className={`text-[7px] font-black uppercase ${isFillOver ? 'text-rose-500' : 'text-slate-500'}`}>{Math.round((occupiedU/totalU)*100)}% SLOT</span>
+                <span className={`text-[7px] font-black uppercase ${isPowerOver ? 'text-rose-500' : 'text-slate-500'}`}>{Math.round((estimatedPowerKw/effectivePowerCapKw)*100)}% PWR</span>
+             </div>
+          </div>
           <MiniBar value={occupiedU} max={totalU} colorFn={fillColor} label="Fill" unit="U" />
           <MiniBar value={estimatedPowerKw} max={effectivePowerCapKw} colorFn={powerColor} label="Power" unit="kW" />
         </div>
@@ -1343,7 +1365,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
   </motion.div>
 )
 
-const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan }: { plans: any[], onClose: () => void, onLoadPlan: (p: any) => void, onAddPlan: (type: 'blank' | 'asis') => void }) => (
+const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: { plans: any[], onClose: () => void, onLoadPlan: (p: any) => void, onAddPlan: (type: 'blank' | 'asis') => void, onDeletePlan: (id: number) => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md">
      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-8">
         <div className="flex justify-between items-start">
@@ -1407,9 +1429,17 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan }: { plans: any[]
                         <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{p.racks.length} Racks • {p.date}</p>
                      </div>
                   </div>
-                  <button onClick={() => onLoadPlan(p)} className="px-6 py-2.5 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all">
-                     Load Matrix
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => onLoadPlan(p)} className="px-6 py-2.5 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all">
+                       Load Matrix
+                    </button>
+                    <button 
+                      onClick={() => onDeletePlan(p.id)}
+                      className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                       <Trash2 size={16} />
+                    </button>
+                  </div>
                </div>
              ))
            )}
@@ -1867,65 +1897,78 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
 // ─── Spatial Map (Top View) ───────────────────────────────────────────────────
 
 const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackClick: (rack: any) => void; siteColor?: string }) => {
-  // Group racks by Aisle and Row
-  const aisles = useMemo(() => {
-    const data: Record<string, Record<string, any[]>> = {}
+  // Group racks by Site, then Aisle and Row
+  const siteGroups = useMemo(() => {
+    const data: Record<string, Record<string, Record<string, any[]>>> = {}
     racks.forEach(r => {
-      const aisle = r.aisle || 'Unknown'
+      const siteName = r.site_name || 'Unassigned Site'
+      const aisle = r.aisle || 'General'
       const row = r.row || '0'
-      if (!data[aisle]) data[aisle] = {}
-      if (!data[aisle][row]) data[aisle][row] = []
-      data[aisle][row].push(r)
+      if (!data[siteName]) data[siteName] = {}
+      if (!data[siteName][aisle]) data[siteName][aisle] = {}
+      if (!data[siteName][aisle][row]) data[siteName][aisle][row] = []
+      data[siteName][aisle][row].push(r)
     })
     return data
   }, [racks])
 
   return (
     <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-xl border border-white/5 relative">
-      <div className="flex flex-col gap-12">
-        {Object.entries(aisles).sort().map(([aisleName, rows]) => (
-          <div key={aisleName} className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="h-px flex-1 bg-white/5" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName}</span>
-              <div className="h-px flex-1 bg-white/5" />
-            </div>
-            <div className="flex flex-col gap-6">
-              {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rackList]) => (
-                <div key={rowNum} className="flex flex-wrap gap-4 justify-center">
-                  {rackList.map(rack => {
-                    const occupiedU = (rack.device_locations || []).reduce((a: number, l: any) => a + (l.size_u || 1), 0)
-                    const totalU = rack.total_u || 42
-                    const fillPct = Math.round((occupiedU / totalU) * 100)
-                    const isOver = fillPct >= 95
+      <div className="flex flex-col gap-16">
+        {Object.entries(siteGroups).sort().map(([siteName, aisles]) => (
+          <div key={siteName} className="space-y-10">
+             <div className="flex items-center gap-6">
+                <h2 className="text-xl font-black text-white uppercase tracking-[0.3em] shrink-0">{siteName}</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
+             </div>
+             
+             <div className="flex flex-col gap-12 pl-4">
+                {Object.entries(aisles).sort().map(([aisleName, rows]) => (
+                  <div key={aisleName} className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-px w-8 bg-white/10" />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName !== 'General' ? `AISLE ${aisleName}` : 'GENERAL SPACE'}</span>
+                      <div className="h-px flex-1 bg-white/5" />
+                    </div>
+                    <div className="flex flex-col gap-6">
+                      {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rackList]) => (
+                        <div key={rowNum} className="flex flex-wrap gap-4 justify-start">
+                          {rackList.map(rack => {
+                            const occupiedU = (rack.device_locations || []).reduce((a: number, l: any) => a + (l.size_u || 1), 0)
+                            const totalU = rack.total_u || 42
+                            const fillPct = Math.round((occupiedU / totalU) * 100)
+                            const isOver = fillPct >= 95
 
-                    return (
-                      <motion.div
-                        key={rack.id}
-                        whileHover={{ scale: 1.05, y: -4 }}
-                        onClick={() => onRackClick(rack)}
-                        className={`w-32 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative overflow-hidden group
-                          ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
-                        `}
-                      >
-                        <div className="absolute top-0 inset-x-0 h-1 transition-all" style={{ backgroundColor: rack.site_color || siteColor || '#3b82f6' }} />
-                        <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
-                            <div className={`h-full ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
-                          </div>
-                          <span className="text-[8px] font-bold text-slate-500 tabular-nums">{fillPct}%</span>
+                            return (
+                              <motion.div
+                                key={rack.id}
+                                whileHover={{ scale: 1.05, y: -4 }}
+                                onClick={() => onRackClick(rack)}
+                                className={`w-32 h-20 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative overflow-hidden group
+                                  ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
+                                `}
+                              >
+                                <div className="absolute top-0 inset-x-0 h-1 transition-all" style={{ backgroundColor: rack.site_color || siteColor || '#3b82f6' }} />
+                                <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                                    <div className={`h-full ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
+                                  </div>
+                                  <span className="text-[8px] font-bold text-slate-500 tabular-nums">{fillPct}%</span>
+                                </div>
+                                {isOver && <div className="absolute inset-0 bg-rose-500/5 animate-pulse" />}
+                                <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <ExternalLink size={10} className="text-blue-400" />
+                                </div>
+                              </motion.div>
+                            )
+                          })}
                         </div>
-                        {isOver && <div className="absolute inset-0 bg-rose-500/5 animate-pulse" />}
-                        <div className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <ExternalLink size={10} className="text-blue-400" />
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+             </div>
           </div>
         ))}
       </div>
@@ -1957,7 +2000,42 @@ export default function RackTemp() {
   const [showOnlySandbox, setShowOnlySandbox] = useState(false)
   const [showPlanList, setShowPlanList] = useState(false)
   const [isCreatingPlan, setIsCreatingPlan] = useState<'blank' | 'asis' | null>(null)
-  const [plans, setPlans] = useState<any[]>([])
+  const { data: plansData, refetch: refetchPlans } = useQuery({ 
+    queryKey: ['infra-plans'], 
+    queryFn: async () => (await (await apiFetch('/api/v1/racks/plans')).json()) 
+  })
+  const plans = useMemo(() => {
+    return (plansData || []).map((p: any) => ({
+      ...p,
+      racks: p.racks_config,
+      racksData: typeof p.virtual_racks_data === 'string' ? JSON.parse(p.virtual_racks_data) : p.virtual_racks_data,
+      date: new Date(p.plan_date).toLocaleString()
+    }))
+  }, [plansData])
+
+  const savePlanMutation = useMutation({
+    mutationFn: async (plan: any) => {
+      const res = await apiFetch('/api/v1/racks/plans', {
+        method: 'POST',
+        body: JSON.stringify(plan)
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      refetchPlans()
+      toast.success("Plan saved to archive")
+    }
+  })
+
+  const deletePlanMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiFetch(`/api/v1/racks/plans/${id}`, { method: 'DELETE' })
+    },
+    onSuccess: () => {
+      refetchPlans()
+      toast.success("Plan removed from archive")
+    }
+  })
   const [isComparing, setIsComparing] = useState(false)
   const [diffBaseVersion, setDiffBaseVersion] = useState<number | null>(null)
   const [impactAssetId, setImpactAssetId] = useState<number | null>(null)
@@ -2052,6 +2130,14 @@ export default function RackTemp() {
   const availableDevices = useMemo(() =>
     devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned'),
   [devices])
+
+  const getPlanDeviceLocation = useCallback((deviceId: number) => {
+    for (const r of virtualRacks) {
+      const loc = r.device_locations?.find((l: any) => l.device_id === deviceId)
+      if (loc) return { rackName: r.name, uStart: loc.start_unit }
+    }
+    return null
+  }, [virtualRacks])
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
@@ -2360,23 +2446,23 @@ export default function RackTemp() {
            }}
            onSave={() => {
               if (activePlanId) {
-                setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, racksData: virtualRacks, date: new Date().toLocaleString() } : p))
-                toast.success("Plan updated successfully")
+                // For now, let's just save a new one or we could add a PUT endpoint
+                savePlanMutation.mutate({
+                  name: `Plan ${plans.length + 1} (Updated)`,
+                  racks: sandboxRackIds,
+                  racksData: virtualRacks
+                })
               } else {
-                const newPlanId = Date.now()
-                setPlans(prev => [...prev, { 
-                  id: newPlanId, 
-                  name: `Plan ${prev.length + 1}`, 
-                  racks: sandboxRackIds, 
-                  racksData: JSON.parse(JSON.stringify(virtualRacks)), 
-                  date: new Date().toLocaleString() 
-                }])
-                setActivePlanId(newPlanId)
-                toast.success("New plan saved to archive")
+                savePlanMutation.mutate({
+                  name: `Plan ${plans.length + 1}`,
+                  racks: sandboxRackIds,
+                  racksData: virtualRacks
+                })
               }
            }}
+
            onProceed={() => {
-              const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : []
+              const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : (activeRacks || [])
 
               const virtualized = siteRacks.map((r: any) => {
                 if (selectedRacks.includes(r.id)) {
@@ -2394,8 +2480,9 @@ export default function RackTemp() {
               setSelectedRacks([])
               setShowOnlySandbox(false)
               setIsCreatingPlan(null)
-              toast.success("Imported Live Racks into Plan Matrix")
-           }}           selectedCount={selectedRacks.length}
+              toast.success(`Imported ${selectedRacks.length} Live Racks into Plan Matrix`)
+           }}
+           selectedCount={selectedRacks.length}
            isInitialized={isPlanInitialized}
            showOnlySandbox={showOnlySandbox}
            onToggleShowOnly={setShowOnlySandbox}
@@ -2703,10 +2790,11 @@ export default function RackTemp() {
                       : null
                     
                         if (isDiffActive) {
-                          const snapshotDate = snapshots.find(s => s.id === diffBaseVersion)?.date || 'Snapshot'
+                          const snapshotInfo = snapshots.find(s => s.id === diffBaseVersion)
+                          const snapshotDate = snapshotInfo ? snapshotInfo.date : 'Snapshot'
                           return (
-                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
-                               <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-4 z-30">
+                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full overflow-hidden">
+                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-4 z-30 scale-90 whitespace-nowrap">
                                   <span className="px-5 py-1.5 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
                                   <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1">
                                      <ArrowRightLeft size={16} className="text-white" />
@@ -2797,7 +2885,8 @@ export default function RackTemp() {
             // Group by Aisle/Row
             const groups: Record<string, any[]> = {}
             racksToRender.forEach(r => {
-              const key = r.aisle ? `AISLE ${r.aisle}` : 'UNGROUPED'
+              const siteName = r.site_name || 'UNASSIGNED SITE'
+              const key = r.aisle ? `${siteName} · AISLE ${r.aisle}` : siteName
               if (!groups[key]) groups[key] = []
               groups[key].push(r)
             })
@@ -2916,8 +3005,9 @@ export default function RackTemp() {
        <PlanListModal 
           plans={plans}
           onClose={() => setShowPlanList(false)}
+          onDeletePlan={(id) => deletePlanMutation.mutate(id)}
           onAddPlan={(type) => {
-             const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : []
+             const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : (activeRacks || [])
              
              if (type === 'blank') {
                 setVirtualRacks(siteRacks.map((r: any) => ({ ...r, device_locations: [] })))
@@ -2927,7 +3017,7 @@ export default function RackTemp() {
                 setShowPlanList(false)
                 setIsCreatingPlan(null)
                 setShowOnlySandbox(false)
-                toast.success("Initialized Blank Site Plan")
+                toast.success(`Initialized Blank Site Plan (${siteRacks.length} Racks)`)
              } else {
                 setIsCreatingPlan(type)
                 setIsPlanMode(true)
@@ -3171,7 +3261,9 @@ export default function RackTemp() {
                       return d.name.toLowerCase().includes(term) || d.type.toLowerCase().includes(term) || d.system?.toLowerCase().includes(term)
                     }).map((d: any) => {
                       const isSelected = String(d.id) === String(isProvisioning.device_id)
-                      const locInfo = d.rack_name ? ` @ ${d.rack_name} U${d.u_start}` : ''
+                      const planLoc = isPlanInitialized ? getPlanDeviceLocation(d.id) : null
+                      const locInfo = planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : (d.rack_name ? `@ ${d.rack_name} U${d.u_start}` : '')
+                      
                       return (
                         <button
                           key={d.id}
@@ -3180,7 +3272,10 @@ export default function RackTemp() {
                         >
                           <div className="min-w-0">
                             <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'group-hover:text-blue-400'}`}>{d.name}</p>
-                            <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>{d.type} · {d.system || 'N/A'}{locInfo && <span className="ml-1 text-rose-400/80">[{locInfo}]</span>}</p>
+                            <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>
+                              {d.type} · {d.system || 'N/A'}
+                              {locInfo && <span className={`ml-1 ${isSelected ? 'text-blue-100' : (planLoc ? 'text-emerald-400' : 'text-rose-400/80')}`}>[{locInfo}]</span>}
+                            </p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-4">
                             <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{d.size_u || 1}U</span>
