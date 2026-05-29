@@ -4,7 +4,7 @@ import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Package, BarChart3, ExternalLink, Settings,
-  Network, HardDrive, TrendingUp, Layers, List, Upload
+  Network, HardDrive, TrendingUp, Layers, List, Upload, Tag, History, Clipboard, Eye, EyeOff, Activity, Terminal
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -449,29 +449,41 @@ interface RackUnitProps {
   isDeleted: boolean
   isFocused?: boolean
   isConnected?: boolean
+  diffMode?: boolean
+  liveLoc?: any
 }
 
-const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage, isDeleted, isFocused, isConnected }: RackUnitProps) => {
+const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage, isDeleted, isFocused, isConnected, diffMode, liveLoc }: RackUnitProps) => {
   const device = loc?.device
   const isReservation = device?.is_reservation
   const statusCfg = device ? getStatusCfg(device.status, isReservation) : null
   const typeCfg = device ? getTypeCfg(device.type) : null
+
+  const isDiff = diffMode && (
+    (loc?.device_id !== liveLoc?.device_id) || 
+    (loc?.orientation !== liveLoc?.orientation) ||
+    (loc?.size_u !== liveLoc?.size_u)
+  )
 
   const bgBase = device
     ? isFocused
       ? 'bg-blue-500/40 border-blue-400/50'
       : isConnected
         ? 'bg-emerald-500/30 border-emerald-400/40'
-        : highlight
-          ? 'animate-pulse bg-amber-500/20 border-amber-500/50 z-10'
-          : isReservation
-            ? 'bg-violet-500/20 border-violet-500/30'
-            : device.status === 'Maintenance'
-              ? 'bg-amber-500/15'
-              : (device.status === 'Decommissioned' || device.status === 'Deleted')
-                ? 'bg-rose-500/15'
-                : 'bg-blue-600/30'
-    : 'hover:bg-white/[0.04]'
+        : isDiff
+          ? 'bg-amber-500/40 border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.3)] animate-pulse z-10'
+          : highlight
+            ? 'animate-pulse bg-amber-500/20 border-amber-500/50 z-10'
+            : isReservation
+              ? 'bg-violet-500/20 border-violet-500/30'
+              : device.status === 'Maintenance'
+                ? 'bg-amber-500/15'
+                : (device.status === 'Decommissioned' || device.status === 'Deleted')
+                  ? 'bg-rose-500/15'
+                  : 'bg-blue-600/30'
+    : isDiff && liveLoc
+      ? 'bg-rose-500/20 border-rose-500/40 border-dashed animate-pulse'
+      : 'hover:bg-white/[0.04]'
 
   const borderClass = device
     ? `${isTop ? 'border-t border-white/10' : ''} ${isBottom ? 'border-b border-black/40' : 'border-b border-white/[0.03]'}`
@@ -509,6 +521,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
               <div className="flex flex-col min-w-0">
                 <span className={`text-[9px] font-black truncate uppercase tracking-tight leading-none ${highlight || isFocused || isConnected ? 'text-white' : 'text-slate-100'}`}>
                   {device.name}
+                  {isDiff && <span className="ml-2 text-amber-400 text-[7px] font-black uppercase tracking-widest">[Diff Change]</span>}
                 </span>
                 {isReservation && device.reservation_info?.poc && (
                   <span className="text-[6px] text-violet-400 font-black uppercase tracking-widest mt-0.5 truncate">
@@ -531,7 +544,15 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
           </div>
         )}
 
-        {!device && (
+        {!device && isDiff && liveLoc && (
+           <div className="absolute inset-0 flex items-center pl-10">
+              <span className="text-[7px] text-rose-400 font-black uppercase tracking-widest flex items-center gap-1">
+                 <Trash2 size={8}/> Removed from Live
+              </span>
+           </div>
+        )}
+
+        {!device && !isDiff && (
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center pl-10 pointer-events-none">
             <Plus size={8} className="text-blue-500/70 mr-1" />
             <span className="text-[7px] text-blue-500/60 font-bold uppercase tracking-widest">Mount / Reserve</span>
@@ -658,12 +679,15 @@ interface RackElevationProps {
   rackWidth: number
   focusedDeviceId?: number | null
   connectedDeviceIds?: number[]
+  diffMode?: boolean
+  liveRack?: any
+  showCheckbox?: boolean
 }
 
 const RackElevation = ({
   rack, onDelete, onEdit, onMove, onShowInfo, searchTerm, onMount, onManageDevice,
   isSelected, onToggleSelect, onRestore, isDeleted, rackWidth,
-  focusedDeviceId, connectedDeviceIds
+  focusedDeviceId, connectedDeviceIds, diffMode, liveRack, showCheckbox = true
 }: RackElevationProps) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const totalU = rack.total_u || 42
@@ -705,16 +729,18 @@ const RackElevation = ({
       <RackStatusBar rack={rack} siteColor={rack.site_color} />
 
       {/* Checkbox */}
-      <div className="absolute top-4 left-4 z-20" onClick={e => e.stopPropagation()}>
-        <div
-          onClick={() => onToggleSelect(rack.id)}
-          className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-all ${
-            isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-sm shadow-blue-500/50' : 'border-white/20 bg-black/30 hover:border-blue-400'
-          }`}
-        >
-          {isSelected && <Check size={10} strokeWidth={3.5} />}
+      {showCheckbox && (
+        <div className="absolute top-4 left-4 z-20" onClick={e => e.stopPropagation()}>
+          <div
+            onClick={() => onToggleSelect(rack.id)}
+            className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-all ${
+              isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-sm shadow-blue-500/50' : 'border-white/20 bg-black/30 hover:border-blue-400'
+            }`}
+          >
+            {isSelected && <Check size={10} strokeWidth={3.5} />}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Header - FIXED */}
       <div className="px-4 pt-5 pb-3 bg-white/[0.03] border-b border-white/[0.06] space-y-2.5 shrink-0">
@@ -823,6 +849,8 @@ const RackElevation = ({
           <div className="bg-black/30 border border-white/[0.05] rounded-lg overflow-hidden">
             {units.map(u => {
               const loc = rack.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
+              const liveLoc = liveRack?.device_locations?.find((l: any) => u >= l.start_unit && u < l.start_unit + l.size_u)
+              
               return (
                 <RackUnit
                   key={u}
@@ -836,6 +864,8 @@ const RackElevation = ({
                   isDeleted={isDeleted}
                   isFocused={loc?.device_id === focusedDeviceId}
                   isConnected={connectedDeviceIds?.includes(loc?.device_id)}
+                  diffMode={diffMode}
+                  liveLoc={liveLoc}
                 />
               )
             })}
@@ -877,6 +907,483 @@ const AssetLegend = () => (
 
 // ─── Site Capacity Summary Bar ─────────────────────────────────────────────────
 
+const AssetImpactWindow = ({ deviceId, devices, connections, onClose }: { deviceId: number, devices: any[], connections: any[], onClose: () => void }) => {
+  const device = devices?.find(d => d.id === deviceId)
+  const deviceConns = connections?.filter(c => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
+  
+  const distribution = useMemo(() => {
+    const stats: Record<string, Record<string, number>> = {
+      type: {},
+      status: {},
+      environment: {},
+      system: {}
+    }
+    deviceConns.forEach(c => {
+      const isSrc = c.source_device_id === deviceId
+      const peerId = isSrc ? c.target_device_id : c.source_device_id
+      const peer = devices?.find(d => d.id === peerId)
+      if (peer) {
+        stats.type[peer.type || 'Unknown'] = (stats.type[peer.type || 'Unknown'] || 0) + 1
+        stats.status[peer.status || 'Unknown'] = (stats.status[peer.status || 'Unknown'] || 0) + 1
+        stats.environment[peer.environment || 'Unknown'] = (stats.environment[peer.environment || 'Unknown'] || 0) + 1
+        stats.system[peer.system || 'Unknown'] = (stats.system[peer.system || 'Unknown'] || 0) + 1
+      }
+    })
+    return stats
+  }, [deviceConns, devices, deviceId])
+
+  return (
+    <motion.div 
+      drag
+      dragMomentum={false}
+      initial={{ x: 100, y: 100, opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
+    >
+       <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+          <div className="flex items-center gap-3">
+             <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20 text-white">
+                <Activity size={16} />
+             </div>
+             <div>
+                <h3 className="text-xs font-black uppercase tracking-tight text-white leading-none">Impact Analysis</h3>
+                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 truncate max-w-[200px]">{device?.name}</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors cursor-pointer"><X size={16}/></button>
+       </div>
+
+       <div className="p-6 space-y-6 max-h-[500px] overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-2 gap-3">
+             <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                <p className="text-[7px] font-black text-slate-500 uppercase mb-1">Total Vector Paths</p>
+                <p className="text-xl font-black text-white leading-none">{deviceConns.length}</p>
+             </div>
+             <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                <p className="text-[7px] font-black text-slate-500 uppercase mb-1">Downstream Systems</p>
+                <p className="text-xl font-black text-blue-400 leading-none">{Object.keys(distribution.system).length}</p>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(distribution).map(([category, data]) => (
+              <div key={category} className="space-y-2">
+                <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">{category} Distribution</h4>
+                <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                  {Object.entries(data).length === 0 ? (
+                    <p className="p-3 text-[8px] text-slate-600 italic">None</p>
+                  ) : (
+                    Object.entries(data).sort((a,b) => b[1] - a[1]).map(([label, count]) => (
+                      <div key={label} className="flex justify-between items-center px-3 py-1.5 border-b border-white/[0.03] last:border-0">
+                        <span className="text-[9px] font-bold text-slate-300 uppercase truncate max-w-[100px]">{label}</span>
+                        <span className="text-[9px] font-black text-white tabular-nums">{count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+             <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">Network Fabric Trace</h4>
+             {deviceConns.length === 0 ? (
+               <p className="text-[10px] text-slate-600 italic px-1">No active connections for this asset.</p>
+             ) : (
+               <div className="space-y-1">
+                  {deviceConns.slice(0, 5).map((c: any) => {
+                    const isSrc = c.source_device_id === deviceId
+                    const peerId = isSrc ? c.target_device_id : c.source_device_id
+                    const peer = devices?.find(d => d.id === peerId)
+                    return (
+                      <div key={c.id} className="p-2 bg-white/5 border border-white/5 rounded-lg flex items-center justify-between group hover:border-blue-500/20 transition-all">
+                         <div className="flex flex-col">
+                            <span className="text-[8px] font-black text-blue-400 uppercase leading-none">{peer?.name || 'Unknown Peer'}</span>
+                            <span className="text-[6px] font-bold text-slate-500 uppercase mt-1">{isSrc ? c.source_port : c.target_port} → {isSrc ? c.target_port : c.source_port}</span>
+                         </div>
+                         <div className="text-right">
+                            <span className="text-[8px] font-black text-slate-300 uppercase">{c.speed_gbps}G</span>
+                         </div>
+                      </div>
+                    )
+                  })}
+                  {deviceConns.length > 5 && (
+                    <p className="text-[8px] text-slate-500 text-center font-bold uppercase tracking-widest pt-1">+{deviceConns.length - 5} additional vectors</p>
+                  )}
+               </div>
+             )}
+          </div>
+       </div>
+
+       <div className="px-6 py-4 bg-black/40 border-t border-white/10 flex items-center gap-3">
+          <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+          <p className="text-[8px] font-bold text-slate-400 leading-tight">
+             Total system isolation of <span className="text-white">{(deviceConns.length * 2.4).toFixed(0)} services</span> estimated upon hardware failure.
+          </p>
+       </div>
+    </motion.div>
+  )
+}
+
+const LabelGeneratorModal = ({ racks, onClose, devices, connections }: { racks: any[], onClose: () => void, devices: any[], connections: any[] }) => {
+  const [pattern, setPattern] = useState('[$src_name] $src_port >> $dest_port [$dest_name]')
+  
+  const deviceIdsInScope = useMemo(() => {
+    const ids = new Set<number>()
+    racks.forEach(r => {
+      r.device_locations?.forEach((l: any) => {
+        if (l.device_id) ids.add(l.device_id)
+      })
+    })
+    return ids
+  }, [racks])
+
+  const allConnections = useMemo(() => {
+    if (!connections || !devices) return []
+    const seen = new Set<string>()
+    
+    return connections.filter(c => {
+      const isSrcIn = deviceIdsInScope.has(c.source_device_id)
+      const isDstIn = deviceIdsInScope.has(c.target_device_id)
+      
+      if (!isSrcIn && !isDstIn) return false
+      
+      // Smart Deduplication: Treat A->B and B->A as the same cable vector
+      const pairKey = [c.source_device_id, c.target_device_id].sort().join('-')
+      if (seen.has(pairKey)) return false
+      seen.add(pairKey)
+      return true
+    }).map(c => {
+      const src = devices.find(d => d.id === c.source_device_id)
+      const dst = devices.find(d => d.id === c.target_device_id)
+      return {
+        ...c,
+        src_name: src?.name || '?',
+        dest_name: dst?.name || '?',
+        src_port: c.source_port,
+        dest_port: c.target_port,
+        speed: `${c.speed_gbps}G`
+      }
+    })
+  }, [deviceIdsInScope, devices, connections])
+
+  const formatLabel = (conn: any) => {
+    let result = pattern
+    const vars: Record<string, string> = {
+      '$src_name': conn.src_name,
+      '$dest_name': conn.dest_name,
+      '$src_port': conn.src_port,
+      '$dest_port': conn.dest_port,
+      '$vlan': conn.source_vlan || 'N/A',
+      '$farm': conn.farm || 'STD',
+      '$speed': conn.speed
+    }
+    
+    // Replace all occurrences of each variable
+    Object.entries(vars).forEach(([key, val]) => {
+      result = result.split(key).join(val)
+    })
+    return result
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-[2rem] border border-white/10 shadow-2xl">
+          <div className="flex justify-between items-start mb-8">
+             <div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Physical Cable Label Automation</h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
+                   <Tag size={12} className="text-emerald-500" /> Sourcing from {allConnections.length} active links in {racks.length} selected racks
+                </p>
+             </div>
+             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+          </div>
+
+          <div className="space-y-3 mb-8 bg-white/5 p-6 rounded-2xl border border-white/5">
+             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <Terminal size={12} /> Label Pattern Engine
+             </label>
+             <input 
+               value={pattern}
+               onChange={e => setPattern(e.target.value)}
+               className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-sm text-emerald-400 font-mono outline-none focus:border-emerald-500/30 transition-all"
+               placeholder="[$src_name] $src_port -> $dest_port [$dest_name]"
+             />
+             <div className="flex flex-wrap gap-2 pt-1 px-1">
+                {['$src_name', '$dest_name', '$src_port', '$dest_port', '$vlan', '$farm', '$speed'].map(v => (
+                  <button key={v} onClick={() => setPattern(prev => prev + ' ' + v)} className="text-[8px] font-black text-slate-500 hover:text-white uppercase tracking-widest px-2 py-1 bg-white/5 rounded-md border border-white/5 transition-all">{v}</button>
+                ))}
+             </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-black/40">
+             <table className="w-full text-left">
+                <thead className="sticky top-0 bg-slate-900 z-10 shadow-lg">
+                   <tr className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/10">
+                      <th className="p-5">Logical Source Vector</th>
+                      <th className="p-5">Generated Physical Identity</th>
+                      <th className="p-5 w-24 text-center">Action</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                   {allConnections.map(c => (
+                     <tr key={c.id} className="hover:bg-white/[0.03] transition-colors group">
+                        <td className="p-5 text-[10px] font-bold text-slate-500 uppercase">{c.src_name}:{c.src_port}</td>
+                        <td className="p-5 text-[12px] font-black text-emerald-400 font-mono tracking-tight">{formatLabel(c)}</td>
+                        <td className="p-5 text-center">
+                           <button onClick={() => { navigator.clipboard.writeText(formatLabel(c)); toast.success("Label Copied") }} className="p-2 hover:bg-emerald-600 hover:text-white rounded-lg text-slate-600 transition-all"><Clipboard size={16}/></button>
+                        </td>
+                     </tr>
+                   ))}
+                   {allConnections.length === 0 && (
+                     <tr><td colSpan={3} className="p-20 text-center text-slate-600 font-bold uppercase tracking-[0.3em]">No cable vectors identified in selected scope</td></tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+
+          <div className="flex justify-end pt-8 gap-4">
+             <button onClick={onClose} className="px-8 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Discard</button>
+             <button 
+                onClick={() => { 
+                   navigator.clipboard.writeText(allConnections.map(c => formatLabel(c)).join('\n')); 
+                   toast.success(`Exported ${allConnections.length} Labels`);
+                }} 
+                className="px-10 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-600/20 active:scale-95 transition-all"
+             >
+                Commit All to Clipboard
+             </button>
+          </div>
+       </motion.div>
+    </div>
+  )
+}
+
+const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void, onExecuteDiff: (versions: number[]) => void }) => {
+  const [selectedVersions, setSelectedVersions] = useState<number[]>([])
+  
+  const snapshots = [
+    { id: 1, date: '2026-05-27 00:00', author: 'SYSTEM', changes: 4, type: 'Daily Routine', detail: 'Moved 2 assets in Rack A-01, Updated 1 Site Color' },
+    { id: 2, date: '2026-05-26 00:00', author: 'SYSTEM', changes: 12, type: 'Daily Routine', detail: 'Bulk Ingested 10 New Physical Assets' },
+    { id: 3, date: '2026-05-25 00:00', author: 'SYSTEM', changes: 0, type: 'Skipped (No Change)', detail: 'State identical to previous snapshot' },
+  ]
+
+  const toggleVersion = (id: number) => {
+    setSelectedVersions(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-2)
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-[2rem] border border-white/10 shadow-2xl">
+          <div className="flex justify-between items-start mb-8">
+             <div>
+                <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Infrastructure Time Machine</h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
+                   <History size={14} className="text-blue-500" /> Delta Analysis & Historical Configuration Diffs
+                </p>
+             </div>
+             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 mb-8">
+             {snapshots.map(s => {
+               const isSelected = selectedVersions.includes(s.id)
+               return (
+                 <div 
+                   key={s.id} 
+                   onClick={() => toggleVersion(s.id)}
+                   className={`group flex items-center justify-between p-6 rounded-2xl border transition-all cursor-pointer ${isSelected ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
+                 >
+                    <div className="flex items-center gap-6">
+                       <div className={`p-4 rounded-xl transition-all ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500'}`}>
+                          <History size={20} />
+                       </div>
+                       <div>
+                          <p className={`text-sm font-black transition-colors ${isSelected ? 'text-white' : 'text-slate-300'}`}>{s.date}</p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{s.type} • {s.author}</p>
+                          <p className="text-[11px] text-slate-400 mt-2 font-medium">{s.detail}</p>
+                       </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                       {isSelected && (
+                         <div className="px-3 py-1 bg-blue-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest animate-in fade-in zoom-in">
+                            Selected for Diff
+                         </div>
+                       )}
+                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-white/10 bg-black/20'}`}>
+                          {isSelected && <Check size={14} className="text-white" />}
+                       </div>
+                    </div>
+                 </div>
+               )
+             })}
+          </div>
+
+          <div className="flex justify-between items-center bg-white/5 p-8 rounded-2xl border border-white/5">
+             <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analysis Engine</p>
+                <p className="text-xs text-slate-400 mt-1 italic">
+                   {selectedVersions.length === 0 ? "Select a version to compare with Live State (Now)." :
+                    selectedVersions.length === 1 ? "Comparing LIVE STATE with snapshot from " + snapshots.find(s => s.id === selectedVersions[0])?.date :
+                    "Cross-diffing version " + snapshots.find(s => s.id === selectedVersions[0])?.id + " vs " + snapshots.find(s => s.id === selectedVersions[1])?.id}
+                </p>
+             </div>
+             <button 
+               disabled={selectedVersions.length === 0}
+               onClick={() => onExecuteDiff(selectedVersions)}
+               className="px-10 py-4 bg-blue-600 disabled:opacity-30 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
+             >
+                Execute Visual Diff Analysis
+             </button>
+          </div>
+       </motion.div>
+    </div>
+  )
+}
+
+const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, showOnlySandbox, onToggleShowOnly, showDiff, onToggleDiff }: { onAbort: () => void, onSave: () => void, onProceed: () => void, selectedCount: number, isInitialized: boolean, showOnlySandbox: boolean, onToggleShowOnly: (v: boolean) => void, showDiff: boolean, onToggleDiff: (v: boolean) => void }) => (
+  <motion.div 
+    initial={{ y: -50, opacity: 0 }} 
+    animate={{ y: 0, opacity: 1 }}
+    className="fixed top-0 inset-x-0 z-[100] bg-violet-600/95 backdrop-blur-xl border-b border-violet-400/30 py-4 flex items-center justify-center gap-12 shadow-2xl"
+  >
+     <div className="flex items-center gap-4">
+        <div className="p-2 bg-white/10 rounded-xl border border-white/20">
+           <Eye size={20} className="text-white" />
+        </div>
+        <div>
+           <h3 className="text-sm font-black uppercase tracking-tighter text-white leading-none">Ghost Planner <span className="text-violet-200">Sandbox</span></h3>
+           <p className="text-[9px] font-bold text-violet-200 uppercase tracking-widest mt-1">
+              {isInitialized ? 'Virtual Environment Active' : 'Initializing Project Workspace'}
+           </p>
+        </div>
+     </div>
+
+     <div className="flex items-center gap-4">
+        {!isInitialized ? (
+          <div className="flex items-center gap-4">
+             <span className="text-[10px] font-black text-white uppercase">{selectedCount} Baseline Racks Selection</span>
+             <button 
+               disabled={selectedCount === 0}
+               onClick={onProceed} 
+               className="px-6 py-2 bg-white text-violet-600 disabled:opacity-50 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+             >
+                Initialize Plan Matrix
+             </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-6">
+             <div className="flex items-center gap-6 bg-black/20 px-4 py-1.5 rounded-lg border border-white/10">
+                <div className="flex items-center gap-2">
+                   <span className="text-[9px] font-black text-violet-200 uppercase">Focus Sandbox</span>
+                   <button 
+                     onClick={() => onToggleShowOnly(!showOnlySandbox)}
+                     className={`w-10 h-5 rounded-full relative transition-colors ${showOnlySandbox ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                   >
+                     <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showOnlySandbox ? 'left-6' : 'left-1'}`} />
+                   </button>
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-2">
+                   <span className="text-[9px] font-black text-violet-200 uppercase">Visual Diff</span>
+                   <button 
+                     onClick={() => onToggleDiff(!showDiff)}
+                     className={`w-10 h-5 rounded-full relative transition-colors ${showDiff ? 'bg-blue-500' : 'bg-slate-700'}`}
+                   >
+                     <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showDiff ? 'left-6' : 'left-1'}`} />
+                   </button>
+                </div>
+             </div>
+             <button onClick={onSave} className="px-6 py-2 bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                Save Plan to List
+             </button>
+          </div>
+        )}
+        <button onClick={onAbort} className="px-6 py-2 bg-rose-500/20 text-white border border-rose-500/30 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all">
+           Exit Planner
+        </button>
+     </div>
+  </motion.div>
+)
+
+const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan }: { plans: any[], onClose: () => void, onLoadPlan: (p: any) => void, onAddPlan: (type: 'blank' | 'asis') => void }) => (
+  <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md">
+     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-8">
+        <div className="flex justify-between items-start">
+           <div className="flex items-center gap-4">
+              <div className="p-3 bg-violet-600 rounded-2xl shadow-lg shadow-violet-600/20 text-white">
+                 <List size={24} />
+              </div>
+              <div>
+                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Infrastructure Plans</h2>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Stored sandbox configurations & matrix models</p>
+              </div>
+           </div>
+           <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+        </div>
+
+        <div className="space-y-4">
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center px-10 leading-relaxed">
+              Create a new virtual sandbox environment. You will be asked to select racks to clear (Blank) or clone (As-Is) into your plan.
+           </p>
+           <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => onAddPlan('blank')}
+                className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-violet-500/50 hover:bg-violet-600/5 transition-all group"
+              >
+                 <div className="p-4 bg-slate-900 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                    <Plus size={24} className="text-violet-400" />
+                 </div>
+                 <span className="text-[11px] font-black text-white uppercase tracking-widest">New Blank Plan</span>
+                 <span className="text-[8px] text-slate-500 font-bold uppercase mt-2">Zero baseline for selection</span>
+              </button>
+              <button 
+                onClick={() => onAddPlan('asis')}
+                className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-blue-500/50 hover:bg-blue-600/5 transition-all group"
+              >
+                 <div className="p-4 bg-slate-900 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                    <Upload size={24} className="text-blue-400" />
+                 </div>
+                 <span className="text-[11px] font-black text-white uppercase tracking-widest">Import Live Site</span>
+                 <span className="text-[8px] text-slate-500 font-bold uppercase mt-2">Clone active selection</span>
+              </button>
+           </div>
+        </div>
+
+        <div className="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+           <div className="flex items-center gap-4 px-2 mb-4">
+              <div className="h-px flex-1 bg-white/5" />
+              <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em]">Historical Archives</span>
+              <div className="h-px flex-1 bg-white/5" />
+           </div>
+           {plans.length === 0 ? (
+             <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-600 font-bold uppercase text-[10px] tracking-widest">No plans found</div>
+           ) : (
+             plans.map(p => (
+               <div key={p.id} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl hover:border-violet-500/30 transition-all group">
+                  <div className="flex items-center gap-4">
+                     <div className="p-3 bg-slate-950 rounded-xl text-slate-500 group-hover:text-violet-400 transition-colors">
+                        <Package size={18} />
+                     </div>
+                     <div>
+                        <p className="text-[13px] font-black text-white uppercase tracking-tight">{p.name}</p>
+                        <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1">{p.racks.length} Racks • {p.date}</p>
+                     </div>
+                  </div>
+                  <button onClick={() => onLoadPlan(p)} className="px-6 py-2.5 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all">
+                     Load Matrix
+                  </button>
+               </div>
+             ))
+           )}
+        </div>
+     </motion.div>
+  </div>
+)
+
 const SiteCapacityBar = ({ racks }: { racks: any[] }) => {
   const totalU = racks.reduce((a: number, r: any) => a + (r.total_u || 42), 0)
   const usedU = racks.reduce((a: number, r: any) => a + (r.device_locations || []).reduce((b: number, l: any) => b + (l.size_u || 1), 0), 0)
@@ -914,8 +1421,8 @@ const SiteCapacityBar = ({ racks }: { racks: any[] }) => {
 
 // ─── Floating Bulk Toolbar ─────────────────────────────────────────────────────
 
-const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDeleted, onRestore }:
-  { count: number; onDelete: () => void; onRelocate: () => void; onCompare: () => void; onClear: () => void; isDeleted: boolean; onRestore: () => void }) => (
+const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDeleted, onRestore, onGenerateLabels }:
+  { count: number; onDelete: () => void; onRelocate: () => void; onCompare: () => void; onClear: () => void; isDeleted: boolean; onRestore: () => void; onGenerateLabels: () => void }) => (
   <motion.div
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
@@ -934,8 +1441,8 @@ const BulkToolbar = ({ count, onDelete, onRelocate, onCompare, onClear, isDelete
         </button>
       </>
     ) : (<>
-      <button onClick={onCompare} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-400 border border-blue-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-blue-500/25 transition-all">
-        <Server size={11} /> Compare
+      <button onClick={onGenerateLabels} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-emerald-500/25 transition-all">
+        <Tag size={11} /> Labels
       </button>
       <button onClick={onRelocate} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/15 text-violet-400 border border-violet-500/25 rounded-lg text-[8px] font-black uppercase hover:bg-violet-500/25 transition-all">
         <ArrowRightLeft size={11} /> Relocate
@@ -1340,7 +1847,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
   }, [racks])
 
   return (
-    <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-xl border border-white/5">
+    <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-xl border border-white/5 relative">
       <div className="flex flex-col gap-12">
         {Object.entries(aisles).sort().map(([aisleName, rows]) => (
           <div key={aisleName} className="space-y-4">
@@ -1367,7 +1874,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
                           ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50'}
                         `}
                       >
-                        <div className="absolute top-0 inset-x-0 h-1 bg-emerald-500/40" style={rack.site_color ? { backgroundColor: rack.site_color } : siteColor ? { backgroundColor: siteColor } : {}} />
+                        <div className="absolute top-0 inset-x-0 h-1 transition-all" style={{ backgroundColor: rack.site_color || siteColor || '#3b82f6' }} />
                         <span className="text-[10px] font-black text-white uppercase tracking-tighter truncate w-full text-center px-2">{rack.name}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
@@ -1407,6 +1914,20 @@ export default function RackTemp() {
   const [activeSiteMenu, setActiveSiteMenu] = useState<number | null>(null)
   const [isAddingSite, setIsAddingSite] = useState(false)
   const [viewMode, setViewMode] = useState<'elevation' | 'spatial'>('elevation')
+  const [isPlanMode, setIsPlanMode] = useState(false)
+  const [isPlanInitialized, setIsPlanInitialized] = useState(false)
+  const [activePlanId, setActivePlanId] = useState<number | null>(null)
+  const [virtualRacks, setVirtualRacks] = useState<any[]>([])
+  const [showDiff, setShowDiff] = useState(false)
+  const [sandboxRackIds, setSandboxRackIds] = useState<number[]>([])
+  const [showOnlySandbox, setShowOnlySandbox] = useState(false)
+  const [showPlanList, setShowPlanList] = useState(false)
+  const [isCreatingPlan, setIsCreatingPlan] = useState<'blank' | 'asis' | null>(null)
+  const [plans, setPlans] = useState<any[]>([])
+  const [isComparing, setIsComparing] = useState(false)
+  const [diffBaseVersion, setDiffBaseVersion] = useState<number | null>(null)
+  const [impactAssetId, setImpactAssetId] = useState<number | null>(null)
+  const [showLabelGenerator, setShowLabelGenerator] = useState(false)
   const [newSite, setNewSite] = useState({ name: '', address: '', color: '#3b82f6' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
   const [isAddingRack, setIsAddingRack] = useState(false)
@@ -1464,7 +1985,7 @@ export default function RackTemp() {
   const racks = activeTab === 'active' ? activeRacks : deletedRacks
 
   const displayedRacks = useMemo(() => {
-    let filtered = racks
+    let filtered = isPlanInitialized ? virtualRacks : racks
     
     // 1. Connection-specific filtering: If focusing a connection, only show involved racks
     if (focusedConnection) {
@@ -1474,11 +1995,14 @@ export default function RackTemp() {
       )
     }
 
-    if (activeSite && activeTab === 'active' && !showCompareOnly && !focusedConnection) {
+    if (activeSite && activeTab === 'active' && !showCompareOnly && !focusedConnection && !showOnlySandbox) {
       filtered = filtered.filter((r: any) => r.site_id === activeSite)
     }
     if (showCompareOnly && !focusedConnection) {
       filtered = filtered.filter((r: any) => selectedRacks.includes(r.id))
+    }
+    if (showOnlySandbox && !focusedConnection) {
+      filtered = filtered.filter((r: any) => sandboxRackIds.includes(r.id))
     }
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
@@ -1488,7 +2012,7 @@ export default function RackTemp() {
       )
     }
     return filtered
-  }, [racks, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab, focusedConnection])
+  }, [racks, virtualRacks, isPlanInitialized, activeSite, showCompareOnly, selectedRacks, searchTerm, activeTab, focusedConnection, showOnlySandbox, sandboxRackIds])
 
   const availableDevices = useMemo(() =>
     devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned'),
@@ -1501,6 +2025,7 @@ export default function RackTemp() {
       const { rackId, ...rest } = data
       
       let finalDeviceId = rest.device_id
+      let finalDevice = devices?.find(d => d.id === finalDeviceId)
       
       // If reserving a new slot
       if (provisionMode === 'reserve') {
@@ -1522,9 +2047,11 @@ export default function RackTemp() {
         })
         const newDev = await resDev.json()
         finalDeviceId = newDev.id
+        finalDevice = newDev
       }
 
       if (!finalDeviceId) throw new Error('DEVICE_REQUIRED')
+
       const payload = { 
         ...rest, 
         device_id: finalDeviceId,
@@ -1532,13 +2059,29 @@ export default function RackTemp() {
         orientation: rest.orientation || 'Front',
         depth: rest.depth || 'Full'
       }
+
+      // If in sandbox mode, update virtual state instead of API
+      if (isPlanInitialized) {
+        setVirtualRacks(prev => prev.map(r => {
+          if (r.id !== rackId) return r
+          const newLocs = (r.device_locations || []).filter((l:any) => l.device_id !== finalDeviceId)
+          newLocs.push({ ...payload, device: finalDevice })
+          return { ...r, device_locations: newLocs }
+        }))
+        return { message: 'VIRTUAL_SUCCESS' }
+      }
+
       const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, { method: 'POST', body: JSON.stringify(payload) })
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success(provisionMode === 'reserve' ? 'Space reserved successfully' : 'Asset mounted successfully')
+    onSuccess: (data) => {
+      if (data.message === 'VIRTUAL_SUCCESS') {
+        toast.success(provisionMode === 'reserve' ? 'Virtual space reserved' : 'Virtual asset mounted')
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+        queryClient.invalidateQueries({ queryKey: ['devices'] })
+        toast.success(provisionMode === 'reserve' ? 'Space reserved successfully' : 'Asset mounted successfully')
+      }
       setIsProvisioning(null)
       setReserveInfo({ temporary_name: '', est_date: '', poc: '' })
     },
@@ -1667,16 +2210,33 @@ export default function RackTemp() {
 
   const updateMountMutation = useMutation({
     mutationFn: async ({ rackId, device_id, start_u, size_u, orientation, depth }: any) => {
+      if (isPlanInitialized) {
+        setVirtualRacks(prev => prev.map(r => {
+          if (r.id !== rackId) return r
+          const loc = r.device_locations?.find((l: any) => l.device_id === device_id)
+          if (!loc) return r
+          const newLoc = { ...loc, start_unit: start_u, size_u, orientation, depth }
+          return {
+            ...r,
+            device_locations: (r.device_locations || []).map((l: any) => l.device_id === device_id ? newLoc : l)
+          }
+        }))
+        return { message: 'VIRTUAL_SUCCESS' }
+      }
       const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, {
         method: 'POST',
         body: JSON.stringify({ device_id, start_u, size_u, orientation, depth, relocate: true })
       })
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['racks-all'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success('Mount updated')
+    onSuccess: (data) => {
+      if (data.message === 'VIRTUAL_SUCCESS') {
+        toast.success('Virtual mount updated')
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['racks-all'] })
+        queryClient.invalidateQueries({ queryKey: ['devices'] })
+        toast.success('Mount updated')
+      }
       setManagingDevice(null)
     },
     onError: (e: any) => toast.error(e.message)
@@ -1746,11 +2306,87 @@ export default function RackTemp() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const isMaskMode = isPlanInitialized || !!diffBaseVersion
+
   return (
     <div className="h-full flex flex-col gap-4 min-h-0 overflow-hidden">
+      
+      {isPlanMode && (
+        <PlanBanner 
+           onAbort={() => { 
+             setIsPlanMode(false); 
+             setIsPlanInitialized(false); 
+             setSelectedRacks([]); 
+             setSandboxRackIds([]); 
+             setShowOnlySandbox(false);
+             setVirtualRacks([]);
+             setShowDiff(false);
+             setActivePlanId(null);
+           }}
+           onSave={() => {
+              if (activePlanId) {
+                setPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, racksData: virtualRacks, date: new Date().toLocaleString() } : p))
+                toast.success("Plan updated successfully")
+              } else {
+                const newPlanId = Date.now()
+                setPlans(prev => [...prev, { 
+                  id: newPlanId, 
+                  name: `Plan ${prev.length + 1}`, 
+                  racks: sandboxRackIds, 
+                  racksData: JSON.parse(JSON.stringify(virtualRacks)), 
+                  date: new Date().toLocaleString() 
+                }])
+                setActivePlanId(newPlanId)
+                toast.success("New plan saved to archive")
+              }
+           }}
+           onProceed={() => {
+              setIsPlanInitialized(true)
+              setSandboxRackIds([...selectedRacks])
+              // Deep clone active racks into virtual racks
+              let selectedRacksData = activeRacks.filter((r: any) => selectedRacks.includes(r.id))
+              if (isCreatingPlan === 'blank') {
+                selectedRacksData = selectedRacksData.map((r: any) => ({ ...r, device_locations: [] }))
+              }
+              setVirtualRacks(JSON.parse(JSON.stringify(selectedRacksData)))
+              setSelectedRacks([]) // Clear standard selection for mask mode
+              setShowOnlySandbox(true)
+              toast.success("New Sandbox Matrix Initialized")
+           }}
+           selectedCount={selectedRacks.length}
+           isInitialized={isPlanInitialized}
+           showOnlySandbox={showOnlySandbox}
+           onToggleShowOnly={setShowOnlySandbox}
+           showDiff={showDiff}
+           onToggleDiff={setShowDiff}
+        />
+      )}
+
+      {diffBaseVersion && (
+        <motion.div 
+          initial={{ y: -50, opacity: 0 }} 
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed top-0 inset-x-0 z-[100] bg-blue-600/95 backdrop-blur-xl border-b border-blue-400/30 py-4 flex items-center justify-center gap-12 shadow-2xl"
+        >
+           <div className="flex items-center gap-4">
+              <div className="p-2 bg-white/10 rounded-xl border border-white/20">
+                 <History size={20} className="text-white" />
+              </div>
+              <div>
+                 <h3 className="text-sm font-black uppercase tracking-tighter text-white leading-none">Time Machine <span className="text-blue-200">Historical Diff</span></h3>
+                 <p className="text-[9px] font-bold text-blue-200 uppercase tracking-widest mt-1">
+                    Comparing LIVE STATE against V{diffBaseVersion} Snapshot
+                 </p>
+              </div>
+           </div>
+           <button onClick={() => setDiffBaseVersion(null)} className="px-8 py-2 bg-white text-blue-600 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+              Exit Time Machine
+           </button>
+        </motion.div>
+      )}
 
       {/* ── Page Header ── */}
-      <div className="flex items-start justify-between gap-4 shrink-0">
+      <div className={`flex items-start justify-between gap-4 shrink-0 transition-opacity ${isMaskMode ? 'opacity-20 pointer-events-none grayscale' : ''}`}>
         <div className="flex items-center gap-6">
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Racks</h1>
@@ -1791,6 +2427,18 @@ export default function RackTemp() {
             <button onClick={() => setViewMode('spatial')}
               className={`p-1.5 rounded-lg transition-all ${viewMode === 'spatial' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Spatial Map">
               <MapPin size={14} />
+            </button>
+          </div>
+
+          {/* Intelligence Overlays */}
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
+            <button onClick={() => setIsComparing(true)}
+              className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-all" title="Time Machine / Diff">
+              <History size={14} />
+            </button>
+            <button onClick={() => setShowPlanList(true)}
+              className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-white/5 transition-all" title="View Plans">
+              <List size={14} />
             </button>
           </div>
 
@@ -1881,14 +2529,14 @@ export default function RackTemp() {
       </div>
 
       {/* ── Capacity Summary Bar ── */}
-      {activeRacks && activeRacks.length > 0 && !showCompareOnly && (
+      {activeRacks && activeRacks.length > 0 && !showCompareOnly && !isMaskMode && (
         <div className="shrink-0">
           <SiteCapacityBar racks={activeRacks} />
         </div>
       )}
 
       {/* ── Site Tabs ── */}
-      {!showCompareOnly && activeTab !== 'deleted' && (
+      {!showCompareOnly && activeTab !== 'deleted' && !isMaskMode && (
         <div className="flex items-center justify-between gap-4 shrink-0">
           <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar items-center">
             <button
@@ -1976,8 +2624,8 @@ export default function RackTemp() {
       <div id="rack-temp-grid" className="h-full flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
         
         {viewMode === 'spatial' ? (
-          <SpatialMap 
-            racks={displayedRacks} 
+          <SpatialMap
+            racks={displayedRacks}
             onRackClick={(r) => { setActiveSite(r.site_id); setViewMode('elevation'); setTimeout(() => {
               const el = document.querySelector(`[data-rack-id="${r.id}"]`)
               el?.scrollIntoView({ behavior: 'smooth', inline: 'center' })
@@ -1996,42 +2644,116 @@ export default function RackTemp() {
               onLineClick={(conn) => setViewingConnection(conn)}
             />
           )}
-
           {/* Render Racks Grouped by Aisle/Row if not searching */}
           {(() => {
-            if (searchTerm || focusedConnection || showCompareOnly) {
-              return displayedRacks.map((r: any) => (
-                <RackElevation
-                  key={r.id}
-                  rack={r}
-                  searchTerm={searchTerm}
-                  isSelected={selectedRacks.includes(r.id)}
-                  onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                  onDelete={id => {
-                    if (activeTab === 'deleted') {
-                      openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
-                    } else {
-                      openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+            const isDiffActive = showDiff || !!diffBaseVersion
+            const racksToRender = isPlanInitialized 
+               ? displayedRacks.filter((r:any) => sandboxRackIds.includes(r.id))
+               : displayedRacks
+
+            if (searchTerm || focusedConnection || showCompareOnly || isDiffActive) {
+              return (
+                <div className={`flex gap-8 items-start ${isDiffActive ? 'pb-10 pt-8' : ''}`}>
+                  {racksToRender.map((r: any) => {
+                    const liveRack = activeRacks.find((ar: any) => ar.id === r.id)
+                    const historicalRack = diffBaseVersion 
+                      ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - 1)) }
+                      : null
+                    
+                    if (isDiffActive) {
+                      return (
+                        <div key={`diff-${r.id}`} className="flex gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] relative shrink-0">
+                           <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-4 z-30">
+                              <span className="px-5 py-1.5 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
+                              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1">
+                                 <ArrowRightLeft size={16} className="text-white" />
+                              </div>
+                              <span className="px-5 py-1.5 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">
+                                 {diffBaseVersion ? `V${diffBaseVersion} Snapshot` : 'Proposed Plan'}
+                              </span>
+                           </div>
+                           
+                           <div className="flex flex-col gap-3">
+                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Live Production</p>
+                              <RackElevation
+                                rack={diffBaseVersion ? historicalRack : liveRack}
+                                searchTerm={searchTerm}
+                                isSelected={false}
+                                showCheckbox={false}
+                                onToggleSelect={() => {}}
+                                onDelete={() => {}}
+                                onEdit={() => {}}
+                                onShowInfo={() => {}}
+                                onMount={() => {}}
+                                onManageDevice={() => {}}
+                                isDeleted={false}
+                                rackWidth={rackWidth}
+                              />
+                           </div>
+                           
+                           <div className="flex flex-col gap-3">
+                              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">{diffBaseVersion ? 'Historical Delta' : 'Virtualized Sandbox'}</p>
+                              <RackElevation
+                                rack={r}
+                                searchTerm={searchTerm}
+                                isSelected={false}
+                                showCheckbox={false}
+                                onToggleSelect={() => {}}
+                                onDelete={id => isPlanInitialized ? null : {}}
+                                onEdit={rack => isPlanInitialized ? setIsEditingRack({ ...rack, total_u: rack.total_u }) : {}}
+                                onShowInfo={rack => setShowingRackInfo(rack)}
+                                onMount={(rackId, u) => isPlanInitialized ? setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }) : null}
+                                onManageDevice={(device, l, e) => {
+                                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                                  setImpactAssetId(device.id)
+                                }}
+                                isDeleted={false}
+                                rackWidth={rackWidth}
+                                diffMode={true}
+                                liveRack={diffBaseVersion ? historicalRack : liveRack}
+                              />
+                           </div>
+                        </div>
+                      )
                     }
-                  }}
-                  onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
-                  onShowInfo={rack => setShowingRackInfo(rack)}
-                  onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
-                  onManageDevice={(device, l, e) => {
-                    setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
-                  }}
-                  isDeleted={activeTab === 'deleted'}
-                  onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
-                  rackWidth={rackWidth}
-                  focusedDeviceId={focusedConnection?.sourceId ?? null}
-                  connectedDeviceIds={focusedConnection?.targetIds}
-                />
-              ))
+
+                    return (
+                      <RackElevation
+                        key={r.id}
+                        rack={r}
+                        searchTerm={searchTerm}
+                        isSelected={selectedRacks.includes(r.id)}
+                        onToggleSelect={(id) => setSelectedRacks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                        onDelete={id => {
+                          if (activeTab === 'deleted') {
+                            openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+                          } else {
+                            openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+                          }
+                        }}
+                        onEdit={rack => setIsEditingRack({ ...rack, total_u: rack.total_u })}
+                        onShowInfo={rack => setShowingRackInfo(rack)}
+                        onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
+                        onManageDevice={(device, l, e) => {
+                          setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                          setImpactAssetId(device.id)
+                        }}
+                        isDeleted={activeTab === 'deleted'}
+                        onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+                        rackWidth={rackWidth}
+                        focusedDeviceId={focusedConnection?.sourceId ?? null}
+                        connectedDeviceIds={focusedConnection?.targetIds}
+                        showCheckbox={!isPlanInitialized}
+                      />
+                    )
+                  })}
+                </div>
+              )
             }
 
             // Group by Aisle/Row
             const groups: Record<string, any[]> = {}
-            displayedRacks.forEach(r => {
+            racksToRender.forEach(r => {
               const key = r.aisle ? `AISLE ${r.aisle}` : 'UNGROUPED'
               if (!groups[key]) groups[key] = []
               groups[key].push(r)
@@ -2064,14 +2786,19 @@ export default function RackTemp() {
                       onMount={(rackId, u) => { setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }); setProvisionMode('asset') }}
                       onManageDevice={(device, l, e) => {
                         setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                        setImpactAssetId(device.id)
                       }}
                       isDeleted={activeTab === 'deleted'}
                       onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
                       rackWidth={rackWidth}
                       focusedDeviceId={focusedConnection?.sourceId ?? null}
                       connectedDeviceIds={focusedConnection?.targetIds}
-                    />
-                  ))}
+                      showCheckbox={!isPlanInitialized}
+                      diffMode={showDiff || !!diffBaseVersion}
+                      liveRack={diffBaseVersion 
+                        ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - 1)) }
+                        : activeRacks.find((ar: any) => ar.id === r.id)}
+                      />                  ))}
                 </div>
               </div>
             ))
@@ -2094,23 +2821,81 @@ export default function RackTemp() {
 
       {/* Bulk Toolbar */}
       <AnimatePresence>
-        {selectedRacks.length > 0 && (
+        {selectedRacks.length > 0 && !isMaskMode && (
           <BulkToolbar
-            count={selectedRacks.length}
-            isDeleted={activeTab === 'deleted'}
+            count={selectedRacks.length}            isDeleted={activeTab === 'deleted'}
             onClear={() => setSelectedRacks([])}
-            onCompare={() => setShowCompareOnly(true)}
+            onCompare={() => setIsComparing(true)}
             onRelocate={() => setShowRelocateModal(true)}
+
             onDelete={() => openConfirm(
               activeTab === 'deleted' ? 'Purge Racks' : 'Delete Racks',
               activeTab === 'deleted' ? `Permanently delete ${selectedRacks.length} rack(s)?` : `Soft-delete ${selectedRacks.length} rack(s)?`,
               () => bulkActionMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete', ids: selectedRacks })
             )}
             onRestore={() => setRestoreWizard({ step: 'site-select', ids: selectedRacks, nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
+            onGenerateLabels={() => setShowLabelGenerator(true)}
           />
         )}
       </AnimatePresence>
 
+      {impactAssetId && (
+        <AssetImpactWindow 
+          deviceId={impactAssetId}
+          devices={devices || []}
+          connections={connections || []}
+          onClose={() => setImpactAssetId(null)}
+        />
+      )}
+
+      {showLabelGenerator && (
+        <LabelGeneratorModal 
+           racks={activeRacks.filter((r:any) => selectedRacks.includes(r.id))}
+           devices={devices || []}
+           connections={connections || []}
+           onClose={() => setShowLabelGenerator(false)}
+        />
+      )}
+
+      {isComparing && (
+        <InfrastructureHistory 
+          onClose={() => setIsComparing(false)}
+          onExecuteDiff={(versions) => {
+            setDiffBaseVersion(versions[0])
+            toast.success(`Visual Diff Engine Active: Comparing ${versions.length} versions`)
+            setIsComparing(false)
+          }}
+        />
+      )}
+
+      {showPlanList && (
+       <PlanListModal 
+          plans={plans}
+          onClose={() => setShowPlanList(false)}
+          onAddPlan={(type) => {
+             setIsCreatingPlan(type)
+             setIsPlanMode(true)
+             setIsPlanInitialized(false)
+             setShowPlanList(false)
+             setSelectedRacks([])
+             if (type === 'blank') {
+               toast("Select racks to clear for blank baseline")
+             } else {
+               toast("Select racks to import for as-is baseline")
+             }
+          }}
+          onLoadPlan={(p) => {
+             setIsPlanMode(true)
+             setIsPlanInitialized(true)
+             setActivePlanId(p.id)
+             setSandboxRackIds(p.racks)
+             setVirtualRacks(JSON.parse(JSON.stringify(p.racksData)))
+             setShowOnlySandbox(true)
+             setShowPlanList(false)
+             toast.success(`Loaded Matrix: ${p.name}`)
+          }}
+       />
+      )}
       <ConnectionForensicsModal
         isOpen={!!viewingConnection}
         onClose={() => setViewingConnection(null)}
@@ -2137,6 +2922,15 @@ export default function RackTemp() {
           rack={managingDevice.rack}
           onClose={() => setManagingDevice(null)}
           onUnmount={async (deviceId) => {
+            if (isPlanInitialized) {
+              setVirtualRacks(prev => prev.map(r => ({
+                ...r,
+                device_locations: (r.device_locations || []).filter((l: any) => l.device_id !== deviceId)
+              })))
+              setManagingDevice(null)
+              toast.success('Asset unmounted virtually')
+              return
+            }
             await apiFetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
             queryClient.invalidateQueries({ queryKey: ['racks-all'] })
             queryClient.invalidateQueries({ queryKey: ['devices'] })
@@ -2145,6 +2939,16 @@ export default function RackTemp() {
           }}
           onUpdateMount={(data) => updateMountMutation.mutate(data)}
           onUpdateDevice={async (data) => {
+            if (isPlanInitialized) {
+              setVirtualRacks(prev => prev.map(r => ({
+                ...r,
+                device_locations: (r.device_locations || []).map((l: any) => 
+                  l.device_id === data.id ? { ...l, device: { ...l.device, ...data } } : l
+                )
+              })))
+              toast.success('Asset updated virtually')
+              return
+            }
             await apiFetch(`/api/v1/devices/${managingDevice.device.id}`, { method: 'PUT', body: JSON.stringify(data) })
             queryClient.invalidateQueries({ queryKey: ['devices'] })
             queryClient.invalidateQueries({ queryKey: ['racks-all'] })
