@@ -230,7 +230,7 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
   const requestRef = React.useRef<number | null>(null)
 
   const updateLines = React.useCallback(() => {
-    const gridEl = document.getElementById('rack-temp-grid')
+    const gridEl = document.getElementById('racks-grid')
     if (!gridEl) return
     const gridRect = gridEl.getBoundingClientRect()
     
@@ -2018,7 +2018,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function RackTemp() {
+export default function Racks() {
   const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
 
@@ -2187,7 +2187,7 @@ export default function RackTemp() {
       const { rackId, ...rest } = data
       
       let finalDeviceId = rest.device_id
-      let finalDevice = devices?.find(d => d.id === finalDeviceId)
+      let finalDevice = devices?.find((d: any) => String(d.id) === String(finalDeviceId))
       
       // If reserving a new slot
       if (provisionMode === 'reserve') {
@@ -2228,8 +2228,16 @@ export default function RackTemp() {
         setVirtualRacks(prev => prev.map(r => {
           if (r.id !== rackId) return r
           const newLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
-          newLocs.push({ ...payload, device: finalDevice })
-          return { ...r, device_locations: newLocs }
+          
+          // Also remove any existing devices in the target slots to prevent overlap in virtual state
+          const targetUnits = Array.from({ length: payload.size_u }, (_, i) => payload.start_unit + i)
+          const finalLocs = newLocs.filter((l: any) => {
+            const locUnits = Array.from({ length: l.size_u }, (_, i) => l.start_unit + i)
+            return !locUnits.some(u => targetUnits.includes(u))
+          })
+
+          finalLocs.push({ ...payload, device: finalDevice })
+          return { ...r, device_locations: finalLocs }
         }))
         return { message: 'VIRTUAL_SUCCESS' }
       }
@@ -2540,9 +2548,9 @@ export default function RackTemp() {
                  <History size={20} className="text-white" />
               </div>
               <div>
-                 <h3 className="text-sm font-black uppercase tracking-tighter text-white leading-none">Time Machine <span className="text-blue-200">Historical Diff</span></h3>
+                 <h3 className="text-sm font-black uppercase tracking-tighter text-white leading-none">Infrastructure <span className="text-blue-200">Time Machine</span></h3>
                  <p className="text-[9px] font-bold text-blue-200 uppercase tracking-widest mt-1">
-                    Comparing LIVE STATE against V{diffBaseVersion} Snapshot
+                    Temporal Configuration Analysis Active
                  </p>
               </div>
            </div>
@@ -2553,28 +2561,28 @@ export default function RackTemp() {
       )}
 
       {/* ── Page Header ── */}
-      <div className={`flex items-start justify-between gap-4 shrink-0 transition-opacity flex-nowrap overflow-x-auto no-scrollbar ${isMaskMode ? 'opacity-20 pointer-events-none grayscale' : ''}`}>
-        <div className="flex items-center gap-6 flex-nowrap shrink-0">
+      <div className={`flex flex-wrap items-center justify-between gap-4 shrink-0 transition-all`}>
+        <div className={`flex items-center gap-6 flex-wrap transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
           <div className="shrink-0">
             <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Racks</h1>
             <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
           </div>
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] self-start flex-nowrap shrink-0">
+          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] h-10 items-center">
             <button
               onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
-              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >Active</button>
             <button
               onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }}
-              className={`px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >Purged</button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-nowrap shrink-0">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* Width slider */}
           {viewMode === 'elevation' && (
-            <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/[0.06]">
+            <div className="flex items-center gap-2 bg-white/5 px-3 h-10 rounded-lg border border-white/[0.06]">
               <Layers size={11} className="text-slate-500" />
               <input 
                 type="range" min={160} max={400} value={rackWidth}
@@ -2586,51 +2594,53 @@ export default function RackTemp() {
           )}
 
           {/* View Mode Toggle */}
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
+          <div className="flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center">
             <button onClick={() => setViewMode('elevation')}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === 'elevation' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Elevation View">
+              className={`p-1.5 h-full aspect-square flex items-center justify-center rounded-lg transition-all ${viewMode === 'elevation' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Elevation View">
               <Layers size={14} />
             </button>
             <button onClick={() => setViewMode('spatial')}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === 'spatial' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Spatial Map">
+              className={`p-1.5 h-full aspect-square flex items-center justify-center rounded-lg transition-all ${viewMode === 'spatial' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Spatial Map">
               <MapPin size={14} />
             </button>
           </div>
 
           {/* Intelligence Overlays */}
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
+          <div className={`flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
             <button onClick={() => setIsComparing(true)}
-              className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-all" title="Time Machine / Diff">
+              className="px-3 h-full rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-all flex items-center justify-center" title="Time Machine / Diff">
               <History size={14} />
             </button>
             <button onClick={() => setShowPlanList(true)}
-              className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-white/5 transition-all" title="View Plans">
+              className="px-3 h-full rounded-lg text-slate-500 hover:text-violet-400 hover:bg-white/5 transition-all flex items-center justify-center" title="View Plans">
               <List size={14} />
             </button>
           </div>
 
           {/* Site View / Compare */}
-          {viewMode === 'elevation' && (
-            <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06]">
-              <button onClick={() => setShowCompareOnly(false)}
-                className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                All
-              </button>
-              <button onClick={() => setShowCompareOnly(true)}
-                className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
-              </button>
-            </div>
-          )}
+          <div className={`flex bg-white/5 p-1 h-10 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+            {viewMode === 'elevation' && (
+              <>
+                <button onClick={() => setShowCompareOnly(false)}
+                  className={`px-3 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  All
+                </button>
+                <button onClick={() => setShowCompareOnly(true)}
+                  className={`px-3 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                  Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
+                </button>
+              </>
+            )}
+          </div>
 
           {/* Search */}
-          <div className="relative">
+          <div className="relative h-10">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
             <input
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Search racks & devices..."
-              className="bg-white/5 border border-white/[0.06] rounded-lg pl-9 pr-8 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
+              className="bg-white/5 border border-white/[0.06] rounded-lg pl-9 pr-8 h-full text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
             />
             {searchTerm && (
               <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
@@ -2641,55 +2651,68 @@ export default function RackTemp() {
 
           {/* Connection Clear */}
           {focusedConnection && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 h-10">
               <button
                 onClick={() => setShowConnectionsList(true)}
-                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+                className="px-4 h-full bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
               >
                 <List size={13} /> View List
               </button>
               <button
                 onClick={() => setFocusedConnection(null)}
-                className="px-4 py-2 bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
+                className="px-4 h-full bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
               >
-                <X size={13} /> Clear Connections
+                <X size={13} /> Clear
               </button>
             </div>
           )}
 
           {/* Add Actions */}
-          {activeTab === 'active' && (
-            <div className="flex items-center gap-2">
+          {activeTab === 'active' && !isMaskMode && (
+            <div className="flex items-center gap-2 transition-all">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
+                className="w-10 h-10 flex items-center justify-center bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all shrink-0"
+                title="Import Bulk"
               >
-                <Upload size={13} /> Import Bulk
+                <Upload size={16} />
               </button>
               <button
                 onClick={() => setShowAuditLogs(true)}
-                className="px-4 py-2 bg-slate-600/10 text-slate-400 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
+                className="px-4 h-10 bg-slate-600/10 text-slate-400 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2 shrink-0"
               >
-                <BarChart3 size={13} /> Audit Logs
+                <BarChart3 size={14} /> Logs
               </button>
-              <button
-                onClick={() => { 
-                  setNewRack({ 
-                    name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0,
-                    pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
-                  }); 
-                  setIsAddingRack(true) 
-                }}
-                className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
-              >
-                <Plus size={13} /> Add Rack
-              </button>
-              <button
-                onClick={() => { setNewSite({ name: '', address: '', color: '#3b82f6' }); setIsAddingSite(true) }}
-                className="px-4 py-2 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-600/20 transition-all flex items-center gap-2"
-              >
-                <Plus size={13} /> Add Site
-              </button>
+              
+              <div className="relative group/add shrink-0">
+                <button
+                  className="px-4 h-10 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                >
+                  <Plus size={14} /> Create New
+                </button>
+                <div className="absolute right-0 top-full pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all z-[110]">
+                  <div className="bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[140px]">
+                    <button
+                      onClick={() => { 
+                        setNewRack({ 
+                          name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0,
+                          pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
+                        }); 
+                        setIsAddingRack(true) 
+                      }}
+                      className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-3 transition-all"
+                    >
+                      <Server size={14} /> Add Rack
+                    </button>
+                    <button
+                      onClick={() => { setNewSite({ name: '', address: '', color: '#3b82f6' }); setIsAddingSite(true) }}
+                      className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-3 transition-all"
+                    >
+                      <MapPin size={14} /> Add Site
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -2788,7 +2811,7 @@ export default function RackTemp() {
       )}
 
       {/* ── Rack Grid ── */}
-      <div id="rack-temp-grid" className="h-full flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
+      <div id="racks-grid" className="h-full flex-1 flex gap-8 overflow-x-auto overflow-y-hidden pb-4 custom-scrollbar px-1 min-h-0 relative">
         
         {viewMode === 'spatial' ? (
           <SpatialMap
@@ -2829,21 +2852,22 @@ export default function RackTemp() {
                     
                         if (isDiffActive) {
                           const snapshotInfo = snapshots.find(s => s.id === diffBaseVersion)
-                          const snapshotDate = snapshotInfo ? snapshotInfo.date : 'Snapshot'
+                          const snapshotDate = snapshotInfo ? snapshotInfo.date : (isPlanInitialized ? planDraftName : 'PROPOSED')
                           return (
                             <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
-                               <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex gap-4 z-30 scale-100 whitespace-nowrap">
-                                  <span className="px-5 py-2 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
-                                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1.5">
-                                     <ArrowRightLeft size={20} className="text-white" />
+                               <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 scale-100 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">CURRENT</span>
+                                    <div className="w-10 h-10 bg-[#034EA2] rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl z-10 -mx-2">
+                                       <ArrowRightLeft size={16} className="text-white" />
+                                    </div>
+                                    <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-r-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
+                                       {snapshotDate}
+                                    </span>
                                   </div>
-                                  <span className="px-5 py-2 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">
-                                     {diffBaseVersion ? `Snapshot: ${snapshotDate}` : 'Proposed Plan'}
-                                  </span>
                                </div>
                                
-                               <div className="flex flex-col gap-3 h-full min-w-0">
-                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Live Production</p>
+                               <div className="flex flex-col gap-3 h-full min-w-0 pt-4">
                                   <RackElevation
                                     rack={diffBaseVersion ? historicalRack : liveRack}
                                     searchTerm={searchTerm}
@@ -2861,8 +2885,7 @@ export default function RackTemp() {
                                   />
                                 </div>
                                
-                               <div className="flex flex-col gap-3 h-full min-w-0">
-                                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">{diffBaseVersion ? 'Historical Delta' : 'Virtualized Sandbox'}</p>
+                               <div className="flex flex-col gap-3 h-full min-w-0 pt-4">
                                   <RackElevation
                                     rack={r}
                                     searchTerm={searchTerm}
@@ -3302,26 +3325,30 @@ export default function RackTemp() {
                     }).map((d: any) => {
                       const isSelected = String(d.id) === String(isProvisioning.device_id)
                       const planLoc = isPlanInitialized ? getPlanDeviceLocation(d.id) : null
-                      const locInfo = isPlanInitialized 
-                        ? (planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : '') 
-                        : (planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : (d.rack_name ? `@ ${d.rack_name} U${d.u_start}` : ''))
+                      const realLoc = d.rack_id ? { rackName: d.rack_name, uStart: d.u_start } : null
                       
+                      const locInfo = isPlanInitialized 
+                        ? (planLoc ? `MOUNTED @ ${planLoc.rackName} U${planLoc.uStart}` : '') 
+                        : (realLoc ? `MOUNTED @ ${realLoc.rackName} U${realLoc.uStart}` : '')
+                      
+                      const isMounted = isPlanInitialized ? !!planLoc : !!realLoc
+
                       return (
                         <button
                           key={d.id}
                           onClick={() => setIsProvisioning({ ...isProvisioning, device_id: String(d.id), size_u: d.size_u || 1 })}
-                          className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center justify-between group ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
+                          className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center justify-between group ${isSelected ? 'bg-[#034EA2] text-white shadow-lg' : isMounted ? 'bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                         >
                           <div className="min-w-0">
-                            <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : 'group-hover:text-blue-400'}`}>{d.name}</p>
+                            <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : isMounted ? 'text-emerald-400' : 'group-hover:text-blue-400'}`}>{d.name}</p>
                             <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>
                               {d.type} · {d.system || 'N/A'}
-                              {locInfo && <span className={`ml-1 ${isSelected ? 'text-blue-100' : (planLoc ? 'text-emerald-400' : 'text-rose-400/80')}`}>[{locInfo}]</span>}
+                              {locInfo && <span className={`ml-2 px-1.5 py-0.5 rounded bg-black/40 ${isSelected ? 'text-white' : 'text-emerald-500/80 border border-emerald-500/10'}`}>[{locInfo}]</span>}
                             </p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-4">
                             <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{d.size_u || 1}U</span>
-                            {isSelected && <Check size={12} strokeWidth={3} />}
+                            {(isSelected || isMounted) && <Check size={12} strokeWidth={3} className={isSelected ? 'text-white' : 'text-emerald-500'} />}
                           </div>
                         </button>
                       )

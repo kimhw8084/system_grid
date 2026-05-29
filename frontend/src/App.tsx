@@ -665,7 +665,7 @@ function MainLayout() {
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
               <Route path="/projects" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
-              <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><RackTemp /></ProtectedRoute>} />
+              <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><Racks /></ProtectedRoute>} />
               <Route path="/asset" element={<ProtectedRoute view="assets" userProfile={userProfile}><Assets /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute view="services" userProfile={userProfile}><ServiceRegistry /></ProtectedRoute>} />
               <Route path="/external" element={<ProtectedRoute view="external" userProfile={userProfile}><External /></ProtectedRoute>} />
