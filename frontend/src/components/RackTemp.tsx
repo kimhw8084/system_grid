@@ -498,6 +498,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
       style={{ height: '22px' }}
       className={`relative flex items-center transition-all cursor-default ${bgBase} ${borderClass} ${roundedClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''} ${isReservation ? 'border-dashed' : ''}`}
       data-device-id={device?.id}
+      data-u={uNumber}
     >
       {/* Precision Zone: The U-Number is ALWAYS a mounting trigger */}
       <div 
@@ -690,8 +691,36 @@ const RackElevation = ({
   focusedDeviceId, connectedDeviceIds, diffMode, liveRack, showCheckbox = true
 }: RackElevationProps) => {
   const [menuOpen, setMenuOpen] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const totalU = rack.total_u || 42
   const units = Array.from({ length: totalU }, (_, i) => totalU - i)
+
+  // Auto-scroll to first diff if in diffMode
+  useEffect(() => {
+    if (diffMode && liveRack && scrollRef.current) {
+      const liveLocations = liveRack.device_locations || []
+      const virtualLocations = rack.device_locations || []
+      
+      // Find first unit where there is a difference
+      let firstDiffU = -1
+      for (let u = 1; u <= totalU; u++) {
+        const liveAtU = liveLocations.find((l: any) => l.start_unit <= u && (l.start_unit + l.size_u) > u)
+        const virtAtU = virtualLocations.find((l: any) => l.start_unit <= u && (l.start_unit + l.size_u) > u)
+        
+        if (JSON.stringify(liveAtU) !== JSON.stringify(virtAtU)) {
+          firstDiffU = u
+          break
+        }
+      }
+
+      if (firstDiffU !== -1) {
+        const el = scrollRef.current.querySelector(`[data-u="${firstDiffU}"]`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+    }
+  }, [diffMode, liveRack, rack.device_locations, totalU])
 
   const occupiedU = useMemo(() =>
     (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.size_u || 1), 0),
@@ -907,7 +936,7 @@ const AssetLegend = () => (
 
 // ─── Site Capacity Summary Bar ─────────────────────────────────────────────────
 
-const AssetImpactWindow = ({ deviceId, devices, connections, onClose }: { deviceId: number, devices: any[], connections: any[], onClose: () => void }) => {
+const AssetImpactWindow = ({ deviceId, devices, connections, onClose, coords }: { deviceId: number, devices: any[], connections: any[], onClose: () => void, coords: { x: number, y: number } | null }) => {
   const device = devices?.find(d => d.id === deviceId)
   const deviceConns = connections?.filter(c => c.source_device_id === deviceId || c.target_device_id === deviceId) || []
   
@@ -932,11 +961,16 @@ const AssetImpactWindow = ({ deviceId, devices, connections, onClose }: { device
     return stats
   }, [deviceConns, devices, deviceId])
 
+  // Smart positioning: try to place to the right of options menu, if not enough space, place to the left
+  // optionsMenu is roughly 200px wide.
+  const initialX = coords ? (coords.x + 220 + 450 > window.innerWidth ? coords.x - 470 : coords.x + 220) : 100
+  const initialY = coords ? Math.min(coords.y, window.innerHeight - 550) : 100
+
   return (
     <motion.div 
       drag
       dragMomentum={false}
-      initial={{ x: 100, y: 100, opacity: 0 }}
+      initial={{ x: initialX, y: initialY, opacity: 0 }}
       animate={{ opacity: 1 }}
       className="fixed z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
     >
@@ -1163,9 +1197,9 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
   const [selectedVersions, setSelectedVersions] = useState<number[]>([])
   
   const snapshots = [
-    { id: 1, date: '2026-05-27 00:00', author: 'SYSTEM', changes: 4, type: 'Daily Routine', detail: 'Moved 2 assets in Rack A-01, Updated 1 Site Color' },
-    { id: 2, date: '2026-05-26 00:00', author: 'SYSTEM', changes: 12, type: 'Daily Routine', detail: 'Bulk Ingested 10 New Physical Assets' },
-    { id: 3, date: '2026-05-25 00:00', author: 'SYSTEM', changes: 0, type: 'Skipped (No Change)', detail: 'State identical to previous snapshot' },
+    { id: 1, date: '2026-05-27', author: 'SYSTEM', changes: 4, type: 'Daily Routine', detail: 'Moved 2 assets in Rack A-01, Updated 1 Site Color' },
+    { id: 2, date: '2026-05-26', author: 'SYSTEM', changes: 12, type: 'Daily Routine', detail: 'Bulk Ingested 10 New Physical Assets' },
+    { id: 3, date: '2026-05-25', author: 'SYSTEM', changes: 0, type: 'Skipped (No Change)', detail: 'State identical to previous snapshot' },
   ]
 
   const toggleVersion = (id: number) => {
@@ -1176,7 +1210,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-[2rem] border border-white/10 shadow-2xl">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-2xl border border-white/10 shadow-2xl">
           <div className="flex justify-between items-start mb-8">
              <div>
                 <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Infrastructure Time Machine</h2>
@@ -1194,7 +1228,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                  <div 
                    key={s.id} 
                    onClick={() => toggleVersion(s.id)}
-                   className={`group flex items-center justify-between p-6 rounded-2xl border transition-all cursor-pointer ${isSelected ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
+                   className={`group flex items-center justify-between p-6 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
                  >
                     <div className="flex items-center gap-6">
                        <div className={`p-4 rounded-xl transition-all ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500'}`}>
@@ -1228,7 +1262,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                 <p className="text-xs text-slate-400 mt-1 italic">
                    {selectedVersions.length === 0 ? "Select a version to compare with Live State (Now)." :
                     selectedVersions.length === 1 ? "Comparing LIVE STATE with snapshot from " + snapshots.find(s => s.id === selectedVersions[0])?.date :
-                    "Cross-diffing version " + snapshots.find(s => s.id === selectedVersions[0])?.id + " vs " + snapshots.find(s => s.id === selectedVersions[1])?.id}
+                    "Cross-diffing snapshot " + snapshots.find(s => s.id === selectedVersions[0])?.date + " vs " + snapshots.find(s => s.id === selectedVersions[1])?.date}
                 </p>
              </div>
              <button 
@@ -1927,6 +1961,7 @@ export default function RackTemp() {
   const [isComparing, setIsComparing] = useState(false)
   const [diffBaseVersion, setDiffBaseVersion] = useState<number | null>(null)
   const [impactAssetId, setImpactAssetId] = useState<number | null>(null)
+  const [impactCoords, setImpactCoords] = useState<{ x: number; y: number } | null>(null)
   const [showLabelGenerator, setShowLabelGenerator] = useState(false)
   const [newSite, setNewSite] = useState({ name: '', address: '', color: '#3b82f6' })
   const [isEditingSite, setIsEditingSite] = useState<any>(null)
@@ -2341,19 +2376,26 @@ export default function RackTemp() {
               }
            }}
            onProceed={() => {
+              const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : []
+
+              const virtualized = siteRacks.map((r: any) => {
+                if (selectedRacks.includes(r.id)) {
+                  // Clone as-is
+                  return JSON.parse(JSON.stringify(r))
+                } else {
+                  // Blank
+                  return { ...r, device_locations: [] }
+                }
+              })
+
+              setVirtualRacks(virtualized)
+              setSandboxRackIds(siteRacks.map(r => r.id))
               setIsPlanInitialized(true)
-              setSandboxRackIds([...selectedRacks])
-              // Deep clone active racks into virtual racks
-              let selectedRacksData = activeRacks.filter((r: any) => selectedRacks.includes(r.id))
-              if (isCreatingPlan === 'blank') {
-                selectedRacksData = selectedRacksData.map((r: any) => ({ ...r, device_locations: [] }))
-              }
-              setVirtualRacks(JSON.parse(JSON.stringify(selectedRacksData)))
-              setSelectedRacks([]) // Clear standard selection for mask mode
-              setShowOnlySandbox(true)
-              toast.success("New Sandbox Matrix Initialized")
-           }}
-           selectedCount={selectedRacks.length}
+              setSelectedRacks([])
+              setShowOnlySandbox(false)
+              setIsCreatingPlan(null)
+              toast.success("Imported Live Racks into Plan Matrix")
+           }}           selectedCount={selectedRacks.length}
            isInitialized={isPlanInitialized}
            showOnlySandbox={showOnlySandbox}
            onToggleShowOnly={setShowOnlySandbox}
@@ -2660,62 +2702,63 @@ export default function RackTemp() {
                       ? { ...r, device_locations: (r.device_locations || []).slice(0, Math.max(0, (r.device_locations?.length || 0) - 1)) }
                       : null
                     
-                    if (isDiffActive) {
-                      return (
-                        <div key={`diff-${r.id}`} className="flex gap-4 p-8 bg-white/[0.02] border border-white/5 rounded-[3rem] relative shrink-0">
-                           <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-4 z-30">
-                              <span className="px-5 py-1.5 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
-                              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1">
-                                 <ArrowRightLeft size={16} className="text-white" />
-                              </div>
-                              <span className="px-5 py-1.5 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">
-                                 {diffBaseVersion ? `V${diffBaseVersion} Snapshot` : 'Proposed Plan'}
-                              </span>
-                           </div>
-                           
-                           <div className="flex flex-col gap-3">
-                              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Live Production</p>
-                              <RackElevation
-                                rack={diffBaseVersion ? historicalRack : liveRack}
-                                searchTerm={searchTerm}
-                                isSelected={false}
-                                showCheckbox={false}
-                                onToggleSelect={() => {}}
-                                onDelete={() => {}}
-                                onEdit={() => {}}
-                                onShowInfo={() => {}}
-                                onMount={() => {}}
-                                onManageDevice={() => {}}
-                                isDeleted={false}
-                                rackWidth={rackWidth}
-                              />
-                           </div>
-                           
-                           <div className="flex flex-col gap-3">
-                              <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">{diffBaseVersion ? 'Historical Delta' : 'Virtualized Sandbox'}</p>
-                              <RackElevation
-                                rack={r}
-                                searchTerm={searchTerm}
-                                isSelected={false}
-                                showCheckbox={false}
-                                onToggleSelect={() => {}}
-                                onDelete={id => isPlanInitialized ? null : {}}
-                                onEdit={rack => isPlanInitialized ? setIsEditingRack({ ...rack, total_u: rack.total_u }) : {}}
-                                onShowInfo={rack => setShowingRackInfo(rack)}
-                                onMount={(rackId, u) => isPlanInitialized ? setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }) : null}
-                                onManageDevice={(device, l, e) => {
-                                  setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
-                                  setImpactAssetId(device.id)
-                                }}
-                                isDeleted={false}
-                                rackWidth={rackWidth}
-                                diffMode={true}
-                                liveRack={diffBaseVersion ? historicalRack : liveRack}
-                              />
-                           </div>
-                        </div>
-                      )
-                    }
+                        if (isDiffActive) {
+                          const snapshotDate = snapshots.find(s => s.id === diffBaseVersion)?.date || 'Snapshot'
+                          return (
+                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
+                               <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-4 z-30">
+                                  <span className="px-5 py-1.5 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
+                                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1">
+                                     <ArrowRightLeft size={16} className="text-white" />
+                                  </div>
+                                  <span className="px-5 py-1.5 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">
+                                     {diffBaseVersion ? `Snapshot: ${snapshotDate}` : 'Proposed Plan'}
+                                  </span>
+                               </div>
+                               
+                               <div className="flex flex-col gap-3 h-full">
+                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Live Production</p>
+                                  <RackElevation
+                                    rack={diffBaseVersion ? historicalRack : liveRack}
+                                    searchTerm={searchTerm}
+                                    isSelected={false}
+                                    showCheckbox={false}
+                                    onToggleSelect={() => {}}
+                                    onDelete={() => {}}
+                                    onEdit={() => {}}
+                                    onShowInfo={() => {}}
+                                    onMount={() => {}}
+                                    onManageDevice={() => {}}
+                                    isDeleted={false}
+                                    rackWidth={rackWidth}
+                                  />
+                               </div>
+                               
+                               <div className="flex flex-col gap-3 h-full">
+                                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">{diffBaseVersion ? 'Historical Delta' : 'Virtualized Sandbox'}</p>
+                                  <RackElevation
+                                    rack={r}
+                                    searchTerm={searchTerm}
+                                    isSelected={false}
+                                    showCheckbox={false}
+                                    onToggleSelect={() => {}}
+                                    onDelete={id => isPlanInitialized ? null : {}}
+                                    onEdit={rack => isPlanInitialized ? setIsEditingRack({ ...rack, total_u: rack.total_u }) : {}}
+                                    onShowInfo={rack => setShowingRackInfo(rack)}
+                                    onMount={(rackId, u) => isPlanInitialized ? setIsProvisioning({ rackId, start_u: u, size_u: 1, orientation: 'Front', depth: 'Full' }) : null}
+                                    onManageDevice={(device, l, e) => {
+                                      setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
+                                      setImpactAssetId(device.id)
+                                      setImpactCoords({ x: e.clientX, y: e.clientY })
+                                    }}                                    isDeleted={false}
+                                    rackWidth={rackWidth}
+                                    diffMode={true}
+                                    liveRack={diffBaseVersion ? historicalRack : liveRack}
+                                  />
+                               </div>
+                            </div>
+                          )
+                        }
 
                     return (
                       <RackElevation
@@ -2737,8 +2780,8 @@ export default function RackTemp() {
                         onManageDevice={(device, l, e) => {
                           setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
                           setImpactAssetId(device.id)
-                        }}
-                        isDeleted={activeTab === 'deleted'}
+                          setImpactCoords({ x: e.clientX, y: e.clientY })
+                        }}                        isDeleted={activeTab === 'deleted'}
                         onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
                         rackWidth={rackWidth}
                         focusedDeviceId={focusedConnection?.sourceId ?? null}
@@ -2787,8 +2830,8 @@ export default function RackTemp() {
                       onManageDevice={(device, l, e) => {
                         setOptionsMenu({ x: e.clientX, y: e.clientY, device, loc: l, rack: r })
                         setImpactAssetId(device.id)
-                      }}
-                      isDeleted={activeTab === 'deleted'}
+                        setImpactCoords({ x: e.clientX, y: e.clientY })
+                      }}                      isDeleted={activeTab === 'deleted'}
                       onRestore={id => setRestoreWizard({ step: 'site-select', ids: [id], nameConflicts: [], assetWarnings: [], generalAssetWarning: false })}
                       rackWidth={rackWidth}
                       focusedDeviceId={focusedConnection?.sourceId ?? null}
@@ -2844,7 +2887,8 @@ export default function RackTemp() {
           deviceId={impactAssetId}
           devices={devices || []}
           connections={connections || []}
-          onClose={() => setImpactAssetId(null)}
+          onClose={() => { setImpactAssetId(null); setImpactCoords(null) }}
+          coords={impactCoords}
         />
       )}
 
@@ -2873,15 +2917,24 @@ export default function RackTemp() {
           plans={plans}
           onClose={() => setShowPlanList(false)}
           onAddPlan={(type) => {
-             setIsCreatingPlan(type)
-             setIsPlanMode(true)
-             setIsPlanInitialized(false)
-             setShowPlanList(false)
-             setSelectedRacks([])
+             const siteRacks = activeSite ? (activeRacks || []).filter((r: any) => r.site_id === activeSite) : []
+             
              if (type === 'blank') {
-               toast("Select racks to clear for blank baseline")
+                setVirtualRacks(siteRacks.map((r: any) => ({ ...r, device_locations: [] })))
+                setSandboxRackIds(siteRacks.map((r: any) => r.id))
+                setIsPlanInitialized(true)
+                setIsPlanMode(true)
+                setShowPlanList(false)
+                setIsCreatingPlan(null)
+                setShowOnlySandbox(false)
+                toast.success("Initialized Blank Site Plan")
              } else {
-               toast("Select racks to import for as-is baseline")
+                setIsCreatingPlan(type)
+                setIsPlanMode(true)
+                setIsPlanInitialized(false)
+                setShowPlanList(false)
+                setSelectedRacks([])
+                toast("Select baseline racks for live import")
              }
           }}
           onLoadPlan={(p) => {
