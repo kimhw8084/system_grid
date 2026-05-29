@@ -13,3 +13,8 @@ dist/
 .aider*
 .cline/
 .cursor*
+
+# Ignore all markdown files except README
+*.md
+!README.md
+

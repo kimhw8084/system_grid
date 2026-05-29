@@ -32,7 +32,9 @@ import ReactFlow, {
   Connection,
   Edge,
   Node,
-  MarkerType
+  MarkerType,
+  Handle,
+  Position
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 
@@ -1715,6 +1717,51 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
   )
 }
 
+const ProcessNode = ({ data }: any) => (
+  <div className="px-6 py-3 shadow-2xl rounded-xl bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[140px] flex items-center justify-center relative overflow-hidden group">
+     <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+     <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{data.label}</span>
+     <Handle type="target" position={Position.Top} className="w-2 h-2 bg-blue-500 border-none" />
+     <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-blue-500 border-none" />
+  </div>
+)
+
+const DiamondNode = ({ data }: any) => (
+  <div className="w-24 h-24 rotate-45 bg-[#0a0c14] border-2 border-amber-500/50 flex items-center justify-center relative group overflow-hidden shadow-2xl">
+     <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+     <span className="-rotate-45 text-[9px] font-black uppercase tracking-tighter text-amber-400 text-center px-2">{data.label}</span>
+     <Handle type="target" position={Position.Top} className="w-2 h-2 bg-amber-500 border-none !top-[-4px] !left-1/2 !-translate-x-1/2" />
+     <Handle type="source" position={Position.Bottom} className="w-2 h-2 bg-amber-500 border-none !bottom-[-4px] !left-1/2 !-translate-x-1/2" />
+     <Handle type="source" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-4px] !top-1/2 !-translate-y-1/2" />
+     <Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-4px] !top-1/2 !-translate-y-1/2" />
+  </div>
+)
+
+const InfrastructureNode = ({ data, type }: any) => {
+  const Icon = type === 'db' ? Database : type === 'cloud' ? Globe : type === 'storage' ? Layers : Server
+  const color = type === 'db' ? 'emerald' : type === 'cloud' ? 'sky' : type === 'storage' ? 'purple' : 'slate'
+  
+  return (
+    <div className={`px-4 py-3 rounded-2xl bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[120px] flex flex-col items-center gap-2 shadow-2xl group transition-all hover:border-${color}-500`}>
+       <div className={`w-10 h-10 bg-${color}-600/10 rounded-xl flex items-center justify-center border border-${color}-500/20 group-hover:scale-110 transition-transform`}>
+          <Icon size={20} className={`text-${color}-400`} />
+       </div>
+       <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{data.label}</span>
+       <Handle type="target" position={Position.Top} className={`w-2 h-2 bg-${color}-500 border-none`} />
+       <Handle type="source" position={Position.Bottom} className={`w-2 h-2 bg-${color}-500 border-none`} />
+    </div>
+  )
+}
+
+const nodeTypes = {
+  process: ProcessNode,
+  diamond: DiamondNode,
+  server: (props: any) => <InfrastructureNode {...props} type="server" />,
+  storage: (props: any) => <InfrastructureNode {...props} type="storage" />,
+  db: (props: any) => <InfrastructureNode {...props} type="db" />,
+  cloud: (props: any) => <InfrastructureNode {...props} type="cloud" />
+}
+
 const DiagramBuilder = ({ data, onChange, onSave }: any) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(data?.nodes || [])
   const [edges, setEdges, onEdgesChange] = useEdgesState(data?.edges || [])
@@ -3030,7 +3077,7 @@ export default function Projects() {
                      </motion.div>
                    ) : (
                       <>
-                        {(!selectedProject && selectedProjectId !== 'HUDDLE') ? (
+                        {!selectedProject ? (
                           <div className="h-full flex items-center justify-center">
                              <div className="text-center space-y-4">
                                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10">

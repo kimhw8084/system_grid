@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
@@ -1193,15 +1193,15 @@ const LabelGeneratorModal = ({ racks, onClose, devices, connections }: { racks: 
   )
 }
 
+const snapshots = [
+  { id: 1, date: '2026-05-27', author: 'SYSTEM', changes: 4, type: 'Daily Routine', detail: 'Moved 2 assets in Rack A-01, Updated 1 Site Color' },
+  { id: 2, date: '2026-05-26', author: 'SYSTEM', changes: 12, type: 'Daily Routine', detail: 'Bulk Ingested 10 New Physical Assets' },
+  { id: 3, date: '2026-05-25', author: 'SYSTEM', changes: 0, type: 'Skipped (No Change)', detail: 'State identical to previous snapshot' },
+]
+
 const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void, onExecuteDiff: (versions: number[]) => void }) => {
   const [selectedVersions, setSelectedVersions] = useState<number[]>([])
   
-  const snapshots = [
-    { id: 1, date: '2026-05-27', author: 'SYSTEM', changes: 4, type: 'Daily Routine', detail: 'Moved 2 assets in Rack A-01, Updated 1 Site Color' },
-    { id: 2, date: '2026-05-26', author: 'SYSTEM', changes: 12, type: 'Daily Routine', detail: 'Bulk Ingested 10 New Physical Assets' },
-    { id: 3, date: '2026-05-25', author: 'SYSTEM', changes: 0, type: 'Skipped (No Change)', detail: 'State identical to previous snapshot' },
-  ]
-
   const toggleVersion = (id: number) => {
     setSelectedVersions(prev => 
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-2)

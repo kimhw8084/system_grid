@@ -4137,12 +4137,6 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
           </div>
         </>
       )}
-      <BulkImportModal 
-         isOpen={showImportModal} 
-         onClose={() => setShowImportModal(false)} 
-         tableName="devices" 
-         displayName="Inventory Assets" 
-      />
     </div>
   )
 }
