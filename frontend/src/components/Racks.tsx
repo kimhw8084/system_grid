@@ -2039,6 +2039,7 @@ export default function Racks() {
   const [sandboxRackIds, setSandboxRackIds] = useState<number[]>([])
   const [showOnlySandbox, setShowOnlySandbox] = useState(false)
   const [showPlanList, setShowPlanList] = useState(false)
+  const [showAddMenu, setShowAddMenu] = useState(false)
   const [planDraftName, setPlanDraftName] = useState('')
   const [isCreatingPlan, setIsCreatingPlan] = useState<'blank' | 'asis' | null>(null)
   const { data: plansData, refetch: refetchPlans } = useQuery({ 
@@ -2498,6 +2499,7 @@ export default function Racks() {
            onSave={() => {
               const name = planDraftName || `Plan ${plans.length + 1} (${new Date().toLocaleDateString()})`
               savePlanMutation.mutate({
+                id: activePlanId,
                 name,
                 racks: sandboxRackIds,
                 racksData: virtualRacks
@@ -2684,34 +2686,38 @@ export default function Racks() {
                 <BarChart3 size={14} /> Logs
               </button>
               
-              <div className="relative group/add shrink-0">
+              <div className="relative shrink-0">
                 <button
-                  className="px-4 h-10 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                  className="w-10 h-10 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center"
                 >
-                  <Plus size={14} /> Create New
+                  <Plus size={20} />
                 </button>
-                <div className="absolute right-0 top-full pt-2 opacity-0 translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all z-[110]">
-                  <div className="bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[140px]">
-                    <button
-                      onClick={() => { 
-                        setNewRack({ 
-                          name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0,
-                          pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
-                        }); 
-                        setIsAddingRack(true) 
-                      }}
-                      className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-3 transition-all"
-                    >
-                      <Server size={14} /> Add Rack
-                    </button>
-                    <button
-                      onClick={() => { setNewSite({ name: '', address: '', color: '#3b82f6' }); setIsAddingSite(true) }}
-                      className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-3 transition-all"
-                    >
-                      <MapPin size={14} /> Add Site
-                    </button>
+                {showAddMenu && (
+                  <div className="absolute right-0 top-full pt-2 z-[110]">
+                    <div className="bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[140px]">
+                      <button
+                        onClick={() => { 
+                          setNewRack({ 
+                            name: '', aisle: '', row: '', total_u: 42, site_id: activeSite ? String(activeSite) : '', max_power_kw: 10.0,
+                            pdu_a_name: 'PDU-A', pdu_b_name: 'PDU-B', pdu_a_cap_kw: 10.0, pdu_b_cap_kw: 10.0
+                          }); 
+                          setIsAddingRack(true)
+                          setShowAddMenu(false)
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-3 transition-all"
+                      >
+                        <Server size={14} /> Add Rack
+                      </button>
+                      <button
+                        onClick={() => { setNewSite({ name: '', address: '', color: '#3b82f6' }); setIsAddingSite(true); setShowAddMenu(false) }}
+                        className="w-full text-left px-3 py-2.5 text-[9px] font-black uppercase text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-3 transition-all"
+                      >
+                        <MapPin size={14} /> Add Site
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -3094,6 +3100,7 @@ export default function Racks() {
              setIsPlanMode(true)
              setIsPlanInitialized(true)
              setActivePlanId(p.id)
+             setPlanDraftName(p.name)
              setSandboxRackIds(p.racks)
              setVirtualRacks(JSON.parse(JSON.stringify(p.racksData)))
              setShowOnlySandbox(true)

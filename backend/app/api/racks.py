@@ -16,6 +16,19 @@ async def get_plans(db: AsyncSession = Depends(get_db)):
 
 @router.post("/plans")
 async def save_plan(data: dict, db: AsyncSession = Depends(get_db)):
+    plan_id = data.get("id")
+    if plan_id:
+        result = await db.execute(select(models.InfrastructurePlan).filter(models.InfrastructurePlan.id == plan_id))
+        plan = result.scalar_one_or_none()
+        if plan:
+            plan.name = data.get("name")
+            plan.description = data.get("description")
+            plan.racks_config = data.get("racks")
+            plan.virtual_racks_data = data.get("racksData")
+            await db.commit()
+            await db.refresh(plan)
+            return plan
+
     plan = models.InfrastructurePlan(
         name=data.get("name"),
         description=data.get("description"),
