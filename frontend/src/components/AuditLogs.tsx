@@ -65,7 +65,7 @@ export default function AuditLogs() {
       width: 180, 
       sortable: true, 
       filter: 'agDateColumnFilter', 
-      pinned: 'left',
+      pinned: 'left' as const,
       cellClass: 'text-center font-bold text-blue-400', 
       headerClass: 'text-center', 
       cellRenderer: (p: any) => p.value ? (
@@ -141,7 +141,7 @@ export default function AuditLogs() {
     {
         headerName: 'ACTIONS',
         width: 80,
-        pinned: 'right',
+        pinned: 'right' as const,
         cellRenderer: () => (
             <button className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
                 <Search size={14} />

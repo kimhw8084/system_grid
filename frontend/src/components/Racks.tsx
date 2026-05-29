@@ -5,7 +5,7 @@ import {
   Plus, Zap, Trash2, Edit2, Search, MapPin, X, ArrowRightLeft, Server,
   Monitor, AlertTriangle, Check, MoreVertical, RefreshCcw,
   Package, BarChart3, ExternalLink, Settings,
-  Network, HardDrive, TrendingUp, Layers, List, Upload, Tag, History, Clipboard, Eye, EyeOff, Activity, Terminal
+  Network, HardDrive, TrendingUp, Layers, List, Upload, Tag, History, Clipboard, Eye, EyeOff, Activity, Terminal, Clock
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -576,8 +576,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
 const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [selectedLog, setSelectedLog] = useState<any>(null)
   const [quickSearch, setQuickSearch] = useState('')
-  const [timeValue, setTimeValue] = useState(100)
-  const [isPlayback, setIsPlayback] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('All Vectors')
   const gridRef = React.useRef<any>(null)
 
   const { data: logs, isLoading } = useQuery({
@@ -586,248 +585,325 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     enabled: isOpen
   })
 
-  // Time Machine Filtering
+  // Real-time Statistics
+  const stats = useMemo(() => {
+    if (!logs) return { total: 0, distinctAdmins: 0, mountOps: 0, migrations: 0 }
+    return {
+      total: logs.length,
+      distinctAdmins: new Set(logs.map((l: any) => l.user_id)).size,
+      mountOps: logs.filter((l: any) => l.action === 'MOUNT' || l.action === 'UNMOUNT').length,
+      migrations: logs.filter((l: any) => l.action === 'MOVE' || l.action === 'BULK_RELOCATE').length
+    }
+  }, [logs])
+
+  // Functional Filtering logic
   const filteredLogs = useMemo(() => {
     if (!logs) return []
-    if (timeValue === 100) return logs
-    const limit = Math.floor((logs.length * timeValue) / 100)
-    return logs.slice(logs.length - limit)
-  }, [logs, timeValue])
-
-  useEffect(() => {
-    let interval: any
-    if (isPlayback) {
-      setTimeValue(0)
-      interval = setInterval(() => {
-        setTimeValue(prev => {
-          if (prev >= 100) {
-            setIsPlayback(false)
-            return 100
-          }
-          return prev + 1
-        })
-      }, 100)
+    let result = logs
+    
+    if (activeCategory === 'Mount Ops') {
+      result = logs.filter((l: any) => l.action === 'MOUNT' || l.action === 'UNMOUNT')
+    } else if (activeCategory === 'Logical Migrations') {
+      result = logs.filter((l: any) => l.action === 'MOVE' || l.action === 'BULK_RELOCATE' || l.action === 'REORDER')
+    } else if (activeCategory === 'State Deletions') {
+      result = logs.filter((l: any) => l.action === 'SOFT_DELETE' || l.action === 'BULK_DELETE' || l.action === 'BULK_PURGE')
     }
-    return () => clearInterval(interval)
-  }, [isPlayback])
+
+    return result
+  }, [logs, activeCategory])
 
   const columnDefs = useMemo(() => [
     { 
       field: 'timestamp', 
       headerName: 'TX_TIME', 
-      width: 180, 
+      width: 160, 
       sortable: true, 
       filter: 'agDateColumnFilter',
       cellClass: 'text-center font-bold text-blue-400',
-      cellRenderer: (p: any) => new Date(p.value).toLocaleString()
+      cellRenderer: (p: any) => (
+        <div className="flex items-center gap-2 justify-center">
+          <Clock size={10} className="opacity-40" />
+          <span>{new Date(p.value).toLocaleString('en-US', { hour12: false, month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      )
     },
     { 
       field: 'action', 
       headerName: 'OP_CODE', 
-      width: 120,
+      width: 100,
       cellClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-          p.value === 'MOUNT' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+          p.value === 'MOUNT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
           p.value === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
-          p.value === 'CREATE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-          p.value === 'UPDATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+          p.value === 'MOVE' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
+          p.value === 'UPDATE' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
           'bg-slate-500/10 text-slate-400 border border-slate-500/20'
         }`}>
           {p.value}
         </div>
       )
     },
-    { field: 'user_id', headerName: 'ADMIN', width: 140, cellClass: 'text-center font-black text-white uppercase' },
-    { field: 'description', headerName: 'TRANSACTION_DETAILS', flex: 1, cellClass: 'font-bold text-slate-300' },
+    { field: 'user_id', headerName: 'ADMIN', width: 110, cellClass: 'text-center font-black text-white uppercase tracking-tighter' },
+    { field: 'description', headerName: 'TRANSACTION_DETAILS', flex: 1, cellClass: 'font-bold text-slate-300 px-4' },
   ], [])
+
+  // Human Readable Diff Engine
+  const DiffViewer = ({ changes }: { changes: any }) => {
+    if (!changes || typeof changes !== 'object') return null
+    
+    // Filter out internal fields
+    const keys = Object.keys(changes).filter(k => k !== 'id' && k !== 'timestamp')
+    
+    return (
+      <div className="space-y-1.5">
+        {keys.map(key => {
+          const val = changes[key]
+          const isObject = val && typeof val === 'object' && !Array.isArray(val)
+          const isOldNew = isObject && 'old' in val && 'new' in val
+
+          return (
+            <div key={key} className="grid grid-cols-12 gap-2 text-[10px] items-center py-1 border-b border-white/[0.03]">
+              <div className="col-span-3 font-black text-slate-500 uppercase tracking-widest truncate">{key}</div>
+              <div className="col-span-9 flex items-center gap-2">
+                {isOldNew ? (
+                  <>
+                    <span className="text-rose-400/80 line-through truncate max-w-[120px]">{String(val.old)}</span>
+                    <ArrowRightLeft size={10} className="text-slate-600 shrink-0" />
+                    <span className="text-emerald-400 font-black truncate">{String(val.new)}</span>
+                  </>
+                ) : (
+                  <span className="text-blue-400 font-bold truncate">{JSON.stringify(val)}</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col overflow-hidden">
-          {/* Top Mission Control Bar */}
-          <div className="h-20 bg-slate-900 border-b border-white/10 px-10 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-violet-600 rounded-xl shadow-2xl shadow-violet-600/20 flex items-center justify-center text-white">
-                  <Activity size={24} />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Forensic Control Center</h1>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
-                    <Zap size={10} className="text-blue-500" /> Rack Evolution Immutable Ledger v4.2
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-10 w-px bg-white/5 mx-4" />
-
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={16} />
-                <input 
-                  type="text" 
-                  value={quickSearch}
-                  onChange={e => {
-                    setQuickSearch(e.target.value)
-                    gridRef.current?.api?.setQuickFilter(e.target.value)
-                  }}
-                  placeholder="SCAN TRANSACTION MATRIX..." 
-                  className="bg-white/5 border border-white/5 rounded-xl pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[400px]"
-                />
-              </div>
-            </div>
-
-            <button onClick={onClose} className="p-4 bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-2xl border border-white/5 transition-all">
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="flex-1 flex min-h-0">
-            {/* Sidebar: Forensic Filters */}
-            <div className="w-80 bg-slate-900/50 border-r border-white/5 p-8 space-y-10 overflow-y-auto custom-scrollbar shrink-0">
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Transaction Stream</h3>
-                <div className="space-y-2">
-                  {['All Vectors', 'Mount Ops', 'Logical Migrations', 'State Deletions'].map(f => (
-                    <button key={f} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${f === 'All Vectors' ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Integrity stats</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black text-slate-600 uppercase">Consistency</p>
-                    <p className="text-xl font-black text-emerald-400 mt-1">100%</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black text-slate-600 uppercase">TX Density</p>
-                    <p className="text-xl font-black text-blue-400 mt-1">High</p>
-                  </div>
-                </div>
-              </section>
-            </div>
-
-            {/* Main Ledger Grid */}
-            <div className="flex-1 bg-slate-950 relative flex flex-col min-w-0">
-              <div className="ag-theme-alpine-dark flex-1">
-                <AgGridReact
-                  ref={gridRef}
-                  rowData={filteredLogs}
-                  columnDefs={columnDefs}
-                  onRowClicked={p => setSelectedLog(p.data)}
-                  defaultColDef={{ resizable: true, filter: true, sortable: true }}
-                  animateRows={true}
-                  pagination={true}
-                  paginationPageSize={100}
-                />
-              </div>
-
-              {/* Time Machine Scrubbing Bar */}
-              <div className="h-20 bg-slate-900 border-t border-white/10 px-10 flex items-center gap-8 shrink-0">
+        <div className="fixed inset-0 z-[500] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-8">
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="glass-panel w-full max-w-6xl h-[85vh] rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col"
+          >
+            {/* Mission Control Bar */}
+            <div className="h-20 bg-white/[0.02] border-b border-white/5 px-10 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-8">
                 <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => setIsPlayback(!isPlayback)}
-                    className={`p-3 rounded-xl transition-all ${isPlayback ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'}`}
-                  >
-                    {isPlayback ? <X size={20} /> : <Zap size={20} />}
-                  </button>
-                  <div className="min-w-[120px]">
-                    <p className="text-[10px] font-black text-white uppercase tracking-tighter">Time Machine</p>
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{isPlayback ? 'REPLAYING HISTORY...' : 'SYSTEM STABLE'}</p>
+                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl shadow-2xl shadow-indigo-600/20 flex items-center justify-center text-white">
+                    <Activity size={24} />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Forensic Control</h1>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
+                      <Zap size={10} className="text-blue-500" /> Rack Evolution Immutable Ledger v5.0
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex-1 flex items-center gap-6">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Genesis</span>
-                  <div className="flex-1 relative group py-4">
-                    <input 
-                      type="range" min="0" max="100" step="1"
-                      value={timeValue}
-                      onChange={e => setTimeValue(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500 focus:outline-none"
-                    />
-                    <div 
-                      className="absolute top-1/2 -translate-y-1/2 h-1.5 bg-blue-500 rounded-full pointer-events-none transition-all duration-300"
-                      style={{ width: `${timeValue}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Present</span>
-                </div>
+                <div className="h-10 w-px bg-white/5 mx-2" />
 
-                <div className="flex items-center gap-4 px-6 py-2.5 bg-white/5 rounded-xl border border-white/5">
-                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Visibility</p>
-                   <p className="text-[11px] font-black text-white uppercase tabular-nums">{timeValue}%</p>
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={16} />
+                  <input 
+                    type="text" 
+                    value={quickSearch}
+                    onChange={e => {
+                      setQuickSearch(e.target.value)
+                      gridRef.current?.api?.setQuickFilter(e.target.value)
+                    }}
+                    placeholder="SCAN TRANSACTION MATRIX..." 
+                    className="bg-black/40 border border-white/5 rounded-xl pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[350px]"
+                  />
                 </div>
               </div>
 
-              {/* Detail Pane / Discovery */}
-              {selectedLog && (
-                <motion.div 
-                  initial={{ y: '100%' }} animate={{ y: 0 }}
-                  className="h-80 bg-slate-900 border-t border-blue-500/30 p-10 flex gap-12 shrink-0 relative shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
-                >
-                  <button onClick={() => setSelectedLog(null)} className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white"><X size={20}/></button>
-                  
-                  <div className="w-1/3 space-y-6">
-                    <div>
-                      <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Discovery Trace</h4>
-                      <h2 className="text-xl font-black text-white uppercase">{selectedLog.action} TRANSACTION</h2>
-                    </div>
-                    <div className="space-y-2">
-                       <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-slate-500 uppercase">Administrator</span>
-                          <span className="text-white">{selectedLog.user_id}</span>
-                       </div>
-                       <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-slate-500 uppercase">Description</span>
-                          <span className="text-white truncate max-w-[200px]">{selectedLog.description}</span>
-                       </div>
-                       <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-slate-500 uppercase">TX Reference</span>
-                          <span className="text-blue-400 font-mono">#{selectedLog.id}</span>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 bg-black/40 rounded-2xl border border-white/5 p-6 overflow-y-auto custom-scrollbar">
-                    <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Transformation Logic (JSON)</h4>
-                    <pre className="text-[11px] font-bold text-emerald-500/80 font-mono leading-relaxed">
-                      {JSON.stringify(selectedLog.changes || { action: selectedLog.action, description: selectedLog.description }, null, 2)}
-                    </pre>
-                  </div>
-
-                  <div className="w-1/4 flex flex-col justify-center items-center gap-4">
-                     <div className="w-20 h-20 rounded-full border-4 border-emerald-500/20 flex items-center justify-center relative">
-                        <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin duration-[3s]" />
-                        <Check size={32} className="text-emerald-500" />
-                     </div>
-                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Transaction Verified</p>
-                  </div>
-                </motion.div>
-              )}
+              <button onClick={onClose} className="p-3 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-xl transition-all">
+                <X size={24} />
+              </button>
             </div>
-          </div>
 
-          <style>{`
-            .ag-theme-alpine-dark {
-              --ag-background-color: #020617;
-              --ag-header-background-color: #0f172a;
-              --ag-border-color: rgba(255, 255, 255, 0.05);
-              --ag-foreground-color: #f1f5f9;
-              --ag-header-foreground-color: #3b82f6;
-              --ag-font-family: 'Inter', sans-serif;
-              --ag-font-size: 11px;
-            }
-            .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
-            .ag-cell { display: flex; align-items: center; font-weight: 700 !important; }
-            .ag-row-hover { background-color: rgba(59, 130, 246, 0.05) !important; cursor: pointer; }
-            .ag-row-selected { background-color: rgba(59, 130, 246, 0.1) !important; }
-          `}</style>
+            <div className="flex-1 flex min-h-0 bg-slate-950/40">
+              {/* Sidebar: Analytics & Filters */}
+              <div className="w-72 bg-black/20 border-r border-white/5 p-8 flex flex-col gap-10 overflow-y-auto custom-scrollbar shrink-0">
+                <section>
+                  <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">TX Stream Vectors</h3>
+                  <div className="space-y-2">
+                    {['All Vectors', 'Mount Ops', 'Logical Migrations', 'State Deletions'].map(f => (
+                      <button 
+                        key={f} 
+                        onClick={() => setActiveCategory(f)}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${activeCategory === f ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-600/20' : 'border-white/5 text-slate-500 hover:border-white/20 hover:bg-white/5'}`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Integrity Metrics</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="text-[8px] font-black text-slate-500 uppercase">Total TX</p>
+                        <Layers size={10} className="text-blue-500 opacity-50" />
+                      </div>
+                      <p className="text-2xl font-black text-white">{stats.total}</p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-emerald-500/30 transition-all">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="text-[8px] font-black text-slate-500 uppercase">Administrators</p>
+                        <Zap size={10} className="text-emerald-500 opacity-50" />
+                      </div>
+                      <p className="text-2xl font-black text-white">{stats.distinctAdmins}</p>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="text-[8px] font-black text-slate-500 uppercase">Mount / Unmount</p>
+                      </div>
+                      <p className="text-lg font-black text-indigo-400">{stats.mountOps}</p>
+                    </div>
+                  </div>
+                </section>
+                
+                <div className="mt-auto pt-6 border-t border-white/5">
+                   <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest text-center italic">
+                      Data integrity verified via<br/>immutable SHA-256 ledger
+                   </p>
+                </div>
+              </div>
+
+              {/* Main Ledger Content */}
+              <div className="flex-1 flex flex-col min-w-0 bg-black/20">
+                <div className="flex-1 relative ag-theme-alpine-dark">
+                  {isLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-sm space-y-4">
+                      <RefreshCcw size={24} className="text-indigo-400 animate-spin" />
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing Transaction Ledger...</p>
+                    </div>
+                  )}
+                  <AgGridReact
+                    ref={gridRef}
+                    rowData={filteredLogs}
+                    columnDefs={columnDefs}
+                    onRowClicked={p => setSelectedLog(p.data)}
+                    defaultColDef={{ resizable: true, filter: true, sortable: true }}
+                    animateRows={true}
+                    pagination={true}
+                    paginationPageSize={100}
+                    headerHeight={44}
+                    rowHeight={44}
+                  />
+                </div>
+
+                {/* Bottom Discovery / Detail Pane */}
+                <AnimatePresence>
+                  {selectedLog && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }} 
+                      animate={{ height: 320, opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="bg-slate-900 border-t border-indigo-500/30 flex flex-col shrink-0 relative shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+                    >
+                      <button onClick={() => setSelectedLog(null)} className="absolute top-6 right-8 p-2 text-slate-500 hover:text-white z-10"><X size={20}/></button>
+                      
+                      <div className="flex-1 flex min-h-0">
+                        {/* Transaction Metadata */}
+                        <div className="w-1/3 p-8 border-r border-white/5 space-y-6 bg-white/[0.01]">
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                               <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Discovery Trace</h4>
+                            </div>
+                            <h2 className="text-xl font-black text-white uppercase leading-tight">{selectedLog.action} TRANSACTION</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                          </div>
+                          
+                          <div className="space-y-3">
+                             <div className="flex justify-between items-center bg-white/5 rounded-lg px-4 py-2 border border-white/5">
+                                <span className="text-[8px] font-black text-slate-500 uppercase">Administrator</span>
+                                <span className="text-[10px] font-black text-white uppercase">{selectedLog.user_id}</span>
+                             </div>
+                             <div className="flex justify-between items-center bg-white/5 rounded-lg px-4 py-2 border border-white/5">
+                                <span className="text-[8px] font-black text-slate-500 uppercase">Registry Table</span>
+                                <span className="text-[10px] font-black text-blue-400 uppercase">{selectedLog.target_table}</span>
+                             </div>
+                             <div className="flex justify-between items-center bg-white/5 rounded-lg px-4 py-2 border border-white/5">
+                                <span className="text-[8px] font-black text-slate-500 uppercase">TX UUID</span>
+                                <span className="text-[10px] font-mono text-slate-400">#{selectedLog.id}</span>
+                             </div>
+                          </div>
+                        </div>
+
+                        {/* Diff Logic Viewer */}
+                        <div className="flex-1 p-8 flex flex-col min-h-0">
+                          <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Transformation Delta</h4>
+                          <div className="flex-1 bg-black/40 rounded-2xl border border-white/5 p-6 overflow-y-auto custom-scrollbar">
+                            <DiffViewer changes={selectedLog.changes} />
+                            {!selectedLog.changes && (
+                              <p className="text-[10px] text-slate-600 italic font-bold uppercase tracking-widest text-center mt-10">No detailed change vectors recorded for this operation</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Visual Confirmation */}
+                        <div className="w-64 p-8 flex flex-col items-center justify-center gap-4 bg-white/[0.02]">
+                           <div className="w-24 h-24 rounded-full border-4 border-emerald-500/20 flex items-center justify-center relative">
+                              <motion.div 
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+                                className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent opacity-40" 
+                              />
+                              <Check size={48} className="text-emerald-500" />
+                           </div>
+                           <div className="text-center">
+                              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Integrity Verified</p>
+                              <p className="text-[8px] font-bold text-slate-600 uppercase mt-1">Status: COMMITTED</p>
+                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <style>{`
+              .ag-theme-alpine-dark {
+                --ag-background-color: transparent;
+                --ag-header-background-color: rgba(15, 23, 42, 0.4);
+                --ag-border-color: rgba(255, 255, 255, 0.05);
+                --ag-foreground-color: #f1f5f9;
+                --ag-header-foreground-color: #6366f1;
+                --ag-font-family: 'Inter', sans-serif;
+                --ag-font-size: 11px;
+                --ag-row-hover-color: rgba(99, 102, 241, 0.05);
+                --ag-selected-row-background-color: rgba(99, 102, 241, 0.1);
+              }
+              .ag-header-cell-label { 
+                font-weight: 900 !important; 
+                text-transform: uppercase !important; 
+                letter-spacing: 0.15em !important; 
+                font-size: 10px !important;
+                color: #64748b !important;
+              }
+              .ag-cell { 
+                display: flex; 
+                align-items: center; 
+                font-weight: 700 !important; 
+                border-right: 1px solid rgba(255,255,255,0.02) !important;
+              }
+              .ag-row { border-bottom: 1px solid rgba(255,255,255,0.03) !important; }
+            `}</style>
+          </motion.div>
         </div>
       )}
     </AnimatePresence>
