@@ -6,6 +6,15 @@ import { apiFetch, setApiOverride, getApiBaseUrl } from './api/apiClient'
 
 console.log("MAIN.TSX: Initializing React Root");
 
+// Global error capture for early bootstrap issues
+window.addEventListener('error', (event) => {
+  console.error("GLOBAL_ERROR_BEFORE_MOUNT:", event.message, event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error("GLOBAL_REJECTION_BEFORE_MOUNT:", event.reason);
+});
+
 const Bootstrap = () => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,12 +28,13 @@ const Bootstrap = () => {
 
     const fetchConfig = async () => {
       try {
+        console.log("BOOTSTRAP: Fetching system configuration...");
         let response;
         try {
           // Always try relative path first for bootstrap to ensure it bypasses any poisoned baseUrl
           response = await fetch('/api/v1/settings/bootstrap');
           if (!response.ok) {
-             // Fallback to apiClient version if relative fails (e.g. specialized deployment)
+             console.warn("BOOTSTRAP: Relative fetch returned " + response.status + ", falling back to apiFetch");
              response = await apiFetch('/api/v1/settings/bootstrap');
           }
         } catch (initialErr) {
@@ -39,6 +49,7 @@ const Bootstrap = () => {
         }
         
         const config = await response.json();
+        console.log("BOOTSTRAP: Configuration received", config);
         let changed = false;
         Object.entries(config).forEach(([key, value]) => {
           const lsKey = `SYSGRID_CONFIG_${key}`;
@@ -60,15 +71,18 @@ const Bootstrap = () => {
 
     const init = async () => {
       try {
-        console.log("BOOTSTRAP: Fetching system configuration...");
         await fetchConfig();
-        if (isMounted) setReady(true);
+        if (isMounted) {
+          console.log("BOOTSTRAP: System ready, launching application layer");
+          setReady(true);
+        }
 
         // Try WebSocket, fallback to polling
         const baseUrl = getApiBaseUrl() || window.location.origin;
         const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
         const wsUrl = baseUrl.replace(/^https?/, wsProtocol) + '/api/v1/ws/sync';
         
+        console.log("BOOTSTRAP: Initializing WebSocket sync at " + wsUrl);
         try {
           ws = new WebSocket(wsUrl);
           ws.onmessage = (event) => {
@@ -77,14 +91,14 @@ const Bootstrap = () => {
               fetchConfig().catch(() => {});
             }
           };
-          ws.onerror = () => {
-            console.warn("WS: Connection failed. Gracefully degrading to HTTP polling.");
+          ws.onerror = (err) => {
+            console.warn("WS: Connection failed. Gracefully degrading to HTTP polling.", err);
             if (!pollInterval) {
               pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000); // 1 min fallback
             }
           };
         } catch (e) {
-          console.warn("WS: Setup failed. Gracefully degrading to HTTP polling.");
+          console.warn("WS: Setup failed. Gracefully degrading to HTTP polling.", e);
           pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000);
         }
 
@@ -102,7 +116,7 @@ const Bootstrap = () => {
       if (ws) ws.close();
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [ready]);
+  }, []); // Only run once on mount
 
   if (error) {
     return (

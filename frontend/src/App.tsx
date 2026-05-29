@@ -26,7 +26,7 @@ import DataFlowDesigner from "./components/DataFlowDesigner"
 import Projects from "./components/Projects"
 import External from "./components/External"
 import Temp1 from "./components/Temp1"
-import RackTemp from "./components/RackTemp"
+import Racks from "./components/Racks"
 import metadata from "./metadata.json"
 import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
