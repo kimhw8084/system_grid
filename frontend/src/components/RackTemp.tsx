@@ -683,13 +683,15 @@ interface RackElevationProps {
   diffMode?: boolean
   liveRack?: any
   showCheckbox?: boolean
-}
+  className?: string
+  }
 
-const RackElevation = ({
+  const RackElevation = ({
   rack, onDelete, onEdit, onMove, onShowInfo, searchTerm, onMount, onManageDevice,
   isSelected, onToggleSelect, onRestore, isDeleted, rackWidth,
-  focusedDeviceId, connectedDeviceIds, diffMode, liveRack, showCheckbox = true
-}: RackElevationProps) => {
+  focusedDeviceId, connectedDeviceIds, diffMode, liveRack, showCheckbox = true,
+  className = ''
+  }: RackElevationProps) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const totalU = rack.total_u || 42
@@ -700,13 +702,13 @@ const RackElevation = ({
     if (diffMode && liveRack && scrollRef.current) {
       const liveLocations = liveRack.device_locations || []
       const virtualLocations = rack.device_locations || []
-      
+
       // Find first unit where there is a difference
       let firstDiffU = -1
       for (let u = 1; u <= totalU; u++) {
         const liveAtU = liveLocations.find((l: any) => l.start_unit <= u && (l.start_unit + l.size_u) > u)
         const virtAtU = virtualLocations.find((l: any) => l.start_unit <= u && (l.start_unit + l.size_u) > u)
-        
+
         if (JSON.stringify(liveAtU) !== JSON.stringify(virtAtU)) {
           firstDiffU = u
           break
@@ -739,30 +741,29 @@ const RackElevation = ({
   [rack.device_locations])
 
   const effectivePowerCapKw = useMemo(() => {
-    const a = rack.pdu_a_cap_kw || 0
-    const b = rack.pdu_b_cap_kw || 0
-    if (a > 0 && b > 0) return Math.min(a, b)
-    if (a > 0) return a
-    if (b > 0) return b
-    return rack.max_power_kw || 10
+   const a = rack.pdu_a_cap_kw || 0
+   const b = rack.pdu_b_cap_kw || 0
+   if (a > 0 && b > 0) return Math.min(a, b)
+   if (a > 0) return a
+   if (b > 0) return b
+   return rack.max_power_kw || 10
   }, [rack.pdu_a_cap_kw, rack.pdu_b_cap_kw, rack.max_power_kw])
 
   const isHighlighted = (device: any) =>
-    !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+   !!searchTerm && device?.name?.toLowerCase().includes(searchTerm.toLowerCase())
 
   const isPowerOver = estimatedPowerKw >= effectivePowerCapKw
   const isFillOver = occupiedU >= totalU
 
   return (
-    <div 
-      style={{ width: `${rackWidth}px` }}
-      className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
-      ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
-      ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
-      ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
-      h-full max-h-full
-    `}>
-      
+   <div 
+     style={{ width: `${rackWidth}px` }}
+     className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
+     ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
+     ${isDeleted ? 'opacity-60 grayscale-[0.4]' : ''}
+     ${(isPowerOver || isFillOver) ? 'ring-1 ring-rose-500/50' : ''}
+     h-full max-h-full ${className}
+   `}>      
       <RackStatusBar rack={rack} siteColor={rack.site_color} />
 
       {/* Checkbox */}
@@ -1259,7 +1260,6 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                        <div>
                           <p className={`text-sm font-black transition-colors ${isSelected ? 'text-white' : 'text-slate-300'}`}>{s.date}</p>
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">{s.type} • {s.author}</p>
-                          <p className="text-[11px] text-slate-400 mt-2 font-medium">{s.detail}</p>
                        </div>
                     </div>
                     
@@ -1927,10 +1927,9 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
                   <div key={aisleName} className="space-y-4">
                     <div className="flex items-center gap-4">
                       <div className="h-px w-8 bg-white/10" />
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName !== 'General' ? `AISLE ${aisleName}` : 'GENERAL SPACE'}</span>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{aisleName !== 'General' ? `AISLE ${aisleName}` : siteName}</span>
                       <div className="h-px flex-1 bg-white/5" />
-                    </div>
-                    <div className="flex flex-col gap-6">
+                    </div>                    <div className="flex flex-col gap-6">
                       {Object.entries(rows).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([rowNum, rackList]) => (
                         <div key={rowNum} className="flex flex-wrap gap-4 justify-start">
                           {rackList.map(rack => {
@@ -2185,7 +2184,7 @@ export default function RackTemp() {
       if (isPlanInitialized) {
         setVirtualRacks(prev => prev.map(r => {
           if (r.id !== rackId) return r
-          const newLocs = (r.device_locations || []).filter((l:any) => l.device_id !== finalDeviceId)
+          const newLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
           newLocs.push({ ...payload, device: finalDevice })
           return { ...r, device_locations: newLocs }
         }))
@@ -2782,7 +2781,7 @@ export default function RackTemp() {
 
             if (searchTerm || focusedConnection || showCompareOnly || isDiffActive) {
               return (
-                <div className={`flex gap-8 items-start ${isDiffActive ? 'pb-10 pt-8' : ''}`}>
+                <div className={`flex gap-8 items-start h-full ${isDiffActive ? 'pb-10 pt-14' : ''}`}>
                   {racksToRender.map((r: any) => {
                     const liveRack = activeRacks.find((ar: any) => ar.id === r.id)
                     const historicalRack = diffBaseVersion 
@@ -2793,18 +2792,18 @@ export default function RackTemp() {
                           const snapshotInfo = snapshots.find(s => s.id === diffBaseVersion)
                           const snapshotDate = snapshotInfo ? snapshotInfo.date : 'Snapshot'
                           return (
-                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full overflow-hidden">
-                               <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-4 z-30 scale-90 whitespace-nowrap">
-                                  <span className="px-5 py-1.5 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
-                                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1">
-                                     <ArrowRightLeft size={16} className="text-white" />
+                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
+                               <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex gap-4 z-30 scale-100 whitespace-nowrap">
+                                  <span className="px-5 py-2 bg-slate-900 text-slate-400 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">Reference State</span>
+                                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl -mt-1.5">
+                                     <ArrowRightLeft size={20} className="text-white" />
                                   </div>
-                                  <span className="px-5 py-1.5 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-2xl">
+                                  <span className="px-5 py-2 bg-blue-600 text-white border border-blue-400/30 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl">
                                      {diffBaseVersion ? `Snapshot: ${snapshotDate}` : 'Proposed Plan'}
                                   </span>
                                </div>
                                
-                               <div className="flex flex-col gap-3 h-full">
+                               <div className="flex flex-col gap-3 h-full min-w-0">
                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Live Production</p>
                                   <RackElevation
                                     rack={diffBaseVersion ? historicalRack : liveRack}
@@ -2819,10 +2818,11 @@ export default function RackTemp() {
                                     onManageDevice={() => {}}
                                     isDeleted={false}
                                     rackWidth={rackWidth}
+                                    className="flex-1 min-h-0"
                                   />
-                               </div>
+                                </div>
                                
-                               <div className="flex flex-col gap-3 h-full">
+                               <div className="flex flex-col gap-3 h-full min-w-0">
                                   <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">{diffBaseVersion ? 'Historical Delta' : 'Virtualized Sandbox'}</p>
                                   <RackElevation
                                     rack={r}
@@ -2842,6 +2842,7 @@ export default function RackTemp() {
                                     rackWidth={rackWidth}
                                     diffMode={true}
                                     liveRack={diffBaseVersion ? historicalRack : liveRack}
+                                    className="flex-1 min-h-0"
                                   />
                                </div>
                             </div>
@@ -3262,7 +3263,9 @@ export default function RackTemp() {
                     }).map((d: any) => {
                       const isSelected = String(d.id) === String(isProvisioning.device_id)
                       const planLoc = isPlanInitialized ? getPlanDeviceLocation(d.id) : null
-                      const locInfo = planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : (d.rack_name ? `@ ${d.rack_name} U${d.u_start}` : '')
+                      const locInfo = isPlanInitialized 
+                        ? (planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : '') 
+                        : (planLoc ? `@ ${planLoc.rackName} U${planLoc.uStart}` : (d.rack_name ? `@ ${d.rack_name} U${d.u_start}` : ''))
                       
                       return (
                         <button
