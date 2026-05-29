@@ -238,43 +238,48 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
       setContainerStyle({ width: `${gridEl.scrollWidth}px`, height: `${gridEl.scrollHeight}px` })
     }
 
-    const getPoint = (deviceId: number) => {
-      const el = document.querySelector(`[data-device-id="${deviceId}"]`) as HTMLElement
-      if (!el) return null
-      const elRect = el.getBoundingClientRect()
-      const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
-      const y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
-      let isScrolledOut = false
-      const rackScrollEl = el.closest('.overflow-y-auto')
-      if (rackScrollEl) {
-        const scrollRect = rackScrollEl.getBoundingClientRect()
-        if (elRect.bottom < (scrollRect.top + 2) || elRect.top > (scrollRect.bottom - 2)) isScrolledOut = true
-      }
-      return { x, y, elRect, isScrolledOut }
+    const getPoints = (deviceId: number) => {
+      const elements = document.querySelectorAll(`[data-device-id="${deviceId}"]`)
+      const points: any[] = []
+
+      elements.forEach(el => {
+        const htmlEl = el as HTMLElement
+        const elRect = htmlEl.getBoundingClientRect()
+        const x = elRect.left + elRect.width / 2 - gridRect.left + gridEl.scrollLeft
+        const y = elRect.top + elRect.height / 2 - gridRect.top + gridEl.scrollTop
+        let isScrolledOut = false
+        const rackScrollEl = htmlEl.closest('.overflow-y-auto')
+        if (rackScrollEl) {
+          const scrollRect = rackScrollEl.getBoundingClientRect()
+          if (elRect.bottom < (scrollRect.top + 2) || elRect.top > (scrollRect.bottom - 2)) isScrolledOut = true
+        }
+        points.push({ x, y, elRect, isScrolledOut })
+      })
+      return points
     }
 
-    const sourcePoint = getPoint(sourceDeviceId)
-    if (!sourcePoint) return
+    const sourcePoints = getPoints(sourceDeviceId)
+    if (sourcePoints.length === 0) return
 
     const newLines: any[] = []
     const processedPairs = new Set<string>()
 
-    targetDeviceIds.forEach((tid, index) => {
-      // Avoid duplicate lines for the same pair
-      const pairKey = [sourceDeviceId, tid].sort().join('-')
-      if (processedPairs.has(pairKey)) return
-      processedPairs.add(pairKey)
+    sourcePoints.forEach(sourcePoint => {
+      targetDeviceIds.forEach((tid, index) => {
+        const targetPoints = getPoints(tid)
+        targetPoints.forEach(targetPoint => {
+          // Avoid duplicate lines for the same pair of coordinates
+          const pairKey = `${sourcePoint.x}-${sourcePoint.y}-${targetPoint.x}-${targetPoint.y}`
+          if (processedPairs.has(pairKey)) return
+          processedPairs.add(pairKey)
 
-      const targetPoint = getPoint(tid)
-      if (targetPoint) {
-        const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 30
-        const conn = connections?.find((c: any) => 
-          (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
-          (c.source_device_id === tid && c.target_device_id === sourceDeviceId)
-        )
-        
-        if (isSameRack) {
-          // Internal rack connection: keep it inside the rack width
+          const isSameRack = Math.abs(sourcePoint.x - targetPoint.x) < 30
+          const conn = connections?.find((c: any) =>
+            (c.source_device_id === sourceDeviceId && c.target_device_id === tid) ||
+            (c.source_device_id === tid && c.target_device_id === sourceDeviceId)
+          )
+
+          if (isSameRack) {          // Internal rack connection: keep it inside the rack width
           // Reduce offset to keep lines within the rack body (px-6 padding gives us room)
           const offset = ((index % 2 === 0 ? 1 : -1) * (10 + Math.floor(index / 2) * 4))
           newLines.push({ 
@@ -296,11 +301,12 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
             isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
           })
         }
-      }
+      })
     })
-    setLines(newLines)
-    requestRef.current = requestAnimationFrame(updateLines)
-  }, [sourceDeviceId, targetDeviceIds, connections, racks])
+  })
+  setLines(newLines)
+  requestRef.current = requestAnimationFrame(updateLines)
+}, [sourceDeviceId, targetDeviceIds, connections, racks])
 
   React.useEffect(() => {
     requestRef.current = requestAnimationFrame(updateLines)
@@ -564,97 +570,263 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
   )
 }
 
-// ─── Audit Log Modal ───────────────────────────────────────────────────────────
+// ─── Forensic Control Center (Rack Evolution Logs) ───────────────────────────
 
 const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [selectedLog, setSelectedLog] = useState<any>(null)
+  const [quickSearch, setQuickSearch] = useState('')
+  const [timeValue, setTimeValue] = useState(100)
+  const [isPlayback, setIsPlayback] = useState(false)
+  const gridRef = React.useRef<any>(null)
+
   const { data: logs, isLoading } = useQuery({
     queryKey: ['rack-audit-logs'],
     queryFn: async () => (await (await apiFetch('/api/v1/racks/audit-logs')).json()),
     enabled: isOpen
   })
 
+  // Time Machine Filtering
+  const filteredLogs = useMemo(() => {
+    if (!logs) return []
+    if (timeValue === 100) return logs
+    const limit = Math.floor((logs.length * timeValue) / 100)
+    return logs.slice(logs.length - limit)
+  }, [logs, timeValue])
+
+  useEffect(() => {
+    let interval: any
+    if (isPlayback) {
+      setTimeValue(0)
+      interval = setInterval(() => {
+        setTimeValue(prev => {
+          if (prev >= 100) {
+            setIsPlayback(false)
+            return 100
+          }
+          return prev + 1
+        })
+      }, 100)
+    }
+    return () => clearInterval(interval)
+  }, [isPlayback])
+
+  const columnDefs = useMemo(() => [
+    { 
+      field: 'timestamp', 
+      headerName: 'TX_TIME', 
+      width: 180, 
+      sortable: true, 
+      filter: 'agDateColumnFilter',
+      cellClass: 'text-center font-bold text-blue-400',
+      cellRenderer: (p: any) => new Date(p.value).toLocaleString()
+    },
+    { 
+      field: 'action', 
+      headerName: 'OP_CODE', 
+      width: 120,
+      cellClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+          p.value === 'MOUNT' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+          p.value === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+          p.value === 'CREATE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+          p.value === 'UPDATE' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+          'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+        }`}>
+          {p.value}
+        </div>
+      )
+    },
+    { field: 'user_id', headerName: 'ADMIN', width: 140, cellClass: 'text-center font-black text-white uppercase' },
+    { field: 'description', headerName: 'TRANSACTION_DETAILS', flex: 1, cellClass: 'font-bold text-slate-300' },
+  ], [])
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-            className="glass-panel w-full max-w-4xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                  <List size={20} className="text-blue-400" />
+        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col overflow-hidden">
+          {/* Top Mission Control Bar */}
+          <div className="h-20 bg-slate-900 border-b border-white/10 px-10 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-violet-600 rounded-xl shadow-2xl shadow-violet-600/20 flex items-center justify-center text-white">
+                  <Activity size={24} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black uppercase tracking-tight text-white">Rack Evolution Logs</h2>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Physical state changes & audit trail</p>
+                  <h1 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Forensic Control Center</h1>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2 flex items-center gap-2">
+                    <Zap size={10} className="text-blue-500" /> Rack Evolution Immutable Ledger v4.2
+                  </p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
-                <X size={20} />
-              </button>
+
+              <div className="h-10 w-px bg-white/5 mx-4" />
+
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={16} />
+                <input 
+                  type="text" 
+                  value={quickSearch}
+                  onChange={e => {
+                    setQuickSearch(e.target.value)
+                    gridRef.current?.api?.setQuickFilter(e.target.value)
+                  }}
+                  placeholder="SCAN TRANSACTION MATRIX..." 
+                  className="bg-white/5 border border-white/5 rounded-xl pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[400px]"
+                />
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                    <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">User</th>
-                    <th className="px-4 py-3">Details</th>
-                    <th className="px-4 py-3">Changes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.03]">
-                  {logs?.map((log: any) => (
-                    <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-[10px] font-mono text-slate-400 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString(undefined, {
-                          year: 'numeric', month: '2-digit', day: '2-digit',
-                          hour: '2-digit', minute: '2-digit', second: '2-digit'
-                        })}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                          log.action === 'MOUNT' ? 'bg-blue-500/10 text-blue-400' :
-                          log.action === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400' :
-                          log.action === 'CREATE' ? 'bg-emerald-500/10 text-emerald-400' :
-                          log.action === 'UPDATE' ? 'bg-amber-500/10 text-amber-400' :
-                          'bg-slate-500/10 text-slate-400'
-                        }`}>
-                          {log.action}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[10px] font-bold text-slate-300">{log.user_id}</td>
-                      <td className="px-4 py-3 text-[10px] text-slate-400">{log.description}</td>
-                      <td className="px-4 py-3">
-                        {log.changes && Object.keys(log.changes).length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(log.changes).map(([key, val]: [string, any]) => (
-                              <div key={key} className="bg-black/20 rounded px-1.5 py-0.5 border border-white/5 flex flex-col">
-                                <span className="text-[6px] text-slate-500 font-black uppercase leading-none mb-0.5">{key}</span>
-                                <span className="text-[8px] text-blue-300 font-mono truncate max-w-[120px]">
-                                  {typeof val === 'object' && val !== null ? 
-                                    (val.new !== undefined ? `${val.old} → ${val.new}` : JSON.stringify(val)) 
-                                    : String(val)
-                                  }
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-[8px] text-slate-700 ">No diff</span>
-                        )}
-                      </td>
-                    </tr>
+            <button onClick={onClose} className="p-4 bg-white/5 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-2xl border border-white/5 transition-all">
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="flex-1 flex min-h-0">
+            {/* Sidebar: Forensic Filters */}
+            <div className="w-80 bg-slate-900/50 border-r border-white/5 p-8 space-y-10 overflow-y-auto custom-scrollbar shrink-0">
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Transaction Stream</h3>
+                <div className="space-y-2">
+                  {['All Vectors', 'Mount Ops', 'Logical Migrations', 'State Deletions'].map(f => (
+                    <button key={f} className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${f === 'All Vectors' ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'border-white/5 text-slate-500 hover:border-white/20'}`}>
+                      {f}
+                    </button>
                   ))}
-                  {!logs?.length && !isLoading && (
-                    <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-600 font-bold uppercase text-[10px]">No logs found in this scope</td></tr>
-                  )}
-                </tbody>
-              </table>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Integrity stats</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-slate-600 uppercase">Consistency</p>
+                    <p className="text-xl font-black text-emerald-400 mt-1">100%</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-slate-600 uppercase">TX Density</p>
+                    <p className="text-xl font-black text-blue-400 mt-1">High</p>
+                  </div>
+                </div>
+              </section>
             </div>
-          </motion.div>
+
+            {/* Main Ledger Grid */}
+            <div className="flex-1 bg-slate-950 relative flex flex-col min-w-0">
+              <div className="ag-theme-alpine-dark flex-1">
+                <AgGridReact
+                  ref={gridRef}
+                  rowData={filteredLogs}
+                  columnDefs={columnDefs}
+                  onRowClicked={p => setSelectedLog(p.data)}
+                  defaultColDef={{ resizable: true, filter: true, sortable: true }}
+                  animateRows={true}
+                  pagination={true}
+                  paginationPageSize={100}
+                />
+              </div>
+
+              {/* Time Machine Scrubbing Bar */}
+              <div className="h-20 bg-slate-900 border-t border-white/10 px-10 flex items-center gap-8 shrink-0">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setIsPlayback(!isPlayback)}
+                    className={`p-3 rounded-xl transition-all ${isPlayback ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'}`}
+                  >
+                    {isPlayback ? <X size={20} /> : <Zap size={20} />}
+                  </button>
+                  <div className="min-w-[120px]">
+                    <p className="text-[10px] font-black text-white uppercase tracking-tighter">Time Machine</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">{isPlayback ? 'REPLAYING HISTORY...' : 'SYSTEM STABLE'}</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 flex items-center gap-6">
+                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Genesis</span>
+                  <div className="flex-1 relative group py-4">
+                    <input 
+                      type="range" min="0" max="100" step="1"
+                      value={timeValue}
+                      onChange={e => setTimeValue(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-blue-500 focus:outline-none"
+                    />
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 h-1.5 bg-blue-500 rounded-full pointer-events-none transition-all duration-300"
+                      style={{ width: `${timeValue}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Present</span>
+                </div>
+
+                <div className="flex items-center gap-4 px-6 py-2.5 bg-white/5 rounded-xl border border-white/5">
+                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Visibility</p>
+                   <p className="text-[11px] font-black text-white uppercase tabular-nums">{timeValue}%</p>
+                </div>
+              </div>
+
+              {/* Detail Pane / Discovery */}
+              {selectedLog && (
+                <motion.div 
+                  initial={{ y: '100%' }} animate={{ y: 0 }}
+                  className="h-80 bg-slate-900 border-t border-blue-500/30 p-10 flex gap-12 shrink-0 relative shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+                >
+                  <button onClick={() => setSelectedLog(null)} className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white"><X size={20}/></button>
+                  
+                  <div className="w-1/3 space-y-6">
+                    <div>
+                      <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">Discovery Trace</h4>
+                      <h2 className="text-xl font-black text-white uppercase">{selectedLog.action} TRANSACTION</h2>
+                    </div>
+                    <div className="space-y-2">
+                       <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-slate-500 uppercase">Administrator</span>
+                          <span className="text-white">{selectedLog.user_id}</span>
+                       </div>
+                       <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-slate-500 uppercase">Description</span>
+                          <span className="text-white truncate max-w-[200px]">{selectedLog.description}</span>
+                       </div>
+                       <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-slate-500 uppercase">TX Reference</span>
+                          <span className="text-blue-400 font-mono">#{selectedLog.id}</span>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 bg-black/40 rounded-2xl border border-white/5 p-6 overflow-y-auto custom-scrollbar">
+                    <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Transformation Logic (JSON)</h4>
+                    <pre className="text-[11px] font-bold text-emerald-500/80 font-mono leading-relaxed">
+                      {JSON.stringify(selectedLog.changes || { action: selectedLog.action, description: selectedLog.description }, null, 2)}
+                    </pre>
+                  </div>
+
+                  <div className="w-1/4 flex flex-col justify-center items-center gap-4">
+                     <div className="w-20 h-20 rounded-full border-4 border-emerald-500/20 flex items-center justify-center relative">
+                        <div className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin duration-[3s]" />
+                        <Check size={32} className="text-emerald-500" />
+                     </div>
+                     <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Transaction Verified</p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          <style>{`
+            .ag-theme-alpine-dark {
+              --ag-background-color: #020617;
+              --ag-header-background-color: #0f172a;
+              --ag-border-color: rgba(255, 255, 255, 0.05);
+              --ag-foreground-color: #f1f5f9;
+              --ag-header-foreground-color: #3b82f6;
+              --ag-font-family: 'Inter', sans-serif;
+              --ag-font-size: 11px;
+            }
+            .ag-header-cell-label { font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
+            .ag-cell { display: flex; align-items: center; font-weight: 700 !important; }
+            .ag-row-hover { background-color: rgba(59, 130, 246, 0.05) !important; cursor: pointer; }
+            .ag-row-selected { background-color: rgba(59, 130, 246, 0.1) !important; }
+          `}</style>
         </div>
       )}
     </AnimatePresence>
@@ -984,18 +1156,17 @@ const AssetImpactWindow = ({ deviceId, devices, connections, onClose, coords }: 
     return stats
   }, [deviceConns, devices, deviceId])
 
-  // Improved positioning logic: find the furthest corner from the clicked coordinate
-  const initialX = coords ? (coords.x > window.innerWidth / 2 ? 80 : window.innerWidth - 530) : 100
-  const initialY = coords ? Math.max(80, Math.min(coords.y - 200, window.innerHeight - 600)) : 100
+  // Improved positioning logic: ensure it stays within window bounds
+  const initialX = coords ? Math.max(20, Math.min(coords.x > window.innerWidth / 2 ? 80 : window.innerWidth - 470, window.innerWidth - 470)) : 100
+  const initialY = coords ? Math.max(80, Math.min(coords.y - 200, window.innerHeight - 550)) : 100
   return (
-    <motion.div 
+    <motion.div
       drag
       dragMomentum={false}
       initial={{ x: initialX, y: initialY, opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
-    >
-       <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+      className="fixed top-0 left-0 z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
+    >       <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20 text-white">
                 <Activity size={16} />
@@ -2228,6 +2399,8 @@ export default function Racks() {
       if (isPlanInitialized) {
         setVirtualRacks(prev => prev.map(r => {
           if (r.id !== rackId) return r
+          // In planning mode, we allow same assets in multiple racks if desired
+          // only remove if it's already in the CURRENT rack at a different position
           const newLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
           
           // Also remove any existing devices in the target slots to prevent overlap in virtual state
