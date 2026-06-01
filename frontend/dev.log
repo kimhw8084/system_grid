@@ -1,10 +1,10 @@
 
 > system-grid-frontend@1.2.4 dev
-> vite --host --host 0.0.0.0
+> vite --host
 
-
-  VITE v5.4.21  ready in 117 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.0.186:5173/
-  ➜  Network: http://100.92.24.56:5173/
+error when starting dev server:
+Error: Port 5173 is already in use
+    at Server.onError (file:///Users/haewonkim/home/development/sysgrid/frontend/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:45596:18)
+    at Server.emit (node:events:507:28)
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)

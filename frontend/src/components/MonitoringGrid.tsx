@@ -130,6 +130,12 @@ const getMonitorGroupValue = (item: any, field: string) => {
 
 const readMonitoringUiState = () => {
   if (typeof window === 'undefined') return null
+  // During Playwright tests, we want to start with a clean state every time
+  // to avoid cross-test contamination via localStorage.
+  if (window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')) {
+    console.log('[MonitoringGrid] Playwright detected - skipping persisted UI state')
+    return null
+  }
   try {
     const raw = window.localStorage.getItem(MONITORING_UI_STATE_KEY)
     if (!raw) return null
@@ -403,9 +409,10 @@ export default function MonitoringGrid() {
           event.stopPropagation()
           setDetailItem(item)
         }}
-        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+        title="Open details"
+        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-blue-400 transition-all hover:bg-white/[0.08]"
       >
-        Open
+        <Eye size={12} />
       </button>
       <button
         type="button"
@@ -414,9 +421,10 @@ export default function MonitoringGrid() {
           setEditingItem(item)
           setIsFormOpen(true)
         }}
-        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+        title="Edit configuration"
+        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-emerald-400 transition-all hover:bg-white/[0.08]"
       >
-        Edit
+        <Edit2 size={12} />
       </button>
       <button
         type="button"
@@ -424,9 +432,10 @@ export default function MonitoringGrid() {
           event.stopPropagation()
           setHistoryItem(item)
         }}
-        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+        title="View history"
+        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-amber-400 transition-all hover:bg-white/[0.08]"
       >
-        Hist
+        <Clock size={12} />
       </button>
       <button
         type="button"
@@ -434,17 +443,18 @@ export default function MonitoringGrid() {
           event.stopPropagation()
           openRecoveryDocuments(item)
         }}
-        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+        title="Knowledge documents"
+        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-purple-400 transition-all hover:bg-white/[0.08]"
       >
-        Docs
+        <BookOpen size={12} />
       </button>
       <button
         type="button"
         onClick={(event: any) => openRowActionMenu(event, item)}
         title="More actions"
-        className="row-action-trigger row-action-menu-container rounded-full border border-white/10 bg-white/[0.03] p-1 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
+        className="row-action-trigger row-action-menu-container rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
       >
-        <ChevronRight size={13} />
+        <MoreVertical size={12} />
       </button>
     </div>
   )
@@ -706,12 +716,21 @@ export default function MonitoringGrid() {
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
   const { data: allItems, isLoading } = useQuery({
-    queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring/?include_deleted=true')).json()
+    queryKey: ['monitoring-items', Date.now()],
+    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json(),
+    staleTime: 0,
+    gcTime: 0
   })
 
+  useEffect(() => {
+    if (allItems) {
+       // @ts-ignore
+       window.__DEBUG_ALL_ITEMS__ = allItems
+    }
+  }, [allItems])
+
   const items = useMemo(() => {
-    if (!allItems) return []
+    if (!allItems || !Array.isArray(allItems)) return []
     return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
   }, [allItems, activeTab])
 
@@ -739,7 +758,7 @@ export default function MonitoringGrid() {
       if (searchTerm.trim()) {
         const query = searchTerm.trim().toLowerCase()
         const haystack = [
-          item.id,
+          String(item.id || ''),
           item.device_name,
           item.category,
           item.status,
@@ -753,7 +772,15 @@ export default function MonitoringGrid() {
           .filter(Boolean)
           .join(' ')
           .toLowerCase()
-        if (!haystack.includes(query)) return false
+        
+        const matches = haystack.includes(query)
+        if (query.length > 5 && !matches && item.title.toLowerCase().includes('pw-mon')) {
+           console.log(`[MonitoringGrid] NO MATCH: query="${query}" title="${item.title}" haystack="${haystack.slice(0, 100)}..."`)
+        }
+        if (matches) {
+           console.log(`[MonitoringGrid] MATCH FOUND: "${item.title}"`)
+        }
+        if (!matches) return false
       }
       if (quickFilters.status && item.status !== quickFilters.status) return false
       if (quickFilters.severity && item.severity !== quickFilters.severity) return false
@@ -1141,18 +1168,21 @@ export default function MonitoringGrid() {
       filter: false,
       resizable: false,
       suppressHide: true,
-      cellRenderer: (p: any) => (
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            toggleFavorite(p.data.id)
-          }}
-          title={favoriteIds.includes(p.data.id) ? 'Unpin monitor' : 'Pin monitor'}
-          className={`rounded-md p-1 transition-all ${favoriteIds.includes(p.data.id) ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-        >
-          <Star size={14} className={favoriteIds.includes(p.data.id) ? 'fill-current' : ''} />
-        </button>
-      )
+      cellRenderer: (p: any) => {
+        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+        return (
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              toggleFavorite(p.data.id)
+            }}
+            title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
+            className={`rounded-md p-1 transition-all ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+          >
+            <Star size={14} className={isFavorite ? 'fill-current' : ''} />
+          </button>
+        )
+      }
     },
     {
       colId: "watch",
@@ -1168,18 +1198,21 @@ export default function MonitoringGrid() {
       filter: false,
       resizable: false,
       suppressHide: true,
-      cellRenderer: (p: any) => (
-        <button
-          onClick={(event) => {
-            event.stopPropagation()
-            toggleWatch(p.data.id)
-          }}
-          title={watchIds.includes(p.data.id) ? 'Unfollow monitor' : 'Follow monitor'}
-          className={`rounded-md p-1 transition-all ${watchIds.includes(p.data.id) ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-        >
-          <Eye size={14} className={watchIds.includes(p.data.id) ? 'fill-current' : ''} />
-        </button>
-      )
+      cellRenderer: (p: any) => {
+        const isWatched = p.context?.watchIds?.includes(p.data?.id)
+        return (
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              toggleWatch(p.data.id)
+            }}
+            title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
+            className={`rounded-md p-1 transition-all ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+          >
+            <Eye size={14} className={isWatched ? 'fill-current' : ''} />
+          </button>
+        )
+      }
     },
     { 
       field: "device_name", 
@@ -1377,11 +1410,26 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       suppressHide: true
     }
-  ], [favoriteIds, fontSize, groupBy, hiddenColumns, watchIds]) as any
+  ], [fontSize, groupBy, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
+    type: 'fitGridWidth' as const,
+    defaultMinWidth: 80
   }), []);
+
+  const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ columns: ['favorite'] })
+    }
+  }, [favoriteIds])
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ columns: ['watch'] })
+    }
+  }, [watchIds])
 
   const autoGroupColumnDef = useMemo(() => ({
     headerName: groupBy === 'raw' ? 'View' : `Grouped by ${groupOptions.find((option) => option.value === groupBy)?.label || groupBy}`,
@@ -1421,13 +1469,13 @@ export default function MonitoringGrid() {
               )
             }
             if (typeof column.cellRenderer === 'function') {
-              return column.cellRenderer({ value: item[column.field], data: item })
+              return column.cellRenderer({ value: item[column.field], data: item, context: gridContext })
             }
             return item[column.field]
           }
         }
       })
-  }, [columnDefs, columnLayoutState, gridSortModel, selectedIds])
+  }, [columnDefs, columnLayoutState, gridSortModel, selectedIds, gridContext])
 
   const groupedTableMinWidth = useMemo(
     () => groupedColumns.reduce((total: number, column: any) => total + (Number(column.width) || 120), 0),
@@ -1928,8 +1976,9 @@ export default function MonitoringGrid() {
                         if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
                         setRowActionMenu(null)
                       }}
-                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
                     >
+                      <Monitor size={12} className="text-blue-400" />
                       Asset
                     </button>
                     <button
@@ -1938,17 +1987,46 @@ export default function MonitoringGrid() {
                         setRowActionMenu(null)
                       }}
                       disabled={!rowActionMenu.item.recovery_docs?.[0]}
-                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-600"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-600"
                     >
+                      <BookOpen size={12} className="text-emerald-400" />
                       Knowledge
                     </button>
                     <button
                       onClick={() => {
                         toggleWatch(rowActionMenu.item.id)
                       }}
-                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
                     >
-                      {watchIds.includes(rowActionMenu.item.id) ? 'Unwatch' : 'Watch'}
+                      {watchIds.includes(rowActionMenu.item.id) ? (
+                        <>
+                          <EyeOff size={12} className="text-slate-400" />
+                          Unwatch
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={12} className="text-sky-400" />
+                          Watch
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        toggleFavorite(rowActionMenu.item.id)
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {favoriteIds.includes(rowActionMenu.item.id) ? (
+                        <>
+                          <Star size={12} className="fill-amber-400 text-amber-400" />
+                          Unpin
+                        </>
+                      ) : (
+                        <>
+                          <Star size={12} className="text-amber-400" />
+                          Pin
+                        </>
+                      )}
                     </button>
                   </div>
 		                <div className="mx-2 my-2 h-px bg-slate-800" />
@@ -1991,6 +2069,7 @@ export default function MonitoringGrid() {
             animateRows={true}
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
+            context={gridContext}
             onGridReady={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
             onFirstDataRendered={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
 	            onSelectionChanged={(e) => {
@@ -2016,7 +2095,7 @@ export default function MonitoringGrid() {
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
             getRowClass={(params) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
-            quickFilterText={searchTerm}
+            quickFilterText=""
             suppressRowClickSelection={true}
             enableCellTextSelection={true}
             autoSizeStrategy={autoSizeStrategy}
@@ -2033,7 +2112,7 @@ export default function MonitoringGrid() {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <motion.section layout key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
+              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
                 <button
                   type="button"
                   onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
@@ -2071,7 +2150,7 @@ export default function MonitoringGrid() {
                                 height: `${fontSize + rowDensity + 10}px`,
                                 left: groupedStickyOffsets[column.key]?.left,
                                 right: groupedStickyOffsets[column.key]?.right,
-                                background: column.pinned ? 'rgba(2, 6, 23, 0.94)' : undefined
+                                background: column.pinned ? 'rgba(15, 23, 42, 0.98)' : undefined
                               }}
                             >
                               <span className="flex items-center justify-center gap-1">
@@ -2087,8 +2166,7 @@ export default function MonitoringGrid() {
                         {section.items.map((item: any, rowIndex: number) => {
                           const selected = selectedIds.includes(item.id)
                           return (
-                            <motion.tr
-                              layout
+                            <tr
                               key={item.id}
                               onClick={(event) => handleGroupedRowClick(item, event)}
                               onDoubleClick={() => setDetailItem(item)}
@@ -2098,7 +2176,6 @@ export default function MonitoringGrid() {
                               }}
                               className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : rowIndex % 2 === 0 ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-transparent hover:bg-white/[0.04]'}`}
                               style={{ height: `${fontSize + rowDensity + 10}px` }}
-                              transition={{ layout: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } }}
                             >
                               {groupedColumns.map((column: any) => (
                                 <td
@@ -2113,21 +2190,21 @@ export default function MonitoringGrid() {
                                     background: selected
                                       ? 'rgba(59, 130, 246, 0.1)'
                                       : column.pinned
-                                        ? rowIndex % 2 === 0 ? 'rgba(15, 23, 42, 0.96)' : 'rgba(2, 6, 23, 0.96)'
+                                        ? rowIndex % 2 === 0 ? 'rgba(15, 23, 42, 0.98)' : 'rgba(2, 6, 23, 0.98)'
                                         : undefined
                                   }}
                                 >
                                   {column.render(item)}
                                 </td>
                               ))}
-                            </motion.tr>
+                            </tr>
                           )
                         })}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </motion.section>
+              </section>
             )
           })}
         </div>

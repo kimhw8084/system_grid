@@ -68,7 +68,9 @@ async def get_monitoring_history(item_id: int, db: AsyncSession = Depends(get_db
 
 @router.get("", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
-    query = select(models.MonitoringItem).options(joinedload(models.MonitoringItem.owners))
+    query = select(models.MonitoringItem).options(
+        joinedload(models.MonitoringItem.owners)
+    )
     if not include_deleted:
         query = query.filter(models.MonitoringItem.is_deleted == False)
     
@@ -78,22 +80,41 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
     result = await db.execute(query)
     items = result.unique().scalars().all()
     
-    # Enrich with device name and service names
+    # Batch fetch device names
+    device_ids = {item.device_id for item in items if item.device_id}
+    device_map = {}
+    if device_ids:
+        dev_res = await db.execute(select(models.Device.id, models.Device.name).filter(models.Device.id.in_(device_ids)))
+        device_map = {id_: name for id_, name in dev_res.all()}
+
+    # Batch fetch service names
+    all_service_ids = set()
+    for item in items:
+        if item.monitored_services:
+            all_service_ids.update(item.monitored_services)
+    
+    service_map = {}
+    if all_service_ids:
+        svc_res = await db.execute(select(models.LogicalService.id, models.LogicalService.name).filter(models.LogicalService.id.in_(all_service_ids)))
+        service_map = {id_: name for id_, name in svc_res.all()}
+
+    # Batch fetch recovery doc titles
+    all_doc_ids = set()
+    for item in items:
+        if item.recovery_docs:
+            all_doc_ids.update(item.recovery_docs)
+            
+    doc_map = {}
+    if all_doc_ids:
+        doc_res = await db.execute(select(models.KnowledgeEntry.id, models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(all_doc_ids)))
+        doc_map = {id_: title for id_, title in doc_res.all()}
+
     res = []
     for item in items:
         resp = schemas.MonitoringItemResponse.model_validate(item)
-        if item.device_id:
-            dev_res = await db.execute(select(models.Device.name).filter(models.Device.id == item.device_id))
-            resp.device_name = dev_res.scalar_one_or_none()
-            
-        if item.monitored_services:
-            svc_res = await db.execute(select(models.LogicalService.name).filter(models.LogicalService.id.in_(item.monitored_services)))
-            resp.monitored_service_names = list(svc_res.scalars().all())
-            
-        if item.recovery_docs:
-            doc_res = await db.execute(select(models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(item.recovery_docs)))
-            resp.recovery_doc_titles = list(doc_res.scalars().all())
-            
+        resp.device_name = device_map.get(item.device_id)
+        resp.monitored_service_names = [service_map.get(sid) for sid in (item.monitored_services or []) if service_map.get(sid)]
+        resp.recovery_doc_titles = [doc_map.get(did) for did in (item.recovery_docs or []) if doc_map.get(did)]
         res.append(resp)
         
     return res

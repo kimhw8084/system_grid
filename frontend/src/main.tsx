@@ -38,13 +38,15 @@ const Bootstrap = () => {
              response = await apiFetch('/api/v1/settings/bootstrap');
           }
         } catch (initialErr) {
-          console.warn("BOOTSTRAP: Initial fetch failed, clearing local configurations and retrying...", initialErr);
+          console.warn("BOOTSTRAP: Initial fetch failed, clearing configuration cache and retrying...", initialErr);
           Object.keys(localStorage).forEach(k => {
-            if (k.startsWith('SYSGRID_CONFIG_') || k === 'SYSGRID_OVERRIDE_API_URL') {
+            if (k.startsWith('SYSGRID_CONFIG_')) {
               localStorage.removeItem(k);
             }
           });
-          response = await fetch('/api/v1/settings/bootstrap');
+          // Note: We MUST NOT remove SYSGRID_OVERRIDE_API_URL here as it's often 
+          // set by automation/proxy layers to ensure correct routing.
+          response = await apiFetch('/api/v1/settings/bootstrap');
           if (!response.ok) throw new Error(`API Error ${response.status}`);
         }
         

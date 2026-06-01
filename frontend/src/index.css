@@ -1,4 +1,6 @@
 @import 'reactflow/dist/style.css';
+@import 'ag-grid-community/styles/ag-grid.css';
+@import 'ag-grid-community/styles/ag-theme-alpine.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -248,7 +250,7 @@
 .monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-first-right-pinned,
 .monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-last-left-pinned,
 .monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-not-inline-editing.ag-cell-value {
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: rgba(15, 23, 42, 0.98) !important;
 }
 
 .monitoring-grid-shell .ag-pinned-left-cols-container .ag-row.monitoring-grid-row-odd .ag-cell,
@@ -257,7 +259,7 @@
 .monitoring-grid-shell .monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell,
 .monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-first-right-pinned,
 .monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-last-left-pinned {
-  background: transparent !important;
+  background: rgba(2, 6, 23, 0.98) !important;
 }
 
 .monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-hover.monitoring-grid-row-even .ag-cell,

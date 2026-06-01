@@ -68,6 +68,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const startTime = Date.now();
   const response = await fetch(url, {
+    cache: 'no-store',
     ...options,
     headers,
   });

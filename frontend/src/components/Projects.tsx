@@ -3131,7 +3131,19 @@ export default function Projects() {
                      </motion.div>
                    ) : (
                       <>
-                        {!selectedProject ? (
+                        {selectedProjectId === null && isGlobalEditing ? (
+                          <motion.div key="new-project" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full p-10 overflow-y-auto custom-scrollbar">
+                             <ProjectForm 
+                               initialData={draftProject}
+                               onSave={(data: any) => mutation.mutate({ data })}
+                               isSaving={mutation.isPending}
+                               onCancel={() => { setIsGlobalEditing(false); setDraftProject(null); syncSelectedProject('HUDDLE'); }}
+                               devices={devices}
+                               services={services}
+                               options={options}
+                             />
+                          </motion.div>
+                        ) : !selectedProject ? (
                           <div className="h-full flex items-center justify-center">
                              <div className="text-center space-y-4">
                                 <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10">

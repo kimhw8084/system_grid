@@ -5,8 +5,16 @@ const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 
 async function post(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.post(`${apiBase}${path}`, { data })
+  if (!response.ok()) {
+     const text = await response.text()
+     console.error(`POST ${path} FAILED: ${response.status()} ${text}`)
+  }
   expect(response.ok()).toBeTruthy()
-  return response.json()
+  const resData = await response.json()
+  if (path === '/monitoring') {
+     console.log(`SEED: Created monitoring item "${resData.title}" (ID: ${resData.id})`)
+  }
+  return resData
 }
 
 async function put(request: APIRequestContext, path: string, data: Record<string, any>) {

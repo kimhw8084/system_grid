@@ -30,7 +30,7 @@ ConfigSessionLocal = async_sessionmaker(
     bind=config_engine,
     autoflush=False,
     autocommit=False,
-    expire_on_commit=False,
+    expire_on_commit=True,
     class_=AsyncSession
 )
 
@@ -67,7 +67,7 @@ AsyncSessionLocal = async_sessionmaker(
     bind=default_engine,
     autoflush=False,
     autocommit=False,
-    expire_on_commit=False,
+    expire_on_commit=True,
     class_=AsyncSession
 )
 

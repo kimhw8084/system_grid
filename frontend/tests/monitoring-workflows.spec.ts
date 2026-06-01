@@ -30,6 +30,19 @@ test.describe('Monitoring workflows', () => {
 
     await page.goto('/monitoring')
     await expect(page.getByRole('heading', { name: 'Monitoring Matrix' })).toBeVisible()
+    
+    // Wait for allItems in the frontend
+    await page.waitForFunction(() => {
+       // @ts-ignore
+       return window.__DEBUG_ALL_ITEMS__ && window.__DEBUG_ALL_ITEMS__.length > 0
+    }, { timeout: 30000 })
+
+    const itemsInFrontend = await page.evaluate(() => {
+       // @ts-ignore
+       return window.__DEBUG_ALL_ITEMS__ || []
+    })
+    console.log(`DEBUG: Found ${itemsInFrontend.length} items in frontend window`)
+
     await page.getByPlaceholder('SCAN MATRIX...').fill(monitoring.title)
     await expect(page.locator('.ag-center-cols-container')).toContainText(monitoring.title)
     await expect(page.locator('.ag-center-cols-container')).toContainText('Existing')
