@@ -241,9 +241,45 @@
   background: rgba(59, 130, 246, 0.1) !important;
 }
 
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-cell {
-  background: rgba(2, 6, 23, 0.96) !important;
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-first-right-pinned,
+.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-last-left-pinned,
+.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-not-inline-editing.ag-cell-value {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-first-right-pinned,
+.monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-last-left-pinned {
+  background: transparent !important;
+}
+
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-hover.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-hover.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-hover.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-hover.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-selected.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-selected.monitoring-grid-row-even .ag-cell,
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-selected.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-selected.monitoring-grid-row-odd .ag-cell,
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell {
+  background: rgba(59, 130, 246, 0.1) !important;
 }
 
 .monitoring-grid-shell .ag-center-cols-viewport,

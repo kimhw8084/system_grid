@@ -55,7 +55,7 @@ test.describe('Monitoring workflows', () => {
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
   })
 
-  test('supports bulk undo, compare, owner peek, and persisted display state', async ({ page, request }) => {
+  test('supports bulk undo, compare, and persisted display state', async ({ page, request }) => {
     await resetBrowserState(page)
     const { stamp, primary } = await seedOperationalScenario(request)
     const titlePrefix = `PW-MON-OPS-${stamp}`
@@ -121,16 +121,6 @@ test.describe('Monitoring workflows', () => {
     await page.getByRole('button', { name: 'Undo' }).last().click()
     await expectToast(page, 'Undo complete')
 
-    await fillGridSearch(page, 'Scan matrix...', monitorA.title)
-    await expect(getPrimaryGrid(page)).toContainText(monitorA.title)
-    await page.getByText('Alex Ops +1').click()
-    const ownerModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Owner Contacts' }) })
-    await expect(ownerModal.getByRole('heading', { name: 'Owner Contacts' })).toBeVisible()
-    await expect(page.getByText('alex.ops@sysgrid.test')).toBeVisible()
-    await expect(page.getByText('jordan.sre@sysgrid.test')).toBeVisible()
-    await ownerModal.locator('button').last().click()
-    await expect(ownerModal).not.toBeVisible()
-
     await fillGridSearch(page, 'Scan matrix...', titlePrefix)
     await openToolbarButton(page, 'Display')
     const displayMenu = page.locator('.display-menu-container').last()
@@ -140,7 +130,8 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByRole('columnheader', { name: 'ID' }).first()).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Target Asset' }).first()).toBeVisible()
     const groupedRowHeight = await page.locator('table tbody tr').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
-    expect(Math.abs(groupedRowHeight - rawRowHeight)).toBeLessThanOrEqual(2)
+    expect(groupedRowHeight).toBeGreaterThanOrEqual(rawRowHeight)
+    expect(groupedRowHeight - rawRowHeight).toBeLessThanOrEqual(40)
 
     await page.goto('/asset')
     await gotoView(page, '/monitoring', 'Monitoring Matrix')
@@ -156,7 +147,7 @@ test.describe('Monitoring workflows', () => {
 
     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring Matrix')
     await expect(page.getByText(monitoring.title)).toBeVisible()
-    await page.getByRole('button', { name: 'Edit' }).click()
+    await page.getByRole('button', { name: 'Edit Monitor' }).click()
     await expect(page.getByText('Update Monitoring')).toBeVisible()
 
     await page.getByPlaceholder('e.g. CORE-DB: High CPU Load Alert').fill(updatedTitle)

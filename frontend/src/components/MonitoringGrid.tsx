@@ -387,6 +387,68 @@ export default function MonitoringGrid() {
     setDetailItem(event.data)
   }
 
+  const openRecoveryDocuments = (item: any) => {
+    setBkmPopup({
+      ids: item.recovery_docs || [],
+      titles: item.recovery_doc_titles || [],
+      monitorId: item.id
+    })
+  }
+
+  const renderPrimaryRowActions = (item: any) => (
+    <div className="flex items-center justify-end gap-1">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          setDetailItem(item)
+        }}
+        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+      >
+        Open
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          setEditingItem(item)
+          setIsFormOpen(true)
+        }}
+        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+      >
+        Edit
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          setHistoryItem(item)
+        }}
+        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+      >
+        Hist
+      </button>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          openRecoveryDocuments(item)
+        }}
+        className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-slate-200 transition-all hover:bg-white/[0.08]"
+      >
+        Docs
+      </button>
+      <button
+        type="button"
+        onClick={(event: any) => openRowActionMenu(event, item)}
+        title="More actions"
+        className="row-action-trigger row-action-menu-container rounded-full border border-white/10 bg-white/[0.03] p-1 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
+      >
+        <ChevronRight size={13} />
+      </button>
+    </div>
+  )
+
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
       gridRef.current.api.exportDataAsCsv({
@@ -1047,11 +1109,11 @@ export default function MonitoringGrid() {
     },
     {
       colId: "recent_change",
-      headerName: "Δ",
+      headerName: "Chg",
       field: "recent_change",
-      width: 42,
-      minWidth: 42,
-      maxWidth: 42,
+      width: 52,
+      minWidth: 52,
+      maxWidth: 52,
       pinned: 'left',
       sortable: false,
       filter: false,
@@ -1060,16 +1122,18 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       suppressHide: true,
       cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-        <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.45)]" />
+        <div className="flex h-full w-full items-center justify-center">
+          <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]" />
+        </div>
       ) : null
     },
     {
       colId: "favorite",
-      headerName: "",
+      headerName: "Fav",
       field: "favorite",
-      width: 44,
-      minWidth: 44,
-      maxWidth: 44,
+      width: 52,
+      minWidth: 52,
+      maxWidth: 52,
       pinned: 'left',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -1092,11 +1156,11 @@ export default function MonitoringGrid() {
     },
     {
       colId: "watch",
-      headerName: "",
+      headerName: "Watch",
       field: "watch",
-      width: 44,
-      minWidth: 44,
-      maxWidth: 44,
+      width: 66,
+      minWidth: 66,
+      maxWidth: 66,
       pinned: 'left',
       cellClass: 'text-center',
       headerClass: 'text-center',
@@ -1129,24 +1193,15 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("device_name") || groupBy === 'device_name'
     },
     { 
-      field: "category", 
-      headerName: "Category", 
-      width: 110,
+      field: "title", 
+      headerName: "Title", 
+      minWidth: 180,
+      flex: 2.2, 
       filter: true,
-      rowGroup: groupBy === 'category',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Hardware': 'text-amber-500',
-          'Network': 'text-blue-500',
-          'OS': 'text-purple-500',
-          'Application': 'text-emerald-500',
-          'Database': 'text-rose-500'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
-      },
-      hide: hiddenColumns.includes("category") || groupBy === 'category'
+      cellClass: "font-bold text-left uppercase tracking-tight", 
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("title")
     },
     { 
       field: "status", 
@@ -1158,27 +1213,6 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
       hide: hiddenColumns.includes("status") || groupBy === 'status'
-    },
-    { 
-      field: "is_active", 
-      headerName: "Live", 
-      width: 60,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const isActive = p.value
-        const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="relative">
-              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
-              {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-30" />
-              )}
-            </div>
-          </div>
-        )
-      },      hide: hiddenColumns.includes("is_active")
     },
     { 
       field: "owners", 
@@ -1203,15 +1237,45 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("owners")
     },
     { 
-      field: "title", 
-      headerName: "Title", 
-      minWidth: 180,
-      flex: 1.5, 
+      field: "category", 
+      headerName: "Category", 
+      width: 110,
       filter: true,
-      cellClass: "font-bold text-left uppercase tracking-tight", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("title")
+      rowGroup: groupBy === 'category',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const colors: any = {
+          'Hardware': 'text-amber-500',
+          'Network': 'text-blue-500',
+          'OS': 'text-purple-500',
+          'Application': 'text-emerald-500',
+          'Database': 'text-rose-500'
+        }
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
+      },
+      hide: hiddenColumns.includes("category") || groupBy === 'category'
+    },
+    { 
+      field: "is_active", 
+      headerName: "Live", 
+      width: 60,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const isActive = p.value
+        const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="relative">
+              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
+              {(isActive && !isDeleted) && (
+                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-30" />
+              )}
+            </div>
+          </div>
+        )
+      },      hide: hiddenColumns.includes("is_active")
     },
     { 
       field: "monitored_service_names", 
@@ -1300,27 +1364,17 @@ export default function MonitoringGrid() {
     },
     {
       colId: "row_actions",
-      headerName: "",
-      width: 48,
-      minWidth: 48,
-      maxWidth: 68,
+      headerName: "Action",
+      width: 210,
+      minWidth: 210,
+      maxWidth: 210,
       pinned: 'right',
-      cellClass: 'text-center',
+      cellClass: 'text-right pr-3',
       headerClass: 'text-center',
       resizable: false,
       sortable: false,
       filter: false,
-      cellRenderer: (p: any) => (
-        <div className="row-action-menu-container flex h-full items-center justify-center">
-          <button
-            onClick={(event) => p.data && openRowActionMenu(event, p.data)}
-            title="Row actions"
-            className="row-action-trigger row-action-menu-container rounded-full border border-transparent bg-transparent p-1 text-slate-500 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
-          >
-            <ChevronRight size={13} />
-          </button>
-        </div>
-      ),
+      cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       suppressHide: true
     }
   ], [favoriteIds, fontSize, groupBy, hiddenColumns, watchIds]) as any
@@ -1865,52 +1919,6 @@ export default function MonitoringGrid() {
                   </button>
                 </div>
                 <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                <button
-                  onClick={() => {
-                    setDetailItem(rowActionMenu.item)
-                    setRowActionMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
-                >
-                  <Eye size={14} className="text-blue-400" />
-                  Open Details
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingItem(rowActionMenu.item)
-                    setIsFormOpen(true)
-                    setRowActionMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
-                >
-                  <Edit2 size={14} className="text-slate-400" />
-                  Edit Monitor
-                </button>
-                <button
-                  onClick={() => {
-                    setHistoryItem(rowActionMenu.item)
-                    setRowActionMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
-                >
-                  <Clock size={14} className="text-amber-400" />
-                  Open History
-                </button>
-		                <button
-	                  onClick={() => {
-	                    setBkmPopup({
-                      ids: rowActionMenu.item.recovery_docs || [],
-                      titles: rowActionMenu.item.recovery_doc_titles || [],
-                      monitorId: rowActionMenu.item.id
-                    })
-                    setRowActionMenu(null)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
-                >
-		                  <BookOpen size={14} className="text-emerald-400" />
-		                  Recovery Documents
-		                </button>
-                  <div className="mx-2 my-2 h-px bg-slate-800" />
                   <div className="px-3 py-1">
                     <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Related Destinations</p>
                   </div>
@@ -1980,6 +1988,7 @@ export default function MonitoringGrid() {
 	            rowData={displayedItems || []} 
 	            columnDefs={columnDefs} 
 	            rowSelection="multiple"
+            animateRows={true}
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
             onGridReady={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
@@ -2024,7 +2033,7 @@ export default function MonitoringGrid() {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
+              <motion.section layout key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
                 <button
                   type="button"
                   onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
@@ -2078,7 +2087,8 @@ export default function MonitoringGrid() {
                         {section.items.map((item: any, rowIndex: number) => {
                           const selected = selectedIds.includes(item.id)
                           return (
-                            <tr
+                            <motion.tr
+                              layout
                               key={item.id}
                               onClick={(event) => handleGroupedRowClick(item, event)}
                               onDoubleClick={() => setDetailItem(item)}
@@ -2088,6 +2098,7 @@ export default function MonitoringGrid() {
                               }}
                               className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : rowIndex % 2 === 0 ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-transparent hover:bg-white/[0.04]'}`}
                               style={{ height: `${fontSize + rowDensity + 10}px` }}
+                              transition={{ layout: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } }}
                             >
                               {groupedColumns.map((column: any) => (
                                 <td
@@ -2109,14 +2120,14 @@ export default function MonitoringGrid() {
                                   {column.render(item)}
                                 </td>
                               ))}
-                            </tr>
+                            </motion.tr>
                           )
                         })}
                       </tbody>
                     </table>
                   </div>
                 )}
-              </section>
+              </motion.section>
             )
           })}
         </div>
@@ -2764,7 +2775,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <ToolbarButton onClick={() => onEdit?.(item)}>Edit</ToolbarButton>
+            <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
             <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
             <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
             <ToolbarButton variant="danger" onClick={() => onDelete?.(item)}>

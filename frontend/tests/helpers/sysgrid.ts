@@ -16,15 +16,16 @@ async function put(request: APIRequestContext, path: string, data: Record<string
 }
 
 export async function resetBrowserState(page: Page) {
-  await page.addInitScript(({ injectedApiOrigin }) => {
-    const alreadyReset = window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')
-    if (!alreadyReset) {
+  const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  await page.addInitScript(({ injectedApiOrigin, resetToken }) => {
+    const appliedToken = window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')
+    if (!appliedToken || appliedToken !== resetToken) {
       window.localStorage.clear()
       window.sessionStorage.clear()
-      window.sessionStorage.setItem('__sysgrid_pw_bootstrap__', '1')
+      window.sessionStorage.setItem('__sysgrid_pw_bootstrap__', resetToken)
     }
     window.localStorage.setItem('SYSGRID_OVERRIDE_API_URL', injectedApiOrigin)
-  }, { injectedApiOrigin: apiOrigin })
+  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken })
 }
 
 export async function createAsset(request: APIRequestContext, payload: Record<string, any>) {
