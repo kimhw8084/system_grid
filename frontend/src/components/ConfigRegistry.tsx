@@ -190,14 +190,14 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6 sm:p-10">
                     <motion.div 
                         initial={{ scale: 0.95, opacity: 0, y: 20 }} 
                         animate={{ scale: 1, opacity: 1, y: 0 }} 
                         exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-                        className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-hidden p-1 rounded-lg border border-white/10 flex flex-col bg-[#020617]/90"
+                        className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-xl border border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] flex flex-col bg-[#020617]/90"
                     >
-                        <div className="p-8 pb-4 flex items-center justify-between border-b border-white/5 bg-white/2">
+                        <div className="p-8 pb-4 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
                             <div className="flex items-center space-x-6">
                                 <div className="p-4 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Layout size={28} /></div>
                                 <div>

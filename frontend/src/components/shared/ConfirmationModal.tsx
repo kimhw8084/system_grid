@@ -53,12 +53,12 @@ export const ConfirmationModal = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-6">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
         exit={{ scale: 0.95, opacity: 0 }}
-        className={`glass-panel w-[400px] p-10 rounded-lg border ${getVariantBorder()} space-y-6 relative overflow-hidden`}
+        className={`glass-panel w-[400px] p-10 rounded-xl border ${getVariantBorder()} shadow-[0_0_80px_rgba(244,63,94,0.05)] relative overflow-hidden`}
       >
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-white/5 rounded-lg">

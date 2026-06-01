@@ -396,7 +396,7 @@ export default function MonitoringGrid() {
   }
 
   const renderPrimaryRowActions = (item: any) => (
-    <div className="flex items-center justify-end gap-1">
+    <div className="flex items-center justify-end gap-1.5 pr-2">
       <button
         type="button"
         onClick={(event) => {
@@ -404,9 +404,9 @@ export default function MonitoringGrid() {
           setDetailItem(item)
         }}
         title="Open details"
-        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-blue-400 transition-all hover:bg-white/[0.08]"
+        className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
       >
-        <Eye size={12} />
+        <Eye size={13} />
       </button>
       <button
         type="button"
@@ -416,9 +416,9 @@ export default function MonitoringGrid() {
           setIsFormOpen(true)
         }}
         title="Edit configuration"
-        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-emerald-400 transition-all hover:bg-white/[0.08]"
+        className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
       >
-        <Edit2 size={12} />
+        <Edit2 size={13} />
       </button>
       <button
         type="button"
@@ -427,9 +427,9 @@ export default function MonitoringGrid() {
           setHistoryItem(item)
         }}
         title="View history"
-        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-amber-400 transition-all hover:bg-white/[0.08]"
+        className="rounded-lg p-1 text-amber-400 transition-all hover:bg-amber-400/10 active:scale-90"
       >
-        <Clock size={12} />
+        <Clock size={13} />
       </button>
       <button
         type="button"
@@ -438,17 +438,17 @@ export default function MonitoringGrid() {
           openRecoveryDocuments(item)
         }}
         title="Knowledge documents"
-        className="rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-purple-400 transition-all hover:bg-white/[0.08]"
+        className="rounded-lg p-1 text-purple-400 transition-all hover:bg-purple-400/10 active:scale-90"
       >
-        <BookOpen size={12} />
+        <BookOpen size={13} />
       </button>
       <button
         type="button"
         onClick={(event: any) => openRowActionMenu(event, item)}
         title="More actions"
-        className="row-action-trigger row-action-menu-container rounded-md border border-white/10 bg-white/[0.03] p-1.5 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
+        className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
       >
-        <MoreVertical size={12} />
+        <MoreVertical size={13} />
       </button>
     </div>
   )
@@ -711,9 +711,7 @@ export default function MonitoringGrid() {
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json(),
-    staleTime: 0,
-    gcTime: 0
+    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
 
   useEffect(() => {
@@ -767,14 +765,7 @@ export default function MonitoringGrid() {
           .join(' ')
           .toLowerCase()
         
-        const matches = haystack.includes(query)
-        if (query.length > 5 && !matches && item.title.toLowerCase().includes('pw-mon')) {
-           console.log(`[MonitoringGrid] NO MATCH: query="${query}" title="${item.title}" haystack="${haystack.slice(0, 100)}..."`)
-        }
-        if (matches) {
-           console.log(`[MonitoringGrid] MATCH FOUND: "${item.title}"`)
-        }
-        if (!matches) return false
+        if (!haystack.includes(query)) return false
       }
       if (quickFilters.status && item.status !== quickFilters.status) return false
       if (quickFilters.severity && item.severity !== quickFilters.severity) return false
@@ -782,7 +773,11 @@ export default function MonitoringGrid() {
       if (quickFilters.owner && !(item.owners || []).some((owner: any) => owner.name === quickFilters.owner)) return false
       return true
     })
-    const sorted = [...filtered].sort((a: any, b: any) => {
+    return filtered
+  }, [items, quickFilters, searchTerm])
+
+  const sortedItemsForGrouped = useMemo(() => {
+    const sorted = [...displayedItems].sort((a: any, b: any) => {
       const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
       const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
       if (aFavorite !== bFavorite) return bFavorite - aFavorite
@@ -804,7 +799,7 @@ export default function MonitoringGrid() {
       return a.id - b.id
     })
     return sorted
-  }, [favoriteIds, gridSortModel, items, quickFilters, searchTerm])
+  }, [displayedItems, favoriteIds, gridSortModel])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -815,7 +810,7 @@ export default function MonitoringGrid() {
 
   const groupedSections = useMemo(() => {
     if (groupBy === 'raw') return []
-    const sections = displayedItems.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
+    const sections = sortedItemsForGrouped.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
       const label = String(getMonitorGroupValue(item, groupBy))
       const existing = acc.find((section) => section.key === label)
       if (existing) {
@@ -826,7 +821,7 @@ export default function MonitoringGrid() {
       return acc
     }, [])
     return sections.sort((a, b) => a.label.localeCompare(b.label))
-  }, [displayedItems, groupBy])
+  }, [sortedItemsForGrouped, groupBy])
 
   useEffect(() => {
     if (groupBy === 'raw') return
@@ -2098,9 +2093,33 @@ export default function MonitoringGrid() {
 	        </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-          <div className="rounded-lg border border-white/5 bg-black/20 px-4 py-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped View</p>
-            <p className="pt-1 text-[12px] font-semibold text-slate-100">Grouped by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
+          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped Intelligence Matrix</p>
+              <p className="pt-1 text-[12px] font-black uppercase tracking-tight text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
+            </div>
+            <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Expand All
+               </button>
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Collapse All
+               </button>
+               <div className="w-px h-6 bg-white/10 mx-1" />
+               <button 
+                 onClick={() => setGroupBy('raw')}
+                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+               >
+                 <X size={12} />
+                 <span>Cancel</span>
+               </button>
+            </div>
           </div>
           {groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
@@ -2375,7 +2394,7 @@ function OwnersModal({ owners, title, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2408,7 +2427,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2455,7 +2474,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     useEscapeDismiss(onClose)
 
     if (isStatusOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
@@ -2479,7 +2498,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isSeverityOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
@@ -2503,7 +2522,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isNotifyOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
@@ -2534,7 +2553,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 function ServicesModal({ names, title, onClose }: any) {
   useEscapeDismiss(onClose)
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
@@ -2557,7 +2576,7 @@ function ServicesModal({ names, title, onClose }: any) {
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
@@ -2637,7 +2656,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -2734,7 +2753,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   })
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
@@ -2818,7 +2837,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   })
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-4 sm:p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]">
         <div className="mb-6 border-b border-white/10 pb-6">
           <div className="flex items-start justify-between gap-4">
@@ -3230,7 +3249,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
   }
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.58)] backdrop-blur-[12px] p-4 sm:p-6">
+    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-4 sm:p-6">
       <motion.div
         onClick={e => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}

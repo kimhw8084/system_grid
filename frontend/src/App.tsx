@@ -48,8 +48,21 @@ const normalizeTheme = (theme?: string | null) => {
 import { QueryCache, MutationCache } from "@tanstack/react-query"
 
 const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30000, // 30 seconds
+      gcTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
   queryCache: new QueryCache({
     onError: (error: any) => {
+      // Avoid spamming error store if it's a connection error we're already retrying
+      if (error.status === 0 || error.message === 'Failed to fetch') {
+        console.warn("Connection lost, suppressing global error toast to prevent loop");
+        return;
+      }
       errorManager.addError({
         message: error.message || 'API Query Failure',
         stack: error.traceback || error.stack,
