@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Network, Plus, Link as LinkIcon, RefreshCcw, Trash2, Edit2, X, Settings, Search, Info, Zap, Layers, Activity, Sliders, Clipboard, FileText, Check, MoreVertical, Upload } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -14,6 +15,8 @@ import { StyledSelect } from "./shared/StyledSelect"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 
 export default function NetworkFabric() {
+  const [searchParams] = useSearchParams()
+  const idParam = searchParams.get('id')
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
   const gridRef = React.useRef<any>(null)
@@ -52,6 +55,12 @@ export default function NetworkFabric() {
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: connections, isLoading } = useQuery({ queryKey: ['connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+
+  useEffect(() => {
+    if (!idParam || !connections) return
+    const target = connections.find((connection: any) => String(connection.id) === idParam)
+    if (target) setViewingLink(target)
+  }, [idParam, connections])
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
@@ -98,8 +107,10 @@ export default function NetworkFabric() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connections'] })
       toast.success(editingLink ? 'Link Matrix Updated' : 'New Link Established')
-      setShowConnectModal(false); setEditingLink(null)
-    }
+      setShowConnectModal(false)
+      resetForm()
+    },
+    onError: (e: any) => toast.error(e.message)
   })
 
   const deleteMutation = useMutation({
@@ -128,6 +139,23 @@ export default function NetworkFabric() {
       toast.success(`Updated ${data.count} links`)
       setSelectedIds([])
       setShowBulkMenu(false)
+    },
+    onError: (e: any) => toast.error(e.message)
+  })
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      const res = await apiFetch('/api/v1/networks/connections/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids })
+      })
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['connections'] })
+      toast.success(`Severed ${data.count} links`)
+      setSelectedIds([])
+      setShowBulkMenu(false)
+      setConfirmModal((prev: any) => ({ ...prev, isOpen: false }))
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -451,11 +479,7 @@ export default function NetworkFabric() {
                          isOpen: true, 
                          title: 'Bulk Sever Links', 
                          message: `Sever ${selectedIds.length} physical connections permanently?`, 
-                         onConfirm: () => {
-                           selectedIds.forEach(id => deleteMutation.mutate(id))
-                           setSelectedIds([])
-                           setShowBulkMenu(false)
-                         } 
+                         onConfirm: () => bulkDeleteMutation.mutate(selectedIds)
                        })
                      }} 
                      className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all"
@@ -660,7 +684,7 @@ export default function NetworkFabric() {
                       label="Peer Asset Registry Entity *"
                       value={connData.device_b_id}
                       onChange={e => setConnData({...connData, device_b_id: e.target.value})}
-                      options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+                      options={devices?.filter((d:any) => String(d.id) !== String(connData.device_a_id)).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
                       placeholder="Select Registry Asset..."
                     />
                     <div className="grid grid-cols-2 gap-4">
@@ -749,6 +773,9 @@ export default function NetworkFabric() {
                 <button onClick={() => {
                   if(!connData.device_a_id || (!connData.source_port && !connData.port_a) || !connData.device_b_id || (!connData.target_port && !connData.port_b)) {
                     return toast.error("Entity and Port mapping required")
+                  }
+                  if (String(connData.device_a_id) === String(connData.device_b_id)) {
+                    return toast.error("Source and peer assets must be different")
                   }
                   mutation.mutate(connData)
                 }} className="flex-1 py-5 bg-blue-600 text-white rounded-[20px] text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3">

@@ -193,26 +193,60 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     action = data.get("action")
     payload = data.get("payload", {})
     if not ids: return {"status": "no_op"}
-    
+
     if action == "delete":
-        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=True, status="Deleted"))
+        result = await db.execute(
+            select(models.MonitoringItem)
+            .options(joinedload(models.MonitoringItem.owners))
+            .where(models.MonitoringItem.id.in_(ids))
+        )
+        items = result.unique().scalars().all()
+        for item in items:
+            item.is_deleted = True
+            item.status = "Deleted"
+            item.version = (item.version or 0) + 1
+            await db.flush()
+            await save_monitoring_history(item.id, item.version, db, "Bulk delete")
     elif action == "purge":
         await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
     elif action == "restore":
-        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(is_deleted=False, status="Existing"))
+        result = await db.execute(
+            select(models.MonitoringItem)
+            .options(joinedload(models.MonitoringItem.owners))
+            .where(models.MonitoringItem.id.in_(ids))
+        )
+        items = result.unique().scalars().all()
+        for item in items:
+            item.is_deleted = False
+            item.status = "Existing"
+            item.version = (item.version or 0) + 1
+            await db.flush()
+            await save_monitoring_history(item.id, item.version, db, "Bulk restore")
     elif action == "update":
         clean_update = filter_valid_columns(models.MonitoringItem, payload)
-        
+
         # Sync is_deleted with status in bulk update
         if "status" in clean_update:
             if clean_update["status"] == "Deleted":
                 clean_update["is_deleted"] = True
             elif clean_update["status"] == "Existing":
                 clean_update["is_deleted"] = False
-                
+
         if clean_update:
-            await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)).values(**clean_update))
-    
+            result = await db.execute(
+                select(models.MonitoringItem)
+                .options(joinedload(models.MonitoringItem.owners))
+                .where(models.MonitoringItem.id.in_(ids))
+            )
+            items = result.unique().scalars().all()
+            for item in items:
+                for key, value in clean_update.items():
+                    setattr(item, key, value)
+                item.version = (item.version or 0) + 1
+                await db.flush()
+                summary_fields = ", ".join(sorted(clean_update.keys()))
+                await save_monitoring_history(item.id, item.version, db, f"Bulk update: {summary_fields}")
+
     await db.commit()
     return {"status": "success"}
 

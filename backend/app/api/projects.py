@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
+from datetime import datetime
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
@@ -74,6 +75,10 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
     
     update_data = data.model_dump(exclude_unset=True)
     tasks_data = update_data.pop("tasks", None)
+    previous_values = {
+        key: getattr(db_project, key)
+        for key in ["status", "priority", "name", "type"]
+    }
     
     # Auto-set completed_at if status changed to Completed
     if update_data.get("status") == "Completed" and not db_project.completed_at and not update_data.get("completed_at"):
@@ -130,7 +135,11 @@ async def update_project(project_id: int, data: schemas.ProjectUpdate, db: Async
         meta = db_project.metadata_json or {}
         audit_log = meta.get("audit_log", [])
         sig_keys = ["status", "priority", "name", "type"]
-        changes = [f"{k}: {db_project.__dict__.get(k)} -> {update_data[k]}" for k in sig_keys if k in update_data and update_data[k] != getattr(db_project, k)]
+        changes = [
+            f"{k}: {previous_values.get(k)} -> {update_data[k]}"
+            for k in sig_keys
+            if k in update_data and update_data[k] != previous_values.get(k)
+        ]
         if changes:
             audit_log.append({
                 "content": f"Project Modified: {', '.join(changes)}",

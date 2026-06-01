@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, X, Loader2, Server, Briefcase, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Search, X, Loader2, Server, Briefcase, AlertTriangle, ChevronRight, Activity, Layers, BookOpen, Network } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../../api/apiClient';
@@ -7,7 +7,7 @@ import metadata from '../../metadata.json';
 
 interface SearchResult {
   id: number;
-  type: 'asset' | 'project' | 'far';
+  type: 'asset' | 'project' | 'far' | 'service' | 'monitoring' | 'knowledge' | 'network';
   title: string;
   subtitle: string;
   tag: string;
@@ -93,6 +93,10 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       case 'asset': return <Server size={14} className="text-blue-400" />;
       case 'project': return <Briefcase size={14} className="text-emerald-400" />;
       case 'far': return <AlertTriangle size={14} className="text-amber-400" />;
+      case 'service': return <Layers size={14} className="text-fuchsia-400" />;
+      case 'monitoring': return <Activity size={14} className="text-rose-400" />;
+      case 'knowledge': return <BookOpen size={14} className="text-sky-400" />;
+      case 'network': return <Network size={14} className="text-indigo-400" />;
       default: return <ChevronRight size={14} />;
     }
   };
@@ -102,6 +106,10 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       case 'asset': return 'Infrastructure Nodes';
       case 'project': return 'Active Initiatives';
       case 'far': return 'Failure Mode Registry';
+      case 'service': return 'Service Instances';
+      case 'monitoring': return 'Monitoring Coverage';
+      case 'knowledge': return 'Knowledge Base';
+      case 'network': return 'Network Fabric';
       default: return 'Records';
     }
   };
@@ -131,7 +139,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search Assets, Projects, FAR Modes..."
+                placeholder="Search Assets, Projects, FAR, Services, Monitoring..."
                 className="flex-1 bg-transparent border-none outline-none text-[13px] font-bold uppercase tracking-[0.1em] text-white placeholder:text-slate-600"
               />
               {isLoading ? (
@@ -234,4 +242,3 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     </AnimatePresence>
   );
 };
-

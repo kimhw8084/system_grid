@@ -32,9 +32,18 @@ import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
 import { GlobalSearch } from "./components/shared/GlobalSearch"
 import { TenantSelector } from "./components/shared/TenantSelector"
+import { AuditHUD } from "./components/shared/AuditHUD"
+import { ShellHeader, ToolbarButton } from "./components/shared/LayoutPrimitives"
 
 const APP_VERSION = metadata.version
 const PATCH_HISTORY = metadata.patchHistory
+
+const normalizeTheme = (theme?: string | null) => {
+  if (theme === 'dark') return 'nordic-frost-v1'
+  if (theme === 'light') return 'pure-clarity'
+  if (theme === 'pure-clarity' || theme === 'nordic-frost-v1') return theme
+  return 'nordic-frost-v1'
+}
 
 import { QueryCache, MutationCache } from "@tanstack/react-query"
 
@@ -333,7 +342,7 @@ function MainLayout() {
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const [showLinuxEnv, setShowLinuxEnv] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('sysgrid-theme') || 'nordic-frost-v1');
+  const [currentTheme, setCurrentTheme] = useState(normalizeTheme(localStorage.getItem('sysgrid-theme')));
   const [latency, setLatency] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -384,10 +393,11 @@ function MainLayout() {
   });
 
   useEffect(() => {
-    if (userSettings?.theme && (userSettings.theme === 'nordic-frost-v1' || userSettings.theme === 'pure-clarity')) {
-      setCurrentTheme(userSettings.theme);
-      document.documentElement.setAttribute('data-theme', userSettings.theme);
-      const isLight = userSettings.theme === 'pure-clarity';
+    if (userSettings?.theme) {
+      const normalizedTheme = normalizeTheme(userSettings.theme);
+      setCurrentTheme(normalizedTheme);
+      document.documentElement.setAttribute('data-theme', normalizedTheme);
+      const isLight = normalizedTheme === 'pure-clarity';
       if (isLight) document.documentElement.classList.remove('dark');
       else document.documentElement.classList.add('dark');
     }
@@ -403,24 +413,25 @@ function MainLayout() {
   ]
 
   const changeTheme = (themeId: string) => {
-    setCurrentTheme(themeId);
-    document.documentElement.setAttribute('data-theme', themeId);
+    const normalizedTheme = normalizeTheme(themeId);
+    setCurrentTheme(normalizedTheme);
+    document.documentElement.setAttribute('data-theme', normalizedTheme);
     
     // Explicitly handle light/dark class for Tailwind and global styles
-    const isLight = themeId === 'pure-clarity';
+    const isLight = normalizedTheme === 'pure-clarity';
     if (isLight) {
       document.documentElement.classList.remove('dark');
     } else {
       document.documentElement.classList.add('dark');
     }
     
-    localStorage.setItem('sysgrid-theme', themeId);
-    toast.success(`Matrix UI: ${THEMES.find(t => t.id === themeId)?.label}`);
+    localStorage.setItem('sysgrid-theme', normalizedTheme);
+    toast.success(`Matrix UI: ${THEMES.find(t => t.id === normalizedTheme)?.label}`);
     
     // Attempt to sync with backend if possible
     apiFetch("/api/v1/settings/user/settings", {
       method: "PATCH",
-      body: JSON.stringify({ theme: themeId })
+      body: JSON.stringify({ theme: normalizedTheme })
     }).catch(() => {});
   }
 
@@ -613,52 +624,53 @@ function MainLayout() {
         </div>
       </motion.aside>
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        <header className="h-16 border-b border-[var(--glass-border)] flex items-center justify-between px-8 bg-[var(--bg-header)] backdrop-blur-xl z-[100] relative">
-
-          <div className="flex items-center space-x-6">
-            <button onClick={() => setShowPatchNotes(true)} className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500/20 transition-all">Patch Notes</button>
-            
-            <button 
-              onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/5 rounded-lg text-slate-500 hover:text-white hover:border-blue-500/30 transition-all group min-w-[300px]"
-            >
-              <Search size={16} className="group-hover:text-blue-400 transition-colors" />
-              <span className="text-[10px] font-black uppercase tracking-widest flex-1 text-left">Global ID Search...</span>
-              <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                 <span className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-[8px]">⌘</span>
-                 <span className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-[8px]">K</span>
+        <ShellHeader
+          left={
+            <>
+              <ToolbarButton onClick={() => setShowPatchNotes(true)}>Patch Notes</ToolbarButton>
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="group flex min-w-[300px] items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-slate-500 transition-all hover:border-blue-500/30 hover:text-white"
+              >
+                <Search size={16} className="transition-colors group-hover:text-blue-400" />
+                <span className="flex-1 text-left text-[10px] font-black uppercase tracking-widest">Global ID Search...</span>
+                <div className="flex items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
+                  <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">⌘</span>
+                  <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">K</span>
+                </div>
+              </button>
+            </>
+          }
+          right={
+            <>
+              <TenantSelector />
+              <div className="mr-4 flex flex-col items-end">
+                <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">System Status</span>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-[11px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
+                    {isOnline ? 'Operational' : 'Degraded'}
+                  </span>
+                  {isOnline && <span className="text-[9px] font-bold tabular-nums text-slate-600">{latency}ms</span>}
+                </div>
               </div>
-            </button>
-          </div>
 
-          <div className="flex items-center space-x-3">
-            <TenantSelector />
-            <div className="flex flex-col items-end mr-4">
-              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">System Status</span>
-              <div className="flex items-center space-x-2">
-                <span className={`text-[11px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-400' : 'text-rose-500'}`}>
-                  {isOnline ? 'Operational' : 'Degraded'}
-                </span>
-                {isOnline && <span className="text-[9px] font-bold text-slate-600 tabular-nums">{latency}ms</span>}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setErrorConsoleOpen(true)}
-              className={`p-2 rounded-lg transition-all relative border ${errors.filter(e => !e.acknowledged).length > 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
-            >
-               <Bug size={18} />
-               {errors.filter(e => !e.acknowledged).length > 0 && (
-                 <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded-full border-2 border-[var(--bg-header)] min-w-[18px] text-center">
-                   {errors.filter(e => !e.acknowledged).length}
-                 </span>
-               )}
-            </button>
-            <Link to="/settings" className={`p-2 rounded-lg transition-all border ${location.pathname === '/settings' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
-               <Settings size={18} />
-            </Link>
-          </div>
-        </header>
+              <button
+                onClick={() => setErrorConsoleOpen(true)}
+                className={`relative rounded-lg border p-2 transition-all ${errors.filter(e => !e.acknowledged).length > 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10'}`}
+              >
+                <Bug size={18} />
+                {errors.filter(e => !e.acknowledged).length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] rounded-full border-2 border-[var(--bg-header)] bg-rose-600 px-1.5 py-0.5 text-center text-[9px] font-black text-white">
+                    {errors.filter(e => !e.acknowledged).length}
+                  </span>
+                )}
+              </button>
+              <Link to="/settings" className={`rounded-lg border p-2 transition-all ${location.pathname === '/settings' ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-white'}`}>
+                <Settings size={18} />
+              </Link>
+            </>
+          }
+        />
 
         <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' || location.pathname === '/logs' ? '' : 'p-8'}`}>
           <ErrorBoundary>
@@ -711,7 +723,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <MainLayout />
+        <AuditHUD />
       </BrowserRouter>
     </QueryClientProvider>
+
   )
 }

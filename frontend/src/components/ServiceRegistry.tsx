@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye, Upload } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -11,16 +12,24 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
 
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
+  const parseMetadataValue = (input: any) => {
+    if (typeof input !== 'string') return input || {}
+    try {
+      return JSON.parse(input || '{}')
+    } catch {
+      return {}
+    }
+  }
   const [mode, setMode] = useState<'table' | 'json'>('table')
   const [tableRows, setTableRows] = useState(() => {
-    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    const obj = parseMetadataValue(value)
     return Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
   })
-  const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
+  const [jsonValue, setJsonValue] = useState(() => JSON.stringify(parseMetadataValue(value), null, 2))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    const obj = parseMetadataValue(value)
     setTableRows(Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) })))
     setJsonValue(JSON.stringify(obj, null, 2))
   }, [value])
@@ -154,13 +163,21 @@ const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
   const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
 
   const addMutation = useMutation({
-    mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${serviceId}/secrets`, { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); setNewSecret({ username: '', password: '', note: '' }); toast.success('Credential Added') }
+    mutationFn: async (data: any) => {
+      const res = await apiFetch(`/api/v1/logical-services/${serviceId}/secrets`, { method: 'POST', body: JSON.stringify(data) })
+      return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); setNewSecret({ username: '', password: '', note: '' }); toast.success('Credential Added') },
+    onError: (e: any) => toast.error(e.message || 'Failed to add credential')
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async (secretId: number) => apiFetch(`/api/v1/logical-services/${serviceId}/secrets/${secretId}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Credential Revoked') }
+    mutationFn: async (secretId: number) => {
+      const res = await apiFetch(`/api/v1/logical-services/${serviceId}/secrets/${secretId}`, { method: 'DELETE' })
+      return res.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Credential Revoked') },
+    onError: (e: any) => toast.error(e.message || 'Failed to revoke credential')
   })
 
   return (
@@ -211,10 +228,14 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
     const [formData, setFormData] = useState({ ...service })
 
     const updateMutation = useMutation({
-        mutationFn: async (data: any) => apiFetch(`/api/v1/logical-services/${service.id}`, { 
-            method: 'PUT', body: JSON.stringify(data) 
-        }),
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Registry Synced') }
+        mutationFn: async (data: any) => {
+            const res = await apiFetch(`/api/v1/logical-services/${service.id}`, { 
+                method: 'PUT', body: JSON.stringify(data) 
+            })
+            return res.json()
+        },
+        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Registry Synced') },
+        onError: (e: any) => toast.error(e.message || 'Failed to sync service registry')
     })
 
     return (
@@ -330,6 +351,8 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
 }
 
 export default function ServiceRegistry() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const idParam = searchParams.get('id')
   const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -362,6 +385,23 @@ export default function ServiceRegistry() {
     return activeTab === 'active' ? allServices.filter((s: any) => !s.is_deleted) : allServices.filter((s: any) => s.is_deleted)
   }, [allServices, activeTab])
 
+  useEffect(() => {
+    if (!idParam || !allServices) return
+    const target = allServices.find((service: any) => String(service.id) === idParam)
+    if (!target) {
+      setActiveDetails(null)
+      return
+    }
+    setActiveTab(target.is_deleted ? 'purged' : 'active')
+    setActiveDetails(target)
+  }, [idParam, allServices])
+
+  const clearServiceRoute = () => {
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('id')
+    setSearchParams(nextParams, { replace: true })
+  }
+
   useEffect(() => { if (gridRef.current?.api) setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100); }, [fontSize, rowDensity, services]);
   const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
 
@@ -371,7 +411,8 @@ export default function ServiceRegistry() {
       const res = await apiFetch(url, { method: data.id ? "PUT" : "POST", body: JSON.stringify(data) })
       return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); toast.success("Registry Updated"); setActiveModal(null); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); toast.success("Registry Updated"); setActiveModal(null); },
+    onError: (e: any) => toast.error(e.message || 'Failed to update registry')
   })
 
   const bulkMutation = useMutation({
@@ -379,7 +420,8 @@ export default function ServiceRegistry() {
       const res = await apiFetch('/api/v1/logical-services/bulk-action', { method: 'POST', body: JSON.stringify({ ids, action, payload }) })
       return res.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); setSelectedIds([]); setShowBulkMenu(false); setIsBulkStatusOpen(false); setIsBulkEnvOpen(false); setIsBulkHostOpen(false); toast.success('Operation Complete') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["logical-services"] }); setSelectedIds([]); setShowBulkMenu(false); setIsBulkStatusOpen(false); setIsBulkEnvOpen(false); setIsBulkHostOpen(false); toast.success('Operation Complete') },
+    onError: (e: any) => toast.error(e.message || 'Bulk operation failed')
   })
 
   const columnDefs = useMemo(() => [
@@ -424,9 +466,19 @@ export default function ServiceRegistry() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setActiveDetails(p.data)} title="View Detail Matrix" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => {
+                 const nextParams = new URLSearchParams(searchParams)
+                 nextParams.set('id', String(p.data.id))
+                 setSearchParams(nextParams, { replace: true })
+                 setActiveDetails(p.data)
+               }} title="View Detail Matrix" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
                <button onClick={() => setActiveModal(p.data)} title="Modify Config" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-               <button onClick={() => openConfirm('Purge Registry', 'Terminate this service instance?', () => bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [p.data.id] }))} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               <button onClick={() => openConfirm(
+                 activeTab === 'active' ? 'Purge Registry' : 'Purge Marker',
+                 activeTab === 'active' ? 'Terminate this service instance?' : 'This service is already purged. No additional purge action is available.',
+                 () => activeTab === 'active' ? bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) : setConfirmModal((prev: any) => ({ ...prev, isOpen: false })),
+                 activeTab === 'active' ? 'danger' : 'info'
+               )} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
       )
@@ -502,7 +554,7 @@ export default function ServiceRegistry() {
       <AnimatePresence>{activeDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col shadow-2xl">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6"><div><h2 className="text-3xl font-bold uppercase text-blue-400  tracking-tighter">{activeDetails.name}</h2><div className="flex items-center space-x-3 mt-1"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ">{activeDetails.service_type} · {activeDetails.environment} · {activeDetails.device_name || 'FLOATING'}</p></div></div><button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
+               <div className="flex items-center justify-between border-b border-white/5 pb-6"><div><h2 className="text-3xl font-bold uppercase text-blue-400  tracking-tighter">{activeDetails.name}</h2><div className="flex items-center space-x-3 mt-1"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ">{activeDetails.service_type} · {activeDetails.environment} · {activeDetails.device_name || 'FLOATING'}</p></div></div><button onClick={() => { setActiveDetails(null); clearServiceRoute(); }} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6"><ServiceDetailsView service={activeDetails} options={options} devices={devices} /></div>
             </motion.div>
           </div>

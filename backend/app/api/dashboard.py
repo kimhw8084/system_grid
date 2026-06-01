@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_
+from sqlalchemy.orm import aliased
 from ..database import get_db
 from ..models import models
 from typing import Dict, Any, List
@@ -204,6 +205,95 @@ async def global_search(q: str, db: AsyncSession = Depends(get_db)):
             "subtitle": f.system_name,
             "tag": f"RPN: {f.rpn}",
             "path": "/far"
+        })
+
+    # 4. Search Services
+    services_query = select(models.LogicalService).filter(
+        models.LogicalService.is_deleted == False,
+        (models.LogicalService.name.ilike(search_term)) |
+        (models.LogicalService.service_type.ilike(search_term)) |
+        (models.LogicalService.environment.ilike(search_term)) |
+        (models.LogicalService.purpose.ilike(search_term))
+    ).limit(10)
+    services = (await db.execute(services_query)).scalars().all()
+    for service in services:
+        results.append({
+            "id": service.id,
+            "type": "service",
+            "title": service.name,
+            "subtitle": f"{service.service_type} | {service.environment}",
+            "tag": service.status or "Unknown",
+            "path": "/services"
+        })
+
+    # 5. Search Monitoring
+    monitoring_query = select(models.MonitoringItem).filter(
+        models.MonitoringItem.is_deleted == False,
+        (models.MonitoringItem.title.ilike(search_term)) |
+        (models.MonitoringItem.category.ilike(search_term)) |
+        (models.MonitoringItem.platform.ilike(search_term)) |
+        (models.MonitoringItem.purpose.ilike(search_term)) |
+        (models.MonitoringItem.impact.ilike(search_term))
+    ).limit(10)
+    monitoring_items = (await db.execute(monitoring_query)).scalars().all()
+    for monitor in monitoring_items:
+        results.append({
+            "id": monitor.id,
+            "type": "monitoring",
+            "title": monitor.title,
+            "subtitle": f"{monitor.category or 'Monitor'} | {monitor.platform or 'No Platform'}",
+            "tag": monitor.severity or "Info",
+            "path": "/monitoring"
+        })
+
+    # 6. Search Knowledge
+    knowledge_query = select(models.KnowledgeEntry).filter(
+        models.KnowledgeEntry.is_deleted == False,
+        (models.KnowledgeEntry.title.ilike(search_term)) |
+        (models.KnowledgeEntry.content.ilike(search_term)) |
+        (models.KnowledgeEntry.question_context.ilike(search_term))
+    ).limit(10)
+    knowledge_entries = (await db.execute(knowledge_query)).scalars().all()
+    for entry in knowledge_entries:
+        results.append({
+            "id": entry.id,
+            "type": "knowledge",
+            "title": entry.title,
+            "subtitle": entry.category,
+            "tag": entry.status or "Published",
+            "path": "/knowledge"
+        })
+
+    # 7. Search Network Fabric
+    source_device = aliased(models.Device)
+    target_device = aliased(models.Device)
+    network_query = select(
+        models.PortConnection,
+        source_device.name.label("source_name"),
+        target_device.name.label("target_name")
+    ).join(
+        source_device, models.PortConnection.source_device_id == source_device.id
+    ).join(
+        target_device, models.PortConnection.target_device_id == target_device.id
+    ).filter(
+        or_(
+            models.PortConnection.source_port.ilike(search_term),
+            models.PortConnection.target_port.ilike(search_term),
+            models.PortConnection.link_type.ilike(search_term),
+            models.PortConnection.purpose.ilike(search_term),
+            source_device.name.ilike(search_term),
+            target_device.name.ilike(search_term)
+        )
+    ).limit(10)
+    network_rows = (await db.execute(network_query)).all()
+    for connection, source_name, target_name in network_rows:
+        results.append({
+            "id": connection.id,
+            "type": "network",
+            "title": f"{source_name} -> {target_name}",
+            "subtitle": f"{connection.source_port} -> {connection.target_port}",
+            "tag": connection.link_type or "Link",
+            "path": "/network"
         })
 
     return {"results": results}

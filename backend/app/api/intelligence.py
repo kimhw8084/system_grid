@@ -39,7 +39,12 @@ async def create_entity(data: schemas.ExternalEntityCreate, db: AsyncSession = D
     await db.commit()
     await db.refresh(db_obj)
     await log_audit(db, "CREATE", "external_entities", db_obj.id, f"Created external entity: {db_obj.name}")
-    return db_obj
+    result = await db.execute(
+        select(models.ExternalEntity)
+        .filter(models.ExternalEntity.id == db_obj.id)
+        .options(selectinload(models.ExternalEntity.secrets))
+    )
+    return result.scalar_one()
 
 @router.put("/entities/{entity_id}", response_model=schemas.ExternalEntityResponse)
 async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(get_db)):
@@ -54,7 +59,12 @@ async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(g
     await db.commit()
     await db.refresh(obj)
     await log_audit(db, "UPDATE", "external_entities", entity_id, f"Updated external entity: {obj.name}", clean_data)
-    return obj
+    refreshed = await db.execute(
+        select(models.ExternalEntity)
+        .filter(models.ExternalEntity.id == entity_id)
+        .options(selectinload(models.ExternalEntity.secrets))
+    )
+    return refreshed.scalar_one()
 
 @router.post("/entities/{entity_id}/restore")
 async def restore_entity(entity_id: int, db: AsyncSession = Depends(get_db)):

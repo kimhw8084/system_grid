@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, BookOpen, 
@@ -20,6 +21,12 @@ import { StyledSelect } from './shared/StyledSelect'
 // --- Types & Constants ---
 
 const CATEGORIES = ['All', 'Q&A', 'BKM', 'Manual']
+const KNOWLEDGE_LENSES = ['All', 'Suggested', 'Critical', 'Needs Review', 'Stale', 'Unowned', 'Incident Ready'] as const
+const KNOWLEDGE_STATUSES = ['Draft', 'Published', 'Archived']
+const VERIFICATION_STATES = ['Needs Review', 'Verified', 'Stale', 'Deprecated', 'Emergency Only']
+const ENTRY_TYPES = ['Runbook', 'Recovery Procedure', 'Troubleshooting Guide', 'Architecture Note', 'Post-Incident Lesson', 'Vendor Note', 'Standard', 'FAQ']
+const FEEDBACK_TYPES = ['Worked', 'Partly Worked', 'Outdated', 'Unsafe', 'Needs Update']
+const CRITICALITY_LEVELS = ['Standard', 'Critical']
 
 const TARGET_AUDIENCES = [
   { value: 'Internal', label: 'Internal Team' },
@@ -30,6 +37,108 @@ const TARGET_AUDIENCES = [
 ]
 
 const KPI_LIST = ['MTTR', 'MTBF', 'Uptime %', 'Throughput', 'Latency', 'Yield', 'ROI', 'Cost Savings']
+
+const emptyKnowledgeMetadata = () => ({
+  entry_type: 'Runbook',
+  criticality: 'Standard',
+  ownership: {
+    owner: '',
+    backup_owner: '',
+    review_team: '',
+    escalation_contact: ''
+  },
+  verification: {
+    state: 'Needs Review',
+    last_verified_at: '',
+    next_review_at: '',
+    verified_by: ''
+  },
+  links: {
+    service_ids: [] as number[],
+    monitoring_ids: [] as number[],
+    far_ids: [] as number[],
+    research_ids: [] as number[],
+    vendor_ids: [] as number[],
+    project_ids: [] as number[]
+  },
+  feedback: [] as any[],
+  version_history: [] as any[],
+  source_context: {}
+})
+
+const mergeDeep = (base: any, override: any): any => {
+  if (Array.isArray(base)) return Array.isArray(override) ? override : base
+  if (typeof base !== 'object' || base === null) return override ?? base
+  const result: any = { ...base }
+  Object.entries(override || {}).forEach(([key, value]) => {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && typeof result[key] === 'object' && result[key] !== null && !Array.isArray(result[key])) {
+      result[key] = mergeDeep(result[key], value)
+    } else {
+      result[key] = value
+    }
+  })
+  return result
+}
+
+const normalizeKnowledgeMetadata = (metadata: any) => mergeDeep(emptyKnowledgeMetadata(), metadata || {})
+
+const normalizeKnowledgeEntry = (entry: any) => ({
+  ...entry,
+  metadata_json: normalizeKnowledgeMetadata(entry?.metadata_json)
+})
+
+const toSearchBlob = (value: any): string => {
+  if (value == null) return ''
+  if (Array.isArray(value)) return value.map(toSearchBlob).join(' ')
+  if (typeof value === 'object') return Object.values(value).map(toSearchBlob).join(' ')
+  return String(value)
+}
+
+const isKnowledgeIncidentReady = (entry: any) => {
+  const data = entry.content_json || {}
+  const hasSteps = Array.isArray(data.steps) && data.steps.length > 0
+  const hasRollback = !!data.rollback?.trim?.() || !!data.incident_mode?.rollback?.trim?.()
+  const hasValidation = !!data.validation?.trim?.() || !!data.incident_mode?.validation?.trim?.()
+  return hasSteps && hasRollback && hasValidation
+}
+
+const isKnowledgeStale = (entry: any) => {
+  const nextReview = entry.metadata_json?.verification?.next_review_at
+  if (!nextReview) return false
+  return new Date(nextReview).getTime() < Date.now()
+}
+
+const buildBkmTemplate = (overrides: any = {}) => ({
+  category: 'BKM',
+  title: '',
+  content: '',
+  tags: [],
+  linked_device_ids: [],
+  impacted_systems: [],
+  status: 'Draft',
+  metadata_json: emptyKnowledgeMetadata(),
+  content_json: {
+    purpose: '',
+    symptoms: '',
+    immediate_checks: '',
+    rollback: '',
+    validation: '',
+    escalation: '',
+    prerequisites: [],
+    flowchart_data: null,
+    steps: [],
+    tips: [],
+    troubleshooting: [],
+    next_steps: '',
+    incident_mode: {
+      first_five_minutes: '',
+      escalation: '',
+      rollback: '',
+      validation: ''
+    }
+  },
+  ...overrides
+})
 
 // --- Components ---
 
@@ -45,24 +154,41 @@ const CategoryPill = ({ label, active, onClick, count }: any) => (
 )
 
 export default function Knowledge() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const idParam = searchParams.get('id')
+  const deviceParam = searchParams.get('device_id')
+  const serviceParam = searchParams.get('service_id')
+  const monitoringParam = searchParams.get('monitoring_id')
+  const farParam = searchParams.get('far_id')
+  const researchParam = searchParams.get('research_id')
+  const vendorParam = searchParams.get('vendor_id')
+  const projectParam = searchParams.get('project_id')
+  const modeParam = searchParams.get('mode')
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
+  const [activeLens, setActiveLens] = useState<(typeof KNOWLEDGE_LENSES)[number]>('All')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeEntry, setActiveEntry] = useState<any>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null })
-  const [viewMode, setViewMode] = useState<'Grid' | 'Timeline' | 'Manual'>('Grid')
+  const [viewMode, setViewMode] = useState<'Grid' | 'Timeline'>('Grid')
 
   const { data: entries, isLoading } = useQuery({ 
-    queryKey: ['knowledge', activeCategory, searchTerm], 
+    queryKey: ['knowledge', { deviceParam, serviceParam, monitoringParam, farParam, researchParam, vendorParam, projectParam }], 
     queryFn: async () => {
       let url = '/api/v1/knowledge/'
       const params = new URLSearchParams()
-      if (activeCategory !== 'All') params.append('category', activeCategory)
-      if (searchTerm) params.append('search', searchTerm)
+      if (deviceParam) params.append('device_id', deviceParam)
+      if (serviceParam) params.append('service_id', serviceParam)
+      if (monitoringParam) params.append('monitoring_id', monitoringParam)
+      if (farParam) params.append('far_id', farParam)
+      if (researchParam) params.append('research_id', researchParam)
+      if (vendorParam) params.append('vendor_id', vendorParam)
+      if (projectParam) params.append('project_id', projectParam)
       if (params.toString()) url += `?${params.toString()}`
       const res = await apiFetch(url)
-      return res.json()
+      return (await res.json()).map(normalizeKnowledgeEntry)
     }
   })
 
@@ -71,6 +197,10 @@ export default function Knowledge() {
   const { data: services } = useQuery({ queryKey: ['services'], queryFn: async () => (await apiFetch('/api/v1/logical-services/')).json() })
   const { data: dataFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await apiFetch('/api/v1/data-flows/')).json() })
   const { data: farModes } = useQuery({ queryKey: ['far', 'modes'], queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() })
+  const { data: monitoringItems } = useQuery({ queryKey: ['monitoring'], queryFn: async () => (await apiFetch('/api/v1/monitoring')).json() })
+  const { data: investigations } = useQuery({ queryKey: ['investigations'], queryFn: async () => (await apiFetch('/api/v1/investigations')).json() })
+  const { data: vendors } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await apiFetch('/api/v1/vendors')).json() })
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: async () => (await apiFetch('/api/v1/projects')).json() })
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -97,15 +227,192 @@ export default function Knowledge() {
     }
   })
 
-  const stats = useMemo(() => {
-    if (!entries) return {}
-    return {
-      'All': entries.length,
-      'Q&A': entries.filter((e: any) => e.category === 'Q&A').length,
-      'BKM': entries.filter((e: any) => e.category === 'BKM').length,
-      'Manual': entries.filter((e: any) => e.category === 'Manual').length,
+  const quickUpdateMutation = useMutation({
+    mutationFn: async ({ entry, patch }: any) => {
+      const next = normalizeKnowledgeEntry({
+        ...entry,
+        ...patch,
+        metadata_json: mergeDeep(entry.metadata_json || {}, patch.metadata_json || {})
+      })
+      const res = await apiFetch(`/api/v1/knowledge/${entry.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(next)
+      })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] })
+      toast.success('Knowledge Node Updated')
     }
-  }, [entries])
+  })
+
+  const entityMaps = useMemo(() => ({
+    devices: new Map((devices || []).map((item: any) => [item.id, item])),
+    services: new Map((services || []).map((item: any) => [item.id, item])),
+    monitoring: new Map((monitoringItems || []).map((item: any) => [item.id, item])),
+    far: new Map((farModes || []).map((item: any) => [item.id, item])),
+    research: new Map((investigations || []).map((item: any) => [item.id, item])),
+    vendors: new Map((vendors || []).map((item: any) => [item.id, item])),
+    projects: new Map((projects || []).map((item: any) => [item.id, item]))
+  }), [devices, services, monitoringItems, farModes, investigations, vendors, projects])
+
+  const contextIds = useMemo(() => ({
+    device_id: deviceParam ? parseInt(deviceParam, 10) : null,
+    service_id: serviceParam ? parseInt(serviceParam, 10) : null,
+    monitoring_id: monitoringParam ? parseInt(monitoringParam, 10) : null,
+    far_id: farParam ? parseInt(farParam, 10) : null,
+    research_id: researchParam ? parseInt(researchParam, 10) : null,
+    vendor_id: vendorParam ? parseInt(vendorParam, 10) : null,
+    project_id: projectParam ? parseInt(projectParam, 10) : null
+  }), [deviceParam, serviceParam, monitoringParam, farParam, researchParam, vendorParam, projectParam])
+
+  const enhancedEntries = useMemo(() => {
+    return (entries || []).map((entry: any) => {
+      const metadata = normalizeKnowledgeMetadata(entry.metadata_json)
+      const linkNames = [
+        ...(entry.linked_device_ids || []).map((id: number) => entityMaps.devices.get(id)?.name || ''),
+        ...(metadata.links.service_ids || []).map((id: number) => entityMaps.services.get(id)?.name || ''),
+        ...(metadata.links.monitoring_ids || []).map((id: number) => entityMaps.monitoring.get(id)?.title || ''),
+        ...(metadata.links.far_ids || []).map((id: number) => entityMaps.far.get(id)?.title || ''),
+        ...(metadata.links.research_ids || []).map((id: number) => entityMaps.research.get(id)?.title || ''),
+        ...(metadata.links.vendor_ids || []).map((id: number) => entityMaps.vendors.get(id)?.name || ''),
+        ...(metadata.links.project_ids || []).map((id: number) => entityMaps.projects.get(id)?.name || '')
+      ].filter(Boolean)
+
+      const searchBlob = [
+        entry.title,
+        entry.content,
+        entry.question_context,
+        toSearchBlob(entry.content_json),
+        toSearchBlob(entry.tags),
+        toSearchBlob(entry.impacted_systems),
+        toSearchBlob(metadata),
+        linkNames.join(' ')
+      ].join(' ').toLowerCase()
+
+      const suggestionScore =
+        ((contextIds.device_id && (entry.linked_device_ids || []).includes(contextIds.device_id)) ? 4 : 0) +
+        ((contextIds.service_id && (metadata.links.service_ids || []).includes(contextIds.service_id)) ? 3 : 0) +
+        ((contextIds.monitoring_id && (metadata.links.monitoring_ids || []).includes(contextIds.monitoring_id)) ? 4 : 0) +
+        ((contextIds.far_id && (metadata.links.far_ids || []).includes(contextIds.far_id)) ? 2 : 0) +
+        ((contextIds.research_id && (metadata.links.research_ids || []).includes(contextIds.research_id)) ? 3 : 0) +
+        ((contextIds.vendor_id && (metadata.links.vendor_ids || []).includes(contextIds.vendor_id)) ? 2 : 0) +
+        ((contextIds.project_id && (metadata.links.project_ids || []).includes(contextIds.project_id)) ? 2 : 0)
+
+      return {
+        ...entry,
+        metadata_json: metadata,
+        __searchBlob: searchBlob,
+        __suggestionScore: suggestionScore
+      }
+    })
+  }, [entries, entityMaps, contextIds])
+
+  const stats = useMemo(() => {
+    if (!enhancedEntries) return {}
+    return {
+      'All': enhancedEntries.length,
+      'Q&A': enhancedEntries.filter((e: any) => e.category === 'Q&A').length,
+      'BKM': enhancedEntries.filter((e: any) => e.category === 'BKM').length,
+      'Manual': enhancedEntries.filter((e: any) => e.category === 'Manual').length,
+    }
+  }, [enhancedEntries])
+
+  const filteredEntries = useMemo(() => {
+    return enhancedEntries
+      .filter((entry: any) => activeCategory === 'All' || entry.category === activeCategory)
+      .filter((entry: any) => !searchTerm || entry.__searchBlob.includes(searchTerm.toLowerCase()))
+      .filter((entry: any) => {
+        if (activeLens === 'All') return true
+        if (activeLens === 'Suggested') return entry.__suggestionScore > 0
+        if (activeLens === 'Critical') return entry.metadata_json?.criticality === 'Critical'
+        if (activeLens === 'Needs Review') return ['Needs Review', 'Stale'].includes(entry.metadata_json?.verification?.state) || isKnowledgeStale(entry)
+        if (activeLens === 'Stale') return isKnowledgeStale(entry)
+        if (activeLens === 'Unowned') return !entry.metadata_json?.ownership?.owner?.trim?.()
+        if (activeLens === 'Incident Ready') return isKnowledgeIncidentReady(entry)
+        return true
+      })
+      .sort((a: any, b: any) => {
+        if (activeLens === 'Suggested') return b.__suggestionScore - a.__suggestionScore
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      })
+  }, [enhancedEntries, activeCategory, activeLens, searchTerm])
+
+  const suggestionEntries = useMemo(() => filteredEntries.filter((entry: any) => entry.__suggestionScore > 0).slice(0, 4), [filteredEntries])
+
+  useEffect(() => {
+    if (!idParam || !enhancedEntries) return
+    const target = enhancedEntries.find((entry: any) => String(entry.id) === idParam)
+    if (target) setActiveEntry(target)
+  }, [idParam, enhancedEntries])
+
+  useEffect(() => {
+    if (modeParam === 'incident') {
+      setActiveLens('Incident Ready')
+    }
+  }, [modeParam])
+
+  const openEntry = (entry: any) => {
+    setActiveEntry(entry)
+    const next = new URLSearchParams(searchParams)
+    next.set('id', String(entry.id))
+    setSearchParams(next)
+  }
+
+  const closeEntry = () => {
+    setActiveEntry(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('id')
+    setSearchParams(next)
+  }
+
+  const buildConversionDraft = () => {
+    if (researchParam) {
+      const source = entityMaps.research.get(parseInt(researchParam, 10))
+      if (source) {
+        return buildBkmTemplate({
+          title: `${source.title} // Lessons Learned`,
+          tags: ['Research', ...(source.systems || [])],
+          impacted_systems: source.systems || [],
+          metadata_json: mergeDeep(emptyKnowledgeMetadata(), {
+            entry_type: 'Post-Incident Lesson',
+            source_context: { type: 'research', id: source.id, title: source.title }
+          }),
+          content_json: {
+            ...buildBkmTemplate().content_json,
+            purpose: source.summary || source.description || '',
+            symptoms: source.hypothesis || '',
+            immediate_checks: source.next_actions || '',
+            validation: source.resolution || ''
+          }
+        })
+      }
+    }
+    if (monitoringParam) {
+      const source = entityMaps.monitoring.get(parseInt(monitoringParam, 10))
+      if (source) {
+        return buildBkmTemplate({
+          title: `${source.title} // Recovery Procedure`,
+          tags: ['Monitoring', source.category, source.platform].filter(Boolean),
+          linked_device_ids: source.device_id ? [source.device_id] : [],
+          metadata_json: mergeDeep(emptyKnowledgeMetadata(), {
+            entry_type: 'Recovery Procedure',
+            links: { monitoring_ids: [source.id] },
+            source_context: { type: 'monitoring', id: source.id, title: source.title }
+          }),
+          content_json: {
+            ...buildBkmTemplate().content_json,
+            purpose: source.purpose || source.impact || '',
+            symptoms: source.impact || '',
+            immediate_checks: source.logic || '',
+            escalation: source.notification_recipients || '',
+            validation: `Confirm ${source.title} returns to expected state.`
+          }
+        })
+      }
+    }
+    return buildBkmTemplate()
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6">
@@ -133,9 +440,18 @@ export default function Knowledge() {
             />
           </div>
           <div className="flex items-center gap-3">
+            {(researchParam || monitoringParam) && (
+              <button
+                onClick={() => setActiveModal(buildConversionDraft())}
+                className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <FileText size={16} /> Convert Incident
+              </button>
+            )}
             <button 
               onClick={() => setActiveModal({ 
-                category: 'Manual', title: '', tags: [], 
+                category: 'Manual', title: '', tags: [], linked_device_ids: [], impacted_systems: [], status: 'Draft',
+                metadata_json: mergeDeep(emptyKnowledgeMetadata(), { entry_type: 'Architecture Note' }),
                 content_json: { 
                   business_value: { business_problem: '', kpis: [], roi_projection: '', beneficiaries: [] },
                   overview: { official_name: '', version: '', status: 'Active', asset_ids: [], service_ids: [], diagram_ids: [], interface_ids: [], source_config: '', licenses: [], data_stores: [] },
@@ -148,16 +464,13 @@ export default function Knowledge() {
               <Workflow size={16} /> + System Manual
             </button>
             <button 
-              onClick={() => setActiveModal({ 
-                category: 'BKM', title: '', tags: [], 
-                content_json: { purpose: '', prerequisites: [], flowchart_data: null, steps: [], tips: [], troubleshooting: [], next_steps: [] } 
-              })} 
+              onClick={() => setActiveModal(buildBkmTemplate())} 
               className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <ShieldCheck size={16} /> + New BKM
             </button>
             <button 
-              onClick={() => setActiveModal({ category: 'Q&A', title: '', question_context: '', tags: [], linked_device_ids: [], qa_threads: [] })} 
+              onClick={() => setActiveModal({ category: 'Q&A', title: '', question_context: '', content: '', tags: [], linked_device_ids: [], impacted_systems: [], status: 'Draft', metadata_json: mergeDeep(emptyKnowledgeMetadata(), { entry_type: 'FAQ' }), qa_threads: [] })} 
               className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <HelpCircle size={16} /> + Ask Question
@@ -168,7 +481,7 @@ export default function Knowledge() {
 
       {/* Navigation & Filters */}
       <div className="flex items-center justify-between border-b border-white/5 pb-4 px-2">
-         <div className="flex items-center space-x-2">
+         <div className="flex items-center gap-2 flex-wrap">
             {CATEGORIES.map(c => (
               <CategoryPill 
                 key={c} 
@@ -177,6 +490,18 @@ export default function Knowledge() {
                 onClick={() => setActiveCategory(c)} 
                 count={(stats as any)[c]}
               />
+            ))}
+            <div className="w-px h-8 bg-white/10 mx-2" />
+            {KNOWLEDGE_LENSES.map(lens => (
+              <button
+                key={lens}
+                onClick={() => setActiveLens(lens)}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                  activeLens === lens ? 'bg-amber-500/15 border-amber-400/30 text-amber-300' : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {lens}
+              </button>
             ))}
          </div>
          <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
@@ -196,6 +521,38 @@ export default function Knowledge() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
+         {!!(deviceParam || serviceParam || monitoringParam || farParam || researchParam || vendorParam || projectParam) && (
+           <div className="mb-6 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] px-5 py-4 flex items-center justify-between gap-6">
+             <div>
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">Suggested Knowledge Context</p>
+               <p className="text-xs font-bold text-slate-300 mt-2">This workspace is scoped to the linked system context so operators land on the most relevant runbooks first.</p>
+             </div>
+             <button
+               onClick={() => {
+                 setSearchParams(idParam ? { id: idParam } : {})
+                 setActiveLens('All')
+               }}
+               className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+             >
+               Clear Context
+             </button>
+           </div>
+         )}
+         {suggestionEntries.length > 0 && (
+           <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+             {suggestionEntries.map((entry: any) => (
+               <button
+                 key={`suggestion-${entry.id}`}
+                 onClick={() => openEntry(entry)}
+                 className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4 text-left hover:bg-blue-500/[0.08] transition-all"
+               >
+                 <p className="text-[9px] font-black uppercase tracking-[0.26em] text-blue-300">Suggested Runbook</p>
+                 <h3 className="mt-2 text-sm font-black uppercase tracking-tight text-white">{entry.title}</h3>
+                 <p className="mt-2 text-[11px] text-slate-400 line-clamp-2">{entry.content_json?.purpose || entry.question_context || entry.content}</p>
+               </button>
+             ))}
+           </div>
+         )}
          {isLoading ? (
            <div className="h-full flex flex-col items-center justify-center space-y-4 text-blue-400">
               <div className="relative">
@@ -204,7 +561,7 @@ export default function Knowledge() {
               </div>
               <p className="text-[11px] font-black uppercase tracking-[0.4em] animate-pulse">Traversing Intelligence Grid...</p>
            </div>
-         ) : entries?.length === 0 ? (
+         ) : filteredEntries?.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center space-y-6 text-slate-700 opacity-50">
                <FileSearch size={64} strokeWidth={1} />
                <div className="text-center">
@@ -214,17 +571,17 @@ export default function Knowledge() {
             </div>
          ) : viewMode === 'Grid' ? (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
-              {entries?.map((entry: any) => (
+              {filteredEntries?.map((entry: any) => (
                 <KnowledgeCard 
                   key={entry.id} 
                   entry={entry} 
-                  onClick={() => setActiveEntry(entry)} 
+                  onClick={() => openEntry(entry)} 
                 />
               ))}
            </div>
          ) : (
            <div className="pb-10 max-w-4xl mx-auto">
-              <KnowledgeTimeline entries={entries} onEntryClick={setActiveEntry} />
+              <KnowledgeTimeline entries={filteredEntries} onEntryClick={openEntry} />
            </div>
          )}
       </div>
@@ -237,16 +594,17 @@ export default function Knowledge() {
               onClose={() => setActiveModal(null)} 
               onSave={(d: any) => mutation.mutate(d)}
               isSaving={mutation.isPending}
-              context={{ devices, services, dataFlows, farModes }}
+              context={{ devices, services, dataFlows, farModes, monitoringItems, investigations, vendors, projects }}
             />
          )}
          {activeEntry && (
             <KnowledgeDetails 
               entry={activeEntry} 
-              onClose={() => setActiveEntry(null)}
+              onClose={closeEntry}
               onEdit={() => { setActiveModal(activeEntry); setActiveEntry(null); }}
               onDelete={() => setConfirmModal({ isOpen: true, id: activeEntry.id })}
-              context={{ devices, services, dataFlows, farModes }}
+              onQuickUpdate={(patch: any) => quickUpdateMutation.mutate({ entry: activeEntry, patch })}
+              context={{ devices, services, dataFlows, farModes, monitoringItems, investigations, vendors, projects, navigate }}
             />
          )}
       </AnimatePresence>
@@ -268,6 +626,9 @@ function KnowledgeCard({ entry, onClick }: any) {
   const isBKM = entry.category === 'BKM'
   const isQA = entry.category === 'Q&A'
   const isManual = entry.category === 'Manual'
+  const verification = entry.metadata_json?.verification?.state || 'Needs Review'
+  const owner = entry.metadata_json?.ownership?.owner || 'Unowned'
+  const critical = entry.metadata_json?.criticality === 'Critical'
 
   return (
     <motion.div 
@@ -299,6 +660,15 @@ function KnowledgeCard({ entry, onClick }: any) {
           </div>
        </div>
 
+       <div className="flex flex-wrap items-center gap-2 mb-4 relative z-10">
+         <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border ${critical ? 'bg-rose-500/15 text-rose-300 border-rose-500/20' : 'bg-white/5 text-slate-400 border-white/5'}`}>
+           {entry.metadata_json?.entry_type}
+         </span>
+         <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-300 border-blue-500/20">
+           {verification}
+         </span>
+       </div>
+
        <div className="flex-1 overflow-hidden relative z-10">
           <h3 className="text-base font-black text-white uppercase tracking-tight line-clamp-2 group-hover:text-blue-400 transition-colors leading-tight mb-2">
             {entry.title}
@@ -319,8 +689,11 @@ function KnowledgeCard({ entry, onClick }: any) {
                </span>
              )}
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-widest group-hover:text-blue-400 transition-colors">
+          <div className="flex flex-col items-end gap-1">
+             <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{owner}</div>
+             <div className="flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-widest group-hover:text-blue-400 transition-colors">
              ACCESS NODE <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+             </div>
           </div>
        </div>
     </motion.div>
@@ -386,7 +759,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
 }
 
 function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
-  const [formData, setFormData] = useState({ ...item })
+  const [formData, setFormData] = useState(normalizeKnowledgeEntry({ ...item }))
   const [tagInput, setTagInput] = useState('')
 
   const addTag = () => {
@@ -396,6 +769,12 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
   }
 
   const category = formData.category
+  const metadata = normalizeKnowledgeMetadata(formData.metadata_json)
+  const updateMetadata = (patch: any) => setFormData({ ...formData, metadata_json: mergeDeep(metadata, patch) })
+  const toggleLink = (key: string, id: number) => {
+    const current = metadata.links[key] || []
+    updateMetadata({ links: { [key]: current.includes(id) ? current.filter((value: number) => value !== id) : [...current, id] } })
+  }
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-6">
@@ -483,8 +862,102 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                </div>
              )}
 
-             {/* Common Footer Fields */}
              <div className="mt-12 pt-8 border-t border-white/5 grid grid-cols-2 gap-8">
+                <div className="space-y-6">
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Entry Type</label>
+                         <StyledSelect
+                           value={metadata.entry_type}
+                           onChange={e => updateMetadata({ entry_type: e.target.value })}
+                           options={ENTRY_TYPES.map(type => ({ value: type, label: type.toUpperCase() }))}
+                         />
+                      </div>
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Criticality</label>
+                         <StyledSelect
+                           value={metadata.criticality}
+                           onChange={e => updateMetadata({ criticality: e.target.value })}
+                           options={CRITICALITY_LEVELS.map(level => ({ value: level, label: level.toUpperCase() }))}
+                         />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Owner</label>
+                         <input
+                           value={metadata.ownership.owner}
+                           onChange={e => updateMetadata({ ownership: { owner: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           placeholder="PRIMARY_DRI"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Backup Owner</label>
+                         <input
+                           value={metadata.ownership.backup_owner}
+                           onChange={e => updateMetadata({ ownership: { backup_owner: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           placeholder="SECONDARY_DRI"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Review Team</label>
+                         <input
+                           value={metadata.ownership.review_team}
+                           onChange={e => updateMetadata({ ownership: { review_team: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           placeholder="TEAM_SCOPE"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Escalation Contact</label>
+                         <input
+                           value={metadata.ownership.escalation_contact}
+                           onChange={e => updateMetadata({ ownership: { escalation_contact: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           placeholder="CONTACT_CHAIN"
+                         />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Verification State</label>
+                         <StyledSelect
+                           value={metadata.verification.state}
+                           onChange={e => updateMetadata({ verification: { state: e.target.value } })}
+                           options={VERIFICATION_STATES.map(state => ({ value: state, label: state.toUpperCase() }))}
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Verified By</label>
+                         <input
+                           value={metadata.verification.verified_by}
+                           onChange={e => updateMetadata({ verification: { verified_by: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           placeholder="VERIFIER"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Last Verified</label>
+                         <input
+                           type="date"
+                           value={metadata.verification.last_verified_at?.slice?.(0, 10) || ''}
+                           onChange={e => updateMetadata({ verification: { last_verified_at: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Next Review</label>
+                         <input
+                           type="date"
+                           value={metadata.verification.next_review_at?.slice?.(0, 10) || ''}
+                           onChange={e => updateMetadata({ verification: { next_review_at: e.target.value } })}
+                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                         />
+                      </div>
+                   </div>
+                </div>
                 <div>
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-4 ml-1">Intelligence Taxonomy (Tags)</label>
                    <div className="flex flex-wrap gap-2 mb-4">
@@ -510,13 +983,22 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                    <StyledSelect 
                      value={formData.status} 
                      onChange={e => setFormData({...formData, status: e.target.value})}
-                     options={[
-                       { value: 'Draft', label: 'DRAFT // LOCAL_ONLY' },
-                       { value: 'Published', label: 'PUBLISHED // MATRIX_SYNCED' },
-                       { value: 'Archived', label: 'ARCHIVED // READ_ONLY' }
-                     ]}
+                     options={KNOWLEDGE_STATUSES.map(status => ({ value: status, label: `${status.toUpperCase()} // NODE_STATE` }))}
                    />
                 </div>
+             </div>
+
+             <div className="mt-10 grid grid-cols-2 gap-6">
+               <KnowledgeLinkSelector title="Linked Assets" icon={<Server size={14} className="text-emerald-400" />} items={context.devices || []} selected={formData.linked_device_ids || []} labelKey="name" sublabelKey="type" onToggle={(id: number) => {
+                 const current = formData.linked_device_ids || []
+                 setFormData({ ...formData, linked_device_ids: current.includes(id) ? current.filter((value: number) => value !== id) : [...current, id] })
+               }} />
+               <KnowledgeLinkSelector title="Linked Services" icon={<Cpu size={14} className="text-blue-400" />} items={context.services || []} selected={metadata.links.service_ids || []} labelKey="name" sublabelKey="service_type" onToggle={(id: number) => toggleLink('service_ids', id)} />
+               <KnowledgeLinkSelector title="Linked Monitoring" icon={<Activity size={14} className="text-amber-400" />} items={context.monitoringItems || []} selected={metadata.links.monitoring_ids || []} labelKey="title" sublabelKey="category" onToggle={(id: number) => toggleLink('monitoring_ids', id)} />
+               <KnowledgeLinkSelector title="Linked FAR" icon={<AlertTriangle size={14} className="text-rose-400" />} items={context.farModes || []} selected={metadata.links.far_ids || []} labelKey="title" sublabelKey="rpn" onToggle={(id: number) => toggleLink('far_ids', id)} formatSublabel={(item: any) => `RPN ${item.rpn}`} />
+               <KnowledgeLinkSelector title="Linked Research" icon={<FileSearch size={14} className="text-violet-400" />} items={context.investigations || []} selected={metadata.links.research_ids || []} labelKey="title" sublabelKey="status" onToggle={(id: number) => toggleLink('research_ids', id)} />
+               <KnowledgeLinkSelector title="Linked Vendors" icon={<Briefcase size={14} className="text-cyan-400" />} items={context.vendors || []} selected={metadata.links.vendor_ids || []} labelKey="name" sublabelKey="category" onToggle={(id: number) => toggleLink('vendor_ids', id)} />
+               <KnowledgeLinkSelector title="Linked Projects" icon={<Layers size={14} className="text-fuchsia-400" />} items={context.projects || []} selected={metadata.links.project_ids || []} labelKey="name" sublabelKey="priority" onToggle={(id: number) => toggleLink('project_ids', id)} formatSublabel={(item: any) => item.summary || item.state || 'Project'} />
              </div>
           </div>
 
@@ -566,6 +1048,31 @@ function BKMStudio({ data, onChange }: any) {
           className="w-full bg-transparent border-none outline-none text-base font-medium text-slate-200 min-h-[100px] leading-relaxed" 
           placeholder="Define the primary operational objective of this BKM node..." 
         />
+      </section>
+
+      <section className="grid grid-cols-2 gap-8">
+        <div className="bg-amber-500/[0.03] p-8 rounded-3xl border border-amber-500/10 space-y-4">
+          <label className="text-[11px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center gap-3">
+            <AlertCircle size={18}/> 01A // Incident Signature
+          </label>
+          <textarea
+            value={data.symptoms || ''}
+            onChange={e => update('symptoms', e.target.value)}
+            className="w-full bg-transparent border-none outline-none text-sm font-medium text-slate-200 min-h-[110px] leading-relaxed"
+            placeholder="List operator-visible symptoms and trigger conditions..."
+          />
+        </div>
+        <div className="bg-blue-500/[0.03] p-8 rounded-3xl border border-blue-500/10 space-y-4">
+          <label className="text-[11px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-3">
+            <Zap size={18}/> 01B // First Five Minutes
+          </label>
+          <textarea
+            value={data.incident_mode?.first_five_minutes || ''}
+            onChange={e => update('incident_mode', { ...(data.incident_mode || {}), first_five_minutes: e.target.value })}
+            className="w-full bg-transparent border-none outline-none text-sm font-medium text-slate-200 min-h-[110px] leading-relaxed"
+            placeholder="What should an engineer do immediately during the first 5 minutes?"
+          />
+        </div>
       </section>
 
       <section className="space-y-6">
@@ -761,6 +1268,36 @@ function BKMStudio({ data, onChange }: any) {
              />
           </div>
         </section>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="bg-rose-500/[0.03] p-6 rounded-[32px] border border-rose-500/10 space-y-3">
+          <label className="text-[10px] font-black text-rose-400 uppercase tracking-[0.3em]">Escalation Path</label>
+          <textarea
+            value={data.escalation || data.incident_mode?.escalation || ''}
+            onChange={e => onChange({ ...data, escalation: e.target.value, incident_mode: { ...(data.incident_mode || {}), escalation: e.target.value } })}
+            className="w-full bg-transparent border-none outline-none text-[11px] font-medium text-slate-200 min-h-[110px] leading-relaxed"
+            placeholder="Who to page, when to escalate, vendor chain, bridge expectations..."
+          />
+        </div>
+        <div className="bg-sky-500/[0.03] p-6 rounded-[32px] border border-sky-500/10 space-y-3">
+          <label className="text-[10px] font-black text-sky-400 uppercase tracking-[0.3em]">Rollback</label>
+          <textarea
+            value={data.rollback || data.incident_mode?.rollback || ''}
+            onChange={e => onChange({ ...data, rollback: e.target.value, incident_mode: { ...(data.incident_mode || {}), rollback: e.target.value } })}
+            className="w-full bg-transparent border-none outline-none text-[11px] font-medium text-slate-200 min-h-[110px] leading-relaxed"
+            placeholder="Define how to safely back out the action if recovery worsens the incident..."
+          />
+        </div>
+        <div className="bg-emerald-500/[0.03] p-6 rounded-[32px] border border-emerald-500/10 space-y-3">
+          <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Validation</label>
+          <textarea
+            value={data.validation || data.incident_mode?.validation || ''}
+            onChange={e => onChange({ ...data, validation: e.target.value, incident_mode: { ...(data.incident_mode || {}), validation: e.target.value } })}
+            className="w-full bg-transparent border-none outline-none text-[11px] font-medium text-slate-200 min-h-[110px] leading-relaxed"
+            placeholder="How do we prove the system is healthy again after the runbook finishes?"
+          />
+        </div>
       </div>
     </div>
   )
@@ -1088,10 +1625,56 @@ function SystemManualBuilder({ data, onChange, context }: any) {
   )
 }
 
-function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
+function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, context }: any) {
   const isBKM = entry.category === 'BKM'
   const isQA = entry.category === 'Q&A'
   const isManual = entry.category === 'Manual'
+  const [incidentMode, setIncidentMode] = useState(false)
+  const metadata = normalizeKnowledgeMetadata(entry.metadata_json)
+  const versionHistory = [...(metadata.version_history || [])].sort((a, b) => (b.version || 0) - (a.version || 0))
+  const [selectedVersion, setSelectedVersion] = useState(versionHistory[0]?.version || null)
+  const currentVersion = versionHistory.find((item: any) => item.version === selectedVersion) || versionHistory[0]
+  const previousVersion = versionHistory.find((item: any) => item.version === (currentVersion?.version || 0) - 1)
+
+  const linkGroups = [
+    { label: 'Assets', items: (entry.linked_device_ids || []).map((id: number) => ({ id, title: context.devices?.find((item: any) => item.id === id)?.name, path: `/asset?id=${id}` })) },
+    { label: 'Services', items: (metadata.links.service_ids || []).map((id: number) => ({ id, title: context.services?.find((item: any) => item.id === id)?.name, path: `/services?id=${id}` })) },
+    { label: 'Monitoring', items: (metadata.links.monitoring_ids || []).map((id: number) => ({ id, title: context.monitoringItems?.find((item: any) => item.id === id)?.title, path: `/monitoring?id=${id}` })) },
+    { label: 'FAR', items: (metadata.links.far_ids || []).map((id: number) => ({ id, title: context.farModes?.find((item: any) => item.id === id)?.title, path: `/far?id=${id}` })) },
+    { label: 'Research', items: (metadata.links.research_ids || []).map((id: number) => ({ id, title: context.investigations?.find((item: any) => item.id === id)?.title, path: `/research?id=${id}` })) },
+    { label: 'Vendors', items: (metadata.links.vendor_ids || []).map((id: number) => ({ id, title: context.vendors?.find((item: any) => item.id === id)?.name, path: `/vendors?id=${id}` })) },
+    { label: 'Projects', items: (metadata.links.project_ids || []).map((id: number) => ({ id, title: context.projects?.find((item: any) => item.id === id)?.name, path: `/projects?id=${id}` })) }
+  ]
+
+  const feedbackMutation = (type: string) => {
+    const feedback = [...(metadata.feedback || []), { type, at: new Date().toISOString() }]
+    onQuickUpdate?.({ metadata_json: { feedback } })
+  }
+
+  const restoreVersion = (version: any) => {
+    if (!version?.snapshot) return
+    const snapshot = version.snapshot
+    const restoredMetadata = mergeDeep(snapshot.metadata_json || {}, {
+      version_history: metadata.version_history || []
+    })
+    onQuickUpdate?.({
+      category: snapshot.category,
+      title: snapshot.title,
+      content: snapshot.content,
+      content_json: snapshot.content_json,
+      question_context: snapshot.question_context,
+      tags: snapshot.tags,
+      impacted_systems: snapshot.impacted_systems,
+      linked_device_ids: snapshot.linked_device_ids,
+      status: snapshot.status,
+      metadata_json: restoredMetadata
+    })
+  }
+
+  const openPath = (path: string) => {
+    onClose?.()
+    context.navigate?.(path)
+  }
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-10">
@@ -1132,6 +1715,11 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                 </div>
              </div>
              <div className="flex items-center space-x-3 relative z-10">
+                {isBKM && (
+                  <button onClick={() => setIncidentMode(!incidentMode)} className={`px-5 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${incidentMode ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-white/5 border-white/10 text-amber-300 hover:bg-white/10'}`}>
+                    Incident Mode
+                  </button>
+                )}
                 <button onClick={onEdit} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-blue-400 hover:border-blue-500/30 transition-all shadow-xl group">
                    <Edit2 size={24} className="group-hover:rotate-12 transition-transform" />
                 </button>
@@ -1148,16 +1736,62 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
           {/* Main Body Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex">
              {isBKM ? (
-               <div className="flex-1">
-                 <BKMViewer data={entry.content_json} />
+               <div className="flex-1 flex">
+                 <div className="flex-1">
+                   {incidentMode && <IncidentModePanel entry={entry} />}
+                   <BKMViewer data={entry.content_json} />
+                 </div>
+                 <KnowledgeOpsRail
+                   entry={entry}
+                   metadata={metadata}
+                   versionHistory={versionHistory}
+                   currentVersion={currentVersion}
+                   previousVersion={previousVersion}
+                   linkGroups={linkGroups}
+                   onFeedback={feedbackMutation}
+                   onOpenPath={openPath}
+                   onQuickUpdate={onQuickUpdate}
+                   onSelectVersion={setSelectedVersion}
+                   onRestoreVersion={restoreVersion}
+                 />
                </div>
              ) : isManual ? (
-               <div className="flex-1">
-                 <SystemManualViewer data={entry.content_json} context={context} />
+               <div className="flex-1 flex">
+                 <div className="flex-1">
+                   <SystemManualViewer data={entry.content_json} context={context} />
+                 </div>
+                 <KnowledgeOpsRail
+                   entry={entry}
+                   metadata={metadata}
+                   versionHistory={versionHistory}
+                   currentVersion={currentVersion}
+                   previousVersion={previousVersion}
+                   linkGroups={linkGroups}
+                   onFeedback={feedbackMutation}
+                   onOpenPath={openPath}
+                   onQuickUpdate={onQuickUpdate}
+                   onSelectVersion={setSelectedVersion}
+                   onRestoreVersion={restoreVersion}
+                 />
                </div>
              ) : (
-               <div className="flex-1 flex flex-col">
-                 <QAViewer entry={entry} />
+               <div className="flex-1 flex">
+                 <div className="flex-1 flex flex-col">
+                   <QAViewer entry={entry} />
+                 </div>
+                 <KnowledgeOpsRail
+                   entry={entry}
+                   metadata={metadata}
+                   versionHistory={versionHistory}
+                   currentVersion={currentVersion}
+                   previousVersion={previousVersion}
+                   linkGroups={linkGroups}
+                   onFeedback={feedbackMutation}
+                   onOpenPath={openPath}
+                   onQuickUpdate={onQuickUpdate}
+                   onSelectVersion={setSelectedVersion}
+                   onRestoreVersion={restoreVersion}
+                 />
                </div>
              )}
           </div>
@@ -1171,7 +1805,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                    </div>
                    <div>
                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Custodian</p>
-                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">system_admin</p>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">{metadata.ownership.owner || 'UNOWNED'}</p>
                    </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -1180,13 +1814,18 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
                    </div>
                    <div>
                       <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Verification Status</p>
-                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-tighter">SECURED_V2.0</p>
+                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-tighter">{metadata.verification.state}</p>
                    </div>
                 </div>
              </div>
              <div className="flex items-center gap-4">
-                <button className="flex items-center space-x-3 px-6 py-3 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] font-black text-blue-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg group">
+                <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/knowledge?id=${entry.id}`)} className="flex items-center space-x-3 px-6 py-3 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] font-black text-blue-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg group">
                    <LinkIcon size={16} className="group-hover:rotate-45 transition-transform" /> <span>Copy SysLink</span>
+                </button>
+                <button onClick={() => {
+                  onQuickUpdate?.({ metadata_json: { verification: { state: 'Verified', verified_by: metadata.ownership.owner || 'system_admin', last_verified_at: new Date().toISOString().slice(0, 10) } } })
+                }} className="flex items-center space-x-3 px-6 py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group">
+                   <CheckCircle2 size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span>Mark Verified</span>
                 </button>
                 <button className="flex items-center space-x-3 px-6 py-3 bg-rose-600/10 border border-rose-500/20 rounded-xl text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-lg group">
                    <Share2 size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span>Distribute Node</span>
@@ -1195,6 +1834,186 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, context }: any) {
           </div>
        </motion.div>
     </div>
+  )
+}
+
+function KnowledgeLinkSelector({ title, icon, items, selected, labelKey, sublabelKey, onToggle, formatSublabel }: any) {
+  return (
+    <div className="bg-white/[0.02] border border-white/5 rounded-[28px] p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        {icon}
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-300">{title}</p>
+      </div>
+      <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+        {items.map((item: any) => {
+          const active = selected.includes(item.id)
+          return (
+            <button
+              key={`${title}-${item.id}`}
+              type="button"
+              onClick={() => onToggle(item.id)}
+              className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${active ? 'bg-blue-600/15 border-blue-500/30' : 'bg-white/5 border-white/5 hover:bg-white/[0.08]'}`}
+            >
+              <p className="text-[10px] font-black uppercase tracking-tight text-white">{item[labelKey]}</p>
+              {(formatSublabel ? formatSublabel(item) : item[sublabelKey]) && (
+                <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">{formatSublabel ? formatSublabel(item) : item[sublabelKey]}</p>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function IncidentModePanel({ entry }: any) {
+  const data = entry.content_json || {}
+  return (
+    <div className="mx-16 mt-12 rounded-[40px] border border-amber-500/20 bg-amber-500/[0.05] p-8 grid grid-cols-2 gap-6">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-300">Symptoms</p>
+        <p className="mt-3 text-sm font-medium text-slate-200 leading-relaxed">{data.symptoms || 'No incident signature documented.'}</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-blue-300">First Five Minutes</p>
+        <p className="mt-3 text-sm font-medium text-slate-200 leading-relaxed">{data.incident_mode?.first_five_minutes || 'No immediate triage guidance documented.'}</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-rose-300">Escalation</p>
+        <p className="mt-3 text-sm font-medium text-slate-200 leading-relaxed">{data.escalation || data.incident_mode?.escalation || 'No escalation path documented.'}</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300">Rollback + Validation</p>
+        <p className="mt-3 text-sm font-medium text-slate-200 leading-relaxed">{data.rollback || data.incident_mode?.rollback || 'No rollback documented.'}</p>
+        <p className="mt-3 text-sm font-medium text-emerald-300 leading-relaxed">{data.validation || data.incident_mode?.validation || 'No validation steps documented.'}</p>
+      </div>
+    </div>
+  )
+}
+
+function VersionDiff({ currentVersion, previousVersion }: any) {
+  if (!currentVersion) return null
+  const currentSnapshot = currentVersion.snapshot || {}
+  const previousSnapshot = previousVersion?.snapshot || {}
+  const changedFields = ['title', 'content', 'question_context', 'status', 'content_json', 'metadata_json']
+    .map(field => ({
+      field,
+      before: toSearchBlob(previousSnapshot[field]),
+      after: toSearchBlob(currentSnapshot[field])
+    }))
+    .filter(change => change.before !== change.after)
+
+  return (
+    <div className="space-y-3">
+      {!changedFields.length && <p className="text-[10px] font-bold uppercase text-slate-600">No previous delta available</p>}
+      {changedFields.map(change => (
+        <div key={change.field} className="rounded-2xl border border-white/5 bg-black/20 p-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-blue-300">{change.field}</p>
+          <p className="mt-2 text-[10px] font-bold text-slate-500 line-clamp-2">{change.before || 'empty'}</p>
+          <p className="mt-1 text-[10px] font-bold text-white line-clamp-2">{change.after || 'empty'}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, previousVersion, linkGroups, onFeedback, onOpenPath, onQuickUpdate, onSelectVersion, onRestoreVersion }: any) {
+  const initialVersion = [...versionHistory].sort((a: any, b: any) => (a.version || 0) - (b.version || 0))[0]
+  return (
+    <aside className="w-[380px] shrink-0 border-l border-white/5 bg-black/30 p-6 overflow-y-auto custom-scrollbar space-y-6">
+      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Ownership & Review</p>
+        <div className="space-y-2 text-[10px] font-bold uppercase">
+          <div className="flex items-center justify-between"><span className="text-slate-500">Owner</span><span className="text-white">{metadata.ownership.owner || 'UNOWNED'}</span></div>
+          <div className="flex items-center justify-between"><span className="text-slate-500">Backup</span><span className="text-white">{metadata.ownership.backup_owner || 'NONE'}</span></div>
+          <div className="flex items-center justify-between"><span className="text-slate-500">Review Team</span><span className="text-white">{metadata.ownership.review_team || 'UNSET'}</span></div>
+          <div className="flex items-center justify-between"><span className="text-slate-500">Next Review</span><span className="text-white">{metadata.verification.next_review_at || 'UNSCHEDULED'}</span></div>
+        </div>
+        <button
+          onClick={() => onQuickUpdate?.({ metadata_json: { verification: { state: 'Needs Review' } } })}
+          className="w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-300"
+        >
+          Flag For Review
+        </button>
+      </div>
+
+      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Feedback Loop</p>
+        <div className="grid grid-cols-2 gap-2">
+          {FEEDBACK_TYPES.map(type => (
+            <button
+              key={type}
+              onClick={() => onFeedback(type)}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+        {(metadata.feedback || []).slice(-3).reverse().map((item: any, index: number) => (
+          <div key={`${item.type}-${item.at}-${index}`} className="rounded-xl border border-white/5 bg-black/20 px-3 py-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-white">{item.type}</p>
+            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 mt-1">{new Date(item.at).toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Deep Links</p>
+        {linkGroups.map((group: any) => (
+          <div key={group.label} className="space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-500">{group.label}</p>
+            {group.items.filter((item: any) => item.title).length ? group.items.filter((item: any) => item.title).map((item: any) => (
+              <button key={`${group.label}-${item.id}`} onClick={() => onOpenPath(item.path)} className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-left hover:bg-white/[0.08]">
+                <p className="text-[10px] font-black uppercase tracking-tight text-white">{item.title}</p>
+              </button>
+            )) : <p className="text-[9px] font-bold uppercase text-slate-600">No linked records</p>}
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Version History</p>
+        <div className="space-y-2">
+          {versionHistory.map((item: any) => (
+            <button aria-label={`Version ${item.version}`} key={item.version} onClick={() => onSelectVersion(item.version)} className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.08]">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white">v{item.version}</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{item.changed_by}</p>
+              </div>
+              <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-400">{item.summary}</p>
+            </button>
+          ))}
+        </div>
+        {!!currentVersion && (
+          <div className="grid grid-cols-1 gap-2">
+            {initialVersion && initialVersion.version !== currentVersion.version && (
+              <button
+                onClick={() => onRestoreVersion?.(initialVersion)}
+                className="w-full rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fuchsia-300"
+              >
+                Restore Initial Version
+              </button>
+            )}
+            {previousVersion && (
+              <button
+                onClick={() => onRestoreVersion?.(previousVersion)}
+                className="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-300"
+              >
+                Restore Previous Version
+              </button>
+            )}
+            <button
+              onClick={() => onRestoreVersion?.(currentVersion)}
+              className="w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
+            >
+              Restore Selected Version
+            </button>
+          </div>
+        )}
+        <VersionDiff currentVersion={currentVersion} previousVersion={previousVersion} />
+      </div>
+    </aside>
   )
 }
 

@@ -44,7 +44,11 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         occurrence=data.get('occurrence', 1),
         detection=data.get('detection', 1),
         rpn=rpn,
-        status="Analyzing"
+        status="Analyzing",
+        # Initialize relationship collections eagerly so async assignment does not
+        # trigger an implicit lazy load during creation.
+        affected_assets=[],
+        causes=[]
     )
     db.add(mode)
     await db.flush()
@@ -169,7 +173,11 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     cause = models.FarFailureCause(
         cause_text=data.get('cause_text'),
         occurrence_level=data.get('occurrence_level', 1),
-        responsible_team=data.get('responsible_team')
+        responsible_team=data.get('responsible_team'),
+        failure_modes=[],
+        resolutions=[],
+        mitigations=[],
+        prevention_actions=[]
     )
     db.add(cause)
     await db.flush()
@@ -190,6 +198,18 @@ async def create_cause(data: dict, db: AsyncSession = Depends(get_db)):
     ).filter(models.FarFailureCause.id == cause.id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
+
+@router.delete("/causes/{cause_id}")
+async def delete_cause(cause_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id == cause_id)
+    result = await db.execute(stmt)
+    cause = result.scalar_one_or_none()
+    if not cause:
+        raise HTTPException(404)
+
+    await db.delete(cause)
+    await db.commit()
+    return {"status": "success"}
 
 # --- RESOLUTIONS ---
 
@@ -233,9 +253,11 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
     await db.flush()
     
     if data.get('mode_ids'):
-        stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id.in_(data['mode_ids']))
+        stmt = select(models.FarFailureMode).options(
+            joinedload(models.FarFailureMode.mitigations)
+        ).filter(models.FarFailureMode.id.in_(data['mode_ids']))
         result = await db.execute(stmt)
-        modes = result.scalars().all()
+        modes = result.unique().scalars().all()
         for mode in modes:
             mode.mitigations.append(mit)
             
@@ -246,6 +268,18 @@ async def create_mitigation(data: dict, db: AsyncSession = Depends(get_db)):
     ).filter(models.FarMitigation.id == mit.id)
     result = await db.execute(stmt)
     return result.scalar_one()
+
+@router.delete("/mitigations/{mitigation_id}")
+async def delete_mitigation(mitigation_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarMitigation).filter(models.FarMitigation.id == mitigation_id)
+    result = await db.execute(stmt)
+    mitigation = result.scalar_one_or_none()
+    if not mitigation:
+        raise HTTPException(404)
+
+    await db.delete(mitigation)
+    await db.commit()
+    return {"status": "success"}
 
 # --- PREVENTION ---
 

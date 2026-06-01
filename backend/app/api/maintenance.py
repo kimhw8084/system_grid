@@ -8,8 +8,11 @@ from datetime import datetime
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 
 @router.get("")
-async def get_maintenance_windows(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.MaintenanceWindow))
+async def get_maintenance_windows(device_id: int | None = None, db: AsyncSession = Depends(get_db)):
+    query = select(models.MaintenanceWindow)
+    if device_id is not None:
+        query = query.filter(models.MaintenanceWindow.device_id == device_id)
+    result = await db.execute(query)
     windows = result.scalars().all()
     
     final = []

@@ -6,11 +6,12 @@ import {
   Cpu, Box, Terminal, ListTree, HardDrive,
   AlertCircle, CheckCircle2, Clock, Info, ExternalLink,
   Workflow, History, TrendingUp, Search, AlertTriangle, BookOpen,
-  Briefcase, ChevronRight, Share2, Layers, MapPin, ZapOff, Grid3X3
+  Briefcase, ChevronRight, Share2, Layers, MapPin, ZapOff, Grid3X3, Target
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { useNavigate, Link } from 'react-router-dom'
+import { FEATURE_AUDIT_ITEMS } from './shared/featureAudit'
 
 const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => {
   const navigate = useNavigate();
@@ -164,6 +165,37 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
   </div>
 )
 
+const FeatureAuditSummary = () => {
+  const [validatedCount, setValidatedCount] = useState(0)
+
+  useEffect(() => {
+    const readCount = () => {
+      try {
+        const raw = localStorage.getItem('sysgrid_feature_audit_v2')
+        if (!raw) return setValidatedCount(0)
+        const parsed = JSON.parse(raw)
+        const validated = Object.values(parsed).filter((entry: any) => entry?.status === 'validated').length
+        setValidatedCount(validated)
+      } catch {
+        setValidatedCount(0)
+      }
+    }
+
+    readCount()
+    window.addEventListener('storage', readCount)
+    return () => window.removeEventListener('storage', readCount)
+  }, [])
+
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Feature Audit</span>
+      <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.15em] text-blue-400">
+        {validatedCount}/{FEATURE_AUDIT_ITEMS.length} validated
+      </span>
+    </div>
+  )
+}
+
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const navigate = useNavigate();
@@ -173,6 +205,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     queryKey: ['dashboard-metrics'], 
     queryFn: async () => (await apiFetch('/api/v1/dashboard/metrics')).json(),
     refetchInterval: 10000
+  })
+
+  const { data: userProfile } = useQuery({
+    queryKey: ['dashboard-user-profile'],
+    queryFn: async () => (await apiFetch('/api/v1/settings/user/profile')).json()
   })
 
   if (isLoading) return (
@@ -220,7 +257,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <p className="text-[11px] font-bold tracking-tight opacity-90">{metrics.critical_alerts[0].title} — {metrics.critical_alerts[0].impact}</p>
                  </div>
               </div>
-              <button onClick={() => navigate('/monitoring')} className="px-4 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Intercept Incident</button>
+              <button onClick={() => navigate(`/monitoring?id=${metrics.critical_alerts[0].id}`)} className="px-4 py-1.5 bg-black/20 hover:bg-black/40 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">Intercept Incident</button>
             </div>
           </motion.div>
         )}
@@ -282,7 +319,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       <div className="flex-1 overflow-y-auto custom-scrollbar pb-10 space-y-8">
         
         {/* Top Level: Stat Breakdown Grids */}
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-5 gap-6">
            <StatCard 
               title="Asset Registry" 
               total={metrics?.asset_overview.total} 
@@ -334,6 +371,49 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
         {/* Second Level: Mid-Sized Detail Cards */}
         <div className="grid grid-cols-4 gap-6">
+           <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-blue-600/10 to-transparent flex flex-col group h-[280px]">
+              <div className="flex items-center justify-between mb-5">
+                 <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-400">
+                      {userProfile?.is_admin ? 'Leadership Cockpit' : 'Operator Cockpit'}
+                    </p>
+                    <h3 className="mt-1 text-xl font-black uppercase tracking-tight text-white">
+                      {userProfile?.full_name || userProfile?.username || 'Operator'}
+                    </h3>
+                    <FeatureAuditSummary />
+                 </div>
+                 <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3 text-blue-400">
+                    <Target size={18} />
+                 </div>
+              </div>
+
+              <div className="space-y-3">
+                 <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Critical Monitors</p>
+                    <p className="mt-1 text-2xl font-black text-rose-400 tabular-nums">{metrics?.critical_alerts?.length || 0}</p>
+                 </div>
+                 <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Recent Audit Events</p>
+                    <p className="mt-1 text-2xl font-black text-white tabular-nums">{metrics?.recent.activity?.length || 0}</p>
+                 </div>
+              </div>
+
+              <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+                 <button onClick={() => navigate('/monitoring')} className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-500/20">
+                    Validate Monitoring
+                 </button>
+                 <button onClick={() => navigate('/logs')} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-white/[0.08]">
+                    Review Changes
+                 </button>
+                 <button onClick={() => navigate('/settings')} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-white/[0.08]">
+                    Confirm Theme
+                 </button>
+                 <button onClick={() => navigate('/asset')} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-white/[0.08]">
+                    Inspect Assets
+                 </button>
+              </div>
+           </div>
+
            {/* Activity Feed */}
            <div className="glass-panel p-6 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[280px]">
               <div className="flex items-center justify-between mb-6">
@@ -470,4 +550,3 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     </div>
   )
 }
-

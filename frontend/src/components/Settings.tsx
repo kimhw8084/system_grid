@@ -10,6 +10,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 
+const normalizeTheme = (theme?: string | null) => {
+  if (theme === 'dark') return 'nordic-frost-v1'
+  if (theme === 'light') return 'pure-clarity'
+  if (theme === 'pure-clarity' || theme === 'nordic-frost-v1') return theme
+  return 'nordic-frost-v1'
+}
+
 const SettingField = ({ label, description, children, icon: Icon, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
   return (
     <div className={`flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-xl border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
@@ -145,6 +152,7 @@ export default function SettingsPage() {
   const [attachPath, setAttachPath] = useState("")
   const [preflightResult, setPreflightResult] = useState<any>(null)
   const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
+  const [operatorFilter, setOperatorFilter] = useState("")
   
   const queryClient = useQueryClient()
 
@@ -202,7 +210,7 @@ export default function SettingsPage() {
     }
   });
 
-  const currentTheme = userSettings?.theme || localStorage.getItem('sysgrid-theme') || 'dark';
+  const currentTheme = normalizeTheme(userSettings?.theme || localStorage.getItem('sysgrid-theme'));
 
   const userSettingsMutation = useMutation({
     mutationFn: async (settings: any) => {
@@ -217,14 +225,15 @@ export default function SettingsPage() {
   })
 
   const changeTheme = (themeId: string) => {
-    localStorage.setItem('sysgrid-theme', themeId)
-    document.documentElement.setAttribute('data-theme', themeId)
-    const isLight = themeId === 'light'
+    const normalizedTheme = normalizeTheme(themeId)
+    localStorage.setItem('sysgrid-theme', normalizedTheme)
+    document.documentElement.setAttribute('data-theme', normalizedTheme)
+    const isLight = normalizedTheme === 'pure-clarity'
     if (isLight) document.documentElement.classList.remove('dark')
     else document.documentElement.classList.add('dark')
     
-    userSettingsMutation.mutate({ theme: themeId })
-    toast.success(`Theme switched to ${themeId === 'dark' ? 'Dark Mode' : 'Light Mode'}`)
+    userSettingsMutation.mutate({ theme: normalizedTheme })
+    toast.success(`Theme switched to ${normalizedTheme === 'nordic-frost-v1' ? 'Dark Mode' : 'Light Mode'}`)
   }
 
   const { data: envSettings, isLoading: isEnvLoading, isError: isEnvError } = useQuery({
@@ -263,6 +272,11 @@ export default function SettingsPage() {
       if (field) return String(localEnv[field]) !== String(envSettings[field]);
       return Object.keys(localEnv).some(k => String(localEnv[k]) !== String(envSettings[k]));
   }
+
+  const getPersistableEnvSettings = () =>
+    Object.fromEntries(
+      Object.entries(localEnv || {}).filter(([key]) => !key.startsWith('_'))
+    )
 
   const [userPoolScript, setUserPoolScript] = useState(`import pandas as pd
 import numpy as np
@@ -504,6 +518,21 @@ result_df = get_user_pool()`)
 
   const [newOpId, setNewOpId] = useState("")
 
+  const filteredOperators = (operators || []).filter((op: any) => {
+    const query = operatorFilter.trim().toLowerCase()
+    if (!query) return true
+    return [
+      op.full_name,
+      op.username,
+      op.external_id,
+      op.department,
+      op.team,
+      op.email
+    ]
+      .filter(Boolean)
+      .some((value: string) => value.toLowerCase().includes(query))
+  })
+
   const handleAddOperator = () => {
     if (!newOpId) return;
     operatorMutation.mutate({ 
@@ -521,7 +550,7 @@ result_df = get_user_pool()`)
   const allViews = [
     "projects", "racks", "assets", "services", "external", "network", 
     "architecture", "research", "far", "monitoring", "vendors", 
-    "knowledge", "logs", "settings", "permission"
+    "knowledge", "logs", "settings"
   ];
 
   const togglePermission = (op: any, view: string) => {
@@ -626,7 +655,7 @@ result_df = get_user_pool()`)
         {topTab === 'environments' && (
           <div className="flex items-center gap-2 pr-2">
             <button 
-                onClick={() => envMutation.mutate({})} // Force empty update to trigger refresh
+                onClick={() => envMutation.mutate(getPersistableEnvSettings())}
                 className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border ${isDirty() ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 animate-pulse' : 'bg-emerald-600/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20'}`}
                 title="Force Hot Reload Current Config"
             >
@@ -718,7 +747,12 @@ result_df = get_user_pool()`)
                         <div className="flex items-center gap-4">
                              <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                                <input placeholder="Filter Operators..." className="bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] focus:border-blue-500/50 outline-none w-48 transition-all" />
+                                <input
+                                    value={operatorFilter}
+                                    onChange={e => setOperatorFilter(e.target.value)}
+                                    placeholder="Filter Operators..."
+                                    className="bg-black/20 border border-white/5 rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] focus:border-blue-500/50 outline-none w-48 transition-all"
+                                />
                              </div>
                              <div className="h-6 w-px bg-white/10 mx-2" />
                              <div className="flex items-center gap-2">
@@ -755,7 +789,7 @@ result_df = get_user_pool()`)
                                 </tr>
                             </thead>
                             <tbody>
-                                {operators?.map((op: any) => (
+                                {filteredOperators.map((op: any) => (
                                     <tr key={op.id} className={`hover:bg-white/2 transition-colors border-b border-[var(--glass-border)] last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
                                         <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
                                             <div className="flex items-center gap-3">
@@ -806,6 +840,13 @@ result_df = get_user_pool()`)
                                         </td>
                                     </tr>
                                 ))}
+                                {filteredOperators.length === 0 && (
+                                    <tr>
+                                        <td colSpan={allViews.length + 3} className="p-8 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                            No operators match the current filter
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -929,10 +970,10 @@ result_df = get_user_pool()`)
                                        <td className="p-4 text-right">
                                           <button 
                                              onClick={() => backupTenantMutation.mutate(t.id)}
-                                             disabled={backupTenantMutation.isPending}
+                                             disabled={backupTenantMutation.isPending && backupTenantMutation.variables === t.id}
                                              className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
                                           >
-                                             {backupTenantMutation.isPending ? 'Backing up...' : 'Backup Now'}
+                                             {backupTenantMutation.isPending && backupTenantMutation.variables === t.id ? 'Backing up...' : 'Backup Now'}
                                           </button>
                                        </td>
                                     </tr>
@@ -965,7 +1006,6 @@ result_df = get_user_pool()`)
                               onClick={() => {
                                  if (!newTenantName) return;
                                  createTenantMutation.mutate(newTenantName);
-                                 setNewTenantName("");
                               }}
                               disabled={createTenantMutation.isPending || !newTenantName}
                               className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
@@ -1269,9 +1309,10 @@ result_df = get_user_pool()`)
                                 </div>
                                 <div className="flex gap-2">
                                     <button 
-                                        onClick={() => setViewVersionScript(v.diff_summary?.script)}
-                                        className="p-2 bg-slate-800/50 hover:bg-slate-700 text-amber-500 rounded-lg transition-all"
-                                        title="View Script History"
+                                        onClick={() => v.diff_summary?.script && setViewVersionScript(v.diff_summary.script)}
+                                        disabled={!v.diff_summary?.script}
+                                        className="p-2 bg-slate-800/50 hover:bg-slate-700 text-amber-500 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-slate-800/50"
+                                        title={v.diff_summary?.script ? "View Script History" : "No script captured for this version"}
                                     >
                                         <FileCode size={14} />
                                     </button>

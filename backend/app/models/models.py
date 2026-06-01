@@ -139,6 +139,7 @@ class LogicalService(Base, BaseMixin):
     
     # License & Procurement
     purchase_type = Column(String) # One-time, Subscription
+    license_key = Column(String)
     purchase_date = Column(DateTime)
     expiry_date = Column(DateTime)
     cost = Column(Float, default=0.0)
@@ -952,4 +953,3 @@ class UserPreference(Base, BaseMixin):
     user_id = Column(String, index=True)
     key = Column(String, index=True)
     value = Column(Text)
-

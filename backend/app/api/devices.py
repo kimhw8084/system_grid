@@ -22,6 +22,7 @@ async def sync_device_to_os(device, db: AsyncSession):
         if svc:
             svc.name = device.os_name
             svc.version = device.os_version
+            svc.environment = device.environment or svc.environment or "Production"
         else:
             svc = models.LogicalService(
                 device_id=device.id,

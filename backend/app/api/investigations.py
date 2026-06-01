@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from sqlalchemy.orm import joinedload
 from typing import List, Optional
+from datetime import datetime, timezone
 from ..database import get_db
 from ..models import models
 from .utils import filter_valid_columns, parse_iso_date
@@ -68,13 +69,21 @@ async def delete_investigation(inv_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{inv_id}/logs")
 async def add_progress_log(inv_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    inv_res = await db.execute(select(models.Investigation).filter(models.Investigation.id == inv_id))
+    investigation = inv_res.scalar_one_or_none()
+    if not investigation:
+        raise HTTPException(404, "Investigation not found")
+
     clean_data = filter_valid_columns(models.InvestigationProgress, data)
+    if not clean_data.get("entry_text", "").strip():
+        raise HTTPException(400, "Intelligence pulse text is required")
     clean_data['investigation_id'] = inv_id
     if 'added_by' not in clean_data:
         clean_data['added_by'] = "system_admin"
         
     log = models.InvestigationProgress(**clean_data)
     db.add(log)
+    investigation.updated_at = datetime.now(timezone.utc)
     try:
         await db.commit()
         await db.refresh(log)

@@ -138,6 +138,39 @@ export const SummaryCard = ({ icon: Icon, label, value, color }: any) => (
   </div>
 )
 
+const getResearchStatusKey = (status: any) => safeUpper(status)
+const getResearchDisplayStatus = (status: any) => {
+  const key = getResearchStatusKey(status)
+  const labels: Record<string, string> = {
+    ANALYZING: 'Analyzing',
+    OPEN: 'Open',
+    INVESTIGATION: 'Investigation',
+    RESOLVED: 'Resolved',
+    CLOSED: 'Closed',
+    ESCALATED: 'Escalated',
+    MONITORING: 'Monitoring'
+  }
+  return labels[key] || status || 'Unknown'
+}
+
+const getResearchStatusColor = (status: any) => {
+  const colors: Record<string, string> = {
+    ANALYZING: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+    OPEN: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+    INVESTIGATION: 'text-purple-400 border-purple-500/40 bg-purple-500/20',
+    RESOLVED: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+    CLOSED: 'text-slate-400 border-white/20 bg-white/10',
+    ESCALATED: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+    MONITORING: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20'
+  }
+  return colors[getResearchStatusKey(status)] || 'text-slate-400 border-white/10 bg-white/5'
+}
+
+const getResearchRecordDate = (item: any) =>
+  item?.type === 'RCA'
+    ? (item.incident_at || item.occurrence_at || item.created_at)
+    : (item.initiation_at || item.created_at)
+
 export default function Research() {
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
@@ -253,21 +286,18 @@ export default function Research() {
   const availableYears = useMemo(() => {
     const years = new Set<string>()
     combinedData.forEach((item: any) => {
-      const date = item.incident_at || item.occurrence_at || item.created_at
+      const date = getResearchRecordDate(item)
       if (date) {
         years.add(new Date(date).getFullYear().toString())
       }
     })
-    // Add dummy years for testing
-    years.add('2026')
-    years.add('2025')
     return ['ALL', ...Array.from(years).sort((a, b) => b.localeCompare(a))]
   }, [combinedData])
 
   const filteredData = useMemo(() => {
     if (selectedYear === 'ALL') return combinedData
     return combinedData.filter((item: any) => {
-      const date = item.incident_at || item.occurrence_at || item.created_at
+      const date = getResearchRecordDate(item)
       return date && new Date(date).getFullYear().toString() === selectedYear
     })
   }, [combinedData, selectedYear])
@@ -282,7 +312,7 @@ export default function Research() {
   const stats = useMemo(() => {
     return {
       total: filteredData.length,
-      analyzing: filteredData.filter((i: any) => i.status === 'ANALYZING' || i.status === 'OPEN' || i.status === 'INVESTIGATION').length,
+      analyzing: filteredData.filter((i: any) => ['ANALYZING', 'OPEN', 'INVESTIGATION'].includes(getResearchStatusKey(i.status))).length,
       rca: filteredData.filter((i: any) => i.type === 'RCA').length,
       highest: filteredData.filter((i: any) => i.priority === 'HIGHEST' || i.priority >= 8).length
     }
@@ -400,20 +430,11 @@ export default function Research() {
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const colors: any = {
-          'Analyzing': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-          'Open': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-          'Investigation': 'text-purple-400 border-purple-500/40 bg-purple-500/20',
-          'Resolved': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-          'Closed': 'text-slate-400 border-white/20 bg-white/10',
-          'Escalated': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-          'Monitoring': 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20'
-        }
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${getResearchStatusColor(p.value)}`}>
               <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                {p.value || 'Unknown'}
+                {getResearchDisplayStatus(p.value)}
               </span>
             </div>
           </div>
@@ -669,7 +690,7 @@ export default function Research() {
             options={options} 
             devices={devices} 
             onClose={() => setActiveModal(null)} 
-            onSave={(d: any) => mutation.mutate(d)}
+            onSave={(d: any) => mutation.mutateAsync(d)}
             isSaving={mutation.isPending}
           />
         )}
@@ -681,7 +702,7 @@ export default function Research() {
               options={options}
               failureModes={failureModes}
               onClose={() => setActiveDetails(null)} 
-              onSave={(d: any) => mutation.mutate(d)}
+              onSave={(d: any) => mutation.mutateAsync(d)}
               fontSize={fontSize}
               rowDensity={rowDensity}
             />
@@ -689,7 +710,7 @@ export default function Research() {
             <ResearchDetails 
               item={activeDetails} 
               onClose={() => setActiveDetails(null)} 
-              onSave={(d: any) => mutation.mutate(d)}
+              onSave={(d: any) => mutation.mutateAsync(d)}
               setConfirmModal={setConfirmModal}
               fontSize={fontSize}
               rowDensity={rowDensity}
@@ -875,7 +896,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
       ...formData,
       type: safeUpper(formData.type),
       priority: safeUpper(formData.priority),
-      status: safeUpper(formData.status)
+      status: safeUpper(formData.status || 'ANALYZING')
     }
     onSave(finalData)
   }
@@ -2001,6 +2022,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          }
 
 function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, rowDensity }: any) {
+  const queryClient = useQueryClient()
   const normalizeForComparison = (data: any) => {
     if (!data) return "";
     const clean = (obj: any): any => {
@@ -2060,13 +2082,19 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
           ...formData,
           status: safeUpper(formData.status),
           priority: safeUpper(formData.priority)
+        }).then(() => {
+          lastAcknowledgedData.current = currentNormalized;
+        }).catch(() => {
+          // Keep the dirty snapshot so the effect can retry on the next change.
         });
-        lastAcknowledgedData.current = currentNormalized;
     }
   }, [isEditing, formData, onSave]);
 
   const logMutation = useMutation({
     mutationFn: async (log: any) => {
+      if (!log.entry_text?.trim()) {
+        throw new Error('Intelligence pulse text is required')
+      }
       const formattedLog = { ...log, entry_type: safeUpper(log.entry_type), poc: safeUpper(log.poc) }
       const res = await apiFetch(`/api/v1/investigations/${item.id}/logs`, {
         method: 'POST',
@@ -2076,8 +2104,12 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
     },
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, progress_logs: [...(prev.progress_logs || []), data] }))
+      queryClient.invalidateQueries({ queryKey: ['investigations'] })
       setNewLog({ entry_text: '', entry_type: 'DIAGNOSIS', poc: '', timestamp: new Date().toISOString() })
       toast.success('Intelligence Pulse Captured')
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to capture intelligence pulse')
     }
   })
 
@@ -2109,13 +2141,19 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
           </div>
           <div className="flex items-center space-x-3">
             <button 
-              onClick={() => {
+              onClick={async () => {
                 if (isEditing) {
                   const finalData = { ...formData, status: safeUpper(formData.status), priority: safeUpper(formData.priority) }
-                  onSave(finalData)
-                  lastAcknowledgedData.current = normalizeForComparison(finalData);
+                  try {
+                    await onSave(finalData)
+                    lastAcknowledgedData.current = normalizeForComparison(finalData);
+                    setIsEditing(false)
+                    return
+                  } catch {
+                    return
+                  }
                 }
-                setIsEditing(!isEditing)
+                setIsEditing(true)
               }} 
               className={`h-12 px-8 rounded-lg text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${isEditing ? 'bg-amber-600 text-white shadow-lg border-amber-400' : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:border-white/20'}`}
             >

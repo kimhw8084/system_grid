@@ -87,6 +87,7 @@ export const ProjectHUD = ({
   onSave, 
   onCancel,
   onDelete,
+  onSettings,
   isSaving
 }: { 
   project: any, 
@@ -96,6 +97,7 @@ export const ProjectHUD = ({
   onSave: () => void, 
   onCancel: () => void,
   onDelete: () => void,
+  onSettings: () => void,
   isSaving?: boolean
 }) => {
   if (!project) return (
@@ -180,7 +182,7 @@ export const ProjectHUD = ({
              >
                 <Trash2 size={18} />
              </button>
-             <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all border border-white/5">
+             <button onClick={onSettings} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 transition-all border border-white/5">
                 <Settings size={18} />
              </button>
           </div>
@@ -204,6 +206,7 @@ const ProjectRail = ({
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const canReorder = search.trim() === '' && statusFilter === 'ALL' && priorityFilter === 'ALL'
 
   const sortedAndFiltered = useMemo(() => {
     const base = [...projects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
@@ -299,16 +302,17 @@ const ProjectRail = ({
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-10">
-          <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={onReorder} className="space-y-2">
+          <Reorder.Group axis="y" values={sortedAndFiltered} onReorder={canReorder ? onReorder : undefined} className="space-y-2">
              {sortedAndFiltered.map((p: any) => (
                 <Reorder.Item 
                   key={p.id} 
                   value={p}
+                  drag={canReorder}
                   className="group"
                 >
                    <button
                      onClick={() => onSelect(p.id)}
-                     className={`w-full text-left p-4 rounded-lg transition-all border flex flex-col gap-3 cursor-grab active:cursor-grabbing ${
+                     className={`w-full text-left p-4 rounded-lg transition-all border flex flex-col gap-3 ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''} ${
                        selectedId === p.id 
                          ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
                          : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'
@@ -341,12 +345,17 @@ const ProjectRail = ({
                             <Clock size={10} className="text-slate-500" />
                             <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd') : 'N/A'}</span>
                          </div>
-                         <GripVertical size={12} className="text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                         <GripVertical size={12} className={`text-slate-800 transition-opacity shrink-0 ${canReorder ? 'opacity-0 group-hover:opacity-100' : 'opacity-20'}`} />
                       </div>
                    </button>
                 </Reorder.Item>
              ))}
           </Reorder.Group>
+          {!canReorder && (
+            <div className="mt-4 px-3 py-2 rounded-lg border border-amber-500/10 bg-amber-500/5 text-[8px] font-bold uppercase tracking-widest text-amber-500/70">
+              Clear search and filters to reorder projects safely
+            </div>
+          )}
        </div>
 
        {/* Resize Handle */}
@@ -779,6 +788,7 @@ const TaskRow = React.memo(({
 
 const PrecisionGantt = ({ project, onUpdate }: any) => {
   const [tasks, setTasks] = useState<any[]>(project?.tasks || [])
+  const [taskComment, setTaskComment] = useState('')
   const [dragStartTasks, setDragStartTasks] = useState<any[] | null>(null)
   const [zoomLevel, setZoomLevel] = useState(30)
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -886,6 +896,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       setTasks(project?.tasks || [])
     }
   }, [project?.tasks, selectedTaskId, dragStartTasks])
+
+  useEffect(() => {
+    setTaskComment('')
+  }, [selectedTaskId])
 
   const handleSelectTask = useCallback((id: number, shift: boolean) => {
     if (dependencySourceId) {
@@ -1479,17 +1493,17 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                     ))}
                                     <div className="flex gap-4">
                                        <textarea 
-                                         id="task-comment-input"
+                                         value={taskComment}
+                                         onChange={e => setTaskComment(e.target.value)}
                                          className="flex-1 bg-black/40 border border-white/10 rounded-lg p-3 text-xs font-bold text-slate-300 outline-none focus:border-blue-500/50 resize-none h-20"
                                          placeholder="Add a comment..."
                                        />
                                        <button 
                                          onClick={() => {
-                                           const input = document.getElementById('task-comment-input') as HTMLTextAreaElement
-                                           if (!input.value) return
-                                           const newComments = [...(task.metadata_json?.comments || []), { author: 'System', content: input.value, timestamp: new Date().toISOString() }]
+                                           if (!taskComment.trim()) return
+                                           const newComments = [...(task.metadata_json?.comments || []), { author: 'System', content: taskComment.trim(), timestamp: new Date().toISOString() }]
                                            handleTaskUpdate(task.id, { metadata_json: { ...task.metadata_json, comments: newComments } })
-                                           input.value = ''
+                                           setTaskComment('')
                                          }}
                                          className="px-6 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
                                        >
@@ -2870,7 +2884,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
 
 export default function Projects() {
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const idParam = searchParams.get('id')
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
@@ -2913,6 +2927,14 @@ export default function Projects() {
   const [railWidth, setRailWidth] = useState(320)
   const [ledgerWidth, setLedgerWidth] = useState(380)
 
+  const syncSelectedProject = useCallback((id: number | 'HUDDLE' | null) => {
+    setSelectedProjectId(id)
+    const nextParams = new URLSearchParams(searchParams)
+    if (typeof id === 'number') nextParams.set('id', String(id))
+    else nextParams.delete('id')
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, setSearchParams])
+
   useEffect(() => {
     if (idParam && projects) {
        const targetId = parseInt(idParam)
@@ -2926,9 +2948,9 @@ export default function Projects() {
     if (projects?.length > 0 && selectedProjectId === 'HUDDLE' && !idParam) {
       // Find latest created project
       const latest = [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-      if (latest) setSelectedProjectId(latest.id)
+      if (latest) syncSelectedProject(latest.id)
     }
-  }, [projects, idParam, selectedProjectId])
+  }, [projects, idParam, selectedProjectId, syncSelectedProject])
 
   const selectedProject = useMemo(() => {
     if (selectedProjectId === 'HUDDLE') return null
@@ -2968,7 +2990,7 @@ export default function Projects() {
         setDraftProject(null)
         toast.success('Strategic Matrix Synchronized')
       }
-      if (!selectedProjectId) setSelectedProjectId(data.id)
+      if (!selectedProjectId) syncSelectedProject(data.id)
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -2977,13 +2999,19 @@ export default function Projects() {
     mutationFn: async (id: number) => {
       const res = await apiFetch(`/api/v1/projects/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
+      return id
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
+      const currentProjects = (queryClient.getQueryData(['projects']) as any[]) || []
+      const remainingProjects = currentProjects.filter((project: any) => project.id !== deletedId)
       queryClient.invalidateQueries({ queryKey: ['projects'] })
-      setSelectedProjectId(projects?.[0]?.id || null)
+      if (selectedProjectId === deletedId) {
+        syncSelectedProject(remainingProjects[0]?.id || 'HUDDLE')
+      }
       setPendingNav(null)
       toast.success('Project Decommissioned')
-    }
+    },
+    onError: (e: any) => toast.error(e.message)
   })
 
   const requestTabChange = (tab: any) => {
@@ -2994,7 +3022,7 @@ export default function Projects() {
   const requestProjectChange = (id: number | 'HUDDLE') => {
     if (isDirty) setPendingNav({ type: 'PROJECT', id })
     else {
-      setSelectedProjectId(id)
+      syncSelectedProject(id)
       setIsGlobalEditing(false)
       setDraftProject(null)
     }
@@ -3007,7 +3035,7 @@ export default function Projects() {
       setIsGlobalEditing(false)
       setDraftProject(null)
     } else if (pendingNav.type === 'PROJECT') {
-      setSelectedProjectId(pendingNav.id)
+      syncSelectedProject(pendingNav.id)
       setIsGlobalEditing(false)
       setDraftProject(null)
     } else if (pendingNav.type === 'DELETE') {
@@ -3043,6 +3071,7 @@ export default function Projects() {
          onSave={() => mutation.mutate({ data: draftProject })}
          onCancel={() => { setIsGlobalEditing(false); setDraftProject(null); }}
          onDelete={() => setPendingNav({ type: 'DELETE', id: selectedProjectId })}
+         onSettings={() => setShowConfig(true)}
          isSaving={mutation.isPending}
        />
 
@@ -3089,7 +3118,7 @@ export default function Projects() {
             selectedId={selectedProjectId} 
             onSelect={requestProjectChange} 
             onReorder={handleReorder}
-            onNew={() => { setSelectedProjectId(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
+            onNew={() => { syncSelectedProject(null); setIsGlobalEditing(true); setDraftProject({ name: 'New Strategic Vector', type: '', status: 'Planning', priority: 'Medium' }); }}
             onDelete={(id:number) => setPendingNav({ type: 'DELETE', id })}
             width={railWidth} onResize={setRailWidth} isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />

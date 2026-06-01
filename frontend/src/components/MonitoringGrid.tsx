@@ -1,12 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Activity, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
-  AlertCircle, Clock, Zap, Settings, MoreVertical, List,
+  AlertCircle, Clock, Zap, Settings,
   BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -15,6 +17,14 @@ import { apiFetch } from '../api/apiClient'
 import { StyledSelect } from './shared/StyledSelect'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { StatusPill } from './shared/StatusPill'
+import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
+
+const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
+const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
+const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_monitoring_favorites_v1'
+const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
+const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 
 const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -24,18 +34,61 @@ const STATUSES = [
   { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
 
+const DEFAULT_MONITORING_VIEWS = [
+  { id: 'ops', name: 'Ops', config: { fontSize: 11, rowDensity: 10, hiddenColumns: [], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } },
+  { id: 'incident', name: 'Incident', config: { fontSize: 10, rowDensity: 6, hiddenColumns: ['purpose'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [{ colId: 'severity', sort: 'desc' }] } },
+  { id: 'recovery', name: 'Recovery', config: { fontSize: 11, rowDensity: 8, hiddenColumns: ['platform', 'check_interval'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } }
+]
+
+const readMonitoringUiState = () => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(MONITORING_UI_STATE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+const sanitizeMonitoringPayload = (item: any) => {
+  if (!item) return item
+  const next = { ...item }
+  delete next.created_at
+  delete next.updated_at
+  delete next.version
+  delete next.is_deleted
+  delete next.device_name
+  delete next.recovery_doc_titles
+  delete next.monitored_service_names
+  return next
+}
+
+const useEscapeDismiss = (onClose: () => void) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+}
+
 export default function MonitoringGrid() {
+  const persistedUiState = readMonitoringUiState()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const idParam = searchParams.get('id')
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
-  const [showStyleLab, setShowStyleLab] = useState(true)
+  const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
+  const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 10)
+  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
-  const [showColumnPicker, setShowColumnPicker] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? [])
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -44,15 +97,67 @@ export default function MonitoringGrid() {
   const [historyItem, setHistoryItem] = useState<any>(null)
   const [servicePopup, setServicePopup] = useState<{ names: string[], title: string } | null>(null)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
+  const [ownerPopup, setOwnerPopup] = useState<{ owners: any[], title: string } | null>(null)
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
+  const [compareOpen, setCompareOpen] = useState(false)
   
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectedIds, setSelectedIds] = useState<number[]>(persistedUiState?.selectedIds ?? [])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
+  const [gridSortModel, setGridSortModel] = useState<any[]>([])
+  const [savedViews, setSavedViews] = useState<any[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_MONITORING_VIEWS
+    try {
+      const raw = window.localStorage.getItem(MONITORING_VIEW_STORAGE_KEY)
+      if (!raw) return DEFAULT_MONITORING_VIEWS
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return DEFAULT_MONITORING_VIEWS
+      return DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry.id === view.id) || view)
+    } catch {
+      return DEFAULT_MONITORING_VIEWS
+    }
+  })
+  const [activeViewId, setActiveViewId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY)
+  })
+  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem(MONITORING_FAVORITES_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+  const [watchIds, setWatchIds] = useState<number[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem(MONITORING_WATCH_STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
+  const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
+  const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(persistedUiState?.expandedBulkSection ?? null)
+  const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
+  const selectionAnchorRef = useRef<number | null>(null)
+  const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
+  const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
+  const lastUndoRef = useRef<any>(null)
 
   const { data: settingsOptions } = useQuery({ 
     queryKey: ['settings-options'], 
@@ -66,6 +171,134 @@ export default function MonitoringGrid() {
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
+  }
+
+  const openRowActionMenu = (event: React.MouseEvent, item: any) => {
+    event.stopPropagation()
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const menuWidth = 192
+    const menuHeight = 224
+    const padding = 16
+    const preferredTop = rect.bottom + 8
+    const maxLeft = window.innerWidth - menuWidth - padding
+    const maxTop = window.innerHeight - menuHeight - padding
+    const top = preferredTop <= maxTop ? preferredTop : Math.max(padding, rect.top - menuHeight - 8)
+    setRowActionMenu({
+      item,
+      style: {
+        position: 'fixed',
+        top,
+        left: Math.min(Math.max(padding, rect.right - menuWidth), maxLeft),
+        width: menuWidth,
+        zIndex: 1110
+      }
+    })
+  }
+
+  const openRowActionMenuAtPoint = (item: any, x: number, y: number) => {
+    const menuWidth = 224
+    const menuHeight = 360
+    const padding = 16
+    setRowActionMenu({
+      item,
+      style: {
+        position: 'fixed',
+        top: Math.min(y, window.innerHeight - menuHeight - padding),
+        left: Math.min(x, window.innerWidth - menuWidth - padding),
+        width: menuWidth,
+        zIndex: 1110
+      }
+    })
+  }
+
+  const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
+    const padding = 16
+    if (!button) {
+      return {
+        position: 'fixed' as const,
+        top: 120,
+        left: Math.max(padding, window.innerWidth - width - 40),
+        width,
+        zIndex
+      }
+    }
+    const rect = button.getBoundingClientRect()
+    return {
+      position: 'fixed' as const,
+      top: Math.min(rect.bottom + 10, window.innerHeight - height - padding),
+      left: Math.min(Math.max(padding, rect.right - width), window.innerWidth - width - padding),
+      width,
+      zIndex
+    }
+  }
+
+  const toggleBulkWindow = () => {
+    setShowBulkMenu((current) => {
+      if (current) return false
+      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, 360, 1105))
+      return true
+    })
+  }
+
+  const toggleFavorite = (monitorId: number) => {
+    setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
+  }
+
+  const toggleWatch = (monitorId: number) => {
+    setWatchIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
+  }
+
+  const openCompare = () => {
+    if (selectedIds.length < 2 || selectedIds.length > 3) return
+    setCompareOpen(true)
+  }
+
+  const shouldIgnoreRowSelection = (target: EventTarget | null) => {
+    const element = target as HTMLElement | null
+    if (!element) return false
+    return Boolean(
+      element.closest('button, a, input, textarea, select, label') ||
+      element.closest('.ag-selection-checkbox') ||
+      element.closest('.ag-checkbox-input-wrapper') ||
+      element.closest('.row-action-menu-container')
+    )
+  }
+
+  const handleRowClicked = (event: any) => {
+    if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
+    const mouseEvent = event.event as MouseEvent | undefined
+    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
+    const isRangeSelection = Boolean(mouseEvent?.shiftKey)
+
+    if (isRangeSelection && selectionAnchorRef.current !== null) {
+      const currentIndex = event.node.rowIndex
+      if (currentIndex === null || currentIndex === undefined) return
+
+      const start = Math.min(selectionAnchorRef.current, currentIndex)
+      const end = Math.max(selectionAnchorRef.current, currentIndex)
+      event.api.deselectAll()
+      event.api.forEachNodeAfterFilterAndSort((node: any) => {
+        if (node.rowIndex >= start && node.rowIndex <= end) {
+          node.setSelected(true)
+        }
+      })
+      return
+    }
+
+    if (isToggleSelection) {
+      event.node.setSelected(!event.node.isSelected())
+      selectionAnchorRef.current = event.node.rowIndex
+      return
+    }
+
+    event.api.deselectAll()
+    event.node.setSelected(true)
+    selectionAnchorRef.current = event.node.rowIndex
+  }
+
+  const handleRowDoubleClicked = (event: any) => {
+    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
+    setDetailItem(event.data)
   }
 
   const handleExportCSV = () => {
@@ -93,20 +326,149 @@ export default function MonitoringGrid() {
     }
   }
 
+  const clearSelection = () => {
+    gridRef.current?.api?.deselectAll()
+    setSelectedIds([])
+    selectionAnchorRef.current = null
+  }
+
+  const buildCurrentViewConfig = () => ({
+    fontSize,
+    rowDensity,
+    hiddenColumns,
+    groupBy,
+    quickFilter: searchTerm,
+    quickFilters,
+    filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
+    sortModel: gridRef.current?.api?.getColumnState?.()
+      ?.filter((col: any) => col.sort)
+      .map((col: any) => ({ colId: col.colId, sort: col.sort })) || gridSortModel
+  })
+
+  const applySavedView = (viewId: string) => {
+    const nextView = savedViews.find((view) => view.id === viewId)
+    if (!nextView) return
+    const config = nextView.config || {}
+    setFontSize(config.fontSize ?? 11)
+    setRowDensity(config.rowDensity ?? 10)
+    setHiddenColumns(config.hiddenColumns ?? [])
+    setGroupBy(config.groupBy ?? 'raw')
+    setSearchTerm(config.quickFilter ?? '')
+    setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
+    setGridFilterModel(config.filterModel ?? {})
+    setGridSortModel(config.sortModel ?? [])
+    setActiveViewId(viewId)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+    }
+    requestAnimationFrame(() => {
+      if (gridRef.current?.api) {
+        gridRef.current.api.setFilterModel(config.filterModel ?? {})
+        gridRef.current.api.applyColumnState({
+          state: (config.sortModel ?? []).map((sort: any) => ({ colId: sort.colId, sort: sort.sort })),
+          defaultState: { sort: null }
+        })
+      }
+    })
+  }
+
+  const saveCurrentToView = (viewId: string) => {
+    const nextViews = savedViews.map((view) => (
+      view.id === viewId
+        ? { ...view, config: buildCurrentViewConfig() }
+        : view
+    ))
+    setSavedViews(nextViews)
+    setActiveViewId(viewId)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+    }
+    toast.success(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
+  }
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (showBulkMenu && !target.closest('.bulk-menu-container')) {
+      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) {
         setShowBulkMenu(false)
       }
+      if (showDisplayMenu && !target.closest('.display-menu-container')) {
+        setShowDisplayMenu(false)
+      }
+      if (rowActionMenu && !target.closest('.row-action-menu-container')) {
+        setRowActionMenu(null)
+      }
     }
-    if (showBulkMenu) {
+    if (showBulkMenu || showDisplayMenu || rowActionMenu) {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
-  }, [showBulkMenu])
+  }, [showBulkMenu, showDisplayMenu, rowActionMenu])
 
-  const [searchTerm, setSearchTerm] = useState('')
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowBulkMenu(false)
+        setShowDisplayMenu(false)
+        setRowActionMenu(null)
+      }
+    }
+    if (showBulkMenu || showDisplayMenu || rowActionMenu) {
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showBulkMenu, showDisplayMenu, rowActionMenu])
+
+  useEffect(() => {
+    const handleContextMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
+        event.preventDefault()
+      }
+    }
+
+    document.addEventListener('contextmenu', handleContextMenu)
+    return () => document.removeEventListener('contextmenu', handleContextMenu)
+  }, [])
+
+  useEffect(() => {
+    const updateMenuPositions = () => {
+      if (showDisplayMenu && displayMenuButtonRef.current) {
+        const rect = displayMenuButtonRef.current.getBoundingClientRect()
+        setDisplayMenuStyle({
+          position: 'fixed',
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: 320,
+          zIndex: 1100
+        })
+      }
+      if (showBulkMenu && bulkMenuButtonRef.current) {
+        const rect = bulkMenuButtonRef.current.getBoundingClientRect()
+        setBulkMenuStyle({
+          position: 'fixed',
+          top: rect.bottom + 8,
+          left: Math.min(Math.max(16, rect.right - 340), window.innerWidth - 356),
+          width: 340,
+          zIndex: 1105
+        })
+      }
+    }
+
+    updateMenuPositions()
+    if (showDisplayMenu || showBulkMenu) {
+      window.addEventListener('resize', updateMenuPositions)
+      window.addEventListener('scroll', updateMenuPositions, true)
+      return () => {
+        window.removeEventListener('resize', updateMenuPositions)
+        window.removeEventListener('scroll', updateMenuPositions, true)
+      }
+    }
+  }, [showBulkMenu, showDisplayMenu])
+
+  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
@@ -118,34 +480,265 @@ export default function MonitoringGrid() {
     return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
   }, [allItems, activeTab])
 
+  const platformOptions = useMemo(() => {
+    const values = Array.from(new Set((items || []).map((item: any) => item.platform).filter(Boolean)))
+    return values.sort().map((value) => ({ value, label: value }))
+  }, [items])
+
+  const ownerOptions = useMemo(() => {
+    const values = Array.from(new Set((items || []).flatMap((item: any) => (item.owners || []).map((owner: any) => owner.name)).filter(Boolean)))
+    return values.sort().map((value) => ({ value, label: value }))
+  }, [items])
+
+  const groupOptions = [
+    { value: 'raw', label: 'Raw Rows' },
+    { value: 'category', label: 'Category' },
+    { value: 'platform', label: 'Platform' },
+    { value: 'status', label: 'Status' },
+    { value: 'severity', label: 'Severity' },
+    { value: 'notification_method', label: 'Notification Path' }
+  ]
+
+  const displayedItems = useMemo(() => {
+    const filtered = items.filter((item: any) => {
+      if (quickFilters.status && item.status !== quickFilters.status) return false
+      if (quickFilters.severity && item.severity !== quickFilters.severity) return false
+      if (quickFilters.platform && item.platform !== quickFilters.platform) return false
+      if (quickFilters.owner && !(item.owners || []).some((owner: any) => owner.name === quickFilters.owner)) return false
+      return true
+    })
+    return [...filtered].sort((a: any, b: any) => {
+      const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
+      const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
+      if (aFavorite !== bFavorite) return bFavorite - aFavorite
+      return a.id - b.id
+    })
+  }, [favoriteIds, items, quickFilters])
+
+  const selectedItems = useMemo(
+    () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
+    [displayedItems, selectedIds]
+  )
+
+  const compareItems = useMemo(() => selectedItems.slice(0, 3), [selectedItems])
+
+  const isRecentChange = (item: any) => {
+    const changedAt = item?.updated_at || item?.created_at
+    if (!changedAt || !lastVisitedAt) return false
+    return new Date(changedAt).getTime() > lastVisitedAt
+  }
+
+  const bulkPreview = useMemo(() => {
+    const field = expandedBulkSection === 'notification' ? 'notification_method' : expandedBulkSection
+    if (!field) return null
+    const nextValue = expandedBulkSection === 'notification' ? bulkDraft.notification_method : bulkDraft[expandedBulkSection]
+    const currentCounts = selectedItems.reduce((acc: Record<string, number>, item: any) => {
+      const key = item[field] || 'Unspecified'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+    return {
+      field,
+      nextValue,
+      currentCounts: Object.entries(currentCounts)
+    }
+  }, [bulkDraft, expandedBulkSection, selectedItems])
+
+  useEffect(() => {
+    if (!idParam || !allItems) return
+    const target = allItems.find((item: any) => String(item.id) === idParam)
+    if (!target) return
+    setActiveTab(target.is_deleted ? 'deleted' : 'active')
+    setDetailItem(target)
+  }, [idParam, allItems])
+
   useEffect(() => {
     if (gridRef.current?.api) {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
   }, [fontSize, rowDensity, items])
 
+  useEffect(() => {
+    selectionAnchorRef.current = null
+  }, [activeTab, items])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
+  }, [savedViews])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(MONITORING_FAVORITES_STORAGE_KEY, JSON.stringify(favoriteIds))
+  }, [favoriteIds])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(MONITORING_WATCH_STORAGE_KEY, JSON.stringify(watchIds))
+  }, [watchIds])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+      activeTab,
+      fontSize,
+      rowDensity,
+      hiddenColumns,
+      quickFilters,
+      groupBy,
+      selectedIds,
+      expandedBulkSection,
+      lastVisitedAt,
+      searchTerm
+    }))
+  }, [activeTab, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
+
+  useEffect(() => {
+    if (!activeViewId || !gridRef.current?.api) return
+    applySavedView(activeViewId)
+  }, [activeViewId, items.length])
+
+  useEffect(() => {
+    if (!gridRef.current?.api || !selectedIds.length) return
+    gridRef.current.api.forEachNode((node: any) => {
+      node.setSelected(selectedIds.includes(node.data?.id))
+    })
+    const firstSelectedIndex = displayedItems.findIndex((item: any) => selectedIds.includes(item.id))
+    if (firstSelectedIndex >= 0) {
+      gridRef.current.api.ensureIndexVisible(firstSelectedIndex, 'middle')
+    }
+  }, [displayedItems, selectedIds])
+
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      setShowBulkMenu(false)
+    }
+  }, [selectedIds.length])
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === 'undefined') return
+      const current = readMonitoringUiState() || {}
+      window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+        ...current,
+        lastVisitedAt: Date.now()
+      }))
+    }
+  }, [])
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
+    if (searchTerm.trim()) {
+      chips.push({
+        id: 'search',
+        label: `Search: ${searchTerm.trim()}`,
+        onRemove: () => setSearchTerm('')
+      })
+    }
+    Object.entries(gridFilterModel || {}).forEach(([field, model]) => {
+      if (!model) return
+      const labelValue = Array.isArray((model as any).values)
+        ? (model as any).values.join(', ')
+        : (model as any).filter || (model as any).filterTo || (model as any).type || 'Active'
+      chips.push({
+        id: `filter-${field}`,
+        label: `${field}: ${labelValue}`,
+        onRemove: () => {
+          if (gridRef.current?.api) {
+            const nextModel = { ...(gridRef.current.api.getFilterModel() || {}) }
+            delete nextModel[field]
+            gridRef.current.api.setFilterModel(nextModel)
+            setGridFilterModel(nextModel)
+          }
+        }
+      })
+    })
+    Object.entries(quickFilters).forEach(([field, value]) => {
+      if (!value) return
+      chips.push({
+        id: `quick-${field}`,
+        label: `${field}: ${value}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, [field]: '' }))
+      })
+    })
+    return chips
+  }, [gridFilterModel, quickFilters, searchTerm])
+
   const { data: devices } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
 
+  const runUndo = async () => {
+    const undo = lastUndoRef.current
+    if (!undo) return
+    if (undo.mode === 'bulk') {
+      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: undo.ids, action: undo.action, payload: undo.payload || {} })
+      })
+      if (!res.ok) throw new Error(await res.text())
+    } else if (undo.mode === 'restore_snapshots') {
+      for (const snapshot of undo.snapshots) {
+        const res = await apiFetch(`/api/v1/monitoring/${snapshot.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(sanitizeMonitoringPayload(snapshot))
+        })
+        if (!res.ok) throw new Error(await res.text())
+      }
+    }
+    lastUndoRef.current = null
+    queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+  }
+
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
+      const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
       const res = await apiFetch('/api/v1/monitoring/bulk-action', {
         method: 'POST',
         body: JSON.stringify({ ids: idsToUse, action, payload })
       })
       if (!res.ok) throw new Error(await res.text())
-      return res.json()
+      const result = await res.json()
+      return { result, action, payload, idsToUse, previousSnapshots }
     },
-    onSuccess: () => {
+    onSuccess: ({ action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       setSelectedIds([])
       setShowBulkMenu(false)
+      setExpandedBulkSection(null)
+      setBulkDraft({ status: '', severity: '', notification_method: '' })
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
+      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+      else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+      else lastUndoRef.current = null
+      if (lastUndoRef.current) {
+        toast.custom((t) => (
+          <div className="rounded-xl border border-slate-700 bg-[#020617] px-4 py-3 shadow-2xl">
+            <p className="text-[11px] font-semibold text-slate-100">Bulk operation applied.</p>
+            <p className="pt-1 text-[10px] text-slate-400">Undo restores the selection to its previous state.</p>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id)
+                try {
+                  await runUndo()
+                  toast.success('Undo complete')
+                } catch (error: any) {
+                  toast.error(error.message || 'Undo failed')
+                }
+              }}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200"
+            >
+              <Undo2 size={12} />
+              Undo
+            </button>
+          </div>
+        ), { duration: 8000 })
+      }
       toast.success('Bulk Operation Complete')
     },
     onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
@@ -178,21 +771,92 @@ export default function MonitoringGrid() {
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
     },
+    {
+      headerName: "Δ",
+      field: "recent_change",
+      width: 42,
+      minWidth: 42,
+      maxWidth: 42,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      suppressHide: true,
+      cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
+        <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.45)]" />
+      ) : null
+    },
+    {
+      headerName: "",
+      field: "favorite",
+      width: 44,
+      minWidth: 44,
+      maxWidth: 44,
+      pinned: 'left',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressHide: true,
+      cellRenderer: (p: any) => (
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleFavorite(p.data.id)
+          }}
+          title={favoriteIds.includes(p.data.id) ? 'Unpin monitor' : 'Pin monitor'}
+          className={`rounded-md p-1 transition-all ${favoriteIds.includes(p.data.id) ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+        >
+          <Star size={14} className={favoriteIds.includes(p.data.id) ? 'fill-current' : ''} />
+        </button>
+      )
+    },
+    {
+      headerName: "",
+      field: "watch",
+      width: 44,
+      minWidth: 44,
+      maxWidth: 44,
+      pinned: 'left',
+      cellClass: 'text-center',
+      headerClass: 'text-center',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressHide: true,
+      cellRenderer: (p: any) => (
+        <button
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleWatch(p.data.id)
+          }}
+          title={watchIds.includes(p.data.id) ? 'Unfollow monitor' : 'Follow monitor'}
+          className={`rounded-md p-1 transition-all ${watchIds.includes(p.data.id) ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+        >
+          <Eye size={14} className={watchIds.includes(p.data.id) ? 'fill-current' : ''} />
+        </button>
+      )
+    },
     { 
       field: "device_name", 
       headerName: "Target Asset", 
       width: 140, 
       filter: true,
+      rowGroup: groupBy === 'device_name',
       cellClass: "font-bold text-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("device_name")
+      hide: hiddenColumns.includes("device_name") || groupBy === 'device_name'
     },
     { 
       field: "category", 
       headerName: "Category", 
       width: 110,
       filter: true,
+      rowGroup: groupBy === 'category',
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -205,34 +869,18 @@ export default function MonitoringGrid() {
         }
         return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
       },
-      hide: hiddenColumns.includes("category")
+      hide: hiddenColumns.includes("category") || groupBy === 'category'
     },
     { 
       field: "status", 
       headerName: "Status", 
       width: 110,
       filter: true,
+      rowGroup: groupBy === 'status',
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Healthy': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-          'Degraded': 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-          'Failing': 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-          'Maintenance': 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-          'Unknown': 'text-slate-400 border-white/20 bg-white/10'
-        }
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                {p.value || 'Unknown'}
-              </span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("status")
+      cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
+      hide: hiddenColumns.includes("status") || groupBy === 'status'
     },
     { 
       field: "is_active", 
@@ -265,7 +913,15 @@ export default function MonitoringGrid() {
         const owners = p.value || []
         const count = owners.length
         if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>
-        return <span style={{ fontSize: `${fontSize}px` }}>{count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}</span>
+        return (
+          <button
+            onClick={() => setOwnerPopup({ owners, title: p.data.title })}
+            className="border-b border-dashed border-slate-700 text-left hover:text-blue-300"
+            style={{ fontSize: `${fontSize}px` }}
+          >
+            {count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}
+          </button>
+        )
       },
       hide: hiddenColumns.includes("owners")
     },
@@ -309,33 +965,22 @@ export default function MonitoringGrid() {
       headerName: "Platform", 
       width: 100, 
       filter: true,
+      rowGroup: groupBy === 'platform',
       cellClass: 'text-center font-bold uppercase text-slate-300', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("platform")
+      hide: hiddenColumns.includes("platform") || groupBy === 'platform'
     },
     { 
       field: "severity", 
       headerName: "Severity", 
       width: 110,
       filter: true,
+      rowGroup: groupBy === 'severity',
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Critical': 'bg-rose-500/20 text-rose-400 border-rose-500/40',
-          'Warning': 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-          'Info': 'bg-blue-500/20 text-blue-400 border-blue-500/40'
-        }
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'bg-slate-500/20 text-slate-400 border-white/10'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">{p.value || 'N/A'}</span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("severity")
+      cellRenderer: (p: any) => <StatusPill value={p.value || 'N/A'} fontSize={fontSize} />,
+      hide: hiddenColumns.includes("severity") || groupBy === 'severity'
     },
     { 
       field: "check_interval", 
@@ -351,6 +996,7 @@ export default function MonitoringGrid() {
       headerName: "Notify", 
       width: 100, 
       filter: true,
+      rowGroup: groupBy === 'notification_method',
       cellClass: 'text-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
@@ -363,7 +1009,7 @@ export default function MonitoringGrid() {
            </button>
         </div>
       ),
-      hide: hiddenColumns.includes("notification_method")
+      hide: hiddenColumns.includes("notification_method") || groupBy === 'notification_method'
     },
     { 
       field: "purpose", 
@@ -376,231 +1022,598 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("purpose")
     },
     {
-      headerName: "Action",
-      width: 180,
-      minWidth: 180,
+      headerName: "",
+      width: 48,
+      minWidth: 48,
+      maxWidth: 68,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       resizable: false,
+      sortable: false,
+      filter: false,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => p.data && setDetailItem(p.data)} title="Quick View" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => p.data && setHistoryItem(p.data)} title="Version History" className="p-1.5 text-purple-400 hover:text-purple-200 transition-all border-r border-white/5"><Clock size={14}/></button>
-               <button onClick={() => p.data && setBkmPopup({ ids: p.data.recovery_docs || [], titles: p.data.recovery_doc_titles || [], monitorId: p.data.id })} title="Recovery Procedures" className="p-1.5 text-amber-500 hover:text-amber-400 transition-all border-r border-white/5"><BookOpen size={14}/></button>
-               <button onClick={() => { if(p.data) { setEditingItem(p.data); setIsFormOpen(true); } }} title="Edit Logic" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-               {activeTab === 'active' ? (
-                 <button onClick={() => p.data?.id && openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="De-activate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               ) : (
-                 <button onClick={() => p.data?.id && openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               )}
-           </div>
+        <div className="row-action-menu-container flex h-full items-center justify-center">
+          <button
+            onClick={(event) => p.data && openRowActionMenu(event, p.data)}
+            title="Row actions"
+            className="row-action-trigger row-action-menu-container rounded-full border border-transparent bg-transparent p-1 text-slate-500 transition-all hover:border-white/10 hover:bg-white/[0.06] hover:text-white"
+          >
+            <ChevronRight size={13} />
+          </button>
         </div>
       ),
       suppressHide: true
     }
-  ], [activeTab, bulkMutation, fontSize, hiddenColumns]) as any
+  ], [favoriteIds, fontSize, groupBy, hiddenColumns, watchIds]) as any
 
   const autoSizeStrategy = useMemo(() => ({
     type: 'fitCellContents' as const
   }), []);
 
+  const autoGroupColumnDef = useMemo(() => ({
+    headerName: groupBy === 'raw' ? 'View' : `Grouped by ${groupOptions.find((option) => option.value === groupBy)?.label || groupBy}`,
+    minWidth: 220,
+    cellRendererParams: {
+      suppressCount: false
+    }
+  }), [groupBy])
+
   return (
     <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-black uppercase tracking-tight flex items-center">
-                <span>Monitoring Matrix</span>
-              </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">High-Reliability Infrastructure Observability</p>
-           </div>
-           
-           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
-                <button onClick={() => { setActiveTab('active'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Active
-                </button>
-                <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Deleted
-                </button>
-           </div>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
-            <input 
+      <PageHeader
+        eyebrow="Operations"
+        title="Monitoring Matrix"
+        subtitle="High-reliability infrastructure observability"
+        actions={
+          <ToolbarSegmented
+            value={activeTab}
+            onChange={(next) => {
+              setActiveTab(next as 'active' | 'deleted')
+              setSelectedIds([])
+            }}
+            options={[
+              { label: 'Active', value: 'active' },
+              { label: 'Deleted', value: 'deleted' }
+            ]}
+          />
+        }
+      />
+
+	      <PageToolbar
+        left={
+          <>
+            <ToolbarSearch
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="SCAN MATRIX..."
-              className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-black outline-none focus:border-blue-500/50 w-64 transition-all"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Scan matrix..."
             />
-          </div>
-
-          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
-                <Activity size={16} />
-             </button>
-             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
-                <Sliders size={16} />
-             </button>
-             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Export CSV">
+            <ToolbarGroup>
+              <div className="display-menu-container">
+                <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+                  <span className="flex items-center gap-2">
+                    <Sliders size={14} />
+                    Display
+                  </span>
+                </ToolbarButton>
+              </div>
+              <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
                 <FileText size={16} />
-             </button>
-             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Copy to Clipboard">
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
                 <Clipboard size={16} />
-             </button>
-             <button onClick={() => setShowRegistry(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Matrix Registry Config">
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
                 <Settings size={16} />
-             </button>
-          </div>
+              </ToolbarIconButton>
+            </ToolbarGroup>
+          </>
+        }
+	        right={
+	          <>
+		            <ToolbarButton
+                onClick={toggleBulkWindow}
+                disabled={selectedIds.length <= 1}
+                active={showBulkMenu}
+                title="Bulk actions"
+                className="bulk-menu-trigger"
+                ref={bulkMenuButtonRef as any}
+              >
+                <span className="flex items-center gap-2">
+                  <Zap size={14} />
+                  Bulk Actions
+                </span>
+              </ToolbarButton>
+	            <ToolbarButton
+	              onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
+	              variant="primary"
+              className="px-6 py-2"
+            >
+              + Add Monitoring
+            </ToolbarButton>
+          </>
+        }
+		      />
 
-          <div className="relative bulk-menu-container">
-            <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
-            <AnimatePresence>
-              {showBulkMenu && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
-                   <p className="px-3 py-2 text-[8px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Monitors Selected</p>
-                   {activeTab === 'deleted' ? (
-                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
-                   ) : (
-                     <>
-                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                        <button onClick={() => { setIsBulkSeverityOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-rose-400 transition-all">Set Severity...</button>
-                        <button onClick={() => { setIsBulkNotifyOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-white/5 rounded-lg text-amber-400 transition-all">Set Notification...</button>
-                     </>
-                   )}
-                   <div className="h-px bg-white/5 mx-2 my-1" />
-                   <button onClick={() => { 
-                       const title = activeTab === 'deleted' ? 'Purge Monitors' : 'De-activate Matrix'
-                       const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'De-activate selected monitors?'
-                       openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
-                    }} className="w-full text-left px-4 py-2 text-[10px] font-black uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk De-activate'}</button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <button 
-            onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-          >
-            + Add Monitoring
-          </button>
-        </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        <StyledSelect
+          value={quickFilters.status}
+          onChange={(e) => setQuickFilters((current) => ({ ...current, status: e.target.value }))}
+          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+          label="Status Filter"
+          placeholder="All statuses"
+        />
+        <StyledSelect
+          value={quickFilters.severity}
+          onChange={(e) => setQuickFilters((current) => ({ ...current, severity: e.target.value }))}
+          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+          label="Severity Filter"
+          placeholder="All severities"
+        />
+        <StyledSelect
+          value={quickFilters.platform}
+          onChange={(e) => setQuickFilters((current) => ({ ...current, platform: e.target.value }))}
+          options={platformOptions}
+          label="Platform Filter"
+          placeholder="All platforms"
+        />
+        <StyledSelect
+          value={quickFilters.owner}
+          onChange={(e) => setQuickFilters((current) => ({ ...current, owner: e.target.value }))}
+          options={ownerOptions}
+          label="Owner Filter"
+          placeholder="All owners"
+        />
       </div>
 
       <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }} 
-            animate={{ height: 'auto', opacity: 1 }} 
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+        {selectedIds.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="sticky top-[72px] z-20 rounded-lg border border-blue-500/20 bg-slate-950/92 px-4 py-3 shadow-lg backdrop-blur-xl"
           >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-black text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="0" max="20" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-black">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
+	            <div className="flex flex-wrap items-center justify-between gap-3">
+	              <div className="flex items-center gap-3">
+	                <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
+	                  {selectedIds.length} Selected
+	                </div>
+	              </div>
+		              <div className="flex flex-wrap items-center gap-2">
+	                  <ToolbarButton onClick={toggleBulkWindow} active={showBulkMenu}>
+	                    Bulk Actions
+	                  </ToolbarButton>
+                    <ToolbarButton onClick={openCompare} disabled={selectedIds.length < 2 || selectedIds.length > 3} active={compareOpen}>
+                      <span className="flex items-center gap-2">
+                        <GitCompare size={14} />
+                        Compare
+                      </span>
+                    </ToolbarButton>
+		                <ToolbarIconButton onClick={clearSelection} title="Clear selection">
+		                  <X size={16} />
+		                </ToolbarIconButton>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+      <AnimatePresence>
+        {activeFilterChips.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="flex flex-wrap items-center gap-2"
+          >
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.id}
+                onClick={chip.onRemove}
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.08]"
+              >
+                {chip.label}
+              </button>
+            ))}
+	            <button
+	              onClick={() => {
+	                setSearchTerm('')
+	                setGridFilterModel({})
+                  setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
+	                gridRef.current?.api?.setFilterModel({})
+	              }}
+              className="rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 transition-all hover:text-white"
+            >
+              Clear All
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <AnimatePresence>
+            {showDisplayMenu && !!displayMenuStyle.top && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={displayMenuStyle}
+                className="display-menu-container rounded-lg border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Display Density</span>
+                      <button onClick={() => setShowDisplayMenu(false)} className="text-slate-500 hover:text-white">
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[9px] font-black uppercase text-slate-500">Font</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="8"
+                            max="14"
+                            step="1"
+                            value={fontSize}
+                            onChange={e => setFontSize(Number(e.target.value))}
+                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-800 accent-blue-500"
+                          />
+                          <span className="w-8 text-right text-[10px] font-black tabular-nums text-white">{fontSize}px</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[9px] font-black uppercase text-slate-500">Rows</span>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="20"
+                            step="2"
+                            value={rowDensity}
+                            onChange={e => setRowDensity(Number(e.target.value))}
+                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-800 accent-blue-500"
+                          />
+                          <span className="w-8 text-right text-[10px] font-black tabular-nums text-white">{rowDensity}px</span>
+                        </div>
+                      </div>
+                    </div>
+	                  </div>
+
+	                    <div className="space-y-2">
+                        <StyledSelect
+                          value={groupBy}
+                          onChange={(e) => setGroupBy(e.target.value)}
+                          options={groupOptions}
+                          label="Group By"
+                        />
+                      </div>
+
+	                    <div className="space-y-2">
+	                      <div className="flex items-center justify-between">
+	                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Saved Views</span>
+                        {activeViewId && (
+                          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-400">
+                            {savedViews.find((view) => view.id === activeViewId)?.name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
+                        {savedViews.map((view) => (
+                          <div key={view.id} className="flex items-center gap-2">
+                            <button
+                              onClick={() => applySavedView(view.id)}
+                              className={`flex-1 rounded-lg border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
+                                activeViewId === view.id
+                                  ? 'border-blue-500/30 bg-blue-500/12 text-blue-300'
+                                  : 'border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
+                              }`}
+                            >
+                              {view.name}
+                            </button>
+                            <button
+                              onClick={() => saveCurrentToView(view.id)}
+                              title={`Save current layout to ${view.name}`}
+                              className="rounded-lg border border-white/8 bg-white/[0.03] p-2 text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
+                            >
+                              <Save size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+	                  <div className="space-y-2">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Columns</span>
+                    <div className="max-h-[240px] space-y-1 overflow-y-auto pr-1 custom-scrollbar">
+                      {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                        <label key={col.field} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-all hover:bg-white/5">
+                          <input
+                            type="checkbox"
+                            checked={!hiddenColumns.includes(col.field)}
+                            onChange={() => {
+                              if (hiddenColumns.includes(col.field)) {
+                                setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
+                              } else {
+                                setHiddenColumns([...hiddenColumns, col.field])
+                              }
+                            }}
+                            className="sr-only"
+                          />
+                          <div className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
+                            {!hiddenColumns.includes(col.field) && <Check size={11} className="text-white" />}
+                          </div>
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>
+                            {col.headerName || col.field}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+	          <AnimatePresence>
+		            {showBulkMenu && !!bulkMenuStyle.top && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  style={bulkMenuStyle}
+                  className="bulk-menu-container rounded-xl border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+                >
+                  <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Bulk Actions</p>
+                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
+                    <p className="pt-1 text-[11px] leading-5 text-slate-400">Apply one controlled change across the current selection without leaving the table.</p>
+                  </div>
+
+                  {activeTab === 'deleted' ? (
+                    <button
+                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Restore Selection</p>
+                      <p className="pt-1 text-[11px] leading-5 text-emerald-100/80">Move the selected monitors back into the active matrix.</p>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <BulkActionCard
+                        title="Set Status"
+                        description="Move all selected monitors to the same lifecycle state."
+                        active={expandedBulkSection === 'status'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
+                      />
+                      {expandedBulkSection === 'status' && (
+                        <InlineBulkEditor
+                          value={bulkDraft.status}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
+                          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+                          placeholder="Choose status"
+                          actionLabel="Apply Status"
+                          preview={bulkPreview}
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                          disabled={!bulkDraft.status}
+                        />
+                      )}
+
+                      <BulkActionCard
+                        title="Set Severity"
+                        description="Normalize severity across the current group for coordinated response."
+                        active={expandedBulkSection === 'severity'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'severity' ? null : 'severity')}
+                      />
+                      {expandedBulkSection === 'severity' && (
+                        <InlineBulkEditor
+                          value={bulkDraft.severity}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, severity: value }))}
+                          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+                          placeholder="Choose severity"
+                          actionLabel="Apply Severity"
+                          preview={bulkPreview}
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
+                          disabled={!bulkDraft.severity}
+                        />
+                      )}
+
+                      <BulkActionCard
+                        title="Set Notification"
+                        description="Switch the outbound notification path for every selected monitor."
+                        active={expandedBulkSection === 'notification'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'notification' ? null : 'notification')}
+                      />
+                      {expandedBulkSection === 'notification' && (
+                        <InlineBulkEditor
+                          value={bulkDraft.notification_method}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, notification_method: value }))}
+                          options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))}
+                          placeholder="Choose notification path"
+                          actionLabel="Apply Notification"
+                          preview={bulkPreview}
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
+                          disabled={!bulkDraft.notification_method}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mx-1 my-3 h-px bg-slate-800" />
+                  <button
+                    onClick={() => {
+                      const title = activeTab === 'deleted' ? 'Purge Monitors' : 'De-activate Matrix'
+                      const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'De-activate selected monitors?'
+                      openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                    }}
+                    className="w-full rounded-lg border border-rose-900/70 bg-rose-950/70 px-4 py-3 text-left transition-all hover:bg-rose-950"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300">{activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection'}</p>
+                    <p className="pt-1 text-[11px] leading-5 text-rose-100/75">{activeTab === 'deleted' ? 'Permanently remove the selected monitors from the deleted registry.' : 'Move the selected monitors out of the active matrix and into the deleted scope.'}</p>
+                  </button>
+                </motion.div>
+	            )}
+	          </AnimatePresence>
+
+	          <AnimatePresence>
+            {rowActionMenu && !!rowActionMenu.style.top && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={rowActionMenu.style}
+                className="row-action-menu-container rounded-xl border border-slate-700 bg-[#020617] p-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
+              >
+                <div className="mb-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-3">
+                  <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Row Actions</p>
+                  <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
+                  <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDetailItem(rowActionMenu.item)
+                    setRowActionMenu(null)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
+                >
+                  <Eye size={14} className="text-blue-400" />
+                  Open Details
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingItem(rowActionMenu.item)
+                    setIsFormOpen(true)
+                    setRowActionMenu(null)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
+                >
+                  <Edit2 size={14} className="text-slate-400" />
+                  Edit Monitor
+                </button>
+                <button
+                  onClick={() => {
+                    setHistoryItem(rowActionMenu.item)
+                    setRowActionMenu(null)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
+                >
+                  <Clock size={14} className="text-amber-400" />
+                  Open History
+                </button>
+		                <button
+	                  onClick={() => {
+	                    setBkmPopup({
+                      ids: rowActionMenu.item.recovery_docs || [],
+                      titles: rowActionMenu.item.recovery_doc_titles || [],
+                      monitorId: rowActionMenu.item.id
+                    })
+                    setRowActionMenu(null)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-slate-100 transition-all hover:bg-white/[0.05]"
+                >
+		                  <BookOpen size={14} className="text-emerald-400" />
+		                  Recovery Documents
+		                </button>
+                  <div className="mx-2 my-2 h-px bg-slate-800" />
+                  <div className="px-3 py-1">
+                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Related Destinations</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
+                    <button
+                      onClick={() => {
+                        if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
+                        setRowActionMenu(null)
+                      }}
+                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      Asset
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (rowActionMenu.item.recovery_docs?.[0]) navigate(`/knowledge?id=${rowActionMenu.item.recovery_docs[0]}`)
+                        setRowActionMenu(null)
+                      }}
+                      disabled={!rowActionMenu.item.recovery_docs?.[0]}
+                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-600"
+                    >
+                      Knowledge
+                    </button>
+                    <button
+                      onClick={() => {
+                        toggleWatch(rowActionMenu.item.id)
+                      }}
+                      className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {watchIds.includes(rowActionMenu.item.id) ? 'Unwatch' : 'Watch'}
+                    </button>
+                  </div>
+		                <div className="mx-2 my-2 h-px bg-slate-800" />
+                <button
+                  onClick={() => {
+                    const item = rowActionMenu.item
+                    setRowActionMenu(null)
+                    if (activeTab === 'active') {
+                      openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [item.id] }))
+                    } else {
+                      openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [item.id] }))
+                    }
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
+                >
+                  <Trash2 size={14} />
+                  {activeTab === 'active' ? 'De-activate' : 'Purge'}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
+
+	      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
              <RefreshCcw size={32} className="text-blue-400 animate-spin" />
              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
           </div>
         )}
-        <AgGridReact 
+	        <AgGridReact 
           ref={gridRef}
-          rowData={items || []} 
-          columnDefs={columnDefs} 
-          rowSelection="multiple"
+	          rowData={displayedItems || []} 
+	          columnDefs={columnDefs} 
+            groupDisplayType="singleColumn"
+            autoGroupColumnDef={autoGroupColumnDef}
+            groupDefaultExpanded={1}
+	          rowSelection="multiple"
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
-          onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
+	          onSelectionChanged={(e) => {
+              const selectedNodes = e?.api?.getSelectedNodes?.() || []
+              setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
+            }}
+          onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
+	          onSortChanged={(e) => {
+	            const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
+	            setGridSortModel(nextSortModel)
+	          }}
+            onCellContextMenu={(e) => {
+              if (!e?.data) return
+              e.event?.preventDefault?.()
+              openRowActionMenuAtPoint(e.data, e.event.clientX, e.event.clientY)
+            }}
+	          onRowClicked={handleRowClicked}
+	          onRowDoubleClicked={handleRowDoubleClicked}
           quickFilterText={searchTerm}
           suppressRowClickSelection={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
-        />
+	        />
 
-        <AnimatePresence>
-          {showColumnPicker && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
-            >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                  <Sliders size={14} /> <span>Toggle Columns</span>
-                </h3>
-                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
-                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={!hiddenColumns.includes(col.field)}
-                        onChange={() => {
-                          if (hiddenColumns.includes(col.field)) {
-                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
-                          } else {
-                            setHiddenColumns([...hiddenColumns, col.field])
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                  </label>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+	      </div>
 
       <BulkActionModals
         isStatusOpen={isBulkStatusOpen}
@@ -638,12 +1651,32 @@ export default function MonitoringGrid() {
             }}
           />
         )}
-        {detailItem && <MonitoringDetailModal item={detailItem} onClose={() => setDetailItem(null)} />}
+        {detailItem && (
+          <MonitoringDetailModal
+            item={detailItem}
+            onClose={() => setDetailItem(null)}
+            onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true) }}
+            onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor) }}
+            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ ids: monitor.recovery_docs || [], titles: monitor.recovery_doc_titles || [], monitorId: monitor.id }) }}
+            onDelete={(monitor: any) => {
+              setDetailItem(null)
+              if (activeTab === 'active') {
+                openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [monitor.id] }))
+              } else {
+                openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [monitor.id] }))
+              }
+            }}
+            onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
+            onOpenKnowledge={(knowledgeId: number) => navigate(`/knowledge?id=${knowledgeId}`)}
+          />
+        )}
         {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
         {servicePopup && <ServicesModal names={servicePopup.names} title={servicePopup.title} onClose={() => setServicePopup(null)} />}
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
+        {ownerPopup && <OwnersModal owners={ownerPopup.owners} title={ownerPopup.title} onClose={() => setOwnerPopup(null)} />}
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
+        {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
         <ConfigRegistryModal
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}
@@ -684,10 +1717,142 @@ export default function MonitoringGrid() {
         }
 
         }
-        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
-      `}</style>
+	        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+	        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+          .row-action-trigger { opacity: 1; }
+	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
+	      `}</style>
+    </div>
+  )
+}
+
+function BulkActionCard({ title, description, active, onClick }: { title: string; description: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full rounded-xl border px-4 py-3 text-left transition-all ${
+        active ? 'border-blue-500/40 bg-blue-950/40' : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-100">{title}</p>
+          <p className="pt-1 text-[11px] leading-5 text-slate-400">{description}</p>
+        </div>
+        <ChevronRight size={14} className={active ? 'text-blue-300' : 'text-slate-500'} />
+      </div>
+    </button>
+  )
+}
+
+function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, onApply, disabled, preview }: any) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-[#0b1220] p-3">
+      <div className="grid gap-3">
+        {preview && (
+          <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5">
+            <p className="text-[10px] text-slate-300">
+              {preview.nextValue
+                ? `This change will align the current selection to ${preview.nextValue}.`
+                : 'Choose a target value to preview the change.'}
+            </p>
+            {preview.nextValue && (
+              <p className="pt-1 text-[10px] text-slate-500">
+                Current mix: {preview.currentCounts.map(([label, count]: [string, any]) => `${label} (${count})`).join(', ')}.
+                New target: {preview.nextValue}.
+              </p>
+            )}
+          </div>
+        )}
+        <StyledSelect
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          options={options}
+          placeholder={placeholder}
+        />
+        <button
+          onClick={onApply}
+          disabled={disabled}
+          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 transition-all hover:bg-blue-600/25 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function OwnersModal({ owners, title, onClose }: any) {
+  useEscapeDismiss(onClose)
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg rounded-xl border border-slate-700 bg-[#020617] p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Owner Contacts</h3>
+            <p className="pt-1 text-[11px] text-slate-400">{title}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="space-y-2">
+          {owners.map((owner: any, index: number) => (
+            <div key={`${owner.name}-${index}`} className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[12px] font-semibold text-slate-100">{owner.name}</p>
+                  <p className="pt-1 text-[10px] uppercase tracking-[0.14em] text-slate-500">{owner.role || 'Owner'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] text-slate-300">{owner.external_id || 'No contact path'}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function CompareMonitorsModal({ items, onClose }: any) {
+  useEscapeDismiss(onClose)
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl rounded-xl border border-slate-700 bg-[#020617] p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Compare Monitors</h3>
+            <p className="pt-1 text-[11px] text-slate-400">Read the selected monitors side-by-side before you bulk-edit or de-activate them.</p>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className={`grid gap-4 ${items.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+          {items.map((item: any) => (
+            <div key={item.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
+              <h4 className="pt-2 text-sm font-semibold text-slate-100">{item.title}</h4>
+              <div className="mt-3 space-y-2 text-[11px] text-slate-300">
+                <CompareRow label="Status" value={item.status || 'Unknown'} />
+                <CompareRow label="Severity" value={item.severity || 'N/A'} />
+                <CompareRow label="Platform" value={item.platform || 'N/A'} />
+                <CompareRow label="Notify" value={item.notification_method || 'None'} />
+                <CompareRow label="Owners" value={(item.owners || []).map((owner: any) => owner.name).join(', ') || 'None'} />
+                <CompareRow label="Recovery" value={item.recovery_doc_titles?.join(', ') || 'None linked'} />
+                <CompareRow label="Purpose" value={item.purpose || 'No purpose documented'} multiline />
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function CompareRow({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+  return (
+    <div className={`rounded-lg border border-slate-800 bg-[#0b1220] px-3 py-2 ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className={`pt-1 text-slate-200 ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
     </div>
   )
 }
@@ -696,10 +1861,11 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     const [val, setVal] = useState('')
     
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
+    useEscapeDismiss(onClose)
 
     if (isStatusOpen) return (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
+        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                    <Tag size={24}/> <span>Update Status</span>
@@ -722,8 +1888,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isSeverityOpen) return (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
+        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
                    <Shield size={24}/> <span>Update Severity</span>
@@ -746,8 +1912,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isNotifyOpen) return (
-        <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-md">
-           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
+        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
                    <Bell size={24}/> <span>Update Notification</span>
@@ -775,9 +1941,10 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 // --- POPUP MODALS ---
 
 function ServicesModal({ names, title, onClose }: any) {
+  useEscapeDismiss(onClose)
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
+    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -797,9 +1964,10 @@ function ServicesModal({ names, title, onClose }: any) {
 }
 
 function RecipientsModal({ recipients, method, onClose }: any) {
+  useEscapeDismiss(onClose)
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
+    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -823,9 +1991,17 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 }
 
 function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
+  useEscapeDismiss(onClose)
   const queryClient = useQueryClient()
   const [recoverySearch, setRecoverySearch] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [linkedIds, setLinkedIds] = useState<number[]>(ids || [])
+  const [linkedTitles, setLinkedTitles] = useState<string[]>(titles || [])
+
+  useEffect(() => {
+    setLinkedIds(ids || [])
+    setLinkedTitles(titles || [])
+  }, [ids, titles])
 
   const { data: knowledgeEntries } = useQuery({
     queryKey: ['knowledge-entries'],
@@ -837,31 +2013,40 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
     return knowledgeEntries.filter((e: any) => 
       (e.title.toLowerCase().includes(recoverySearch.toLowerCase()) ||
       e.category.toLowerCase().includes(recoverySearch.toLowerCase())) &&
-      !ids.includes(e.id)
+      !linkedIds.includes(e.id)
     )
-  }, [knowledgeEntries, recoverySearch, ids])
+  }, [knowledgeEntries, recoverySearch, linkedIds])
 
   const mutation = useMutation({
     mutationFn: async (newIds: number[]) => {
-      return (await apiFetch(`/api/v1/monitoring/${monitorId}`, {
+      const res = await apiFetch(`/api/v1/monitoring/${monitorId}`, {
         method: 'PUT',
         body: JSON.stringify({ recovery_docs: newIds })
-      })).json()
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || 'Failed to update recovery procedures')
+      }
+      return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (_data, newIds) => {
+      const titleMap = new Map((knowledgeEntries || []).map((entry: any) => [entry.id, entry.title]))
+      setLinkedIds(newIds)
+      setLinkedTitles(newIds.map((id: number) => titleMap.get(id) || `KB-${id}`))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       toast.success('Recovery procedures updated')
-    }
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to update recovery procedures')
   })
 
   const toggleRecoveryDoc = (id: number) => {
-    const nextIds = ids.includes(id) ? ids.filter((i: number) => i !== id) : [...ids, id]
+    const nextIds = linkedIds.includes(id) ? linkedIds.filter((i: number) => i !== id) : [...linkedIds, id]
     mutation.mutate(nextIds)
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
+    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
              <BookOpen size={20} className="text-amber-500" />
@@ -909,7 +2094,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
             </div>
           )}
 
-          {ids.map((id: number, i: number) => (
+          {linkedIds.map((id: number, i: number) => (
             <div 
               key={id} 
               className="w-full bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
@@ -919,7 +2104,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
                     <FileText size={16} />
                  </div>
                  <div>
-                    <span className="text-[11px] font-black uppercase text-slate-200 block leading-tight">{titles[i]}</span>
+                    <span className="text-[11px] font-black uppercase text-slate-200 block leading-tight">{linkedTitles[i]}</span>
                     <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
                  </div>
               </button>
@@ -935,7 +2120,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
               </div>
             </div>
           ))}
-          {ids.length === 0 && !isAdding && (
+          {linkedIds.length === 0 && !isAdding && (
              <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-lg">
                 <BookOpen size={24} className="text-slate-800" />
                 <p className="text-[10px] text-slate-700 font-black uppercase tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
@@ -948,6 +2133,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
 }
 
 function BkmDetailModal({ bkmId, onClose }: any) {
+  useEscapeDismiss(onClose)
   const { data: bkm, isLoading } = useQuery({
     queryKey: ['knowledge-entry', bkmId],
     queryFn: async () => (await apiFetch(`/api/v1/knowledge/${bkmId}`)).json(),
@@ -955,8 +2141,8 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   })
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
+    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
               <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/20">
@@ -1018,66 +2204,88 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   )
 }
 
-function MonitoringDetailModal({ item, onClose }: any) {
+function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge }: any) {
+  useEscapeDismiss(onClose)
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
+  const { data: suggestedKnowledge } = useQuery({
+    queryKey: ['monitoring-knowledge-suggestions', item.id, item.device_id],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      if (item.device_id) params.append('device_id', String(item.device_id))
+      params.append('monitoring_id', String(item.id))
+      const response = await apiFetch(`/api/v1/knowledge?${params.toString()}`)
+      const linked = await response.json()
+      if (Array.isArray(linked) && linked.length > 0) return linked
+      if (!item.device_id) return linked
+      const fallback = await apiFetch(`/api/v1/knowledge?device_id=${item.device_id}`)
+      return fallback.json()
+    }
+  })
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-8">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-10 rounded-lg border-blue-500/30 overflow-hidden shadow-[0_0_150px_rgba(37,99,235,0.15)] relative">
-        {/* Background Accent */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-600/5 blur-[120px] rounded-full translate-y-1/2 -translate-x-1/2" />
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]">
+        <div className="mb-6 border-b border-white/10 pb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
+                <Monitor size={24} strokeWidth={1.75} />
+              </div>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-[0.24em] text-blue-400">Monitor {item.id}</span>
+                  <StatusPill value={item.status} />
+                  <StatusPill value={item.severity} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black tracking-tighter text-white">{item.title}</h2>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                    {item.device_name || 'No linked asset'} // {item.platform || 'No platform'} // {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button onClick={onClose} className="rounded-lg border border-white/5 bg-white/5 p-2 text-slate-400 transition-all hover:bg-white/10 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
 
-        <div className="flex items-center justify-between mb-8 relative z-10">
-           <div className="flex items-center space-x-6">
-              <div className="w-14 h-14 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
-                 <Monitor size={28} strokeWidth={1.5} />
-              </div>
-              <div>
-                 <div className="flex items-center space-x-3 mb-1">
-                    <span className="px-3 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-full text-[9px] font-black uppercase text-blue-400 tracking-tighter">
-                       NODE: MON-{item.id}
-                    </span>
-                    <span className={`px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border ${item.is_active ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-700/50 border-white/10 text-slate-500'}`}>
-                       {item.status}
-                    </span>
-                 </div>
-                 <h2 className="text-2xl font-black text-white tracking-tighter uppercase leading-none">{item.title}</h2>
-              </div>
-           </div>
-           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all">
-              <X size={24} />
-           </button>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <ToolbarButton onClick={() => onEdit?.(item)}>Edit</ToolbarButton>
+            <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
+            <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
+            <ToolbarButton variant="danger" onClick={() => onDelete?.(item)}>
+              {item.is_deleted ? 'Purge' : 'De-activate'}
+            </ToolbarButton>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
            <div className="grid grid-cols-1 sm:grid-cols-12 gap-8">
               <div className="sm:col-span-7 space-y-8">
-                 {/* Purpose & Impact */}
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-blue-600/5 border border-white/5 rounded-lg p-5 group hover:border-blue-500/20 transition-all">
-                       <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Info size={12}/> <span>Purpose</span>
                        </h4>
-                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed">
+                       <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
                           {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
-                    <div className="bg-rose-600/5 border border-white/5 rounded-lg p-5 group hover:border-rose-500/20 transition-all">
-                       <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center space-x-2">
                           <Zap size={12}/> <span>Impact</span>
                        </h4>
-                       <p className="text-[11px] font-bold text-slate-300 leading-relaxed">
+                       <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
                           {item.impact || 'No impact analysis defined.'}
                        </p>
                     </div>
                  </section>
 
-                 {/* Logic Specification */}
                  <section className="space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.3em] flex items-center">
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center">
                          <Settings size={14} className="mr-3" /> Logic Specification
                       </h3>
                       <button 
@@ -1089,14 +2297,14 @@ function MonitoringDetailModal({ item, onClose }: any) {
                     </div>
                     <div className="space-y-3">
                        {item.logic_json?.map((log: any) => (
-                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-emerald-500/20">
+                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-white/10">
                             <button 
                                onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
                             >
                                <div className="flex items-center space-x-4">
-                                  <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 uppercase tracking-tighter">TYPE: {log.type}</span>
-                                  <span className="text-slate-300 font-bold text-[11px] uppercase tracking-tight">{log.description}</span>
+                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-tighter">{log.type}</span>
+                                  <span className="text-slate-300 font-bold text-[11px] tracking-tight">{log.description}</span>
                                </div>
                                {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
                             </button>
@@ -1128,46 +2336,102 @@ function MonitoringDetailModal({ item, onClose }: any) {
               </div>
 
               <div className="sm:col-span-5 space-y-8">
+                 <section className="space-y-3">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
+                       <ChevronRight size={14} className="mr-3" /> Incident Jump Path
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                       <button
+                         disabled={!item.device_id}
+                         onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
+                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                       >
+                         <p className="text-[8px] font-black uppercase tracking-[0.25em] text-blue-400">Open Asset</p>
+                         <p className="mt-2 text-[10px] font-bold uppercase text-slate-200">{item.device_name || 'No linked asset'}</p>
+                       </button>
+                       <button
+                         disabled={!item.recovery_docs?.length}
+                         onClick={() => item.recovery_docs?.[0] && onOpenKnowledge?.(item.recovery_docs[0])}
+                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                       >
+                         <p className="text-[8px] font-black uppercase tracking-[0.25em] text-amber-400">Open Recovery BKM</p>
+                         <p className="mt-2 text-[10px] font-bold uppercase text-slate-200">
+                           {item.recovery_doc_titles?.[0] || 'No recovery document linked'}
+                         </p>
+                       </button>
+                    </div>
+                 </section>
+
                  {/* Reliability Matrix */}
                  <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center px-1">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
                        <Bell size={14} className="mr-3" /> Reliability Matrix
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
                        {[
-                          { label: 'Severity', value: item.severity, color: 'text-rose-400', icon: Shield },
+                          { label: 'Severity', value: item.severity, color: 'text-slate-200', icon: Shield },
                           { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
                           { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
                           { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
                        ].map((stat, i) => (
-                         <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
+                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
                             <div className="flex items-center justify-between mb-2">
                                <stat.icon size={12} className="text-slate-600" />
                                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
                             </div>
-                            <span className={`text-[12px] font-black ${stat.color} uppercase tracking-tighter`}>{stat.value}</span>
+                               {stat.label === 'Severity' ? <StatusPill value={String(stat.value)} /> : <span className={`text-[12px] font-black ${stat.color} tracking-tighter`}>{stat.value}</span>}
                          </div>
                        ))}
                     </div>
                  </section>
 
-                 {/* Recovery Linkage */}
                  <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center px-1">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
                        <BookOpen size={14} className="mr-3" /> Recovery Procedures
                     </h3>
                     <div className="space-y-2">
                        {item.recovery_doc_titles?.map((title: string, i: number) => (
-                         <div key={i} className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group">
+                         <button
+                           key={i}
+                           type="button"
+                           onClick={() => item.recovery_docs?.[i] && onOpenKnowledge?.(item.recovery_docs[i])}
+                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left"
+                         >
                             <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
-                            <span className="text-[10px] font-black uppercase text-slate-300 tracking-tight leading-tight">{title}</span>
-                         </div>
+                            <span className="text-[11px] font-black text-slate-300 tracking-tight leading-tight">{title}</span>
+                         </button>
                        ))}
                        {item.recovery_doc_titles?.length === 0 && (
                           <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-4 text-center">
                              <AlertCircle size={18} className="mx-auto text-rose-500 mb-2" />
                              <p className="text-[10px] font-black text-rose-500 uppercase">No BKM Linked</p>
                           </div>
+                       )}
+                    </div>
+                 </section>
+
+                 <section className="space-y-3">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
+                       <Lightbulb size={14} className="mr-3" /> Suggested Runbooks
+                    </h3>
+                    <div className="space-y-2">
+                       {suggestedKnowledge?.slice(0, 3).map((entry: any) => (
+                         <button
+                           key={entry.id}
+                           type="button"
+                           onClick={() => onOpenKnowledge?.(entry.id)}
+                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10"
+                         >
+                           <p className="text-[11px] font-black text-slate-200 tracking-tight">{entry.title}</p>
+                           <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                             {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
+                           </p>
+                         </button>
+                       ))}
+                       {!suggestedKnowledge?.length && (
+                         <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4 text-center">
+                           <p className="text-[10px] font-bold uppercase text-slate-600">No suggested runbooks yet</p>
+                         </div>
                        )}
                     </div>
                  </section>
@@ -1187,6 +2451,8 @@ function MonitoringDetailModal({ item, onClose }: any) {
       </motion.div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 // --- REST OF THE FORM COMPONENT ---
@@ -1204,10 +2470,12 @@ const LOGIC_SUGGESTIONS: any = {
 }
 
 export function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
+  useEscapeDismiss(onClose)
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [activeLogicId, setActiveLogicId] = useState<number | null>(null)
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const [formData, setFormData] = useState({
     category: 'Infrastructure',
@@ -1297,12 +2565,18 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
     mutationFn: async (data: any) => {
       const url = item ? `/api/v1/monitoring/${item.id}` : '/api/v1/monitoring/'
       const method = item ? 'PUT' : 'POST'
-      return (await apiFetch(url, { method, body: JSON.stringify(data) })).json()
+      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }))
+        throw new Error(err.detail || 'Failed to save monitoring item')
+      }
+      return res.json()
     },
     onSuccess: () => {
       toast.success(item ? 'Logic synchronized' : 'Logic deployed to matrix')
       onSuccess()
-    }
+    },
+    onError: (e: any) => toast.error(e.message || 'Failed to save monitoring item')
   })
 
   const toggleService = (id: number) => {
@@ -1360,40 +2634,48 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
     setFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 sm:p-10">
-      <motion.div 
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[1210] flex items-center justify-center bg-[rgba(2,6,23,0.58)] backdrop-blur-[12px] p-4 sm:p-6">
+      <motion.div
+        onClick={e => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="glass-panel w-full max-w-7xl h-full sm:h-[90vh] overflow-hidden flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/30 shadow-[0_0_100px_rgba(37,99,235,0.1)]"
+        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : 'max-w-7xl h-full sm:h-[90vh]'}`}
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/10 pb-6 mb-6 gap-4">
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20">
+        <div className="border-b border-white/10 px-6 py-4 sm:px-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
+                  <X size={10} strokeWidth={3} />
+                </button>
+                <button onClick={() => setIsMaximized(prev => !prev)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
+                  {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
+                </button>
+              </div>
+              <div className="ml-2 p-3 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20">
                 <Zap size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-white">
+                <h2 className="text-xl font-black tracking-tighter text-white">
                   {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
-                <div className="flex items-center space-x-2 mt-0.5">
-                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Infrastructure Command Interface</span>
+                <div className="mt-1 flex items-center space-x-2">
+                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Monitoring editor</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${formData.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-white/10'}`}>
-                      {formData.status}
-                   </span>
+                   <StatusPill value={formData.status} />
                 </div>
               </div>
-           </div>
-           
-           <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
+            </div>
+
+            <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
               {[
-                { id: 'context', label: '1. Detection & Context' },
-                { id: 'logic', label: '2. Logic Specification' },
-                { id: 'alerting', label: '3. Alerting & Recovery' }
+                { id: 'context', label: 'Context' },
+                { id: 'logic', label: 'Logic' },
+                { id: 'alerting', label: 'Alerting' }
               ].map(tab => (
-                <button 
+                <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`px-4 sm:px-6 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
@@ -1401,19 +2683,16 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                   {tab.label}
                 </button>
               ))}
-           </div>
-
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
-              <X size={20} />
-           </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-8 p-2">
                 <div className="col-span-12 sm:col-span-4 space-y-6">
                    <div className="space-y-4">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 border-l-2 border-blue-600 pl-3">Target Identification</h3>
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 border-l-2 border-blue-600 pl-3">Target Identification</h3>
                       <StyledSelect 
                         label="Registry Asset"
                         value={formData.device_id}
@@ -1470,7 +2749,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    
                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="flex items-center justify-between px-1">
-                         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ownership Matrix</h3>
+                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
                          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
                       </div>
                       
@@ -1511,7 +2790,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               <div className="flex items-center space-x-3">
                                  <User size={12} className="text-blue-500" />
                                  <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-slate-200 uppercase">{o.name}</span>
+                                    <span className="text-[10px] font-black text-slate-200">{o.name}</span>
                                     <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{o.role} | ID: {o.external_id}</span>
                                  </div>
                               </div>
@@ -1559,10 +2838,10 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    </div>
 
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                          <Info size={14}/> <span>Purpose</span>
-                        </label>
+	                      <div className="space-y-2">
+	                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center space-x-2">
+	                          <Info size={14}/> <span>Purpose</span>
+	                        </label>
                         <textarea 
                           value={formData.purpose}
                           onChange={e => setFormData({...formData, purpose: e.target.value})}
@@ -1571,10 +2850,10 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                           className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-rose-400 flex items-center space-x-2">
-                          <Zap size={14}/> <span>Impact</span>
-                        </label>
+	                      <div className="space-y-2">
+	                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center space-x-2">
+	                          <Zap size={14}/> <span>Impact</span>
+	                        </label>
                         <textarea 
                           value={formData.impact}
                           onChange={e => setFormData({...formData, impact: e.target.value})}
@@ -1591,7 +2870,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 {/* Left: Logic Entry Selection */}
                 <div className="col-span-12 sm:col-span-4 space-y-4">
                    <div className="flex items-center justify-between">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-2">
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
                          <Settings size={14}/> <span>Logic Entries</span>
                       </h3>
                       <button 
@@ -1733,7 +3012,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
              <div className="grid grid-cols-12 gap-8 p-2">
                 {/* Left: Severity & Throttling */}
                 <div className="col-span-12 sm:col-span-4 space-y-6">
-                   <h3 className="text-[11px] font-black uppercase tracking-widest text-amber-400 border-l-2 border-amber-600 pl-3">Alert Routing Rules</h3>
+                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 border-l-2 border-blue-600 pl-3">Alert Routing Rules</h3>
                    
                    <StyledSelect 
                      label="Severity Level"
@@ -1789,7 +3068,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
 
                 {/* Right: Recovery Methods (Linked Knowledge) */}
                 <div className="col-span-12 sm:col-span-8 space-y-6">
-                   <h3 className="text-[11px] font-black uppercase tracking-widest text-blue-400 flex items-center space-x-2 border-b border-white/5 pb-2">
+                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2 border-b border-white/5 pb-2">
                       <Activity size={14}/> <span>Recovery Procedures (Linked BKM/Knowledge)</span>
                    </h3>
                    
@@ -1849,22 +3128,23 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       </div>
                    </div>
                    
-                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start space-x-3">
-                      <div className="p-2 bg-amber-500/20 rounded-lg text-amber-400 mt-1">
-                         <AlertCircle size={16} />
-                      </div>
-                      <div className="space-y-1">
-                         <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Operational Directive</p>
-                         <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Linking high-quality recovery documentation is critical for reducing Mean Time to Repair (MTTR). Ensure the linked Knowledge Entries contain up-to-date troubleshooting steps.</p>
-                      </div>
-                   </div>
+	                   <div className="bg-white/[0.03] border border-white/5 rounded-lg p-4 flex items-start space-x-3">
+	                      <div className="p-2 bg-white/5 rounded-lg text-slate-500 mt-1">
+	                         <AlertCircle size={16} />
+	                      </div>
+	                      <div className="space-y-1">
+	                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operational Note</p>
+	                         <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
+	                      </div>
+	                   </div>
                 </div>
              </div>
            )}
         </div>
 
-        <div className="mt-6 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-           <div className="flex items-center space-x-2">
+        <div className="border-t border-white/10 px-6 py-5 sm:px-8 sm:py-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+           <div className="flex items-center space-x-2 pl-1">
               <button 
                 onClick={() => {
                   if (formData.status === 'Existing') {
@@ -1883,7 +3163,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
               </button>
            </div>
 
-           <div className="flex space-x-4">
+           <div className="flex flex-wrap items-center justify-end gap-3 pr-1">
               <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
               <button 
                 onClick={() => mutation.mutate(formData)}
@@ -1894,13 +3174,17 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
               </button>
            </div>
+          </div>
         </div>
       </motion.div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function MonitoringHistoryModal({ item, onClose }: any) {
+  useEscapeDismiss(onClose)
   const { data: history, isLoading } = useQuery({
     queryKey: ['monitoring-history', item.id],
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
@@ -1943,20 +3227,20 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
   const diffs = getDiff(newer, older)
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 sm:p-10">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-full flex flex-col p-6 sm:p-10 rounded-lg border-purple-500/30 shadow-[0_0_100px_rgba(168,85,247,0.1)]">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-10">
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-full flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]">
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center space-x-6">
-              <div className="w-14 h-14 bg-purple-600/10 border border-purple-500/20 rounded-lg flex items-center justify-center text-purple-400">
+              <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-blue-400">
                 <Clock size={32} strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tighter text-white leading-none">Temporal Evolution Matrix</h2>
+                <h2 className="text-2xl font-black tracking-tighter text-white leading-none">Revision History</h2>
                 <div className="flex items-center space-x-2 mt-1">
                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <span className="text-[10px] text-purple-400 font-black uppercase tracking-widest">Version Lineage</span>
+                   <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Version Lineage</span>
                 </div>
               </div>
            </div>
@@ -1966,7 +3250,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">Comparison Mode</p>
                  <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1.5">
-                       <div className="w-2 h-2 rounded-full bg-purple-500" />
+                       <div className="w-2 h-2 rounded-full bg-blue-500" />
                        <span className="text-[10px] font-black text-white uppercase">v{newer?.version}</span>
                     </div>
                     <ChevronRight size={10} className="text-slate-600" />
@@ -1987,7 +3271,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
            <div className="w-72 flex flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Revision History</h3>
-                 <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">{history?.length || 0} States</span>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} States</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
@@ -2005,17 +3289,17 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         onClick={() => toggleSelection(idx)}
                         className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
                           isSelected 
-                            ? isNewest ? 'bg-purple-600 border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]' : 'bg-slate-700 border-slate-500' 
+                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : 'bg-slate-700 border-slate-500' 
                             : 'bg-white/5 border-white/5 hover:border-white/10'
                         }`}
                       >
                         {isSelected && (
-                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-purple-400 text-purple-900' : 'bg-slate-500 text-slate-200'}`}>
+                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
                              {isNewest ? 'Primary' : 'Reference'}
                           </div>
                         )}
                         <div className="flex items-center justify-between mb-2">
-                           <span className={`text-[11px] font-black uppercase tracking-tighter ${isSelected ? 'text-white' : 'text-purple-400'}`}>v{h.version}</span>
+                           <span className={`text-[11px] font-black uppercase tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
                            <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
                               {new Date(h.created_at).toLocaleDateString()}
                            </span>
@@ -2034,7 +3318,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                   })
                 )}
               </div>
-              <div className="mt-4 p-4 bg-purple-500/5 border border-purple-500/10 rounded-lg">
+              <div className="mt-4 p-4 bg-white/[0.03] border border-white/5 rounded-lg">
                  <p className="text-[9px] text-slate-500 font-bold leading-relaxed uppercase">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
               </div>
            </div>
@@ -2044,18 +3328,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                       <div className="w-8 h-8 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400 text-[12px] font-black">v{newer?.version}</div>
+                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.version}</div>
                        <div className="w-4 h-px bg-slate-700" />
                        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.version}` : 'Ø'}</div>
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-300">Semantic Delta Analysis</h3>
+                       <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-300">Change Analysis</h3>
                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{diffs.length} modification vectors detected</p>
                     </div>
                  </div>
                  <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 uppercase tracking-widest">
-                       Confidence Matrix: High
+                    <span className="text-[9px] font-black text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10 uppercase tracking-widest">
+                       Diff Ready
                     </span>
                  </div>
               </div>
@@ -2067,7 +3351,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                           <div key={i} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
                              <div className="flex items-center justify-between mb-3 px-1">
                                 <div className="flex items-center space-x-3">
-                                   <div className="w-2 h-6 bg-purple-500 rounded-full" />
+                                   <div className="w-2 h-6 bg-blue-500 rounded-full" />
                                    <span className="text-[12px] font-black uppercase text-white tracking-[0.2em]">{d.field.replace(/_/g, ' ')}</span>
                                 </div>
                                 <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Vector Field: {d.field}</span>
@@ -2140,5 +3424,6 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       </motion.div>
     </div>
   )
-}
 
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+}

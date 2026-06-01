@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -97,6 +97,17 @@ const CopyButton = ({ value, label }: { value: string, label?: string }) => {
     </button>
   );
 };
+
+const getAssetConsoleUrl = (asset: any) => {
+  if (asset?.management_url) {
+    const trimmed = String(asset.management_url).trim()
+    if (!trimmed) return null
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    return `https://${trimmed}`
+  }
+  if (asset?.management_ip) return `https://${asset.management_ip}`
+  return null
+}
 
 const SharedNetworkModals = ({
   activeEdit,
@@ -1126,11 +1137,13 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
   )
 }
 
-const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], selectedIds: number[], onBack: () => void }) => {
+const AssetComparisonView = ({ assets, selectedIds, onBack, onSync }: { assets: any[], selectedIds: number[], onBack: () => void, onSync: (key: string, value: any, ids: number[]) => void }) => {
   const selectedAssets = useMemo(() => 
     assets.filter(a => selectedIds.includes(a.id)),
     [assets, selectedIds]
   )
+  const [pendingSync, setPendingSync] = useState<{ fieldKey: string, fieldLabel: string, value: any, sourceId: number } | null>(null)
+  const [syncTargets, setSyncTargets] = useState<number[]>([])
 
   // Fetch hardware for all selected assets
   const hardwareQueries = useMemo(() => selectedIds.map(id => ({
@@ -1276,7 +1289,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                                   </div>
                                 </td>
                                 {selectedAssets.map(asset => (
-                                  <td key={`${asset.id}-${field.key}`} className="p-4 px-6 border-l border-white/5">
+                                  <td key={`${asset.id}-${field.key}`} className="p-4 px-6 border-l border-white/5 relative group/cell">
                                       <div className={`text-[11px] font-bold ${field.key === 'status' ? (
                                         asset.status === 'Active' ? 'text-emerald-400' : 
                                         asset.status === 'Maintenance' ? 'text-amber-400' :
@@ -1284,6 +1297,32 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                                       ) : isMismatch ? 'text-white' : 'text-slate-300'}`}>
                                         {field.format ? field.format(asset[field.key]) : (asset[field.key] || '-')}
                                       </div>
+
+                                      {isMismatch && (
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                          {!['name', 'serial_number', 'asset_tag', 'id', 'primary_ip', 'management_ip'].includes(field.key) ? (
+                                            <button 
+                                              onClick={() => {
+                                                setPendingSync({
+                                                  fieldKey: field.key,
+                                                  fieldLabel: field.label,
+                                                  value: asset[field.key],
+                                                  sourceId: asset.id
+                                                })
+                                                setSyncTargets(selectedAssets.filter(a => a.id !== asset.id).map(a => a.id))
+                                              }}
+                                              className="p-1.5 bg-blue-600 text-white rounded shadow-lg hover:scale-110 active:scale-95 transition-all"
+                                              title={`Sync all to this ${field.label}`}
+                                            >
+                                              <RefreshCw size={10} />
+                                            </button>
+                                          ) : (
+                                            <div className="p-1.5 bg-slate-800 text-slate-500 rounded cursor-not-allowed" title="Unique Identifier: Sync Disabled">
+                                              <Shield size={10} />
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                   </td>
                                 ))}
                             </tr>
@@ -1294,18 +1333,94 @@ const AssetComparisonView = ({ assets, selectedIds, onBack }: { assets: any[], s
                 ))}
              </tbody>
           </table>
-          {hardwareResults.isLoading && (
-            <div className="p-20 flex flex-col items-center justify-center text-slate-500 space-y-4">
-               <RefreshCcw size={24} className="animate-spin text-blue-500" />
-               <p className="text-[10px] font-bold uppercase tracking-widest">Hydrating Hardware Registry...</p>
-            </div>
-          )}
-       </div>
-    </div>
-  )
-}
+	          {hardwareResults.isLoading && (
+	            <div className="p-20 flex flex-col items-center justify-center text-slate-500 space-y-4">
+	               <RefreshCcw size={24} className="animate-spin text-blue-500" />
+	               <p className="text-[10px] font-bold uppercase tracking-widest">Hydrating Hardware Registry...</p>
+	            </div>
+	          )}
+	       </div>
+         <AnimatePresence>
+           {pendingSync && (
+             <motion.div
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 backdrop-blur-md p-6"
+             >
+               <motion.div
+                 initial={{ scale: 0.96, opacity: 0 }}
+                 animate={{ scale: 1, opacity: 1 }}
+                 exit={{ scale: 0.96, opacity: 0 }}
+                 className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl"
+               >
+                 <div className="flex items-start justify-between gap-4">
+                   <div>
+                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-400">Sync Preview</p>
+                     <h3 className="mt-2 text-xl font-black uppercase tracking-tight text-white">{pendingSync.fieldLabel}</h3>
+                     <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                       Source value: {String(pendingSync.value || '-')}
+                     </p>
+                   </div>
+                   <button onClick={() => setPendingSync(null)} className="text-slate-500 hover:text-white transition-colors">
+                     <X size={18} />
+                   </button>
+                 </div>
+
+                 <div className="mt-5 rounded-xl border border-white/5 bg-black/30 p-4">
+                   <p className="mb-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Apply To Selected Targets</p>
+                   <div className="space-y-2">
+                     {selectedAssets.filter(asset => asset.id !== pendingSync.sourceId).map(asset => (
+                       <label key={asset.id} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
+                         <div>
+                           <p className="text-[10px] font-bold uppercase text-slate-200">{asset.name}</p>
+                           <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                             Current: {String(asset[pendingSync.fieldKey] || '-')}
+                           </p>
+                         </div>
+                         <input
+                           type="checkbox"
+                           checked={syncTargets.includes(asset.id)}
+                           onChange={(e) => {
+                             setSyncTargets(prev => e.target.checked ? [...prev, asset.id] : prev.filter(id => id !== asset.id))
+                           }}
+                           className="h-4 w-4 accent-blue-500"
+                         />
+                       </label>
+                     ))}
+                   </div>
+                 </div>
+
+                 <div className="mt-5 flex items-center justify-between">
+                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                     {syncTargets.length} target asset{syncTargets.length === 1 ? '' : 's'} selected
+                   </p>
+                   <div className="flex items-center gap-2">
+                     <button onClick={() => setPendingSync(null)} className="rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white">
+                       Cancel
+                     </button>
+                     <button
+                       disabled={syncTargets.length === 0}
+                       onClick={() => {
+                         onSync(pendingSync.fieldKey, pendingSync.value, syncTargets)
+                         setPendingSync(null)
+                       }}
+                       className="rounded-lg bg-blue-600 px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 disabled:opacity-30"
+                     >
+                       Apply Sync
+                     </button>
+                   </div>
+                 </div>
+               </motion.div>
+             </motion.div>
+           )}
+         </AnimatePresence>
+	    </div>
+	  )
+	}
 
 export default function Assets() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchParams] = useSearchParams()
@@ -1341,6 +1456,8 @@ export default function Assets() {
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
+  const [activeLens, setActiveLens] = useState<'all' | 'mine' | 'team' | 'unowned' | 'degraded' | 'at_risk' | 'needs_docs'>('all')
+  const [compareSnapshotIds, setCompareSnapshotIds] = useState<number[]>([])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -1360,6 +1477,10 @@ export default function Assets() {
   }, [showBulkMenu])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+  const { data: userProfile } = useQuery({
+    queryKey: ['asset-user-profile'],
+    queryFn: async () => (await apiFetch('/api/v1/settings/user/profile')).json()
+  })
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
@@ -1372,38 +1493,32 @@ export default function Assets() {
   }, [searchParam])
 
   useEffect(() => {
-    if (gridRef.current?.api && idParam && devices) {
-      const targetId = parseInt(idParam)
-      const asset = devices.find((a: any) => a.id === targetId)
-      
-      if (asset) {
-        // Filter the grid to isolate this asset
-        setSearchTerm(asset.name)
+    if (!idParam || !devices) return
 
-        // Switch to appropriate tab if asset is deleted
-        if (asset.is_deleted && activeTab !== 'deleted') setActiveTab('deleted')
-        if (!asset.is_deleted && activeTab !== 'inventory') setActiveTab('inventory')
+    const targetId = Number(idParam)
+    if (!Number.isFinite(targetId)) return
 
-        setTimeout(() => {
-          gridRef.current.api.forEachNode((node: any) => {
-            if (node.data.id === targetId) {
-              node.setSelected(true)
-              gridRef.current.api.ensureNodeVisible(node, 'middle')
-              setSelectedAssetId(targetId)
-            }
-          })
-        }, 200) // Slightly longer delay to allow filtering to complete
-      }
-    }
-  }, [idParam, devices, activeTab])
+    const asset = devices.find((a: any) => a.id === targetId)
+    if (!asset) return
+
+    setSelectedAssetId(targetId)
+    setActiveTab(asset.is_deleted ? 'deleted' : 'inventory')
+    setActiveLens('all')
+    setViewMode('grid')
+    if (!searchParam) setSearchTerm(asset.name)
+  }, [idParam, devices, searchParam])
 
   useEffect(() => {
-    if (gridRef.current?.api && statusParam) {
-       gridRef.current.api.setFilterModel({
-          status: { filterType: 'text', type: 'equals', filter: statusParam }
-       })
+    const api = gridRef.current?.api
+    if (!api) return
+    if (!statusParam) {
+      api.setFilterModel(null)
+      return
     }
-  }, [statusParam])
+    api.setFilterModel({
+      status: { filterType: 'text', type: 'equals', filter: statusParam }
+    })
+  }, [statusParam, devices, activeTab, activeLens, searchTerm])
 
   const { inventoryAssets, deletedAssets } = useMemo(() => {
     if (!devices) return { inventoryAssets: [], deletedAssets: [] }
@@ -1415,17 +1530,112 @@ export default function Assets() {
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
 
+  const displayedAssets = useMemo(() => {
+    const normalize = (value: any) => String(value || '').trim().toLowerCase()
+    const me = normalize(userProfile?.full_name || userProfile?.username)
+    const team = normalize(userProfile?.team)
+    const department = normalize(userProfile?.department)
+
+    return assets.filter((asset: any) => {
+      const owner = normalize(asset.owner)
+      const businessUnit = normalize(asset.business_unit)
+      const hasOwner = owner.length > 0
+      const isMine = !!me && (owner === me || owner === normalize(userProfile?.username))
+      const isTeam = !!team && (
+        businessUnit === team ||
+        owner.includes(team) ||
+        (!!department && (businessUnit === department || owner.includes(department)))
+      )
+      const isDegraded = asset.open_incident_count > 0 || ['Maintenance', 'Offline', 'Failed'].includes(asset.status)
+      const isAtRisk = isDegraded || !asset.management_ip || !asset.primary_ip || !asset.owner
+      const needsDocs = !asset.owner || !asset.asset_tag || !asset.serial_number || !asset.management_ip
+
+      switch (activeLens) {
+        case 'mine':
+          return isMine
+        case 'team':
+          return isTeam
+        case 'unowned':
+          return !hasOwner
+        case 'degraded':
+          return isDegraded
+        case 'at_risk':
+          return isAtRisk
+        case 'needs_docs':
+          return needsDocs
+        default:
+          return true
+      }
+    })
+  }, [assets, activeLens, userProfile])
+
+  const visibleAssets = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return displayedAssets
+
+    const fields = [
+      'name',
+      'system',
+      'type',
+      'status',
+      'environment',
+      'owner',
+      'asset_tag',
+      'serial_number',
+      'model',
+      'manufacturer',
+      'primary_ip',
+      'management_ip',
+      'management_url'
+    ]
+
+    return displayedAssets.filter((asset: any) =>
+      fields.some((field) => String(asset?.[field] || '').toLowerCase().includes(term))
+    )
+  }, [displayedAssets, searchTerm])
+
+  const compareCandidateIds = useMemo(() => visibleAssets.map((asset: any) => asset.id), [visibleAssets])
+  const compareAssets = useMemo(
+    () => assets.filter((asset: any) => compareSnapshotIds.includes(asset.id)),
+    [assets, compareSnapshotIds]
+  )
+
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => visibleAssets.some((asset: any) => asset.id === id)))
+  }, [visibleAssets])
+
+  useEffect(() => {
+    if (viewMode === 'compare' && compareSnapshotIds.length === 0) {
+      setViewMode('grid')
+    }
+  }, [viewMode, compareSnapshotIds])
+
+  useEffect(() => {
+    if (viewMode !== 'grid' || !gridRef.current?.api || !selectedAssetId) return
+
+    const api = gridRef.current.api
+    requestAnimationFrame(() => {
+      api.forEachNode((node: any) => {
+        const isTarget = node.data?.id === selectedAssetId
+        node.setSelected(isTarget)
+        if (isTarget) {
+          api.ensureNodeVisible(node, 'middle')
+        }
+      })
+    })
+  }, [viewMode, selectedAssetId, visibleAssets, searchTerm])
+
   // Only fetch full fabric map data when explicitly requested or in Map View
   const { data: allConnections } = useQuery({ 
     queryKey: ['connections-map-all'], 
     queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()),
-    enabled: viewMode === 'map' || !!selectedAssetId
+    enabled: viewMode === 'map'
   })
 
   const { data: allRelationships } = useQuery({
     queryKey: ['all-relationships'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()),
-    enabled: viewMode === 'map' || !!selectedAssetId
+    enabled: viewMode === 'map'
   })
 
   const mutation = useMutation({
@@ -1467,7 +1677,9 @@ export default function Assets() {
     onSuccess: (data: any, variables: any) => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
-      setSelectedIds([])
+      if (viewMode !== 'compare') {
+        setSelectedIds([])
+      }
       setShowBulkMenu(false)
       setIsBulkStatusOpen(false)
       if (variables.action === 'restore') {
@@ -1681,9 +1893,9 @@ export default function Assets() {
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                <button onClick={() => {
-                 const ip = p.data.management_ip;
-                 if (!ip) return toast.error("No Management IP configured");
-                 window.open(`https://${ip}`, '_blank');
+                 const url = getAssetConsoleUrl(p.data)
+                 if (!url) return toast.error("No management endpoint configured")
+                 window.open(url, '_blank')
                }} title="Quick Console Access" className="p-1.5 text-indigo-400 hover:text-indigo-200 transition-all border-r border-white/5"><Terminal size={14}/></button>
                <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>
                <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all"><Edit2 size={14}/></button>
@@ -1768,6 +1980,30 @@ export default function Assets() {
                <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
+            <div className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'mine', label: 'My Systems' },
+                { id: 'team', label: 'Team' },
+                { id: 'unowned', label: 'Unowned' },
+                { id: 'degraded', label: 'Degraded' },
+                { id: 'at_risk', label: 'At Risk' },
+                { id: 'needs_docs', label: 'Needs Docs' }
+              ].map((lens) => (
+                <button
+                  key={lens.id}
+                  onClick={() => setActiveLens(lens.id as any)}
+                  className={`rounded-lg px-3 py-2 text-[9px] font-bold uppercase tracking-widest transition-all ${
+                    activeLens === lens.id
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                      : 'text-slate-500 hover:bg-white/10 hover:text-slate-200'
+                  }`}
+                >
+                  {lens.label}
+                </button>
+              ))}
+            </div>
+
             <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
                <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
                   <Activity size={16} />
@@ -1790,7 +2026,13 @@ export default function Assets() {
             </div>
 
             <div className="relative bulk-menu-container">
-              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
+              <button
+                onClick={() => setShowBulkMenu(!showBulkMenu)}
+                disabled={selectedIds.length === 0 && compareCandidateIds.length < 2}
+                className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 || compareCandidateIds.length >= 2 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}
+              >
+                <MoreVertical size={18}/>
+              </button>
               <AnimatePresence>
                 {showBulkMenu && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
@@ -1800,8 +2042,14 @@ export default function Assets() {
                      ) : (
                        <>
                           {selectedIds.length >= 2 && (
-                            <button onClick={() => { setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
+                            <button onClick={() => { setCompareSnapshotIds(selectedIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
                                <span>Compare Selected</span>
+                               <ArrowRightLeft size={12} />
+                            </button>
+                          )}
+                          {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
+                            <button onClick={() => { setSelectedIds(compareCandidateIds); setCompareSnapshotIds(compareCandidateIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-sky-400 transition-all flex items-center justify-between">
+                               <span>Compare Visible</span>
                                <ArrowRightLeft size={12} />
                             </button>
                           )}
@@ -1836,13 +2084,12 @@ export default function Assets() {
           )}
           <AgGridReact 
             ref={gridRef}
-            rowData={assets || []} 
+            rowData={visibleAssets || []} 
             columnDefs={columnDefs} 
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
             onSelectionChanged={(e) => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
-            quickFilterText={searchTerm}
             autoSizeStrategy={autoSizeStrategy}
             enableCellTextSelection={true}
           />
@@ -1894,7 +2141,7 @@ export default function Assets() {
         </div>
       ) : viewMode === 'report' ? (
         <AssetReportView
-           assets={inventoryAssets}
+           assets={visibleAssets}
            selectedId={selectedAssetId}
            onSelect={setSelectedAssetId}
            options={options}
@@ -1905,15 +2152,17 @@ export default function Assets() {
            onViewAssetDetails={setActiveDetails}
         />
       ) : viewMode === 'compare' ? (
-        <AssetComparisonView 
-          assets={inventoryAssets} 
-          selectedIds={selectedIds} 
-          onBack={() => setViewMode('grid')} 
+        <AssetComparisonView
+          assets={compareAssets}
+          selectedIds={compareSnapshotIds}
+          onBack={() => { setViewMode('grid'); setCompareSnapshotIds([]) }}
+          onSync={(key, value, ids) => bulkMutation.mutate({ action: 'update', payload: { [key]: value }, ids })}
         />
+
       ) : (
         <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
            <AssetMap 
-             assets={inventoryAssets} 
+             assets={visibleAssets} 
              connections={allConnections || []}
              relationships={allRelationships || []}
              systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
@@ -1956,7 +2205,8 @@ export default function Assets() {
                   <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>
                
-               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} />
+               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} devices={devices} />
+
             </motion.div>
           </div>
         )}
@@ -2277,14 +2527,18 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
 const DevicePortGrid = ({ device, connections, templates }: { device: any, connections: any[], templates?: any[] }) => {
   const isSwitch = device?.type === 'Switch'
   const isFirewall = device?.type === 'Firewall' || device?.type === 'Load Balancer'
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const ports = useMemo(() => {
     let basePorts = []
 
     // 1. Check for exact model template match
     const modelTemplate = templates?.find(t => t.value === device?.model || t.label === device?.model)
-    if (modelTemplate?.metadata_keys?.length) {
-      basePorts = modelTemplate.metadata_keys.map((k: string) => {
+    const metadataOverride = device?.metadata_json?.port_definitions
+    
+    if (modelTemplate?.metadata_keys?.length || metadataOverride) {
+      const keysToUse = metadataOverride || modelTemplate.metadata_keys
+      basePorts = keysToUse.map((k: string) => {
         const [name, type, category] = k.split(':')
         return { name, type: type || 'RJ45', category: category || 'General' }
       })
@@ -2317,7 +2571,7 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
       .map(name => ({ name, type: 'Virtual', category: 'Logical' }))
 
     return [...basePorts, ...extraPorts]
-  }, [isSwitch, isFirewall, connections, device?.id, device?.model, templates])
+  }, [isSwitch, isFirewall, connections, device?.id, device?.model, templates, device?.metadata_json?.port_definitions])
 
   // Create a quick lookup map for connections by port name
   const connMap = useMemo(() => {
@@ -2330,85 +2584,122 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
   }, [connections, device?.id])
 
   return (
-    <div className="bg-black/40 border border-white/5 rounded-lg p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden transition-all duration-500">
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-colors group"
+      >
         <div className="flex items-center gap-4">
-           <div className={`p-3 rounded-lg ${isSwitch ? 'bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-blue-500/20 text-blue-400 border-blue-500/20'} border`}>
-              <Network size={20} />
+           <div className={`p-2.5 rounded-lg ${isSwitch ? 'bg-rose-500/20 text-rose-400 border-rose-500/20' : 'bg-blue-500/20 text-blue-400 border-blue-500/20'} border`}>
+              <Network size={18} />
            </div>
-           <div>
-              <h4 className="text-lg font-black uppercase tracking-tighter text-white">{device?.name} <span className="text-slate-500 opacity-50 font-normal">[{device?.model}]</span></h4>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{isSwitch ? 'Core Switching Fabric' : 'Compute Node Network Stack'}</p>
-           </div>
-        </div>
-        <div className="flex items-center gap-6">
-           <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Linked</span>
-           </div>
-           <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-blue-500/50 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Logical</span>
-           </div>
-           <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-slate-800 border border-white/10" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Unassigned</span>
+           <div className="text-left">
+              <h4 className="text-md font-black uppercase tracking-tighter text-white flex items-center gap-2">
+                Physical Port Topography
+                <span className="text-slate-500 opacity-50 font-normal text-[10px]">[{device?.model}]</span>
+              </h4>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{isSwitch ? 'High-Density Switching Matrix' : 'Network Interface Stack'}</p>
            </div>
         </div>
-      </div>
-
-      <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
-        {ports.map((p: any, idx) => {
-          const conn = connMap[p.name]
-          const isActive = !!conn
-          const isLogical = p.type === 'Virtual'
-
-          return (
-            <div 
-              key={idx} 
-              className={`relative group p-4 rounded-lg border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
-                ${isActive 
-                  ? (isLogical ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]')
-                  : 'bg-black/40 border-white/5 hover:border-white/10'}`}
-            >
-
-              <div className={`w-full h-1 absolute top-0 left-0 rounded-t-lg transition-all ${isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent'}`} />
-              
-              <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isActive ? (isLogical ? 'text-blue-400' : 'text-emerald-400') : 'text-slate-600'}`}>
-                {p.name}
+        <div className="flex items-center gap-4">
+           <div className="flex items-center gap-6 mr-6">
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active</span>
               </div>
-              
-              <div className={`w-8 h-6 rounded-md border flex items-center justify-center transition-all
-                ${isActive ? (isLogical ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400') : 'border-white/10 bg-slate-900 text-slate-700'}`}
-              >
-                {p.type === 'SFP+' ? <Zap size={12} /> : (p.type === 'Virtual' ? <Globe size={12} /> : <div className="grid grid-cols-2 gap-0.5">
-                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
-                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
-                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
-                  <div className="w-1 h-1 rounded-full bg-current opacity-20" />
-                </div>)}
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                 <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Drift</span>
               </div>
+           </div>
+           {isExpanded ? <ChevronDown className="text-slate-500 group-hover:text-white transition-colors" size={20} /> : <ChevronRight className="text-slate-500 group-hover:text-white transition-colors" size={20} />}
+        </div>
+      </button>
 
-              {isActive && (
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-lg shadow-2xl backdrop-blur-xl">
-                    <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
-                    <div className="text-[10px] font-black text-white uppercase truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
-                    <div className="flex items-center justify-between text-[8px] font-black">
-                       <span className="text-slate-500 uppercase">Port:</span>
-                       <span className="text-indigo-400 uppercase">{conn.source_device_id === device?.id ? conn.target_port : conn.source_port}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[8px] font-black mt-1">
-                       <span className="text-slate-500 uppercase">Metric:</span>
-                       <span className="text-emerald-400 uppercase">{conn.speed}</span>
-                    </div>
+      <motion.div 
+        initial={false}
+        animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+        className="overflow-hidden bg-slate-900/40"
+      >
+        <div className="p-8 pt-2 border-t border-white/5">
+          <div className={`grid ${isSwitch ? 'grid-cols-12' : 'grid-cols-4'} gap-3`}>
+            {ports.map((p: any, idx) => {
+              const conn = connMap[p.name]
+              const isActive = !!conn
+              const isLogical = p.type === 'Virtual'
+
+              // --- DRIFT ANALYSIS (Calculated Inline to avoid Hook violations) ---
+              let isDrift = null
+              if (isActive && !isLogical) {
+                // 1. Speed Drift
+                if (p.type === 'SFP+' && conn.speed && !conn.speed.includes('10G') && !conn.speed.includes('25G') && !conn.speed.includes('40G') && !conn.speed.includes('100G')) {
+                  isDrift = { type: 'Speed', message: `Performance Degradation: ${p.type} port running at ${conn.speed}` }
+                }
+                // 2. Medium Drift
+                if (p.type === 'RJ45' && conn.speed && (conn.speed.includes('10G') || conn.speed.includes('FIBER'))) {
+                   isDrift = { type: 'Medium', message: `Configuration Alert: ${p.type} port with High-Speed ${conn.speed} link` }
+                }
+              }
+
+              return (
+                <div 
+                  key={idx} 
+                  className={`relative group p-4 rounded-lg border transition-all duration-300 flex flex-col items-center justify-center space-y-2 cursor-help
+                    ${isActive 
+                      ? (isLogical ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.05)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.05)]')
+                      : 'bg-black/40 border-white/5 hover:border-white/10'}
+                    ${isDrift ? 'ring-2 ring-amber-500/50 ring-offset-2 ring-offset-slate-950 border-amber-500/40' : ''}`}
+                >
+
+                  <div className={`w-full h-1 absolute top-0 left-0 rounded-t-lg transition-all 
+                    ${isDrift ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.6)]' : (isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent')}`} 
+                  />
+                  
+                  <div className={`text-[8px] font-black uppercase tracking-tighter transition-colors ${isDrift ? 'text-amber-400' : (isActive ? (isLogical ? 'text-blue-400' : 'text-emerald-400') : 'text-slate-600')}`}>
+                    {p.name}
                   </div>
+                  
+                  <div className={`w-8 h-6 rounded-md border flex items-center justify-center transition-all
+                    ${isDrift ? 'border-amber-500/50 bg-amber-500/10 text-amber-400' : (isActive ? (isLogical ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400') : 'border-white/10 bg-slate-900 text-slate-700')}`}
+                  >
+                    {p.type === 'SFP+' ? <Zap size={12} /> : (p.type === 'Virtual' ? <Globe size={12} /> : <div className="grid grid-cols-2 gap-0.5">
+                      <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                      <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                      <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                      <div className="w-1 h-1 rounded-full bg-current opacity-20" />
+                    </div>)}
+                  </div>
+
+                  {(isActive || isDrift) && (
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-lg shadow-2xl backdrop-blur-xl">
+                        {isDrift && (
+                          <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                             <div className="flex items-center gap-1 text-[8px] font-black text-amber-400 uppercase tracking-widest mb-1">
+                                <AlertTriangle size={10} /> Forensic Drift Detected
+                             </div>
+                             <div className="text-[7px] text-amber-200/70 font-medium leading-tight">{isDrift.message}</div>
+                          </div>
+                        )}
+                        <div className="text-[7px] font-black text-slate-500 uppercase tracking-widest mb-1">Target Entity</div>
+                        <div className="text-[10px] font-black text-white uppercase truncate mb-2">{conn.server_b === device?.name ? conn.server_a : conn.server_b}</div>
+                        <div className="flex items-center justify-between text-[8px] font-black">
+                           <span className="text-slate-500 uppercase">Port:</span>
+                           <span className="text-indigo-400 uppercase">{conn.source_device_id === device?.id ? conn.target_port : conn.source_port}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[8px] font-black mt-1">
+                           <span className="text-slate-500 uppercase">Metric:</span>
+                           <span className="text-emerald-400 uppercase">{conn.speed}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
+              )
+            })}
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -2758,8 +3049,73 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
 }
 
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
+    const navigate = useNavigate()
     const [tab, setTab] = useState('hardware')
+    const [showFarRisks, setShowFarRisks] = useState(false)
     const queryClient = useQueryClient()
+
+    // --- FAR RISK INTEGRATION ---
+    const { data: farModes } = useQuery({
+      queryKey: ['far-modes-system', device.system],
+      queryFn: async () => (await (await apiFetch(`/api/v1/far/modes?system=${device.system}`)).json()),
+      enabled: !!device.system
+    })
+
+    const { data: hostedServices } = useQuery({
+      queryKey: ['logical-services', 'asset-workspace', device.id],
+      queryFn: async () => (await (await apiFetch(`/api/v1/logical-services?device_id=${device.id}`)).json()),
+      enabled: !!device.id
+    })
+
+    const { data: monitoringItems } = useQuery({
+      queryKey: ['monitoring-items', 'asset-workspace', device.id],
+      queryFn: async () => (await apiFetch(`/api/v1/monitoring?device_id=${device.id}`)).json(),
+      enabled: !!device.id
+    })
+
+    const { data: deviceConnections } = useQuery({
+      queryKey: ['asset-connections', 'workspace', device.id],
+      queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${device.id}`)).json()),
+      enabled: !!device.id
+    })
+
+    const { data: relatedKnowledge } = useQuery({
+      queryKey: ['asset-knowledge', device.id],
+      queryFn: async () => (await apiFetch(`/api/v1/knowledge?device_id=${device.id}`)).json(),
+      enabled: !!device.id
+    })
+
+    const primaryMonitoringId = Array.isArray(monitoringItems) && monitoringItems[0]?.id ? monitoringItems[0].id : null
+    const { data: suggestedKnowledge } = useQuery({
+      queryKey: ['asset-knowledge-suggestions', device.id, primaryMonitoringId],
+      queryFn: async () => {
+        const params = new URLSearchParams()
+        params.append('device_id', String(device.id))
+        if (primaryMonitoringId) params.append('monitoring_id', String(primaryMonitoringId))
+        return (await apiFetch(`/api/v1/knowledge?${params.toString()}`)).json()
+      },
+      enabled: !!device.id
+    })
+
+    const { data: maintenanceWindows } = useQuery({
+      queryKey: ['asset-maintenance', device.id],
+      queryFn: async () => (await apiFetch(`/api/v1/maintenance?device_id=${device.id}`)).json(),
+      enabled: !!device.id
+    })
+
+    const { data: recentAuditLogs } = useQuery({
+      queryKey: ['asset-audit', device.id],
+      queryFn: async () => (await apiFetch(`/api/v1/audit?target_table=devices&target_id=${device.id}`)).json(),
+      enabled: !!device.id
+    })
+
+    const consoleUrl = getAssetConsoleUrl(device)
+    const monitoringCount = Array.isArray(monitoringItems) ? monitoringItems.length : 0
+    const serviceCount = Array.isArray(hostedServices) ? hostedServices.length : 0
+    const farCount = Array.isArray(farModes) ? farModes.length : 0
+    const connectionCount = Array.isArray(deviceConnections) ? deviceConnections.length : 0
+    const runbookCount = Array.isArray(relatedKnowledge) ? relatedKnowledge.length : 0
+    const maintenanceCount = Array.isArray(maintenanceWindows) ? maintenanceWindows.length : 0
 
     const mutation = useMutation({
         mutationFn: async (data: any) => {
@@ -2775,6 +3131,140 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
 
     return (
         <div className="space-y-6">
+            <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
+                <div className="flex items-start justify-between gap-6">
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.28em] text-blue-400">Asset Command Workspace</p>
+                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">{device.name}</h3>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                            {device.system} // {device.type} // {device.environment} // {device.owner || 'No owner'}
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-6 gap-3">
+                        {[
+                          { label: 'Services', value: serviceCount, tone: 'text-blue-400' },
+                          { label: 'Monitors', value: monitoringCount, tone: 'text-emerald-400' },
+                          { label: 'FAR Risks', value: farCount, tone: 'text-rose-400' },
+                          { label: 'Links', value: connectionCount, tone: 'text-indigo-400' },
+                          { label: 'Runbooks', value: runbookCount, tone: 'text-amber-400' },
+                          { label: 'Maintenance', value: maintenanceCount, tone: 'text-fuchsia-400' }
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center">
+                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
+                              <p className={`mt-1 text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</p>
+                          </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-6 gap-2">
+                    <button
+                      disabled={!consoleUrl}
+                      onClick={() => consoleUrl && window.open(consoleUrl, '_blank')}
+                      className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      Open Console
+                    </button>
+                    <button onClick={() => setTab('services')} className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-500/20">
+                      Focus Services
+                    </button>
+                    <button onClick={() => setTab('monitoring')} className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-400 transition-all hover:bg-emerald-500/20">
+                      Focus Monitoring
+                    </button>
+                    <button onClick={() => setTab('network')} className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-400 transition-all hover:bg-indigo-500/20">
+                      Focus Network
+                    </button>
+                    <button
+                      disabled={!farModes?.[0]?.id}
+                      onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
+                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-rose-400 transition-all hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      Open FAR
+                    </button>
+                    <button
+                      onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
+                      className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08]"
+                    >
+                      Audit Trail
+                    </button>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-amber-500/15 bg-amber-500/[0.05] p-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Suggested Runbooks Now</p>
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Best-fit procedures based on this asset and its linked monitoring context.</p>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/knowledge?device_id=${device.id}${primaryMonitoringId ? `&monitoring_id=${primaryMonitoringId}` : ''}&mode=incident`)}
+                          className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
+                        >
+                          Open Knowledge Context
+                        </button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-3">
+                        {Array.isArray(suggestedKnowledge) && suggestedKnowledge.slice(0, 3).map((entry: any) => (
+                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
+                            <p className="text-[10px] font-black uppercase tracking-tight text-white">{entry.title}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                              {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
+                            </p>
+                          </button>
+                        ))}
+                        {!suggestedKnowledge?.length && <p className="col-span-3 text-[10px] font-bold uppercase text-slate-600">No suggested runbooks yet</p>}
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Incident Flow</p>
+                    <div className="mt-3 space-y-2">
+                        {Array.isArray(monitoringItems) && monitoringItems.slice(0, 3).map((item: any) => (
+                          <button key={item.id} onClick={() => navigate(`/monitoring?id=${item.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
+                            <p className="text-[10px] font-bold uppercase text-slate-200">{item.title}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{item.severity} // {item.status}</p>
+                          </button>
+                        ))}
+                        {!monitoringCount && <p className="text-[10px] font-bold uppercase text-slate-600">No linked monitoring items</p>}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400">Runbooks & Knowledge</p>
+                    <div className="mt-3 space-y-2">
+                        {Array.isArray(relatedKnowledge) && relatedKnowledge.slice(0, 3).map((entry: any) => (
+                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
+                            <p className="text-[10px] font-bold uppercase text-slate-200">{entry.title}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{entry.category} // {entry.status}</p>
+                          </button>
+                        ))}
+                        {!runbookCount && <p className="text-[10px] font-bold uppercase text-slate-600">No linked knowledge entries</p>}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-400">Recent Change & Care</p>
+                    <div className="mt-3 space-y-2">
+                        {Array.isArray(maintenanceWindows) && maintenanceWindows.slice(0, 2).map((window: any) => (
+                          <div key={window.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
+                            <p className="text-[10px] font-bold uppercase text-slate-200">{window.title}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                              {window.status} // {window.start_time ? new Date(window.start_time).toLocaleDateString() : 'No date'}
+                            </p>
+                          </div>
+                        ))}
+                        {Array.isArray(recentAuditLogs) && recentAuditLogs.slice(0, 2).map((log: any) => (
+                          <div key={log.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
+                            <p className="text-[10px] font-bold uppercase text-slate-200">{log.action} // {log.user_id || 'system'}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{log.description || 'No description'}</p>
+                          </div>
+                        ))}
+                        {!maintenanceCount && !(recentAuditLogs?.length > 0) && <p className="text-[10px] font-bold uppercase text-slate-600">No maintenance or recent changes</p>}
+                    </div>
+                </div>
+            </div>
+
             <div className="flex items-center justify-between">
                 <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
                     {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
@@ -2783,6 +3273,66 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                         </button>
                     ))}
                 </div>
+
+                {/* FAR RISK BADGE */}
+                {farModes && farModes.length > 0 && (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowFarRisks(!showFarRisks)}
+                      className="group flex items-center space-x-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 transition-all animate-pulse hover:animate-none"
+                    >
+                       <div className="p-1 bg-rose-500 rounded-md text-white">
+                          <AlertTriangle size={14} />
+                       </div>
+                       <div className="text-left">
+                          <p className="text-[10px] font-black text-rose-400 uppercase tracking-tighter leading-none">{farModes.length} Failure Modes Analyzed</p>
+                          <p className="text-[8px] font-bold text-rose-500/70 uppercase tracking-widest mt-1">System Risk Profile: HIGH</p>
+                       </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {showFarRisks && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full right-0 mt-3 w-80 bg-slate-950 border border-rose-500/30 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl"
+                        >
+                           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+                              <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">FAR Risk Registry</h4>
+                              <button onClick={() => setShowFarRisks(false)} className="text-slate-500 hover:text-white"><X size={14}/></button>
+                           </div>
+                           <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
+                              {farModes.map((m: any) => (
+                                <div key={m.id} className="p-3 bg-white/5 rounded-lg border border-white/5 hover:border-rose-500/20 transition-all group">
+                                   <div className="flex items-start justify-between">
+                                      <p className="text-[10px] font-bold text-white uppercase leading-tight group-hover:text-rose-300 transition-colors">{m.title}</p>
+                                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black ${m.rpn > 100 ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
+                                         RPN {m.rpn}
+                                      </span>
+                                   </div>
+                                   <p className="text-[9px] text-slate-500 mt-2 italic">"{m.effect}"</p>
+                                   <div className="flex items-center gap-2 mt-2">
+                                      <span className="text-[7px] font-black text-slate-600 uppercase">S: {m.severity}</span>
+                                      <span className="text-[7px] font-black text-slate-600 uppercase">O: {m.occurrence}</span>
+                                      <span className="text-[7px] font-black text-slate-600 uppercase">D: {m.detection}</span>
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                           <div className="mt-4 pt-3 border-t border-white/5">
+                              <button
+                                onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
+                                className="w-full py-2 bg-white/5 hover:bg-white/10 text-[9px] font-bold uppercase text-slate-400 hover:text-white rounded-lg transition-all"
+                              >
+                                 View Full FAR Matrix
+                              </button>
+                           </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
             </div>
             <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6">
                 {tab === 'metadata' && (
@@ -3415,7 +3965,7 @@ const ENVIRONMENT_ITEMS = [
     { value: 'Legacy', label: 'Legacy' }
 ]
 
-const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
+const AssetForm = ({ initialData, onSave, options, isSaving, devices }: any) => {
   const [activeSubTab, setActiveSubTab] = useState('config')
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -3568,6 +4118,76 @@ const AssetForm = ({ initialData, onSave, options, isSaving }: any) => {
                    <input value={formData.manufacturer} onChange={e => setFormData({...formData, manufacturer: e.target.value})} placeholder="Dell" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                    <input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="R740" className="w-1/2 bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none" />
                 </div>
+                
+                {/* MODEL MASTER: Copy Layout if no template exists or is empty */}
+                {formData.model && (
+                  <div className="mt-2">
+                    {(() => {
+                      const modelTemplates = Array.isArray(options) ? options.filter((o: any) => o.category === 'DeviceModel') : []
+                      const formalTemplate = modelTemplates.find((t: any) => t.value.toLowerCase().trim() === formData.model.toLowerCase().trim() || t.label.toLowerCase().trim() === formData.model.toLowerCase().trim())
+                      
+                      const hasDefinitions = !!(formData.metadata_json?.port_definitions || formalTemplate?.metadata_keys?.length)
+
+                      if (!hasDefinitions) {
+                        return (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg animate-in fade-in slide-in-from-top-1 duration-300">
+                            <div className="flex items-center justify-between mb-2">
+                               <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                  <Cpu size={10} /> Model Master: Discovery Required
+                               </p>
+                            </div>
+                            <p className="text-[7px] text-slate-500 font-bold uppercase mb-2 leading-tight">No physical topography found for "{formData.model}". Clone from existing asset?</p>
+                            <select 
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-slate-300 outline-none focus:border-blue-500"
+                              onChange={(e) => {
+                                 const sourceId = parseInt(e.target.value)
+                                 const sourceAsset = devices?.find((d: any) => d.id === sourceId)
+                                 if (sourceAsset) {
+                                    const sourceTemplate = modelTemplates.find((t: any) => t.value.toLowerCase().trim() === sourceAsset.model?.toLowerCase().trim() || t.label.toLowerCase().trim() === sourceAsset.model?.toLowerCase().trim())
+                                    let keys = sourceTemplate?.metadata_keys || sourceAsset.metadata_json?.port_definitions
+                                    
+                                    if (keys) {
+                                       setFormData({
+                                          ...formData,
+                                          metadata_json: { ...formData.metadata_json, port_definitions: keys }
+                                       })
+                                       toast.success(`Port Topography Cloned: ${sourceAsset.name}`)
+                                    } else {
+                                       toast.error("Selected source has no topography data")
+                                    }
+                                 }
+                              }}
+                              value=""
+                            >
+                               <option value="" disabled>Select Peer Asset to Clone Topography...</option>
+                               {devices?.filter((d: any) => (d.model && d.id !== formData.id) && (d.metadata_json?.port_definitions || modelTemplates.find((t:any) => (t.value.toLowerCase() === d.model?.toLowerCase() || t.label.toLowerCase() === d.model?.toLowerCase()) && t.metadata_keys?.length))).map((d: any) => (
+                                  <option key={d.id} value={d.id}>{d.name} [{d.model}]</option>
+                               ))}
+                            </select>
+                          </div>
+                        )
+                      }
+                      
+                      if (formData.metadata_json?.port_definitions) {
+                         return (
+                            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
+                               <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1"><Check size={10}/> Topography Mapped</span>
+                               <button 
+                                 onClick={() => {
+                                    const n = {...formData.metadata_json}; delete n.port_definitions;
+                                    setFormData({...formData, metadata_json: n});
+                                 }}
+                                 className="text-[7px] font-bold text-slate-500 hover:text-rose-400 uppercase"
+                               >
+                                  Reset
+                               </button>
+                            </div>
+                         )
+                      }
+                      return null
+                    })()}
+                  </div>
+                )}
              </div>
              <div>
                 <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Operating System & Version</label>

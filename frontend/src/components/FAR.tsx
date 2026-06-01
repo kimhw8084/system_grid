@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -205,22 +205,24 @@ export default function FAR() {
   })
 
   useEffect(() => {
-    if (gridRef.current?.api && idParam && modes) {
-      const targetId = parseInt(idParam)
-      const mode = modes.find((m: any) => m.id === targetId)
-      
-      if (mode) {
-        setSearchTerm(mode.title)
-        setTimeout(() => {
-          gridRef.current.api.forEachNode((node: any) => {
-            if (node.data.id === targetId) {
-              node.setSelected(true)
-              gridRef.current.api.ensureNodeVisible(node, 'middle')
-            }
-          })
-        }, 200)
-      }
-    }
+    if (!idParam || !modes) return
+    const targetId = parseInt(idParam, 10)
+    if (Number.isNaN(targetId)) return
+    const mode = modes.find((m: any) => m.id === targetId)
+    if (!mode) return
+
+    setSearchTerm(mode.title)
+    setSelectedModeId(targetId)
+
+    if (!gridRef.current?.api) return
+    requestAnimationFrame(() => {
+      gridRef.current.api.forEachNode((node: any) => {
+        if (node.data.id === targetId) {
+          node.setSelected(true)
+          gridRef.current.api.ensureNodeVisible(node, 'middle')
+        }
+      })
+    })
   }, [idParam, modes])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
@@ -251,7 +253,7 @@ export default function FAR() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['far'] })
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       toast.success('Failure Matrix Updated')
       setConfirmModal({ ...confirmModal, show: false })
     },
@@ -510,16 +512,6 @@ export default function FAR() {
       hide: hiddenColumns.includes("linked_rcas")
     },
     { 
-      field: "failure_type", 
-      headerName: "Type", 
-      width: 100, 
-      filter: true, 
-      cellClass: 'text-center font-bold text-slate-400 uppercase', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'DESIGN'}</span>,
-      hide: hiddenColumns.includes("failure_type")
-    },
-    { 
       field: "created_by_user_id", 
       headerName: "Created By", 
       width: 120, 
@@ -538,10 +530,11 @@ export default function FAR() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => p.data?.id && openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-           </div>
+               <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+                   <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+                   <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+                   <button onClick={() => p.data?.id && openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               </div>
         </div>
       )
     }
@@ -726,7 +719,17 @@ export default function FAR() {
 
       <AnimatePresence>
           {selectedModeId && selectedMode && (
-            <FailureDetailView mode={selectedMode} onClose={() => setSelectedModeId(null)} onUpdate={() => queryClient.invalidateQueries({ queryKey: ['far'] })} />
+            <FailureDetailView 
+              mode={selectedMode} 
+              onClose={() => setSelectedModeId(null)} 
+              onUpdate={(type: string) => {
+                if (type === 'edit') {
+                  setShowWizard(true);
+                } else {
+                  queryClient.invalidateQueries({ queryKey: ['far', 'modes'] });
+                }
+              }} 
+            />
           )}
       </AnimatePresence>
 
@@ -804,7 +807,7 @@ export default function FAR() {
             onClose={() => setSelectedRcaDetail(null)} 
             onSave={() => {
               setSelectedRcaDetail(null);
-              queryClient.invalidateQueries({ queryKey: ['far'] });
+              queryClient.invalidateQueries({ queryKey: ['far', 'modes'] });
             }}
             fontSize={fontSize}
             rowDensity={rowDensity}
@@ -882,13 +885,13 @@ export default function FAR() {
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-6xl h-[85vh] flex flex-col rounded-lg border border-rose-500/20 overflow-hidden shadow-2xl">
                <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
                   <div>
-                    <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">New Failure Mode</h1>
+                    <h1 className="text-3xl font-bold uppercase tracking-tighter text-white">{selectedMode ? 'Edit Failure Mode' : 'New Failure Mode'}</h1>
                     <p className="text-[9px] text-slate-500 font-bold uppercase tracking-[0.3em]">Reliability Engineering Risk Documentation Studio</p>
                   </div>
                   <button onClick={() => setShowWizard(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20}/></button>
                </div>
                <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 <FARWizard initialData={selectedMode} onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far'] }); }} />
+                 <FARWizard initialData={selectedMode} onComplete={() => { setShowWizard(false); queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }); }} />
                </div>
             </motion.div>
           </div>
@@ -966,7 +969,16 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
                          <p className="text-[8px] font-bold text-slate-500  uppercase">RPN</p>
                       </div>
                   </div>
-                  <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all ml-2 border border-white/10"><X size={20}/></button>
+                  <div className="flex items-center gap-2 ml-2">
+                    <button 
+                      onClick={() => onUpdate('edit')} 
+                      className="p-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-lg text-amber-400 hover:text-white transition-all"
+                      title="Edit Matrix Configuration"
+                    >
+                      <Edit2 size={18}/>
+                    </button>
+                    <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all border border-white/10"><X size={20}/></button>
+                  </div>
               </div>
             </div>
 
@@ -1068,22 +1080,66 @@ export function GaugeSelector({ label, value, onChange, levels, color, accent }:
 }
 
 function FARWizard({ initialData, onComplete }: any) {
-  const [formData, setFormData] = useState<any>({ 
-    system_name: '', 
-    failure_type: 'Design',
-    title: '', 
-    effect: '', 
-    severity: 1, 
-    occurrence: 1, 
-    detection: 1, 
-    affected_assets: [], 
-    ...initialData 
+  const buildFormData = (value: any) => {
+    const base = {
+      system_name: '',
+      failure_type: 'Design',
+      title: '',
+      effect: '',
+      severity: 1,
+      occurrence: 1,
+      detection: 1,
+      affected_assets: [],
+      ...value
+    }
+    if (base.affected_assets && base.affected_assets.length > 0 && typeof base.affected_assets[0] === 'object') {
+      base.affected_assets = base.affected_assets.map((a: any) => a.id)
+    }
+    return base
+  }
+  const [formData, setFormData] = useState<any>(() => {
+    return buildFormData(initialData)
   })
   const [assetSearch, setAssetSearch] = useState('')
+  useEffect(() => {
+    setFormData(buildFormData(initialData))
+    setAssetSearch('')
+  }, [initialData])
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const systems = options?.filter((o: any) => o.category === 'LogicalSystem') || []
-  const { data: devices } = useQuery({ queryKey: ['devices', formData.system_name], enabled: !!formData.system_name, queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${encodeURIComponent(formData.system_name)}`)).json() })
-  const mutation = useMutation({ mutationFn: async (data: any) => (await apiFetch(data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes', { method: data.id ? 'PUT' : 'POST', body: JSON.stringify(data) })).json(), onSuccess: () => { toast.success('Registry Synchronized'); onComplete(); } })
+  const { data: devices } = useQuery({ 
+    queryKey: ['devices-far', formData.system_name], 
+    enabled: !!formData.system_name, 
+    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json() 
+  })
+  const mutation = useMutation({ 
+    mutationFn: async (data: any) => {
+      const url = data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes';
+      // Clean payload: Filter out relationship objects and keep only IDs
+      const payload = { ...data };
+      if (payload.affected_assets && typeof payload.affected_assets[0] === 'object') {
+        payload.affected_assets = payload.affected_assets.map((a: any) => a.id);
+      }
+      // causes, mitigations, etc are managed in sub-modals, filter them out from mode update
+      delete payload.causes;
+      delete payload.mitigations;
+      delete payload.prevention_actions;
+      delete payload.linked_rcas;
+      
+      // Safety: Strip read-only fields that error out the backend on PUT (SQLite strictness)
+      delete payload.created_at;
+      delete payload.updated_at;
+      delete payload.created_by_user_id;
+
+      const res = await apiFetch(url, { 
+        method: data.id ? 'PUT' : 'POST', 
+        body: JSON.stringify(payload) 
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }, 
+    onSuccess: () => { toast.success('Registry Synchronized'); onComplete(); } 
+  })
   const rpn = formData.severity * formData.occurrence * formData.detection
 
   return (
@@ -1179,6 +1235,20 @@ function FARWizard({ initialData, onComplete }: any) {
 
 function CausalTab({ mode, onUpdate }: any) {
   const [activeModal, setActiveModal] = useState<any>(null)
+  const queryClient = useQueryClient()
+  const deleteCauseMutation = useMutation({
+    mutationFn: async (causeId: number) => {
+      const res = await apiFetch(`/api/v1/far/causes/${causeId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Root cause removed')
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      onUpdate()
+    },
+    onError: (error: any) => toast.error(error.message || 'Failed to delete root cause')
+  })
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
@@ -1244,7 +1314,12 @@ function CausalTab({ mode, onUpdate }: any) {
                            >
                               <Edit2 size={14}/>
                            </button>
-                           <button className="p-1.5 text-slate-600 hover:text-rose-500 transition-all rounded-lg"><Trash2 size={14}/></button>
+                           <button
+                             onClick={() => deleteCauseMutation.mutate(c.id)}
+                             className="p-1.5 text-slate-600 hover:text-rose-500 transition-all rounded-lg"
+                           >
+                             <Trash2 size={14}/>
+                           </button>
                         </div>
                      </td>
                   </tr>
@@ -1362,6 +1437,19 @@ function RoadmapTab({ mode, onUpdate }: any) {
   const queryClient = useQueryClient()
   const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
   const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+  const deleteMitigationMutation = useMutation({
+    mutationFn: async (mitigationId: number) => {
+      const res = await apiFetch(`/api/v1/far/mitigations/${mitigationId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('Mitigation removed')
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      onUpdate()
+    },
+    onError: (error: any) => toast.error(error.message || 'Failed to delete mitigation')
+  })
 
   useEffect(() => {
     if (!selectedCauseId && mode.causes?.length > 0) {
@@ -1439,7 +1527,12 @@ function RoadmapTab({ mode, onUpdate }: any) {
                            </span>
                         </td>
                         <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button className="p-2 text-slate-600 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                           <button
+                             onClick={() => deleteMitigationMutation.mutate(m.id)}
+                             className="p-2 text-slate-600 hover:text-rose-500 transition-colors"
+                           >
+                             <Trash2 size={16}/>
+                           </button>
                         </td>
                      </tr>
                    ))}
@@ -1476,10 +1569,11 @@ function RoadmapTab({ mode, onUpdate }: any) {
     const [isLinking, setIsLinking] = useState(false)
     const [search, setSearch] = useState('')
     const queryClient = useQueryClient()
+    const navigate = useNavigate()
 
     const { data: research } = useQuery({ 
       queryKey: ['research-items'], 
-      queryFn: async () => (await apiFetch('/api/v1/research/')).json() 
+      queryFn: async () => (await apiFetch('/api/v1/investigations')).json() 
     })
 
     const filteredResearch = useMemo(() => {
@@ -1508,10 +1602,33 @@ function RoadmapTab({ mode, onUpdate }: any) {
         toast.success('Research Artifact Linked to Vector')
         setIsLinking(false)
         onUpdate()
-        queryClient.invalidateQueries({ queryKey: ['far'] })
+        queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       },
       onError: (err: any) => {
         toast.error(`Linking Failed: ${err.message}`)
+      }
+    })
+    const unlinkMutation = useMutation({
+      mutationFn: async (researchId: number) => {
+        const currentLinks = mode.metadata_json?.linked_research_ids || []
+        const updatedMetadata = {
+          ...mode.metadata_json,
+          linked_research_ids: currentLinks.filter((id: number) => id !== researchId)
+        }
+        const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ metadata_json: updatedMetadata })
+        })
+        if (!res.ok) throw new Error(await res.text())
+        return res.json()
+      },
+      onSuccess: () => {
+        toast.success('Research artifact unlinked')
+        onUpdate()
+        queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      },
+      onError: (err: any) => {
+        toast.error(`Unlink Failed: ${err.message}`)
       }
     })
 
@@ -1540,8 +1657,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      </div>
                   </div>
                   <div className="flex gap-3">
-                     <button onClick={() => window.location.hash = '#/research'} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
-                     <button className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
+                     <button onClick={() => navigate('/research')} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
+                     <button onClick={() => unlinkMutation.mutate(r.id)} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
                   </div>
                </div>
             ))}
@@ -1549,7 +1666,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                <div className="flex-1 flex flex-col items-center justify-center py-20 space-y-4 opacity-20 ">
                   <Activity size={48} className="text-slate-500" />
                   <p className="text-[12px] font-bold uppercase tracking-[0.3em] text-center max-w-md">No historical research artifacts currently mapped to this failure vector</p>
-                  <button onClick={() => window.location.hash = '#/research'} className="text-[10px] font-bold uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
+                  <button onClick={() => navigate('/research')} className="text-[10px] font-bold uppercase underline tracking-widest text-rose-500">Initiate New Research Case</button>
                </div>
             )}
          </div>

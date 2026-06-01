@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, or_, and_
+from sqlalchemy import select, delete, update, or_, and_, func
 from typing import List
 from ..database import get_db
 from ..models import models
@@ -50,6 +50,23 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     RackA = aliased(models.Rack)
     RackB = aliased(models.Rack)
     
+    source_location_subquery = (
+        select(
+            models.DeviceLocation.device_id.label("device_id"),
+            func.min(models.DeviceLocation.id).label("location_id"),
+        )
+        .group_by(models.DeviceLocation.device_id)
+        .subquery()
+    )
+    target_location_subquery = (
+        select(
+            models.DeviceLocation.device_id.label("device_id"),
+            func.min(models.DeviceLocation.id).label("location_id"),
+        )
+        .group_by(models.DeviceLocation.device_id)
+        .subquery()
+    )
+
     query = select(
         models.PortConnection,
         DeviceA.name.label("server_a"),
@@ -60,9 +77,11 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
         LocB.start_unit.label("slot_b")
     ).outerjoin(DeviceA, models.PortConnection.source_device_id == DeviceA.id) \
      .outerjoin(DeviceB, models.PortConnection.target_device_id == DeviceB.id) \
-     .outerjoin(LocA, DeviceA.id == LocA.device_id) \
+     .outerjoin(source_location_subquery, source_location_subquery.c.device_id == DeviceA.id) \
+     .outerjoin(LocA, LocA.id == source_location_subquery.c.location_id) \
      .outerjoin(RackA, LocA.rack_id == RackA.id) \
-     .outerjoin(LocB, DeviceB.id == LocB.device_id) \
+     .outerjoin(target_location_subquery, target_location_subquery.c.device_id == DeviceB.id) \
+     .outerjoin(LocB, LocB.id == target_location_subquery.c.location_id) \
      .outerjoin(RackB, LocB.rack_id == RackB.id)
     
     if device_id:
@@ -121,6 +140,10 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
 
     if not all([source_device_id, source_port, target_device_id, target_port]):
         raise HTTPException(400, "Incomplete mapping data")
+    if str(source_device_id) == str(target_device_id):
+        raise HTTPException(400, "Source and peer assets must be different")
+    if source_port == target_port and str(source_device_id) == str(target_device_id):
+        raise HTTPException(400, "Loopback mappings on the same asset and port are not allowed")
 
     # Duplicate check: port on a device can only have one physical connection
     dup_query = select(models.PortConnection).filter(
@@ -168,32 +191,51 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
     conn = result.scalar_one_or_none()
     if not conn: raise HTTPException(404)
-    
-    if 'device_a_id' in data: conn.source_device_id = data['device_a_id']
-    if 'port_a' in data: conn.source_port = data['port_a']
+
+    source_device_id = data.get('device_a_id', conn.source_device_id)
+    source_port = data.get('source_port') or data.get('port_a') or conn.source_port
+    target_device_id = data.get('device_b_id', conn.target_device_id)
+    target_port = data.get('target_port') or data.get('port_b') or conn.target_port
+
+    if not all([source_device_id, source_port, target_device_id, target_port]):
+        raise HTTPException(400, "Incomplete mapping data")
+    if str(source_device_id) == str(target_device_id):
+        raise HTTPException(400, "Source and peer assets must be different")
+    if source_port == target_port and str(source_device_id) == str(target_device_id):
+        raise HTTPException(400, "Loopback mappings on the same asset and port are not allowed")
+
+    dup_query = select(models.PortConnection).filter(
+        models.PortConnection.id != conn_id,
+        or_(
+            and_(models.PortConnection.source_device_id == source_device_id, models.PortConnection.source_port == source_port),
+            and_(models.PortConnection.target_device_id == source_device_id, models.PortConnection.target_port == source_port),
+            and_(models.PortConnection.source_device_id == target_device_id, models.PortConnection.source_port == target_port),
+            and_(models.PortConnection.target_device_id == target_device_id, models.PortConnection.target_port == target_port)
+        )
+    )
+    dup_res = await db.execute(dup_query)
+    if dup_res.scalars().first():
+        raise HTTPException(400, "One of the selected ports is already physically cross-connected")
+
+    conn.source_device_id = source_device_id
+    conn.source_port = source_port
+    conn.target_device_id = target_device_id
+    conn.target_port = target_port
     if 'source_ip' in data: conn.source_ip = data['source_ip']
     if 'source_mac' in data: conn.source_mac = data['source_mac']
     if 'source_vlan' in data: conn.source_vlan = data['source_vlan']
-    if 'device_b_id' in data: conn.target_device_id = data['device_b_id']
-    if 'port_b' in data: conn.target_port = data['port_b']
     if 'target_ip' in data: conn.target_ip = data['target_ip']
     if 'target_mac' in data: conn.target_mac = data['target_mac']
     if 'target_vlan' in data: conn.target_vlan = data['target_vlan']
     if 'link_type' in data: conn.link_type = data['link_type']
     if 'purpose' in data: conn.purpose = data['purpose']
     if 'speed_gbps' in data: conn.speed_gbps = data['speed_gbps']
+    if 'unit' in data: conn.unit = data['unit']
     if 'direction' in data: conn.direction = data['direction']
     if 'cable_type' in data: conn.cable_type = data['cable_type']
     if 'status' in data: conn.status = data['status']
     if 'farm' in data: conn.farm = data['farm']
     if 'request_link' in data: conn.request_link = data['request_link']
-
-    log = models.AuditLog(
-        user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"
-    )
-    db.add(log)
-    await db.commit()
-    return conn
 
     log = models.AuditLog(
         user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"
@@ -236,3 +278,29 @@ async def bulk_update_status(data: dict, db: AsyncSession = Depends(get_db)):
     db.add(log)
     await db.commit()
     return {"status": "success", "count": len(ids)}
+
+@router.post("/connections/bulk-delete")
+async def bulk_delete_connections(data: dict, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids", [])
+    if not ids:
+        raise HTTPException(400, "IDs required")
+
+    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id.in_(ids)))
+    connections = result.scalars().all()
+    if not connections:
+        return {"status": "success", "count": 0}
+
+    deleted_ids = []
+    for conn in connections:
+        deleted_ids.append(conn.id)
+        await db.delete(conn)
+
+    log = models.AuditLog(
+        user_id="admin",
+        action="BULK_DELETE",
+        target_table="port_connections",
+        description=f"Bulk severed {len(deleted_ids)} network links"
+    )
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(deleted_ids), "deleted_ids": deleted_ids}

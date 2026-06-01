@@ -5,16 +5,23 @@ import { Activity, Calendar, RefreshCcw, Zap, Layers, X, Search, Filter, Downloa
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
 export default function AuditLogs() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(false)
   const [showCharts, setShowCharts] = useState(true)
   const [quickSearch, setQuickSearch] = useState('')
+  const [activeLog, setActiveLog] = useState<any>(null)
+  const targetTableParam = searchParams.get('target_table') || ''
+  const targetIdParam = searchParams.get('target_id') || ''
 
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
 
@@ -24,6 +31,8 @@ export default function AuditLogs() {
       const params = new URLSearchParams()
       if (dateRange.start) params.append('start_date', dateRange.start)
       if (dateRange.end) params.append('end_date', dateRange.end)
+      if (targetTableParam) params.append('target_table', targetTableParam)
+      if (targetIdParam) params.append('target_id', targetIdParam)
       const res = await apiFetch(`/api/v1/audit/?${params.toString()}`)
       return res.json()
     }
@@ -57,6 +66,28 @@ export default function AuditLogs() {
       setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
     }
   }, [fontSize, rowDensity, logs, showCharts])
+
+  const handleExportCSV = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_AuditLedger_${new Date().toISOString().split('T')[0]}.csv`
+      })
+    }
+  }
+
+  const openTarget = (log: any) => {
+    const table = String(log.target_table || '').toLowerCase()
+    const targetId = log.target_id
+    if (!targetId) return
+
+    if (table.includes('device')) return navigate(`/asset?id=${targetId}`)
+    if (table.includes('project')) return navigate(`/projects?id=${targetId}`)
+    if (table.includes('far')) return navigate(`/far?id=${targetId}`)
+    if (table.includes('knowledge')) return navigate(`/knowledge?id=${targetId}`)
+    if (table.includes('logical_service') || table.includes('service')) return navigate(`/services?id=${targetId}`)
+    if (table.includes('monitor')) return navigate(`/monitoring?id=${targetId}`)
+    if (table.includes('port_connection') || table.includes('network')) return navigate(`/network?id=${targetId}`)
+  }
 
   const columnDefs = useMemo(() => [
     { 
@@ -140,77 +171,87 @@ export default function AuditLogs() {
     },
     {
         headerName: 'ACTIONS',
-        width: 80,
+        width: 150,
         pinned: 'right' as const,
-        cellRenderer: () => (
-            <button className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
+        cellRenderer: (params: any) => (
+            <div className="flex items-center justify-center gap-1">
+              <button onClick={() => openTarget(params.data)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-blue-400 transition-all" title="Open target record">
                 <Search size={14} />
-            </button>
+              </button>
+              <button onClick={() => setActiveLog(params.data)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-amber-400 transition-all" title="View change payload">
+                <Layers size={14} />
+              </button>
+            </div>
         )
     }
   ], [])
 
   return (
     <div className="h-full flex flex-col bg-[#020617]">
-      {/* Header Overhaul */}
-      <div className="px-8 py-6 border-b border-white/5 bg-slate-950/40 backdrop-blur-xl flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <div>
-            <h1 className="text-3xl font-black tracking-tighter uppercase text-white flex items-center gap-3">
-               <Zap className="text-blue-500" fill="currentColor" /> Audit Registry
-            </h1>
-            <p className="text-[10px] text-slate-500 mt-1.5 font-black uppercase tracking-[0.2em] flex items-center gap-2">
-               <Layers size={12} className="text-blue-500/50" /> Immutable ledger of all system vector transformations
-            </p>
-          </div>
+      <div className="space-y-4 border-b border-white/5 bg-slate-950/40 px-8 py-6 backdrop-blur-xl">
+        <PageHeader
+          eyebrow="Registry"
+          title={
+            <span className="flex items-center gap-3 uppercase">
+              <Zap className="text-blue-500" fill="currentColor" /> Audit Ledger
+            </span>
+          }
+          subtitle="Immutable record of system state changes and operator actions"
+          meta={
+            (targetTableParam || targetIdParam) ? (
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">
+                Scoped: {targetTableParam || 'Any Table'} {targetIdParam ? `// ${targetIdParam}` : ''}
+              </span>
+            ) : undefined
+          }
+        />
 
-          <div className="h-10 w-px bg-white/10" />
-
-          <div className="flex items-center gap-3">
-             <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={14} />
-                <input 
-                   type="text" 
-                   value={quickSearch}
-                   onChange={e => {
-                       setQuickSearch(e.target.value);
-                       gridRef.current?.api?.setQuickFilter(e.target.value);
-                   }}
-                   placeholder="Quick scan ledger..." 
-                   className="bg-white/5 border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-[11px] font-bold uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[280px]"
-                />
-             </div>
-             
-             <div className="flex items-center bg-white/5 rounded-xl border border-white/5 p-1">
-                <button onClick={() => setShowCharts(!showCharts)} className={`p-2 rounded-lg transition-all flex items-center gap-2 ${showCharts ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
-                   <BarChart2 size={16} />
-                   <span className="text-[9px] font-black uppercase tracking-widest pr-1">Analytics</span>
-                </button>
-                <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-2 rounded-lg transition-all ${showStyleLab ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}>
-                   <Activity size={16} />
-                </button>
-             </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-           <div className="flex items-center gap-3 bg-slate-900/80 p-2 rounded-xl border border-white/10 shadow-inner">
-              <Calendar size={14} className="text-blue-500 ml-2" />
-              <div className="flex flex-col">
-                 <span className="text-[7px] font-black text-slate-600 uppercase">Start Vector</span>
-                 <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-white cursor-pointer" />
+        <PageToolbar
+          left={
+            <>
+              <ToolbarSearch
+                value={quickSearch}
+                onChange={(e) => {
+                  setQuickSearch(e.target.value)
+                  gridRef.current?.api?.setQuickFilter(e.target.value)
+                }}
+                placeholder="Quick scan ledger..."
+              />
+              <ToolbarGroup>
+                <ToolbarButton active={showCharts} onClick={() => setShowCharts(!showCharts)}>
+                  <span className="flex items-center gap-2">
+                    <BarChart2 size={16} />
+                    Analytics
+                  </span>
+                </ToolbarButton>
+                <ToolbarIconButton active={showStyleLab} onClick={() => setShowStyleLab(!showStyleLab)} title="Toggle density controls">
+                  <Activity size={16} />
+                </ToolbarIconButton>
+              </ToolbarGroup>
+            </>
+          }
+          right={
+            <>
+              <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 shadow-inner">
+                <Calendar size={14} className="ml-1 text-blue-500" />
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black uppercase text-slate-600">Start</span>
+                  <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase text-white outline-none" />
+                </div>
+                <div className="mx-1 h-6 w-px bg-white/5" />
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-black uppercase text-slate-600">End</span>
+                  <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase text-white outline-none" />
+                </div>
               </div>
-              <div className="w-px h-6 bg-white/5 mx-2" />
-              <div className="flex flex-col">
-                 <span className="text-[7px] font-black text-slate-600 uppercase">End Vector</span>
-                 <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase outline-none text-white cursor-pointer" />
-              </div>
-           </div>
-
-           <button className="flex items-center gap-2 px-5 py-3 bg-white text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-white/5 hover:scale-105 active:scale-95 transition-all">
-              <Download size={14} /> Export CSV
-           </button>
-        </div>
+              <ToolbarButton onClick={handleExportCSV} variant="primary" className="px-5 py-3">
+                <span className="flex items-center gap-2">
+                  <Download size={14} /> Export CSV
+                </span>
+              </ToolbarButton>
+            </>
+          }
+        />
       </div>
 
       <AnimatePresence>
@@ -353,6 +394,49 @@ export default function AuditLogs() {
           paginationPageSize={50}
         />
       </div>
+
+      <AnimatePresence>
+        {activeLog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 p-5">
+                <div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Audit Change Payload</h3>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    {activeLog.target_table} / {activeLog.target_id || 'N/A'}
+                  </p>
+                </div>
+                <button onClick={() => setActiveLog(null)} className="text-slate-500 transition-colors hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="grid gap-4 p-5 md:grid-cols-2">
+                <div className="rounded-xl border border-white/5 bg-black/30 p-4">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Description</p>
+                  <p className="text-[11px] font-bold leading-relaxed text-slate-300">{activeLog.description || 'No description captured.'}</p>
+                </div>
+                <div className="rounded-xl border border-white/5 bg-black/30 p-4">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Change JSON</p>
+                  <pre className="max-h-[40vh] overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-300 custom-scrollbar">
+                    {JSON.stringify(activeLog.changes || {}, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         .ag-theme-alpine-dark {

@@ -1,3 +1,6 @@
+from copy import deepcopy
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
@@ -10,8 +13,144 @@ from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base & Q&A"])
 
+DEFAULT_KNOWLEDGE_METADATA = {
+    "entry_type": "Runbook",
+    "criticality": "Standard",
+    "ownership": {
+        "owner": "",
+        "backup_owner": "",
+        "review_team": "",
+        "escalation_contact": ""
+    },
+    "verification": {
+        "state": "Needs Review",
+        "last_verified_at": "",
+        "next_review_at": "",
+        "verified_by": ""
+    },
+    "links": {
+        "service_ids": [],
+        "monitoring_ids": [],
+        "far_ids": [],
+        "research_ids": [],
+        "vendor_ids": [],
+        "project_ids": []
+    },
+    "feedback": [],
+    "version_history": [],
+    "source_context": {}
+}
+
+
+def _merge_dict(base: dict, override: dict) -> dict:
+    merged = deepcopy(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge_dict(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def normalize_metadata(entry_data: dict, existing_metadata: Optional[dict] = None) -> dict:
+    metadata = _merge_dict(DEFAULT_KNOWLEDGE_METADATA, existing_metadata or {})
+    metadata = _merge_dict(metadata, entry_data.get("metadata_json") or {})
+    metadata["entry_type"] = metadata.get("entry_type") or "Runbook"
+    metadata["criticality"] = metadata.get("criticality") or "Standard"
+    metadata["ownership"] = _merge_dict(DEFAULT_KNOWLEDGE_METADATA["ownership"], metadata.get("ownership") or {})
+    metadata["verification"] = _merge_dict(DEFAULT_KNOWLEDGE_METADATA["verification"], metadata.get("verification") or {})
+    metadata["links"] = _merge_dict(DEFAULT_KNOWLEDGE_METADATA["links"], metadata.get("links") or {})
+    metadata["feedback"] = list(metadata.get("feedback") or [])
+    metadata["version_history"] = list(metadata.get("version_history") or [])
+    metadata["source_context"] = dict(metadata.get("source_context") or {})
+    return metadata
+
+
+def build_version_snapshot(entry: models.KnowledgeEntry, metadata: dict, summary: str) -> dict:
+    history = metadata.get("version_history") or []
+    return {
+        "version": len(history) + 1,
+        "changed_at": datetime.now(timezone.utc).isoformat(),
+        "changed_by": metadata.get("ownership", {}).get("owner") or entry.created_by_user_id or "system_admin",
+        "summary": summary,
+        "snapshot": {
+            "category": entry.category,
+            "title": entry.title,
+            "content": entry.content,
+            "content_json": deepcopy(entry.content_json or {}),
+            "question_context": entry.question_context,
+            "tags": list(entry.tags or []),
+            "impacted_systems": list(entry.impacted_systems or []),
+            "linked_device_ids": list(entry.linked_device_ids or []),
+            "status": entry.status,
+            "metadata_json": {
+                k: deepcopy(v)
+                for k, v in metadata.items()
+                if k != "version_history"
+            }
+        }
+    }
+
+
+def stringify_knowledge_blob(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        return " ".join(stringify_knowledge_blob(v) for v in value.values())
+    if isinstance(value, list):
+        return " ".join(stringify_knowledge_blob(v) for v in value)
+    return str(value)
+
+
+async def get_lookup_names(db: AsyncSession, ids: List[int], model, field_name: str = "name") -> dict:
+    if not ids:
+        return {}
+    result = await db.execute(select(model.id, getattr(model, field_name)).where(model.id.in_(ids)))
+    return {row[0]: row[1] for row in result.all()}
+
+
+async def expand_entry_search_text(entry: models.KnowledgeEntry, db: AsyncSession) -> str:
+    metadata = normalize_metadata({"metadata_json": entry.metadata_json}, entry.metadata_json)
+    links = metadata.get("links", {})
+    service_names = await get_lookup_names(db, links.get("service_ids", []), models.LogicalService)
+    monitoring_names = await get_lookup_names(db, links.get("monitoring_ids", []), models.MonitoringItem, "title")
+    far_names = await get_lookup_names(db, links.get("far_ids", []), models.FarFailureMode, "title")
+    research_names = await get_lookup_names(db, links.get("research_ids", []), models.Investigation, "title")
+    vendor_names = await get_lookup_names(db, links.get("vendor_ids", []), models.Vendor)
+    project_names = await get_lookup_names(db, links.get("project_ids", []), models.Project, "name")
+    device_names = await get_lookup_names(db, entry.linked_device_ids or [], models.Device)
+
+    parts = [
+        entry.title,
+        entry.content,
+        entry.question_context,
+        stringify_knowledge_blob(entry.content_json),
+        stringify_knowledge_blob(entry.tags),
+        stringify_knowledge_blob(entry.impacted_systems),
+        stringify_knowledge_blob(metadata),
+        stringify_knowledge_blob(device_names.values()),
+        stringify_knowledge_blob(service_names.values()),
+        stringify_knowledge_blob(monitoring_names.values()),
+        stringify_knowledge_blob(far_names.values()),
+        stringify_knowledge_blob(research_names.values()),
+        stringify_knowledge_blob(vendor_names.values()),
+        stringify_knowledge_blob(project_names.values()),
+    ]
+    return " ".join(part for part in parts if part)
+
 @router.get("", response_model=List[schemas.KnowledgeEntryResponse])
-async def get_entries(category: Optional[str] = None, search: Optional[str] = None, db: AsyncSession = Depends(get_db)):
+async def get_entries(
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    device_id: Optional[int] = None,
+    service_id: Optional[int] = None,
+    monitoring_id: Optional[int] = None,
+    far_id: Optional[int] = None,
+    research_id: Optional[int] = None,
+    vendor_id: Optional[int] = None,
+    project_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db)
+):
     query = select(models.KnowledgeEntry).filter(models.KnowledgeEntry.is_deleted == False).options(
         selectinload(models.KnowledgeEntry.qa_threads).selectinload(models.KnowledgeQA.replies)
     )
@@ -19,14 +158,40 @@ async def get_entries(category: Optional[str] = None, search: Optional[str] = No
     if category:
         query = query.filter(models.KnowledgeEntry.category == category)
     
-    if search:
-        query = query.filter(or_(
-            models.KnowledgeEntry.title.ilike(f"%{search}%"),
-            models.KnowledgeEntry.content.ilike(f"%{search}%")
-        ))
-        
     result = await db.execute(query.order_by(models.KnowledgeEntry.updated_at.desc()))
-    return result.scalars().all()
+    entries = result.scalars().all()
+
+    if device_id is not None:
+        entries = [entry for entry in entries if device_id in (entry.linked_device_ids or [])]
+
+    def matches_link(entry: models.KnowledgeEntry, link_key: str, target_id: Optional[int]) -> bool:
+        if target_id is None:
+            return True
+        metadata = normalize_metadata({"metadata_json": entry.metadata_json}, entry.metadata_json)
+        return target_id in (metadata.get("links", {}).get(link_key, []) or [])
+
+    entries = [
+        entry for entry in entries
+        if matches_link(entry, "service_ids", service_id)
+        and matches_link(entry, "monitoring_ids", monitoring_id)
+        and matches_link(entry, "far_ids", far_id)
+        and matches_link(entry, "research_ids", research_id)
+        and matches_link(entry, "vendor_ids", vendor_id)
+        and matches_link(entry, "project_ids", project_id)
+    ]
+
+    if search:
+        search_term = search.lower()
+        filtered_entries = []
+        for entry in entries:
+            if search_term in (await expand_entry_search_text(entry, db)).lower():
+                filtered_entries.append(entry)
+        entries = filtered_entries
+
+    for entry in entries:
+        entry.metadata_json = normalize_metadata({"metadata_json": entry.metadata_json}, entry.metadata_json)
+
+    return entries
 
 @router.get("/{entry_id}", response_model=schemas.KnowledgeEntryResponse)
 async def get_entry(entry_id: int, db: AsyncSession = Depends(get_db)):
@@ -41,7 +206,10 @@ async def get_entry(entry_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=schemas.KnowledgeEntryResponse)
 async def create_entry(data: schemas.KnowledgeEntryCreate, db: AsyncSession = Depends(get_db)):
-    entry = models.KnowledgeEntry(**data.model_dump())
+    payload = data.model_dump()
+    payload["metadata_json"] = normalize_metadata(payload)
+    entry = models.KnowledgeEntry(**payload)
+    entry.metadata_json["version_history"].append(build_version_snapshot(entry, entry.metadata_json, "Initial version"))
     db.add(entry)
     try:
         await db.commit()
@@ -61,10 +229,19 @@ async def update_entry(entry_id: int, data: schemas.KnowledgeEntryBase, db: Asyn
     result = await db.execute(select(models.KnowledgeEntry).filter(models.KnowledgeEntry.id == entry_id))
     entry = result.scalar_one_or_none()
     if not entry: raise HTTPException(404, "Entry not found")
-    
-    for k, v in data.model_dump(exclude_unset=True).items():
+
+    payload = data.model_dump(exclude_unset=True)
+    normalized_metadata = normalize_metadata(payload, entry.metadata_json)
+
+    for k, v in payload.items():
+        if k == "metadata_json":
+            continue
         setattr(entry, k, v)
-        
+    entry.metadata_json = normalized_metadata
+    entry.metadata_json["version_history"].append(
+        build_version_snapshot(entry, entry.metadata_json, payload.get("status", "Knowledge update"))
+    )
+
     await db.commit()
     
     # Re-fetch with relationships

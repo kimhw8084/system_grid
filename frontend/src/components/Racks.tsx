@@ -71,6 +71,46 @@ const powerColor = (pct: number) => {
   return 'bg-sky-400'
 }
 
+const getVirtualPlacementConflict = ({
+  racks,
+  rackId,
+  deviceId,
+  startUnit,
+  sizeU,
+  excludeDeviceId
+}: {
+  racks: any[]
+  rackId: number
+  deviceId?: number | string | null
+  startUnit: number
+  sizeU: number
+  excludeDeviceId?: number | string | null
+}) => {
+  const targetRack = racks.find((rack: any) => rack.id === rackId)
+  if (!targetRack) return 'Target rack not found in plan'
+
+  const normalizedSize = Number(sizeU) || 1
+  const normalizedStart = Number(startUnit) || 1
+  const newEnd = normalizedStart + normalizedSize - 1
+
+  if (newEnd > (targetRack.total_u || 42)) {
+    return `RACK_OVERFLOW: Device exceeds max U height of ${targetRack.total_u || 42}`
+  }
+
+  const conflict = (targetRack.device_locations || []).find((loc: any) => {
+    if (excludeDeviceId && String(loc.device_id) === String(excludeDeviceId)) return false
+    if (deviceId && String(loc.device_id) === String(deviceId)) return false
+    const locEnd = loc.start_unit + loc.size_u - 1
+    return !(newEnd < loc.start_unit || normalizedStart > locEnd)
+  })
+
+  if (conflict) {
+    return `Collision with ${conflict.device?.name || 'existing device'} at U${conflict.start_unit}`
+  }
+
+  return null
+}
+
 // ─── Status Breathing Bar ────────────────────────────────────────────────────
 
 const RackStatusBar = ({ rack, siteColor }: { rack: any; siteColor?: string }) => {
@@ -1006,6 +1046,7 @@ interface RackElevationProps {
 
   return (
    <div 
+     data-rack-id={rack.id}
      style={{ width: `${rackWidth}px` }}
      className={`glass-panel flex-shrink-0 rounded-lg overflow-hidden flex flex-col border transition-all group relative
      ${isSelected ? 'border-blue-500/60 shadow-blue-500/15 shadow-2xl bg-blue-900/[0.07]' : 'border-white/[0.07] hover:border-white/20'}
@@ -2428,6 +2469,11 @@ export default function Racks() {
     return list
   }, [devices, isPlanInitialized, virtualRacks])
 
+  const renderedRacks = useMemo(() => {
+    if (!isPlanInitialized) return displayedRacks
+    return displayedRacks.filter((r: any) => sandboxRackIds.includes(r.id))
+  }, [displayedRacks, isPlanInitialized, sandboxRackIds])
+
   const getPlanDeviceLocation = useCallback((deviceId: number) => {
     for (const r of virtualRacks) {
       const loc = r.device_locations?.find((l: any) => l.device_id === deviceId)
@@ -2481,21 +2527,22 @@ export default function Racks() {
 
       // If in sandbox mode, update virtual state instead of API
       if (isPlanInitialized) {
+        const placementConflict = getVirtualPlacementConflict({
+          racks: virtualRacks,
+          rackId,
+          deviceId: finalDeviceId,
+          startUnit: payload.start_unit,
+          sizeU: payload.size_u
+        })
+        if (placementConflict) throw new Error(placementConflict)
+
         setVirtualRacks(prev => prev.map(r => {
           // Remove from ALL racks first to prevent duplicates/multi-mounting
           const cleanedLocs = (r.device_locations || []).filter((l:any) => String(l.device_id) !== String(finalDeviceId))
 
           if (r.id !== rackId) return { ...r, device_locations: cleanedLocs }
 
-          // Also remove any existing devices in the target slots to prevent overlap in virtual state
-          const targetUnits = Array.from({ length: payload.size_u }, (_, i) => payload.start_unit + i)
-          const finalLocs = cleanedLocs.filter((l: any) => {
-            const locUnits = Array.from({ length: l.size_u }, (_, i) => l.start_unit + i)
-            return !locUnits.some(u => targetUnits.includes(u))
-          })
-
-          finalLocs.push({ ...payload, device: finalDevice })
-          return { ...r, device_locations: finalLocs }
+          return { ...r, device_locations: [...cleanedLocs, { ...payload, device: finalDevice }] }
         }))
         return { message: 'VIRTUAL_SUCCESS' }
       }
@@ -2555,7 +2602,11 @@ export default function Racks() {
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedSiteId) => {
+      if (activeSite === deletedSiteId) {
+        setActiveSite(null)
+      }
+      setActiveSiteMenu(null)
       queryClient.invalidateQueries({ queryKey: ['sites'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       toast.success('Site decommissioned')
@@ -2593,11 +2644,20 @@ export default function Racks() {
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
-      setSelectedRacks([])
       setShowRelocateModal(false)
       setRestoreWizard(null)
+      const conflictIds = Array.isArray(data?.conflicts) ? data.conflicts : []
+      const hasPartialConflict = (variables.action === 'restore' || variables.action === 'relocate') && conflictIds.length > 0
+
+      if (hasPartialConflict) {
+        setSelectedRacks(conflictIds)
+        toast.error(`Completed with follow-up required: ${conflictIds.length} rack(s) still need attention`)
+        return
+      }
+
+      setSelectedRacks([])
       toast.success('Action completed')
     },
     onError: (e: any) => toast.error(e.message)
@@ -2640,6 +2700,16 @@ export default function Racks() {
   const updateMountMutation = useMutation({
     mutationFn: async ({ rackId, device_id, start_u, size_u, orientation, depth }: any) => {
       if (isPlanInitialized) {
+        const placementConflict = getVirtualPlacementConflict({
+          racks: virtualRacks,
+          rackId,
+          deviceId: device_id,
+          startUnit: start_u,
+          sizeU: size_u,
+          excludeDeviceId: device_id
+        })
+        if (placementConflict) throw new Error(placementConflict)
+
         setVirtualRacks(prev => prev.map(r => {
           if (r.id !== rackId) return r
           const loc = r.device_locations?.find((l: any) => l.device_id === device_id)
@@ -3091,7 +3161,7 @@ export default function Racks() {
             <ConnectionLines
               sourceDeviceId={focusedConnection.sourceId}
               targetDeviceIds={focusedConnection.targetIds}
-              racks={racks}
+              racks={renderedRacks}
               connections={connections}
               devices={devices}
               onLineClick={(conn) => setViewingConnection(conn)}
@@ -3100,9 +3170,7 @@ export default function Racks() {
           {/* Render Racks Grouped by Aisle/Row if not searching */}
           {(() => {
             const isDiffActive = showDiff || !!diffBaseVersion
-            const racksToRender = isPlanInitialized 
-               ? displayedRacks.filter((r:any) => sandboxRackIds.includes(r.id))
-               : displayedRacks
+            const racksToRender = renderedRacks
 
             if (searchTerm || focusedConnection || showCompareOnly || isDiffActive) {
               return (
@@ -4028,8 +4096,5 @@ export default function Racks() {
            displayName="Datacenter Racks" 
         />
     </div>
-  )
-}
-   </div>
   )
 }

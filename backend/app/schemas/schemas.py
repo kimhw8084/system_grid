@@ -199,6 +199,7 @@ class LogicalServiceBase(BaseModel):
     custom_attributes: Optional[Dict[str, Any]] = None
     logic_json: Optional[List[Dict[str, Any]]] = []
     purchase_type: Optional[str] = "One-time"
+    license_key: Optional[str] = None
     purchase_date: Optional[str] = None
     expiry_date: Optional[str] = None
     cost: Optional[float] = 0.0

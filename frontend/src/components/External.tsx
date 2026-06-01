@@ -16,17 +16,27 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 
 // --- Sub-components ---
 
+const parseMetadataObject = (value: any) => {
+  if (!value) return {}
+  if (typeof value !== 'string') return value
+  try {
+    return JSON.parse(value || '{}')
+  } catch {
+    return {}
+  }
+}
+
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
   const [tableRows, setTableRows] = useState(() => {
-    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    const obj = parseMetadataObject(value)
     return Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
   })
-  const [jsonValue, setJsonValue] = useState(() => JSON.stringify(value || {}, null, 2))
+  const [jsonValue, setJsonValue] = useState(() => JSON.stringify(parseMetadataObject(value), null, 2))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const obj = typeof value === 'string' ? JSON.parse(value || '{}') : (value || {})
+    const obj = parseMetadataObject(value)
     setTableRows(Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) })))
     setJsonValue(JSON.stringify(obj, null, 2))
   }, [value])
@@ -221,7 +231,10 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
 
 const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
   const queryClient = useQueryClient()
-  const { data: entities } = useQuery({ queryKey: ['external-entities'] })
+  const { data: entities } = useQuery({
+    queryKey: ['external-entities', { include_deleted: true }],
+    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+  })
   const entity = (entities as any[])?.find((e: any) => e.id === entityId)
   const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({})
@@ -373,16 +386,16 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
   useEffect(() => {
     const selectedType = types.find((t: any) => t.value === formData.type);
     if (selectedType?.metadata_keys) {
-      const newMeta: any = {};
+      const nextMeta: any = { ...(formData.metadata_json || {}) };
+      let changed = false;
       selectedType.metadata_keys.forEach((key: string) => {
-        // Preserve existing value if key exists, otherwise empty string
-        newMeta[key] = formData.metadata_json?.[key] || "";
+        if (!(key in nextMeta)) {
+          nextMeta[key] = "";
+          changed = true;
+        }
       });
-      // Only update if keys have actually changed to avoid infinite loop
-      const currentKeys = Object.keys(formData.metadata_json || {}).sort().join(',');
-      const targetKeys = [...selectedType.metadata_keys].sort().join(',');
-      if (currentKeys !== targetKeys) {
-        setFormData(prev => ({ ...prev, metadata_json: newMeta }));
+      if (changed) {
+        setFormData(prev => ({ ...prev, metadata_json: nextMeta }));
       }
     }
   }, [formData.type, types]);
@@ -546,7 +559,18 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
                         </div>
                         <div className="flex items-center space-x-3">
                            <button onClick={() => window.location.href = `mailto:${poc.email}`} title={poc.email} className="text-slate-500 hover:text-amber-400 transition-colors"><Mail size={12}/></button>
-                           <button title={poc.phone} className="text-slate-500 hover:text-amber-400 transition-colors"><Phone size={12}/></button>
+                           <button
+                             onClick={() => {
+                               if (poc.phone) {
+                                 window.location.href = `tel:${poc.phone}`
+                               }
+                             }}
+                             disabled={!poc.phone}
+                             title={poc.phone || 'No phone number registered'}
+                             className="text-slate-500 hover:text-amber-400 transition-colors disabled:opacity-40 disabled:hover:text-slate-500"
+                           >
+                             <Phone size={12}/>
+                           </button>
                         </div>
                      </div>
                    )) : (
@@ -658,7 +682,8 @@ export default function External() {
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
       toast.success('Interconnect Established')
       setShowLinkModal(false)
-    }
+    },
+    onError: (e: any) => toast.error(e.message || 'Interconnect establishment failed')
   })
 
   const deleteMutation = useMutation({
@@ -1197,7 +1222,10 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                     label="Target External Entity"
                     value={formData.external_entity_id}
                     onChange={e => setFormData({...formData, external_entity_id: e.target.value})}
-                    options={entities?.map((e: any) => ({ value: e.id, label: `${e.name} [${e.ip_address || 'No IP'}]` })) || []}
+                    options={entities?.map((e: any) => ({
+                      value: e.id,
+                      label: `${e.name} [${e.type || 'Unknown Type'}${e.environment ? ` · ${e.environment}` : ''}]`
+                    })) || []}
                     placeholder="Select Remote System..."
                  />
                  <StyledSelect 
