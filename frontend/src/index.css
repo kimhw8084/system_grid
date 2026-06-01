@@ -199,6 +199,79 @@
   color: var(--text-secondary) !important;
 }
 
+.monitoring-grid-shell .ag-root-wrapper {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.monitoring-grid-shell .ag-header {
+  background: rgba(2, 6, 23, 0.9) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.monitoring-grid-shell .ag-header-cell,
+.monitoring-grid-shell .ag-header-group-cell {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+}
+
+.monitoring-grid-shell .ag-row {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .monitoring-grid-row-even {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.monitoring-grid-shell .monitoring-grid-row-odd {
+  background: transparent !important;
+}
+
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even,
+.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even,
+.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.monitoring-grid-shell .ag-pinned-left-cols-container .ag-cell,
+.monitoring-grid-shell .ag-pinned-right-cols-container .ag-cell {
+  background: rgba(2, 6, 23, 0.96) !important;
+}
+
+.monitoring-grid-shell .ag-center-cols-viewport,
+.monitoring-grid-shell .ag-body-viewport,
+.monitoring-grid-shell .ag-body-horizontal-scroll-viewport,
+.monitoring-grid-shell .ag-center-cols-container {
+  background: transparent !important;
+}
+
+.grouped-monitoring-table th,
+.grouped-monitoring-table td {
+  line-height: 1 !important;
+}
+
+.grouped-monitoring-table td > * {
+  max-height: 100%;
+}
+
+.grouped-monitoring-table button {
+  min-height: 0 !important;
+  line-height: 1.05 !important;
+}
+
+.grouped-monitoring-table .row-action-trigger,
+.grouped-monitoring-table .row-action-menu-container button {
+  height: 24px !important;
+}
+
 .system-gradient {
   background: linear-gradient(135deg, var(--accent-primary) 0%, #034EA2 100%);
 }

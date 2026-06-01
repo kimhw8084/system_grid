@@ -49,6 +49,80 @@ const slugifyViewId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `view-${Date.now()}`
 
+const FLOATING_PANEL_EDGE = 16
+
+const getAnchoredFloatingStyle = ({
+  rect,
+  width,
+  height,
+  zIndex,
+  offset = 10
+}: {
+  rect: DOMRect
+  width: number
+  height: number
+  zIndex: number
+  offset?: number
+}) => {
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const spaceBelow = viewportHeight - rect.bottom - FLOATING_PANEL_EDGE
+  const spaceAbove = rect.top - FLOATING_PANEL_EDGE
+  const preferBelow = spaceBelow >= Math.min(height, 280) || spaceBelow >= spaceAbove
+  const top = preferBelow
+    ? Math.min(rect.bottom + offset, viewportHeight - height - FLOATING_PANEL_EDGE)
+    : Math.max(FLOATING_PANEL_EDGE, rect.top - height - offset)
+  const left = Math.min(
+    Math.max(FLOATING_PANEL_EDGE, rect.right - width),
+    viewportWidth - width - FLOATING_PANEL_EDGE
+  )
+  return {
+    position: 'fixed' as const,
+    top,
+    left,
+    width,
+    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
+    zIndex
+  }
+}
+
+const getPointFloatingStyle = ({
+  x,
+  y,
+  width,
+  height,
+  zIndex,
+  offset = 10
+}: {
+  x: number
+  y: number
+  width: number
+  height: number
+  zIndex: number
+  offset?: number
+}) => {
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const spaceRight = viewportWidth - x - FLOATING_PANEL_EDGE
+  const spaceLeft = x - FLOATING_PANEL_EDGE
+  const spaceBelow = viewportHeight - y - FLOATING_PANEL_EDGE
+  const spaceAbove = y - FLOATING_PANEL_EDGE
+  const left = spaceRight >= width || spaceRight >= spaceLeft
+    ? Math.min(x + offset, viewportWidth - width - FLOATING_PANEL_EDGE)
+    : Math.max(FLOATING_PANEL_EDGE, x - width - offset)
+  const top = spaceBelow >= Math.min(height, 300) || spaceBelow >= spaceAbove
+    ? Math.min(y + offset, viewportHeight - height - FLOATING_PANEL_EDGE)
+    : Math.max(FLOATING_PANEL_EDGE, y - height - offset)
+  return {
+    position: 'fixed' as const,
+    top,
+    left,
+    width,
+    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
+    zIndex
+  }
+}
+
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
   return item[field] || 'Unspecified'
@@ -217,60 +291,31 @@ export default function MonitoringGrid() {
   const openRowActionMenu = (event: React.MouseEvent, item: any) => {
     event.stopPropagation()
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    const menuWidth = 192
-    const menuHeight = 224
-    const padding = 16
-    const preferredTop = rect.bottom + 8
-    const maxLeft = window.innerWidth - menuWidth - padding
-    const maxTop = window.innerHeight - menuHeight - padding
-    const top = preferredTop <= maxTop ? preferredTop : Math.max(padding, rect.top - menuHeight - 8)
     setRowActionMenu({
       item,
-      style: {
-        position: 'fixed',
-        top,
-        left: Math.min(Math.max(padding, rect.right - menuWidth), maxLeft),
-        width: menuWidth,
-        zIndex: 1110
-      }
+      style: getAnchoredFloatingStyle({ rect, width: 336, height: 432, zIndex: 1115 })
     })
   }
 
   const openRowActionMenuAtPoint = (item: any, x: number, y: number) => {
-    const menuWidth = 224
-    const menuHeight = 360
-    const padding = 16
     setRowActionMenu({
       item,
-      style: {
-        position: 'fixed',
-        top: Math.min(y, window.innerHeight - menuHeight - padding),
-        left: Math.min(x, window.innerWidth - menuWidth - padding),
-        width: menuWidth,
-        zIndex: 1110
-      }
+      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
     })
   }
 
   const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
-    const padding = 16
     if (!button) {
       return {
         position: 'fixed' as const,
         top: 120,
-        left: Math.max(padding, window.innerWidth - width - 40),
+        left: Math.max(FLOATING_PANEL_EDGE, window.innerWidth - width - 40),
         width,
+        maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
         zIndex
       }
     }
-    const rect = button.getBoundingClientRect()
-    return {
-      position: 'fixed' as const,
-      top: Math.min(rect.bottom + 10, window.innerHeight - height - padding),
-      left: Math.min(Math.max(padding, rect.right - width), window.innerWidth - width - padding),
-      width,
-      zIndex
-    }
+    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex })
   }
 
   const toggleBulkWindow = () => {
@@ -365,6 +410,15 @@ export default function MonitoringGrid() {
           .catch(() => toast.error("Failed to copy data"))
       }
     }
+  }
+
+  const cycleGroupedSort = (colId: string) => {
+    setGridSortModel((current) => {
+      const active = current.find((entry: any) => entry.colId === colId)
+      if (!active) return [{ colId, sort: 'asc' }]
+      if (active.sort === 'asc') return [{ colId, sort: 'desc' }]
+      return []
+    })
   }
 
   const getColumnLayoutSnapshot = (api: any) => {
@@ -551,34 +605,28 @@ export default function MonitoringGrid() {
   useEffect(() => {
     const updateMenuPositions = () => {
       if (showDisplayMenu && displayMenuButtonRef.current) {
-        const rect = displayMenuButtonRef.current.getBoundingClientRect()
-        setDisplayMenuStyle({
-          position: 'fixed',
-          top: rect.bottom + 8,
-          left: rect.left,
+        setDisplayMenuStyle(getAnchoredFloatingStyle({
+          rect: displayMenuButtonRef.current.getBoundingClientRect(),
           width: 320,
+          height: 420,
           zIndex: 1100
-        })
+        }))
       }
       if (showViewsMenu && viewsMenuButtonRef.current) {
-        const rect = viewsMenuButtonRef.current.getBoundingClientRect()
-        setViewsMenuStyle({
-          position: 'fixed',
-          top: rect.bottom + 8,
-          left: Math.min(Math.max(16, rect.left), window.innerWidth - 396),
+        setViewsMenuStyle(getAnchoredFloatingStyle({
+          rect: viewsMenuButtonRef.current.getBoundingClientRect(),
           width: 380,
+          height: 460,
           zIndex: 1100
-        })
+        }))
       }
       if (showBulkMenu && bulkMenuButtonRef.current) {
-        const rect = bulkMenuButtonRef.current.getBoundingClientRect()
-        setBulkMenuStyle({
-          position: 'fixed',
-          top: Math.min(Math.max(16, rect.bottom + 8), window.innerHeight - BULK_MENU_MAX_HEIGHT - 16),
-          left: Math.min(Math.max(16, rect.right - 340), window.innerWidth - 356),
+        setBulkMenuStyle(getAnchoredFloatingStyle({
+          rect: bulkMenuButtonRef.current.getBoundingClientRect(),
           width: 340,
+          height: BULK_MENU_MAX_HEIGHT,
           zIndex: 1105
-        })
+        }))
       }
     }
 
@@ -651,13 +699,29 @@ export default function MonitoringGrid() {
       if (quickFilters.owner && !(item.owners || []).some((owner: any) => owner.name === quickFilters.owner)) return false
       return true
     })
-    return [...filtered].sort((a: any, b: any) => {
+    const sorted = [...filtered].sort((a: any, b: any) => {
       const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
       const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
       if (aFavorite !== bFavorite) return bFavorite - aFavorite
+      if (gridSortModel.length) {
+        for (const sort of gridSortModel) {
+          const direction = sort.sort === 'desc' ? -1 : 1
+          const aValue = sort.colId === 'owners'
+            ? (a.owners || []).map((owner: any) => owner.name).join(', ')
+            : a[sort.colId]
+          const bValue = sort.colId === 'owners'
+            ? (b.owners || []).map((owner: any) => owner.name).join(', ')
+            : b[sort.colId]
+          const aComparable = aValue == null ? '' : String(aValue).toLowerCase()
+          const bComparable = bValue == null ? '' : String(bValue).toLowerCase()
+          if (aComparable < bComparable) return -1 * direction
+          if (aComparable > bComparable) return 1 * direction
+        }
+      }
       return a.id - b.id
     })
-  }, [favoriteIds, items, quickFilters, searchTerm])
+    return sorted
+  }, [favoriteIds, gridSortModel, items, quickFilters, searchTerm])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -797,6 +861,14 @@ export default function MonitoringGrid() {
     if (!activeViewId || !gridRef.current?.api) return
     applySavedView(activeViewId)
   }, [activeViewId, items.length])
+
+  useEffect(() => {
+    if (!gridRef.current?.api || groupBy !== 'raw') return
+    gridRef.current.api.applyColumnState({
+      state: gridSortModel.map((sort: any) => ({ colId: sort.colId, sort: sort.sort })),
+      defaultState: { sort: null }
+    })
+  }, [gridSortModel, groupBy])
 
   useEffect(() => {
     if (!gridRef.current?.api || !selectedIds.length) return
@@ -1278,6 +1350,9 @@ export default function MonitoringGrid() {
           width: layout?.width || column.width || column.minWidth || 120,
           headerClass: column.headerClass || '',
           cellClass: column.cellClass || '',
+          pinned: layout?.pinned || column.pinned || null,
+          sortable: column.sortable !== false && !column.checkboxSelection && !['recent_change', 'favorite', 'watch', 'row_actions'].includes(colId),
+          sort: gridSortModel.find((entry: any) => entry.colId === colId)?.sort || null,
           render: (item: any) => {
             if (column.checkboxSelection) {
               const checked = selectedIds.includes(item.id)
@@ -1298,15 +1373,34 @@ export default function MonitoringGrid() {
           }
         }
       })
-  }, [columnDefs, columnLayoutState, selectedIds])
+  }, [columnDefs, columnLayoutState, gridSortModel, selectedIds])
 
   const groupedTableMinWidth = useMemo(
     () => groupedColumns.reduce((total: number, column: any) => total + (Number(column.width) || 120), 0),
     [groupedColumns]
   )
 
+  const groupedStickyOffsets = useMemo(() => {
+    const offsets: Record<string, { left?: number; right?: number }> = {}
+    let left = 0
+    groupedColumns.forEach((column: any) => {
+      if (column.pinned === 'left') {
+        offsets[column.key] = { ...(offsets[column.key] || {}), left }
+        left += Number(column.width) || 0
+      }
+    })
+    let right = 0
+    ;[...groupedColumns].reverse().forEach((column: any) => {
+      if (column.pinned === 'right') {
+        offsets[column.key] = { ...(offsets[column.key] || {}), right }
+        right += Number(column.width) || 0
+      }
+    })
+    return offsets
+  }, [groupedColumns])
+
   return (
-    <div className="h-full flex flex-col space-y-4">
+    <div className="h-full min-h-0 flex flex-col space-y-4">
       <PageHeader
         eyebrow="Operations"
         title="Monitoring Matrix"
@@ -1754,13 +1848,23 @@ export default function MonitoringGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 style={rowActionMenu.style}
-                className="row-action-menu-container rounded-xl border border-slate-700 bg-[#020617] p-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
+                className="row-action-menu-container overflow-hidden rounded-xl border border-slate-700 bg-[#020617] shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
               >
-                <div className="mb-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-3">
-                  <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Row Actions</p>
-                  <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
-                  <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
+                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Row Actions</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
+                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
+                  </div>
+                  <button
+                    onClick={() => setRowActionMenu(null)}
+                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                    aria-label="Close row actions"
+                  >
+                    <X size={13} />
+                  </button>
                 </div>
+                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
                 <button
                   onClick={() => {
                     setDetailItem(rowActionMenu.item)
@@ -1855,6 +1959,7 @@ export default function MonitoringGrid() {
                   <Trash2 size={14} />
                   {activeTab === 'active' ? 'De-activate' : 'Purge'}
                 </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1863,7 +1968,7 @@ export default function MonitoringGrid() {
       )}
 
       {groupBy === 'raw' ? (
-	        <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+	        <div className="monitoring-grid-shell monitoring-grid flex-1 min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
                <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -1900,7 +2005,8 @@ export default function MonitoringGrid() {
                 openRowActionMenuAtPoint(e.data, e.event.clientX, e.event.clientY)
               }}
 	            onRowClicked={handleRowClicked}
-	            onRowDoubleClicked={handleRowDoubleClicked}
+            onRowDoubleClicked={handleRowDoubleClicked}
+            getRowClass={(params) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
             quickFilterText={searchTerm}
             suppressRowClickSelection={true}
             enableCellTextSelection={true}
@@ -1909,7 +2015,7 @@ export default function MonitoringGrid() {
 
 	        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
           <div className="rounded-lg border border-white/5 bg-black/20 px-4 py-3">
             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped View</p>
             <p className="pt-1 text-[12px] font-semibold text-slate-100">Grouped by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
@@ -1938,7 +2044,7 @@ export default function MonitoringGrid() {
                 </button>
                 {!isCollapsed && (
                   <div className="overflow-x-auto">
-                    <table className="border-collapse" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
+                    <table className="grouped-monitoring-table border-collapse" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
                       <colgroup>
                         {groupedColumns.map((column: any) => (
                           <col key={column.key} style={{ width: `${column.width}px` }} />
@@ -1949,16 +2055,27 @@ export default function MonitoringGrid() {
                           {groupedColumns.map((column: any) => (
                             <th
                               key={column.key}
-                              className={`px-3 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''}`}
-                              style={{ fontSize: `${fontSize}px`, height: `${fontSize + rowDensity + 10}px` }}
+                              onClick={() => column.sortable && cycleGroupedSort(column.key)}
+                              className={`px-3 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''} ${column.sortable ? 'cursor-pointer select-none hover:text-slate-200' : ''} ${column.pinned ? 'sticky z-[2] backdrop-blur-md' : ''}`}
+                              style={{
+                                fontSize: `${fontSize}px`,
+                                height: `${fontSize + rowDensity + 10}px`,
+                                left: groupedStickyOffsets[column.key]?.left,
+                                right: groupedStickyOffsets[column.key]?.right,
+                                background: column.pinned ? 'rgba(2, 6, 23, 0.94)' : undefined
+                              }}
                             >
-                              {column.label}
+                              <span className="flex items-center justify-center gap-1">
+                                <span>{column.label}</span>
+                                {column.sort === 'asc' && <ChevronUp size={12} className="text-blue-400" />}
+                                {column.sort === 'desc' && <ChevronDown size={12} className="text-blue-400" />}
+                              </span>
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {section.items.map((item: any) => {
+                        {section.items.map((item: any, rowIndex: number) => {
                           const selected = selectedIds.includes(item.id)
                           return (
                             <tr
@@ -1969,14 +2086,25 @@ export default function MonitoringGrid() {
                                 event.preventDefault()
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
-                              className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : 'hover:bg-white/[0.03]'}`}
+                              className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : rowIndex % 2 === 0 ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-transparent hover:bg-white/[0.04]'}`}
                               style={{ height: `${fontSize + rowDensity + 10}px` }}
                             >
                               {groupedColumns.map((column: any) => (
                                 <td
                                   key={column.key}
-                                  className={`h-full overflow-hidden whitespace-nowrap px-3 py-0 align-middle font-semibold text-slate-200 text-ellipsis ${column.cellClass || ''}`}
-                                  style={{ fontSize: `${fontSize}px`, height: `${fontSize + rowDensity + 10}px`, maxHeight: `${fontSize + rowDensity + 10}px` }}
+                                  className={`h-full overflow-hidden whitespace-nowrap px-3 py-0 align-middle font-semibold text-slate-200 text-ellipsis ${column.cellClass || ''} ${column.pinned ? 'sticky z-[1]' : ''}`}
+                                  style={{
+                                    fontSize: `${fontSize}px`,
+                                    height: `${fontSize + rowDensity + 10}px`,
+                                    maxHeight: `${fontSize + rowDensity + 10}px`,
+                                    left: groupedStickyOffsets[column.key]?.left,
+                                    right: groupedStickyOffsets[column.key]?.right,
+                                    background: selected
+                                      ? 'rgba(59, 130, 246, 0.1)'
+                                      : column.pinned
+                                        ? rowIndex % 2 === 0 ? 'rgba(15, 23, 42, 0.96)' : 'rgba(2, 6, 23, 0.96)'
+                                        : undefined
+                                  }}
                                 >
                                   {column.render(item)}
                                 </td>
