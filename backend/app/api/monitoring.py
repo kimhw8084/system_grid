@@ -9,6 +9,7 @@ from ..schemas import schemas
 from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/monitoring", tags=["Monitoring Matrix"])
+IMMUTABLE_MONITORING_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None):
     # Fetch the item with owners
@@ -140,7 +141,7 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     if not item: raise HTTPException(404, "Monitoring item not found")
     
     owners_data = data.get("owners")
-    clean_data = filter_valid_columns(models.MonitoringItem, data)
+    clean_data = filter_valid_columns(models.MonitoringItem, data, exclude=IMMUTABLE_MONITORING_FIELDS)
     
     # Sync is_deleted with status
     if "status" in clean_data:
@@ -223,7 +224,7 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
             await db.flush()
             await save_monitoring_history(item.id, item.version, db, "Bulk restore")
     elif action == "update":
-        clean_update = filter_valid_columns(models.MonitoringItem, payload)
+        clean_update = filter_valid_columns(models.MonitoringItem, payload, exclude=IMMUTABLE_MONITORING_FIELDS)
 
         # Sync is_deleted with status in bulk update
         if "status" in clean_update:

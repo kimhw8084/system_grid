@@ -88,6 +88,27 @@ const useEscapeDismiss = (onClose: () => void) => {
   }, [onClose])
 }
 
+const useBodyModalFlag = () => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const body = document.body
+    const currentCount = Number(body.dataset.sysgridModalCount || '0')
+    const nextCount = currentCount + 1
+    body.dataset.sysgridModalCount = String(nextCount)
+    body.dataset.sysgridModalOpen = 'true'
+    return () => {
+      const updatedCount = Math.max(0, Number(body.dataset.sysgridModalCount || '1') - 1)
+      if (updatedCount === 0) {
+        delete body.dataset.sysgridModalCount
+        delete body.dataset.sysgridModalOpen
+      } else {
+        body.dataset.sysgridModalCount = String(updatedCount)
+        body.dataset.sysgridModalOpen = 'true'
+      }
+    }
+  }, [])
+}
+
 export default function MonitoringGrid() {
   const persistedUiState = readMonitoringUiState()
   const [searchParams] = useSearchParams()
@@ -164,6 +185,7 @@ export default function MonitoringGrid() {
   })
   const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
+  const [columnLayoutState, setColumnLayoutState] = useState<any[]>(persistedUiState?.columnLayoutState ?? [])
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(persistedUiState?.expandedBulkSection ?? null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
@@ -345,11 +367,49 @@ export default function MonitoringGrid() {
     }
   }
 
+  const getColumnLayoutSnapshot = (api: any) => {
+    if (!api?.getColumnState) return []
+    return api.getColumnState().map((column: any) => ({
+      colId: column.colId,
+      width: column.width,
+      hide: column.hide,
+      pinned: column.pinned,
+      flex: column.flex,
+      sort: column.sort,
+      sortIndex: column.sortIndex
+    }))
+  }
+
+  const syncColumnLayoutState = (api: any) => {
+    const nextLayout = getColumnLayoutSnapshot(api)
+    if (!nextLayout.length) return
+    setColumnLayoutState(nextLayout)
+  }
+
+  const applyColumnLayoutState = (api: any, options?: { autoSizeIfEmpty?: boolean }) => {
+    if (!api) return
+    if (columnLayoutState.length) {
+      api.applyColumnState({
+        state: columnLayoutState,
+        applyOrder: true,
+        defaultState: { sort: null }
+      })
+      return
+    }
+    if (options?.autoSizeIfEmpty) {
+      requestAnimationFrame(() => {
+        api.autoSizeAllColumns(false)
+        syncColumnLayoutState(api)
+      })
+    }
+  }
+
   const buildCurrentViewConfig = () => ({
     fontSize,
     rowDensity,
     hiddenColumns,
     groupBy,
+    columnLayoutState,
     quickFilter: searchTerm,
     quickFilters,
     filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
@@ -366,6 +426,7 @@ export default function MonitoringGrid() {
     setRowDensity(config.rowDensity ?? 10)
     setHiddenColumns(config.hiddenColumns ?? [])
     setGroupBy(config.groupBy ?? 'raw')
+    setColumnLayoutState(config.columnLayoutState ?? [])
     setSearchTerm(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
     setGridFilterModel(config.filterModel ?? {})
@@ -376,6 +437,15 @@ export default function MonitoringGrid() {
     }
     requestAnimationFrame(() => {
       if (gridRef.current?.api) {
+        if (Array.isArray(config.columnLayoutState) && config.columnLayoutState.length) {
+          gridRef.current.api.applyColumnState({
+            state: config.columnLayoutState,
+            applyOrder: true,
+            defaultState: { sort: null }
+          })
+        } else {
+          applyColumnLayoutState(gridRef.current.api, { autoSizeIfEmpty: true })
+        }
         gridRef.current.api.setFilterModel(config.filterModel ?? {})
         gridRef.current.api.applyColumnState({
           state: (config.sortModel ?? []).map((sort: any) => ({ colId: sort.colId, sort: sort.sort })),
@@ -625,104 +695,6 @@ export default function MonitoringGrid() {
     })
   }, [groupBy, groupedSections])
 
-  const groupedColumns = useMemo(() => {
-    const columns: Array<{ key: string; label: string; className?: string; render: (item: any) => React.ReactNode }> = []
-    columns.push({
-      key: 'pin',
-      label: '',
-      className: 'w-10 text-center',
-      render: (item: any) => (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            toggleFavorite(item.id)
-          }}
-          className={`rounded-md p-1 transition-all ${favoriteIds.includes(item.id) ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-        >
-          <Star size={14} className={favoriteIds.includes(item.id) ? 'fill-current' : ''} />
-        </button>
-      )
-    })
-    columns.push({
-      key: 'watch',
-      label: '',
-      className: 'w-10 text-center',
-      render: (item: any) => (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            toggleWatch(item.id)
-          }}
-          className={`rounded-md p-1 transition-all ${watchIds.includes(item.id) ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-        >
-          <Eye size={14} className={watchIds.includes(item.id) ? 'fill-current' : ''} />
-        </button>
-      )
-    })
-    columns.push({ key: 'id', label: 'ID', className: 'w-16 text-center', render: (item: any) => <span className="font-bold text-slate-500">{item.id}</span> })
-    columns.push({ key: 'recent_change', label: 'Δ', className: 'w-10 text-center', render: (item: any) => isRecentChange(item) ? <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.45)]" /> : null })
-    if (groupBy !== 'device_name' && !hiddenColumns.includes('device_name')) columns.push({ key: 'device_name', label: 'Target Asset', render: (item: any) => <span className="font-semibold text-slate-200">{item.device_name || 'Unassigned'}</span> })
-    if (groupBy !== 'category' && !hiddenColumns.includes('category')) columns.push({ key: 'category', label: 'Category', render: (item: any) => <span className="font-bold uppercase text-slate-300">{item.category || 'N/A'}</span> })
-    if (groupBy !== 'status' && !hiddenColumns.includes('status')) columns.push({ key: 'status', label: 'Status', render: (item: any) => <StatusPill value={item.status || 'Unknown'} fontSize={fontSize} /> })
-    if (!hiddenColumns.includes('owners')) columns.push({
-      key: 'owners',
-      label: 'Owners',
-      render: (item: any) => {
-        const owners = item.owners || []
-        if (!owners.length) return <span className="text-slate-500">N/A</span>
-        return (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setOwnerPopup({ owners, title: item.title })
-            }}
-            className="border-b border-dashed border-slate-700 text-left hover:text-blue-300"
-          >
-            {owners.length > 1 ? `${owners[0].name} +${owners.length - 1}` : owners[0].name}
-          </button>
-        )
-      }
-    })
-    if (!hiddenColumns.includes('title')) columns.push({ key: 'title', label: 'Title', render: (item: any) => <span className="font-black uppercase tracking-tight text-slate-100">{item.title}</span> })
-    if (groupBy !== 'platform' && !hiddenColumns.includes('platform')) columns.push({ key: 'platform', label: 'Platform', render: (item: any) => <span className="font-bold uppercase text-slate-300">{item.platform || 'N/A'}</span> })
-    if (groupBy !== 'severity' && !hiddenColumns.includes('severity')) columns.push({ key: 'severity', label: 'Severity', render: (item: any) => <StatusPill value={item.severity || 'N/A'} fontSize={fontSize} /> })
-    if (groupBy !== 'notification_method' && !hiddenColumns.includes('notification_method')) columns.push({
-      key: 'notification_method',
-      label: 'Notify',
-      render: (item: any) => (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setRecipientPopup({ recipients: item.notification_recipients || [], method: item.notification_method || 'N/A' })
-          }}
-          className="border-b border-dashed border-slate-700 font-bold uppercase text-slate-300 hover:text-blue-300"
-        >
-          {item.notification_method || 'N/A'}
-        </button>
-      )
-    })
-    if (!hiddenColumns.includes('purpose')) columns.push({ key: 'purpose', label: 'Purpose', render: (item: any) => <span className="line-clamp-2 text-slate-400">{item.purpose || 'No purpose documented'}</span> })
-    columns.push({
-      key: 'actions',
-      label: '',
-      className: 'w-12 text-center',
-      render: (item: any) => (
-        <button
-          type="button"
-          onClick={(event: any) => openRowActionMenu(event, item)}
-          className="row-action-menu-container rounded-full border border-white/10 bg-white/[0.03] p-1 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
-        >
-          <ChevronRight size={13} />
-        </button>
-      )
-    })
-    return columns
-  }, [favoriteIds, fontSize, groupBy, hiddenColumns, watchIds, collapsedGroups, groupedSections])
-
   const handleGroupedRowClick = (item: any, event: React.MouseEvent) => {
     if (shouldIgnoreRowSelection(event.target)) return
     const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
@@ -786,12 +758,6 @@ export default function MonitoringGrid() {
   }, [idParam, allItems])
 
   useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
-    }
-  }, [fontSize, rowDensity, items])
-
-  useEffect(() => {
     selectionAnchorRef.current = null
   }, [activeTab, items])
 
@@ -819,12 +785,13 @@ export default function MonitoringGrid() {
       hiddenColumns,
       quickFilters,
       groupBy,
+      columnLayoutState,
       selectedIds,
       expandedBulkSection,
       lastVisitedAt,
       searchTerm
     }))
-  }, [activeTab, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
+  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
 
   useEffect(() => {
     if (!activeViewId || !gridRef.current?.api) return
@@ -979,6 +946,7 @@ export default function MonitoringGrid() {
 
   const columnDefs = useMemo(() => [
     { 
+      colId: "select",
       headerName: "", 
       width: 50,
       minWidth: 50,
@@ -995,6 +963,7 @@ export default function MonitoringGrid() {
       suppressHide: true
     },
     { 
+      colId: "id",
       field: "id", 
       headerName: "ID", 
       width: 70,
@@ -1005,6 +974,7 @@ export default function MonitoringGrid() {
       filter: 'agNumberColumnFilter',
     },
     {
+      colId: "recent_change",
       headerName: "Δ",
       field: "recent_change",
       width: 42,
@@ -1022,6 +992,7 @@ export default function MonitoringGrid() {
       ) : null
     },
     {
+      colId: "favorite",
       headerName: "",
       field: "favorite",
       width: 44,
@@ -1048,6 +1019,7 @@ export default function MonitoringGrid() {
       )
     },
     {
+      colId: "watch",
       headerName: "",
       field: "watch",
       width: 44,
@@ -1255,6 +1227,7 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("purpose")
     },
     {
+      colId: "row_actions",
       headerName: "",
       width: 48,
       minWidth: 48,
@@ -1291,6 +1264,46 @@ export default function MonitoringGrid() {
       suppressCount: false
     }
   }), [groupBy])
+
+  const groupedColumns = useMemo(() => {
+    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
+    return columnDefs
+      .filter((column: any) => !column.hide)
+      .map((column: any) => {
+        const colId = column.colId || column.field
+        const layout = layoutById.get(colId)
+        return {
+          key: colId,
+          label: column.headerName || '',
+          width: layout?.width || column.width || column.minWidth || 120,
+          headerClass: column.headerClass || '',
+          cellClass: column.cellClass || '',
+          render: (item: any) => {
+            if (column.checkboxSelection) {
+              const checked = selectedIds.includes(item.id)
+              return (
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => toggleGroupedCheckbox(item, event)}
+                  onClick={(event) => event.stopPropagation()}
+                  className="h-4 w-4 rounded border-white/10 bg-black/40 accent-blue-500"
+                />
+              )
+            }
+            if (typeof column.cellRenderer === 'function') {
+              return column.cellRenderer({ value: item[column.field], data: item })
+            }
+            return item[column.field]
+          }
+        }
+      })
+  }, [columnDefs, columnLayoutState, selectedIds])
+
+  const groupedTableMinWidth = useMemo(
+    () => groupedColumns.reduce((total: number, column: any) => total + (Number(column.width) || 120), 0),
+    [groupedColumns]
+  )
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -1864,10 +1877,18 @@ export default function MonitoringGrid() {
 	            rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
+            onGridReady={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
+            onFirstDataRendered={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
 	            onSelectionChanged={(e) => {
                 const selectedNodes = e?.api?.getSelectedNodes?.() || []
                 setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
               }}
+            onColumnResized={(event) => {
+              if (event.finished) syncColumnLayoutState(event.api)
+            }}
+            onColumnMoved={(event) => syncColumnLayoutState(event.api)}
+            onColumnPinned={(event) => syncColumnLayoutState(event.api)}
+            onColumnVisible={(event) => syncColumnLayoutState(event.api)}
             onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
 	            onSortChanged={(e) => {
 	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
@@ -1892,7 +1913,6 @@ export default function MonitoringGrid() {
           <div className="rounded-lg border border-white/5 bg-black/20 px-4 py-3">
             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped View</p>
             <p className="pt-1 text-[12px] font-semibold text-slate-100">Grouped by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
-            <p className="pt-1 text-[11px] text-slate-400">Each group is its own collapsible operational table. Selection, compare, and bulk actions still work across groups.</p>
           </div>
           {groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
@@ -1909,7 +1929,7 @@ export default function MonitoringGrid() {
                       <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
                       <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-100">{section.label}</h3>
                     </div>
-                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} monitors in this group{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
+                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} monitors{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">{section.items.length}</span>
@@ -1918,14 +1938,20 @@ export default function MonitoringGrid() {
                 </button>
                 {!isCollapsed && (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse">
+                    <table className="border-collapse" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
+                      <colgroup>
+                        {groupedColumns.map((column: any) => (
+                          <col key={column.key} style={{ width: `${column.width}px` }} />
+                        ))}
+                      </colgroup>
                       <thead>
-                        <tr className="border-b border-white/5 bg-black/20">
-                          <th className="w-12 px-3 py-3 text-center">
-                            <span className="sr-only">Select</span>
-                          </th>
-                          {groupedColumns.map((column) => (
-                            <th key={column.key} className={`px-3 py-3 text-left text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.className || ''}`}>
+                        <tr className="border-b border-white/5 bg-black/20" style={{ height: `${fontSize + rowDensity + 10}px` }}>
+                          {groupedColumns.map((column: any) => (
+                            <th
+                              key={column.key}
+                              className={`px-3 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''}`}
+                              style={{ fontSize: `${fontSize}px`, height: `${fontSize + rowDensity + 10}px` }}
+                            >
                               {column.label}
                             </th>
                           ))}
@@ -1944,17 +1970,14 @@ export default function MonitoringGrid() {
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
                               className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : 'hover:bg-white/[0.03]'}`}
+                              style={{ height: `${fontSize + rowDensity + 10}px` }}
                             >
-                              <td className="px-3 py-3 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selected}
-                                  onChange={(event) => toggleGroupedCheckbox(item, event)}
-                                  className="h-4 w-4 rounded border-white/10 bg-black/40 accent-blue-500"
-                                />
-                              </td>
-                              {groupedColumns.map((column) => (
-                                <td key={column.key} className={`px-3 py-3 align-middle text-[11px] font-semibold text-slate-200 ${column.className || ''}`}>
+                              {groupedColumns.map((column: any) => (
+                                <td
+                                  key={column.key}
+                                  className={`h-full overflow-hidden whitespace-nowrap px-3 py-0 align-middle font-semibold text-slate-200 text-ellipsis ${column.cellClass || ''}`}
+                                  style={{ fontSize: `${fontSize}px`, height: `${fontSize + rowDensity + 10}px`, maxHeight: `${fontSize + rowDensity + 10}px` }}
+                                >
                                   {column.render(item)}
                                 </td>
                               ))}
@@ -2140,8 +2163,9 @@ function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, 
 
 function OwnersModal({ owners, title, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2172,8 +2196,9 @@ function OwnersModal({ owners, title, onClose }: any) {
 
 function CompareMonitorsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2220,7 +2245,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     useEscapeDismiss(onClose)
 
     if (isStatusOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
@@ -2244,7 +2269,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isSeverityOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
@@ -2268,7 +2293,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     )
 
     if (isNotifyOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[1230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div onClick={onClose} className="fixed inset-0 z-[3230] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
@@ -2299,7 +2324,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 function ServicesModal({ names, title, onClose }: any) {
   useEscapeDismiss(onClose)
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
@@ -2322,7 +2347,7 @@ function ServicesModal({ names, title, onClose }: any) {
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
@@ -2348,6 +2373,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 
 function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const queryClient = useQueryClient()
   const [recoverySearch, setRecoverySearch] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -2401,7 +2427,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
   }
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -2490,6 +2516,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
 
 function BkmDetailModal({ bkmId, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const { data: bkm, isLoading } = useQuery({
     queryKey: ['knowledge-entry', bkmId],
     queryFn: async () => (await apiFetch(`/api/v1/knowledge/${bkmId}`)).json(),
@@ -2497,7 +2524,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   })
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
@@ -2562,6 +2589,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
 
 function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const { data: suggestedKnowledge } = useQuery({
@@ -2580,7 +2608,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   })
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]">
         <div className="mb-6 border-b border-white/10 pb-6">
           <div className="flex items-start justify-between gap-4">
@@ -2827,6 +2855,7 @@ const LOGIC_SUGGESTIONS: any = {
 
 export function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
   const [showLineNumbers, setShowLineNumbers] = useState(true)
@@ -2855,7 +2884,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
     is_active: true,
     recovery_docs: [],
     owners: [],
-    ...item
+    ...sanitizeMonitoringPayload(item)
   })
 
   const [newOwner, setNewOwner] = useState({ name: '', external_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
@@ -2921,7 +2950,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
     mutationFn: async (data: any) => {
       const url = item ? `/api/v1/monitoring/${item.id}` : '/api/v1/monitoring/'
       const method = item ? 'PUT' : 'POST'
-      const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      const res = await apiFetch(url, { method, body: JSON.stringify(sanitizeMonitoringPayload(data)) })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }))
         throw new Error(err.detail || 'Failed to save monitoring item')
@@ -2991,7 +3020,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
   }
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[1210] flex items-center justify-center bg-[rgba(2,6,23,0.58)] backdrop-blur-[12px] p-4 sm:p-6">
+    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.58)] backdrop-blur-[12px] p-4 sm:p-6">
       <motion.div
         onClick={e => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}
@@ -3541,6 +3570,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
 
 function MonitoringHistoryModal({ item, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const { data: history, isLoading } = useQuery({
     queryKey: ['monitoring-history', item.id],
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
@@ -3584,7 +3614,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
   const diffs = getDiff(newer, older)
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[1240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-10">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-10">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-full flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]">
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center space-x-6">

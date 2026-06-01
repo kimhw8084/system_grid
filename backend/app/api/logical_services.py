@@ -1,12 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
+from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
+IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 
 def serialize_service(service: models.LogicalService, device_name: str):
@@ -132,7 +134,7 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
     name = data.get('name')
     if not name: raise HTTPException(400, "Service name required")
 
-    clean_data = filter_valid_columns(models.LogicalService, data)
+    clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
     
     # Handle date fields for license and installation
     for date_f in ["purchase_date", "expiry_date", "installation_date"]:
@@ -174,7 +176,7 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     if not svc: raise HTTPException(404)
     previous_device_id = svc.device_id
     
-    clean_data = filter_valid_columns(models.LogicalService, data)
+    clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
     for k, v in clean_data.items():
         if k in ["purchase_date", "expiry_date", "installation_date"]:
             if not v:
@@ -203,7 +205,16 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     db.add(log)
     await db.commit()
     await db.refresh(svc)
-    return svc
+    result = await db.execute(
+        select(models.LogicalService)
+        .options(joinedload(models.LogicalService.secrets))
+        .filter(models.LogicalService.id == service_id)
+    )
+    refreshed = result.unique().scalar_one()
+    device_name = None
+    if refreshed.device_id:
+        device_name = await db.scalar(select(models.Device.name).filter(models.Device.id == refreshed.device_id))
+    return serialize_service(refreshed, device_name)
 
 @router.delete("/{service_id}")
 async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):

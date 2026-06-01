@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { createAsset, createService, resetBrowserState } from './helpers/sysgrid'
 
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+
 test.describe('Service workflows', () => {
   test('tolerates malformed metadata and clears deep-link state on close', async ({ page, request }) => {
     await resetBrowserState(page)
@@ -35,7 +37,7 @@ test.describe('Service workflows', () => {
       environment: 'DR'
     })
 
-    const purgeResponse = await request.delete(`http://127.0.0.1:8000/api/v1/logical-services/${purgedService.id}`)
+    const purgeResponse = await request.delete(`${apiBase}/logical-services/${purgedService.id}`)
     expect(purgeResponse.ok()).toBeTruthy()
 
     await page.goto(`/services?id=${activeService.id}`)

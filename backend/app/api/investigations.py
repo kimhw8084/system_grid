@@ -9,6 +9,7 @@ from ..models import models
 from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/investigations", tags=["Investigation Management"])
+IMMUTABLE_INVESTIGATION_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 @router.get("")
 async def get_investigations(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
@@ -20,7 +21,7 @@ async def get_investigations(include_deleted: bool = False, db: AsyncSession = D
 
 @router.post("")
 async def create_investigation(data: dict, db: AsyncSession = Depends(get_db)):
-    clean_data = filter_valid_columns(models.Investigation, data)
+    clean_data = filter_valid_columns(models.Investigation, data, exclude=IMMUTABLE_INVESTIGATION_FIELDS)
     
     # Handle ISO dates
     if "initiation_at" in clean_data:
@@ -42,7 +43,7 @@ async def update_investigation(inv_id: int, data: dict, db: AsyncSession = Depen
     inv = result.scalar_one_or_none()
     if not inv: raise HTTPException(404, "Investigation not found")
     
-    clean_data = filter_valid_columns(models.Investigation, data)
+    clean_data = filter_valid_columns(models.Investigation, data, exclude=IMMUTABLE_INVESTIGATION_FIELDS)
     
     # Handle ISO dates
     if "initiation_at" in clean_data:

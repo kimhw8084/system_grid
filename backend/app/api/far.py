@@ -9,6 +9,7 @@ from ..schemas import schemas
 from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/far", tags=["FAR"])
+IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 # --- FAILURE MODES ---
 
@@ -96,7 +97,7 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     rpn_fields = {'severity', 'occurrence', 'detection'}
     needs_rpn = False
     
-    clean_data = filter_valid_columns(models.FarFailureMode, data)
+    clean_data = filter_valid_columns(models.FarFailureMode, data, exclude=IMMUTABLE_FAR_FIELDS)
     
     for k, v in clean_data.items():
         if k == 'affected_assets' and isinstance(v, list):

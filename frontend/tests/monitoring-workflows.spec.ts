@@ -11,7 +11,7 @@ import {
   selectGridCheckboxRows
 } from './helpers/sysgrid'
 
-const apiBase = 'http://127.0.0.1:8000/api/v1'
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Monitoring workflows', () => {
   test('preserves lifecycle status, recovery linking, and knowledge jump paths', async ({ page, request }) => {
@@ -95,6 +95,7 @@ test.describe('Monitoring workflows', () => {
     await fillGridSearch(page, 'Scan matrix...', titlePrefix)
     await expect(getPrimaryGrid(page)).toContainText(monitorA.title)
     await expect(getPrimaryGrid(page)).toContainText(monitorB.title)
+    const rawRowHeight = await page.locator('.ag-center-cols-container .ag-row').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
 
     await selectGridCheckboxRows(page, [0, 1])
     await expect(page.getByRole('button', { name: 'Compare' })).toBeEnabled()
@@ -136,10 +137,35 @@ test.describe('Monitoring workflows', () => {
     await displayMenu.locator('select').nth(0).selectOption('platform')
     await page.keyboard.press('Escape')
     await expect(page.getByText('Grouped by Platform')).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'ID' }).first()).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Target Asset' }).first()).toBeVisible()
+    const groupedRowHeight = await page.locator('table tbody tr').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
+    expect(Math.abs(groupedRowHeight - rawRowHeight)).toBeLessThanOrEqual(2)
 
     await page.goto('/asset')
     await gotoView(page, '/monitoring', 'Monitoring Matrix')
     await expect(page.getByPlaceholder('Scan matrix...')).toHaveValue(titlePrefix)
     await expect(page.getByText('Grouped by Platform')).toBeVisible()
+  })
+
+  test('edits an existing monitor without save errors and persists the updated fields', async ({ page, request }) => {
+    await resetBrowserState(page)
+    const { monitoring } = await seedOperationalScenario(request)
+    const updatedTitle = `${monitoring.title}-EDITED`
+    const updatedPurpose = 'Edited through Playwright regression coverage'
+
+    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring Matrix')
+    await expect(page.getByText(monitoring.title)).toBeVisible()
+    await page.getByRole('button', { name: 'Edit' }).click()
+    await expect(page.getByText('Update Monitoring')).toBeVisible()
+
+    await page.getByPlaceholder('e.g. CORE-DB: High CPU Load Alert').fill(updatedTitle)
+    await page.getByPlaceholder('Why are we monitoring this? How does it help the team?').fill(updatedPurpose)
+    await page.getByRole('button', { name: 'Save Monitoring' }).click()
+    await expect(page.getByText('Update Monitoring')).not.toBeVisible()
+
+    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring Matrix')
+    await expect(page.getByText(updatedTitle)).toBeVisible()
+    await expect(page.getByText(updatedPurpose)).toBeVisible()
   })
 })

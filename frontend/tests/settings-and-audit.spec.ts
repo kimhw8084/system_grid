@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+
 test.describe('Settings and audit workflows', () => {
   test('persists theme and loads major settings sections', async ({ page }) => {
     await resetBrowserState(page)
@@ -47,7 +49,7 @@ test.describe('Settings and audit workflows', () => {
 
   test('stores and exposes user-pool sync script history', async ({ page, request }) => {
     await resetBrowserState(page)
-    const response = await request.post('http://127.0.0.1:8000/api/v1/settings/user-pool/refresh', {
+    const response = await request.post(`${apiBase}/settings/user-pool/refresh`, {
       data: { script: "print('playwright sync')" },
       headers: { 'X-User-Id': 'admin_root' }
     })

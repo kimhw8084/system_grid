@@ -75,6 +75,16 @@ export const AuditHUD = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | FeatureAuditStatus>('all')
   const [savedState, setSavedState] = useState<SavedState>(() => loadState())
+  const [modalOpen, setModalOpen] = useState(false)
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return
+    const sync = () => setModalOpen(document.body.dataset.sysgridModalOpen === 'true')
+    sync()
+    const observer = new MutationObserver(sync)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-sysgrid-modal-open'] })
+    return () => observer.disconnect()
+  }, [])
 
   const items = useMemo(() => {
     if (activeFilter === 'all') return FEATURE_AUDIT_ITEMS
@@ -109,14 +119,14 @@ export const AuditHUD = () => {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]">
+    <div className={`feature-audit-hud fixed bottom-6 right-6 z-[9999] ${modalOpen ? 'pointer-events-none opacity-40' : ''}`}>
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            className="mb-4 w-[460px] overflow-hidden rounded-3xl border border-blue-500/20 bg-slate-950/95 shadow-[0_0_60px_rgba(37,99,235,0.16)] backdrop-blur-2xl"
+            className="mb-4 w-[460px] overflow-hidden rounded-3xl border border-blue-500/20 bg-slate-950/95 shadow-[0_0_60px_rgba(37,99,235,0.16)] backdrop-blur-2xl pointer-events-auto"
           >
             <div className="border-b border-white/10 bg-gradient-to-r from-blue-600/10 to-transparent p-6">
               <div className="flex items-start justify-between gap-4">
@@ -256,11 +266,12 @@ export const AuditHUD = () => {
       <motion.button
         layoutId="feature-audit-toggle"
         onClick={() => setIsOpen(!isOpen)}
+        disabled={modalOpen}
         className={`group flex items-center gap-3 rounded-full px-6 py-4 shadow-2xl transition-all active:scale-95 ${
           unresolvedCount > 0
             ? 'bg-blue-600 text-white shadow-blue-600/25'
             : 'border border-white/10 bg-slate-900 text-slate-300'
-        }`}
+        } ${modalOpen ? 'pointer-events-none' : 'pointer-events-auto'}`}
       >
         <div className="relative">
           <Sparkles size={20} />

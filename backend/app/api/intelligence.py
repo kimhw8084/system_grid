@@ -9,6 +9,7 @@ from ..schemas import schemas
 from .utils import filter_valid_columns
 
 router = APIRouter(prefix="/intelligence", tags=["External Intelligence"])
+IMMUTABLE_EXTERNAL_ENTITY_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 async def log_audit(db: AsyncSession, action: str, table: str, target_id: int, description: str, changes: Optional[Dict] = None):
     log = models.AuditLog(
@@ -52,7 +53,7 @@ async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(g
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, "Entity not found")
     
-    clean_data = filter_valid_columns(models.ExternalEntity, data)
+    clean_data = filter_valid_columns(models.ExternalEntity, data, exclude=IMMUTABLE_EXTERNAL_ENTITY_FIELDS)
     for k, v in clean_data.items():
         setattr(obj, k, v)
     
