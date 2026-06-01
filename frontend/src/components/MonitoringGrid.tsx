@@ -7,7 +7,7 @@ import {
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
-  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor,
+  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -130,12 +130,6 @@ const getMonitorGroupValue = (item: any, field: string) => {
 
 const readMonitoringUiState = () => {
   if (typeof window === 'undefined') return null
-  // During Playwright tests, we want to start with a clean state every time
-  // to avoid cross-test contamination via localStorage.
-  if (window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')) {
-    console.log('[MonitoringGrid] Playwright detected - skipping persisted UI state')
-    return null
-  }
   try {
     const raw = window.localStorage.getItem(MONITORING_UI_STATE_KEY)
     if (!raw) return null
@@ -716,7 +710,7 @@ export default function MonitoringGrid() {
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
   const { data: allItems, isLoading } = useQuery({
-    queryKey: ['monitoring-items', Date.now()],
+    queryKey: ['monitoring-items'],
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json(),
     staleTime: 0,
     gcTime: 0

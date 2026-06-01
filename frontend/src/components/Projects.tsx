@@ -3003,10 +3003,22 @@ export default function Projects() {
     },
     onSuccess: (deletedId) => {
       const currentProjects = (queryClient.getQueryData(['projects']) as any[]) || []
+      const sorted = [...currentProjects].sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+      const currentIndex = sorted.findIndex(p => p.id === deletedId)
       const remainingProjects = currentProjects.filter((project: any) => project.id !== deletedId)
+      
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      
       if (selectedProjectId === deletedId) {
-        syncSelectedProject(remainingProjects[0]?.id || 'HUDDLE')
+        let nextToSelect: any = null
+        if (sorted.length > 1) {
+          if (currentIndex !== -1 && currentIndex < sorted.length - 1) {
+            nextToSelect = sorted[currentIndex + 1]
+          } else if (currentIndex > 0) {
+            nextToSelect = sorted[currentIndex - 1]
+          }
+        }
+        syncSelectedProject(nextToSelect?.id || remainingProjects[0]?.id || 'HUDDLE')
       }
       setPendingNav(null)
       toast.success('Project Decommissioned')

@@ -43,7 +43,7 @@ test.describe('Monitoring workflows', () => {
     })
     console.log(`DEBUG: Found ${itemsInFrontend.length} items in frontend window`)
 
-    await page.getByPlaceholder('SCAN MATRIX...').fill(monitoring.title)
+    await page.getByPlaceholder('Scan matrix...').fill(monitoring.title)
     await expect(page.locator('.ag-center-cols-container')).toContainText(monitoring.title)
     await expect(page.locator('.ag-center-cols-container')).toContainText('Existing')
 
